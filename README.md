@@ -17,7 +17,7 @@
 -**Alvarez Ruelas Fernando**
 [![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/fernandoalvarez2442)
 
--**Cesarin**
+-**Heredia Cesar**
 [![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/goshin69)
 
 ---
