@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Mi Empresa</title>
+    <link rel="stylesheet" href="login.css">
+
+    <style>
+        .strength-box {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .strength-box.weak {
+            border: 1px solid #fecaca;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .strength-box.medium {
+            border: 1px solid #fde68a;
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .strength-box.strong {
+            border: 1px solid #bbf7d0;
+            background: #dcfce7;
+            color: #166534;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container dashboard">
+        <h2>👋 Panel de control</h2>
+
+        <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+            Bienvenido, <strong id="dashboardUser"></strong>
+        </p>
+
+        <div id="strengthAlert" class="strength-box"></div>
+
+        <p style="margin: 1rem 0; color: #64748b;">
+            Esta es tu página principal. Todas las funcionalidades estarán disponibles aquí.
+        </p>
+
+        <button id="logoutBtn" class="btn-danger">Cerrar sesión</button>
+    </div>
+
+    <script src="login.js"></script>
+    <script>
+        const currentUser = getCurrentUser();
+
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        } else {
+            document.getElementById('dashboardUser').textContent = currentUser;
+
+            const users = getUsers();
+            const userData = users[currentUser];
+            const password = userData ? userData.password : '';
+            const strengthResult = evaluateStrength(password, currentUser);
+            const strengthAlert = document.getElementById('strengthAlert');
+
+            strengthAlert.className = 'strength-box ' + strengthResult.level;
+            strengthAlert.textContent = strengthResult.message;
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            logout();
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
