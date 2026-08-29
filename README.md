@@ -1,3 +1,9 @@
+## 📖 Descripción
+
+## 🚀 Características de la Plataforma
+
+## ⚙️ Cómo usar la plataforma
+
 # Koaly
 ---
 
@@ -21,3 +27,4 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/goshin69)
 
 ---
+## 🌐Base de datos
