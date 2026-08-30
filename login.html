@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+    <div class="container">
+        <h2>🔐 Iniciar sesión</h2>
+
+        <div id="loginMessage" class="message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="loginEmail">Correo empresarial</label>
+                <input
+                    type="email"
+                    id="loginEmail"
+                    placeholder="tú@empresa.com"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="loginPassword">Contraseña</label>
+                <input
+                    type="password"
+                    id="loginPassword"
+                    placeholder="Tu contraseña"
+                    required
+                >
+
+                <small>
+                    Mínimo 8 caracteres. Recomendado: 14 o más.
+                </small>
+
+                <div id="loginStrengthWarning" class="strength-warning"></div>
+            </div>
+
+            <button type="submit">Ingresar</button>
+        </form>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>
