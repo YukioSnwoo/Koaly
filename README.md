@@ -203,8 +203,8 @@ La aplicación contará con soporte para los siguientes idiomas:
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/TenshiGS">
-        <img src="https://github.com/TenshiGS.png" width="70"><br>
+      <a href="https://github.com/Elurielll">
+        <img src="https://github.com/Elurielll.png" width="70"><br>
         TenshiGS
       </a>
     </td>
