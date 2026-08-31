@@ -42,7 +42,7 @@ El sistema permitirá llevar un control del inventario de cada sucursal, Cuando 
 
 El módulo de Punto de Venta permitirá registrar las compras realizadas por los clientes.
 
-#🌎 Idiomas
+# 🌎 Idiomas
 
 La aplicación contará con soporte para los siguientes idiomas:
 
