@@ -8,6 +8,10 @@ La aplicación contará con diferentes roles de usuario, permitiendo controlar l
 
 ## 🚀 Características de la Plataforma
 
+Desarrollar una aplicación web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
+
+El sistema busca facilitar la gestión centralizada de la información y mantener actualizado el inventario después de cada venta.
+
 ## ⚙️ Cómo usar la plataforma
 
 
