@@ -1,11 +1,11 @@
+### 🐨 Koaly
+
 ## 📖 Descripción
 
 ## 🚀 Características de la Plataforma
 
 ## ⚙️ Cómo usar la plataforma
 
-# Koaly
----
 
 ## 📬 Contacto  
 -**Ramirez Larios Uriel Dominyk**
