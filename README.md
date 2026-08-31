@@ -20,7 +20,18 @@ El sistema busca facilitar la gestión centralizada de la información y mantene
 # 👤 Roles del sistema
 ## 👑 Administrador General
 
-El Administrador General tendrá acceso a la información general del sistema
+El Administrador General tendrá acceso a la información general del sistema y podrá:
+
+Iniciar sesión.
+Crear sucursales.
+Consultar sucursales.
+Modificar información de las sucursales.
+Eliminar sucursales.
+Registrar gerentes.
+Asignar gerentes a las sucursales.
+Consultar los inventarios de las diferentes sucursales.
+Consultar las ventas realizadas en las sucursales.
+Consultar información general del sistema.
 
 ## 🧑‍💼 Gerente
 
