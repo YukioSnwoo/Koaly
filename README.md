@@ -220,5 +220,3 @@ La aplicación contará con soporte para los siguientes idiomas:
 # 📌 Estado del proyecto
 
 ## 🚧 En desarrollo
-
-El proyecto se encuentra actualmente en proceso de análisis, diseño e implementación.
