@@ -2,6 +2,10 @@
 
 ## 📖 Descripción
 
+Koaly es una aplicación web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
+
+La aplicación contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
+
 ## 🚀 Características de la Plataforma
 
 ## ⚙️ Cómo usar la plataforma
