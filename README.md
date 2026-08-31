@@ -175,37 +175,37 @@ La aplicación contará con soporte para los siguientes idiomas:
     <td align="center">
       <a href="https://github.com/goshin69">
         <img src="https://github.com/goshin69.png" width="70"><br>
-        goshin69
+        Cesar Heredia
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/Enava7-22">
         <img src="https://github.com/Enava7-22.png" width="70"><br>
-        Enava7-22
+       Erick Nava Gomez
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/fernandoalvarez2442-sys">
         <img src="https://github.com/fernandoalvarez2442-sys.png" width="70"><br>
-        Fer
+        Fernando Alvarez Ruelas
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/YukioSnwoo">
         <img src="https://github.com/YukioSnwoo.png" width="70"><br>
-        YukioSnwoo
+        Angel Moisés Guzmán Solis
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/TenshiGS">
         <img src="https://github.com/TenshiGS.png" width="70"><br>
-        TenshiGS
+       Matias Mendoza Jennifer Dalila
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/Elurielll">
         <img src="https://github.com/Elurielll.png" width="70"><br>
-        TenshiGS
+        Uriel Dominyk Ramírez Larios
       </a>
     </td>
   </tr>
