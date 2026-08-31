@@ -163,7 +163,7 @@ Total.
 Método de pago.
 
 
-#🌎 Idiomas
+# 🌎 Idiomas
 
 La aplicación contará con soporte para los siguientes idiomas:
 ## 🇲🇽 Español.
