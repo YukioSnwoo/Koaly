@@ -1,4 +1,4 @@
-### 🐨 Koaly
+# 🐨 Koaly
 
 ## 📖 Descripción
 
