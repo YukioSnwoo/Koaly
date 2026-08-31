@@ -170,25 +170,48 @@ La aplicación contará con soporte para los siguientes idiomas:
 ## 🇺🇸 Inglés.
 
 ## 📬 Contacto  
--**Ramirez Larios Uriel Dominyk**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/Elurielll)
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/goshin69">
+        <img src="https://github.com/goshin69.png" width="70"><br>
+        goshin69
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Enava7-22">
+        <img src="https://github.com/Enava7-22.png" width="70"><br>
+        Enava7-22
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/fernandoalvarez2442-sys">
+        <img src="https://github.com/fernandoalvarez2442-sys.png" width="70"><br>
+        Fer
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/YukioSnwoo">
+        <img src="https://github.com/YukioSnwoo.png" width="70"><br>
+        YukioSnwoo
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/TenshiGS">
+        <img src="https://github.com/TenshiGS.png" width="70"><br>
+        TenshiGS
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/TenshiGS">
+        <img src="https://github.com/TenshiGS.png" width="70"><br>
+        TenshiGS
+      </a>
+    </td>
+  </tr>
+</table>
 
--**Guzman Solis Angel Moisés**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/TenshiGS)
 
--**Matias Mendoza Jennifer Dalila**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/YukioSnwoo)
-
--**Gomez Nava Erick**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/Enava7-22)
-
--**Alvarez Ruelas Fernando**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/fernandoalvarez2442-sys)
-
--**Heredia Cesar**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/goshin69)
-
----
 ## 🌐Base de datos
 ![HOSTINGER](https://img.shields.io/badge/HOSTINGER-WEB%20HOSTING-673DE6?style=for-the-badge&logo=hostinger&logoColor=white)
 
