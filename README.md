@@ -46,17 +46,99 @@ Consultar información general del sistema.
 
 Cada sucursal contará con un gerente encargado de administrar y supervisar las operaciones de su sede.
 
+El gerente podrá:
+
+
+Iniciar sesión.
+
+Consultar la información de su sucursal.
+
+Registrar productos.
+
+Consultar productos.
+
+Modificar productos.
+
+Registrar nuevas cajas.
+
+Eliminar cajas.
+
+Controlar el inventario.
+
+Actualizar existencias.
+
+Consultar productos con bajo inventario.
+
+Consultar el historial de ventas.
+
+Supervisar las ventas realizadas en su sucursal.
+
 ## 🧾 Cajero
 
 Los cajeros tendrán acceso al módulo de Punto de Venta para registrar las compras realizadas por los clientes.
 
+Podrán:
+
+Buscar productos.
+
+Agregar productos a una venta.
+
+Calcular el subtotal.
+
+Calcular el total.
+
+Registrar el método de pago.
+
+Confirmar la venta.
+
+Generar un ticket o comprobante.
+
+Actualizar automáticamente el inventari
+
+
 ## 🏢 Gestión de sucursales
 
-Cada sucursal contará con información propia, Cada sucursal administrará de forma independiente sus productos, inventario y ventas.
+Cada sucursal contará con información propia, incluyendo:
+
+Nombre.
+
+Dirección.
+
+Teléfono.
+
+Información de contacto.
+
+Estado.
+
+Gerente responsable.
+
+Inventario propio.
+
+Uno o varios cajeros.
+
+
+Cada sucursal administrará de forma independiente sus productos, inventario y ventas.
 
 ## 📦 Gestión de inventario
 
-El sistema permitirá llevar un control del inventario de cada sucursal, Cuando se realice una venta, el sistema actualizará automáticamente la cantidad disponible del producto.
+El sistema permitirá llevar un control del inventario de cada sucursal.
+
+Entre sus principales funciones se encuentran:
+
+Registro de productos.
+
+Consulta de productos.
+
+Modificación de productos.
+
+Control de existencias.
+
+Actualización automática del inventario.
+
+Consulta de productos con bajo inventario.
+
+
+Cuando se realice una venta, el sistema actualizará automáticamente la cantidad disponible del product
 
 ## 💳 Punto de Venta
 
@@ -64,8 +146,31 @@ El módulo de Punto de Venta permitirá registrar las compras realizadas por los
 
 # 🌎 Idiomas
 
-La aplicación contará con soporte para los siguientes idiomas:
+El módulo de Punto de Venta permitirá registrar las compras realizadas por los clientes.
 
+Cada venta estará relacionada con:
+
+
+Sucursal.
+
+Cajero.
+
+Fecha y hora.
+
+Productos vendidos.
+
+Cantidades.
+
+Precio.
+
+Total.
+
+Método de pago.
+
+
+#🌎 Idiomas
+
+La aplicación contará con soporte para los siguientes idiomas:
 ## 🇲🇽 Español.
 ## 🇺🇸 Inglés.
 
