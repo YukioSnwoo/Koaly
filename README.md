@@ -144,12 +144,7 @@ Cuando se realice una venta, el sistema actualizará automáticamente la cantida
 
 El módulo de Punto de Venta permitirá registrar las compras realizadas por los clientes.
 
-# 🌎 Idiomas
-
-El módulo de Punto de Venta permitirá registrar las compras realizadas por los clientes.
-
 Cada venta estará relacionada con:
-
 
 Sucursal.
 
