@@ -5,19 +5,19 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow?logo=javascript&logoColor=black)
 ![PHP](https://img.shields.io/badge/PHP-Backend-purple?logo=php&logoColor=white)
 
-## 📖 Descripción
+##📖 Descripción
 
 Koaly es una aplicación web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
 
 La aplicación contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
 
-## 🚀 Características de la Plataforma
+##🚀 Características de la Plataforma
 
 Desarrollar una aplicación web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
 
 El sistema busca facilitar la gestión centralizada de la información y mantener actualizado el inventario después de cada venta.
 
-# 👤 Roles del sistema
+#👤 Roles del sistema
 ##👑 Administrador General
 
 El Administrador General tendrá acceso a la información general del sistema
