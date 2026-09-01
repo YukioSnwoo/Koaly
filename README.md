@@ -5,20 +5,20 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow?logo=javascript&logoColor=black)
 ![PHP](https://img.shields.io/badge/PHP-Backend-purple?logo=php&logoColor=white)
 
-## 📖 Descripción
+## Descripción
 
 Koaly es una aplicación web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
 
 La aplicación contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
 
-## 🚀 Características de la Plataforma
+## Características de la Plataforma
 
 Desarrollar una aplicación web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
 
 El sistema busca facilitar la gestión centralizada de la información y mantener actualizado el inventario después de cada venta.
 
-# 👤 Roles del sistema
-## 👑 Administrador General
+#  Roles del sistema
+## Administrador General
 
 El Administrador General tendrá acceso a la información general del sistema y podrá:
 
@@ -42,7 +42,7 @@ Consultar las ventas realizadas en las sucursales.
 
 Consultar información general del sistema.
 
-## 🧑‍💼 Gerente
+##  Gerente
 
 Cada sucursal contará con un gerente encargado de administrar y supervisar las operaciones de su sede.
 
@@ -73,7 +73,7 @@ Consultar el historial de ventas.
 
 Supervisar las ventas realizadas en su sucursal.
 
-## 🧾 Cajero
+##  Cajero
 
 Los cajeros tendrán acceso al módulo de Punto de Venta para registrar las compras realizadas por los clientes.
 
@@ -96,7 +96,7 @@ Generar un ticket o comprobante.
 Actualizar automáticamente el inventari
 
 
-## 🏢 Gestión de sucursales
+##  Gestión de sucursales
 
 Cada sucursal contará con información propia, incluyendo:
 
@@ -119,7 +119,7 @@ Uno o varios cajeros.
 
 Cada sucursal administrará de forma independiente sus productos, inventario y ventas.
 
-## 📦 Gestión de inventario
+##  Gestión de inventario
 
 El sistema permitirá llevar un control del inventario de cada sucursal.
 
@@ -140,7 +140,7 @@ Consulta de productos con bajo inventario.
 
 Cuando se realice una venta, el sistema actualizará automáticamente la cantidad disponible del product
 
-## 💳 Punto de Venta
+##  Punto de Venta
 
 El módulo de Punto de Venta permitirá registrar las compras realizadas por los clientes.
 
@@ -163,13 +163,13 @@ Total.
 Método de pago.
 
 
-# 🌎 Idiomas
+#  Idiomas
 
 La aplicación contará con soporte para los siguientes idiomas:
 ## 🇲🇽 Español.
 ## 🇺🇸 Inglés.
 
-## 📬 Contacto  
+##  Contacto  
 <table align="center">
   <tr>
     <td align="center">
@@ -212,7 +212,7 @@ La aplicación contará con soporte para los siguientes idiomas:
 </table>
 
 
-## 🌐Base de datos
+## Base de datos
 ![HOSTINGER](https://img.shields.io/badge/HOSTINGER-WEB%20HOSTING-673DE6?style=for-the-badge&logo=hostinger&logoColor=white)
 
 ![MYSQL](https://img.shields.io/badge/MYSQL-DATABASE-00758F?style=for-the-badge&logo=mysql&logoColor=white)
