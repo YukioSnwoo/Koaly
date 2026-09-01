@@ -162,6 +162,8 @@ Total.
 
 Método de pago.
 
+#  Link de la pagina
+
 
 #  Idiomas
 
