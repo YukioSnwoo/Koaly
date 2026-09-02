@@ -196,13 +196,13 @@ La aplicación contará con soporte para los siguientes idiomas:
     <td align="center">
       <a href="https://github.com/YukioSnwoo">
         <img src="https://github.com/YukioSnwoo.png" width="70"><br>
-        Angel Moisés Guzmán Solis
+        Matias Mendoza Jennifer Dalila
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/TenshiGS">
         <img src="https://github.com/TenshiGS.png" width="70"><br>
-       Matias Mendoza Jennifer Dalila
+       Angel Moisés Guzmán Solis
       </a>
     </td>
     <td align="center">
