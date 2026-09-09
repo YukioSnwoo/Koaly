@@ -100,6 +100,7 @@ function getUsers() {
     return JSON.parse(localStorage.getItem('users')) || {};
 }
 
+//en caso de no cumplir con los datos
 function loginUser(email, password) {
     const users = getUsers();
 
