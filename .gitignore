@@ -1,0 +1,4 @@
+.env
+.env.*
+!.env.example
+actualizar_passwords.php
