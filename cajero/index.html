@@ -50,7 +50,7 @@
             </div>
         </div>
     </div>
-    <script src="../login/login.js"></script>
+    <script src="../auth.js"></script>
     <script>
         const usuario = requireRol(3);
         if (usuario) {
