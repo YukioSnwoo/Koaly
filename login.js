@@ -94,43 +94,47 @@ function passwordIsAllowed(password, email) {
 }
 
 
-// INICIO DE SESIÓN
+const ROLE_ROUTES = {
+    1: 'admin/admin.html',
+    2: 'gerente/gerente.html',
+    3: 'cajero/cajero.html'
+};
 
-function getUsers() {
-    return JSON.parse(localStorage.getItem('users')) || {};
-}
+async function loginUser(email, password) {
+    const response = await fetch('login.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+    });
 
-//en caso de no cumplir con los datos
-function loginUser(email, password) {
-    const users = getUsers();
+    const result = await response.json();
 
-    if (!users[email]) {
+    if (!response.ok || !result.success) {
         return {
             success: false,
-            message: 'Correo no registrado.'
+            message: result.message || 'No fue posible iniciar sesión.'
         };
     }
 
-    if (users[email].password !== password) {
+    const user = result.user;
+    const destination = ROLE_ROUTES[Number(user.id_rol)];
+
+    if (!destination || !user.id_usuario || !user.email) {
         return {
             success: false,
-            message: 'Contraseña incorrecta.'
+            message: 'La cuenta no tiene un rol válido configurado.'
         };
     }
 
-    sessionStorage.setItem('currentUser', email);
+    sessionStorage.setItem('usuario', JSON.stringify(user));
 
     return {
-        success: true
+        success: true,
+        destination
     };
-}
-
-function getCurrentUser() {
-    return sessionStorage.getItem('currentUser');
-}
-
-function logout() {
-    sessionStorage.removeItem('currentUser');
 }
 
 
@@ -152,6 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = loginEmail.value.trim();
         const password = loginPassword.value;
 
+        if (!loginStrength) {
+            return;
+        }
+
         if (!password) {
             loginStrength.className = 'strength-warning';
             loginStrength.textContent = '';
@@ -169,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loginPassword.addEventListener('input', updatePasswordWarning);
     loginEmail.addEventListener('input', updatePasswordWarning);
 
-    loginForm.addEventListener('submit', (event) => {
+    loginForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const email = loginEmail.value.trim();
@@ -182,7 +190,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const result = loginUser(email, password);
+        let result;
+
+        try {
+            result = await loginUser(email, password);
+        } catch (error) {
+            loginMessage.className = 'message error';
+            loginMessage.textContent =
+                'No se pudo conectar con el servidor. Intenta nuevamente.';
+            return;
+        }
 
         if (result.success) {
             loginMessage.className = 'message success';
@@ -190,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Inicio de sesión exitoso.';
 
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = result.destination;
             }, 500);
         } else {
             loginMessage.className = 'message error';
