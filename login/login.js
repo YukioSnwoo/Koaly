@@ -1,33 +1,3 @@
-function getUsuario() {
-    const data = sessionStorage.getItem('usuario');
-    if (!data) return null;
-    try {
-        return JSON.parse(data);
-    } catch {
-        return null;
-    }
-}
-
-function requireRol(rolEsperado) {
-    const usuario = getUsuario();
-    if (!usuario || Number(usuario.id_rol) !== Number(rolEsperado)) {
-        window.location.href = '../index.php';
-        return null;
-    }
-
-    if (Number(rolEsperado) !== 1 && !usuario.id_sucursal) {
-        sessionStorage.removeItem('usuario');
-        window.location.href = '../index.php';
-        return null;
-    }
-
-    return usuario;
-}
-
-function logout() {
-    sessionStorage.removeItem('usuario');
-    window.location.href = '../index.php';
-}
 
 const COMMON_PASSWORDS = [
     '12345678',
@@ -47,6 +17,8 @@ const COMMON_PASSWORDS = [
     'monkey'
 ];
 
+// Crea una lista negra usando también palabras relacionadas
+// con el empleado y la empresa obtenidas del correo.
 function getBlacklist(email) {
     const variants = [];
 
@@ -82,26 +54,45 @@ function isBlacklisted(password, email) {
     });
 }
 
+// TRES NIVELES DE ADVERTENCIA
 function evaluateStrength(password, email) {
-    if (isBlacklisted(password, email) || password.length < 8) {
+
+    // Contraseña común o relacionada con empresa/empleado.
+    if (isBlacklisted(password, email)) {
         return {
             level: 'weak',
-            message: 'Contraseña muy fácil'
+            message: '❌ Contraseña muy fácil'
         };
     }
 
+    // Menos de 8 caracteres.
+    if (password.length < 8) {
+        return {
+            level: 'weak',
+            message: '❌ Contraseña muy fácil'
+        };
+    }
+
+    // Entre 8 y 13 caracteres.
     if (password.length < 14) {
         return {
             level: 'medium',
-            message: 'Contraseña media'
+            message: '⚠️ Contraseña media'
         };
     }
 
+    // 14 caracteres o más.
     return {
         level: 'strong',
-        message: 'Contraseña segura'
+        message: '✅ Contraseña segura'
     };
 }
+
+// Mínimo 8 caracteres y no debe estar en la lista negra.
+function passwordIsAllowed(password, email) {
+    return password.length >= 8 && !isBlacklisted(password, email);
+}
+
 
 const ROLE_ROUTES = {
     1: 'admin/',
@@ -110,7 +101,7 @@ const ROLE_ROUTES = {
 };
 
 async function loginUser(email, password) {
-    const response = await fetch('login/login.php', {
+    const response = await fetch('login.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -146,6 +137,9 @@ async function loginUser(email, password) {
     };
 }
 
+
+// INTERFAZ
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
 
@@ -173,14 +167,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const result = evaluateStrength(password, email);
-        loginStrength.className = 'strength-warning visible ' + result.level;
+
+        loginStrength.className =
+            'strength-warning visible ' + result.level;
+
         loginStrength.textContent = result.message;
     }
 
     loginPassword.addEventListener('input', updatePasswordWarning);
     loginEmail.addEventListener('input', updatePasswordWarning);
 
-    loginForm.addEventListener('submit', async event => {
+    loginForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const email = loginEmail.value.trim();
@@ -188,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!email || !email.includes('@')) {
             loginMessage.className = 'message error';
-            loginMessage.textContent = 'Ingresa un correo electrónico válido.';
+            loginMessage.textContent =
+                'Ingresa un correo electrónico válido.';
             return;
         }
 
@@ -205,7 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (result.success) {
             loginMessage.className = 'message success';
-            loginMessage.textContent = 'Inicio de sesión exitoso.';
+            loginMessage.textContent =
+                'Inicio de sesión exitoso.';
 
             setTimeout(() => {
                 window.location.href = result.destination;
