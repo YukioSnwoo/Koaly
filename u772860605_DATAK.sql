@@ -3,8 +3,8 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 05-09-2026 a las 23:16:12
--- Versión del servidor: 11.8.8-MariaDB-log
+-- Tiempo de generación: 13-09-2026 a las 22:25:19
+-- Versión del servidor: 11.8.9-MariaDB-log
 -- Versión de PHP: 7.2.34
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -63,6 +63,7 @@ CREATE TABLE `Detalle_Venta` (
 CREATE TABLE `Inventario_Sucursal` (
   `id_sucursal` int(11) NOT NULL,
   `id_producto` int(11) NOT NULL,
+  `Categoria_Producto` varchar(50) NOT NULL,
   `cantidad_disponible` int(11) NOT NULL DEFAULT 0 CHECK (`cantidad_disponible` >= 0),
   `precio_venta` decimal(10,2) NOT NULL CHECK (`precio_venta` >= 0),
   `creado_en` timestamp NULL DEFAULT current_timestamp(),
@@ -73,12 +74,12 @@ CREATE TABLE `Inventario_Sucursal` (
 -- Volcado de datos para la tabla `Inventario_Sucursal`
 --
 
-INSERT INTO `Inventario_Sucursal` (`id_sucursal`, `id_producto`, `cantidad_disponible`, `precio_venta`, `creado_en`, `modificado_en`) VALUES
-(1, 1, 20, 1200.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
-(1, 2, 50, 25.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
-(1, 3, 30, 45.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
-(2, 1, 15, 1150.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
-(2, 2, 40, 27.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21');
+INSERT INTO `Inventario_Sucursal` (`id_sucursal`, `id_producto`, `Categoria_Producto`, `cantidad_disponible`, `precio_venta`, `creado_en`, `modificado_en`) VALUES
+(1, 1, '', 20, 1200.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
+(1, 2, '', 50, 25.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
+(1, 3, '', 30, 45.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
+(2, 1, '', 15, 1150.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21'),
+(2, 2, '', 40, 27.00, '2026-09-03 02:58:21', '2026-09-03 02:58:21');
 
 -- --------------------------------------------------------
 
@@ -209,18 +210,19 @@ CREATE TABLE `Usuarios` (
   `fecha_fin_estado` date DEFAULT NULL,
   `fecha_contratacion` date NOT NULL,
   `creado_en` timestamp NULL DEFAULT current_timestamp(),
-  `modificado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `modificado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `debe_cambiar` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `Usuarios`
 --
 
-INSERT INTO `Usuarios` (`id_usuario`, `nombre`, `email`, `contrasena_hash`, `id_rol`, `id_sucursal`, `estado`, `fecha_inicio_estado`, `fecha_fin_estado`, `fecha_contratacion`, `creado_en`, `modificado_en`) VALUES
-(1, 'Angel Moises Guzman Solis', 'angelmoises549@gmail.com', '12345678', 1, NULL, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-05 02:18:56'),
-(2, 'Erick_NG', 'core.armored@tienda.com', '$2y$10$3MJiGv7mS3z9/wX2doheEumjHN5k.H2KiwfXs2EZzSbcEdPDgADZS', 2, 1, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-05 02:15:35'),
-(3, 'Gerente Norte', 'gerente.norte@tienda.com', '$2y$10$Wt1xfPO4s39rY3LVBFD3VOJoK67pCJQ.UrJEjDohZd.03vfBUkdOW', 2, 2, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-05 02:15:35'),
-(4, 'Cajero Centro 1', 'cajero1.centro@tienda.com', '$2y$10$nZs1VWcrJcykqBIYjc4DEOaRctgKatXFTuwa8ruaKv.bpN2u0Z.OC', 3, 1, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-05 02:15:35');
+INSERT INTO `Usuarios` (`id_usuario`, `nombre`, `email`, `contrasena_hash`, `id_rol`, `id_sucursal`, `estado`, `fecha_inicio_estado`, `fecha_fin_estado`, `fecha_contratacion`, `creado_en`, `modificado_en`, `debe_cambiar`) VALUES
+(1, 'Angel Moises Guzman Solis', 'angelmoises549@gmail.com', '$2y$10$5ttPnIt9RoHpxquuVAUzie.tb7nCp8fV3h7DoLtnwP1i.K5Ik6PW6', 3, 2, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-11 16:18:01', 0),
+(2, 'Erick_NG', 'core.armored@tienda.com', '$2y$10$NoNv3SKpI3USXLjQ/GmeZujpns8S7Wl9w/dXdZLoPVLpJTOJQfPeS', 1, 2, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-10 17:09:40', 0),
+(3, 'Gerente Norte', 'gerente.norte@tienda.com', '$2y$10$GIflMtjfhwsQ25w.RsgZuOtA.7zytM4gTT1xhpfqq5SXccE9nMOey', 2, 2, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-06 04:08:36', 1),
+(4, 'Cajero Centro 1', 'cajero1.centro@tienda.com', '$2y$10$eqo1iD6LKYpVD7/T1GTfs.k5rHDTn6Xtijxw9nsAHa0ILl3D9PBHq', 3, 1, 'Activo', '2026-09-03', NULL, '2026-09-03', '2026-09-03 02:58:21', '2026-09-06 04:08:36', 1);
 
 -- --------------------------------------------------------
 
