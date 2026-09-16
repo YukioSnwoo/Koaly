@@ -8,7 +8,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 2) {
 
 require_once __DIR__ . '/../admin/database.php';
 
-$stmt = $pdo->prepare("SELECT id_usuario, nombre FROM Usuarios WHERE id_usuario = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT id_usuario, nombre, id_sucursal FROM Usuarios WHERE id_usuario = ? LIMIT 1");
 $stmt->execute([$_SESSION['id_usuario']]);
 $gerente = $stmt->fetch();
 
@@ -17,6 +17,8 @@ if (!$gerente) {
     header('Location: ../index.php');
     exit;
 }
+
+$idSucursalGerente = $gerente['id_sucursal'] !== null ? (int) $gerente['id_sucursal'] : null;
 
 $carpetaImagenes = __DIR__ . '/../Imagenes';
 $rutaImagenesRelativa = 'Imagenes';
@@ -58,6 +60,30 @@ function guardarImagenProducto(array $archivo, string $carpetaDestino, string $r
     return $rutaRelativaBase . '/' . $nombreArchivo;
 }
 
+function generarCodigoUnico(PDO $pdo): string
+{
+    do {
+        $codigo = '750' . str_pad((string) random_int(0, 9999999999), 10, '0', STR_PAD_LEFT);
+        $check = $pdo->prepare("SELECT 1 FROM Productos WHERE codigo = ?");
+        $check->execute([$codigo]);
+    } while ($check->fetch() !== false);
+
+    return $codigo;
+}
+
+function actualizarInventarioSucursal(PDO $pdo, int $idProducto, int $idSucursal, int $cantidad, float $precio, string $categoriaNombre): void
+{
+    $stmt = $pdo->prepare("
+        INSERT INTO Inventario_Sucursal (id_sucursal, id_producto, Categoria_Producto, cantidad_disponible, precio_venta)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            Categoria_Producto = VALUES(Categoria_Producto),
+            cantidad_disponible = VALUES(cantidad_disponible),
+            precio_venta = VALUES(precio_venta)
+    ");
+    $stmt->execute([$idSucursal, $idProducto, $categoriaNombre, $cantidad, $precio]);
+}
+
 $errores = [];
 $exito = '';
 
@@ -71,7 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $descripcion = trim($_POST['descripcion'] ?? '');
             $precio = (float) ($_POST['precio'] ?? -1);
             $idCategoria = (int) ($_POST['id_categoria'] ?? 0);
-            $estado = ($_POST['estado'] ?? '') === 'Inactivo' ? 'Inactivo' : 'Activo';
+            $codigoInput = trim($_POST['codigo'] ?? '');
+            $cantidadInventario = max(0, (int) ($_POST['cantidad_inventario'] ?? 0));
 
             if ($nombre === '' || $idCategoria <= 0 || $precio < 0) {
                 throw new RuntimeException('Completa nombre, categoría y un precio válido.');
@@ -80,42 +107,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rutaImagen = guardarImagenProducto($_FILES['imagen'] ?? [], $carpetaImagenes, $rutaImagenesRelativa);
 
             if ($action === 'crear') {
+                if ($codigoInput !== '') {
+                    $check = $pdo->prepare("SELECT 1 FROM Productos WHERE codigo = ?");
+                    $check->execute([$codigoInput]);
+                    if ($check->fetch() !== false) {
+                        throw new RuntimeException('Ese código ya está en uso por otro producto.');
+                    }
+                    $codigo = $codigoInput;
+                } else {
+                    $codigo = generarCodigoUnico($pdo);
+                }
+
                 $stmt = $pdo->prepare("
-                    INSERT INTO Productos (nombre, descripcion, precio, imagen, id_categoria, estado, creado_en, modificado_en)
-                    VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    INSERT INTO Productos (codigo, nombre, descripcion, precio, imagen, id_categoria, estado, creado_en, modificado_en)
+                    VALUES (?, ?, ?, ?, ?, ?, 'Activo', NOW(), NOW())
                 ");
-                $stmt->execute([$nombre, $descripcion, $precio, $rutaImagen, $idCategoria, $estado]);
+                $stmt->execute([$codigo, $nombre, $descripcion, $precio, $rutaImagen, $idCategoria]);
+                $idGuardado = (int) $pdo->lastInsertId();
                 $exito = 'Producto registrado correctamente.';
             } else {
                 if ($id <= 0) {
                     throw new RuntimeException('Producto inválido.');
                 }
 
+                if ($codigoInput !== '') {
+                    $check = $pdo->prepare("SELECT 1 FROM Productos WHERE codigo = ? AND id_producto <> ?");
+                    $check->execute([$codigoInput, $id]);
+                    if ($check->fetch() !== false) {
+                        throw new RuntimeException('Ese código ya está en uso por otro producto.');
+                    }
+                }
+
                 if ($rutaImagen !== null) {
                     $anterior = $pdo->prepare("SELECT imagen FROM Productos WHERE id_producto = ?");
                     $anterior->execute([$id]);
                     $rutaAnterior = $anterior->fetchColumn();
-
-                    $stmt = $pdo->prepare("
-                        UPDATE Productos SET nombre=?, descripcion=?, precio=?, imagen=?, id_categoria=?, estado=?, modificado_en=NOW()
-                        WHERE id_producto=?
-                    ");
-                    $stmt->execute([$nombre, $descripcion, $precio, $rutaImagen, $idCategoria, $estado, $id]);
-
-                    if ($rutaAnterior) {
-                        $rutaFisicaAnterior = __DIR__ . '/../' . $rutaAnterior;
-                        if (is_file($rutaFisicaAnterior)) {
-                            unlink($rutaFisicaAnterior);
-                        }
-                    }
-                } else {
-                    $stmt = $pdo->prepare("
-                        UPDATE Productos SET nombre=?, descripcion=?, precio=?, id_categoria=?, estado=?, modificado_en=NOW()
-                        WHERE id_producto=?
-                    ");
-                    $stmt->execute([$nombre, $descripcion, $precio, $idCategoria, $estado, $id]);
                 }
+
+                if ($codigoInput !== '' && $rutaImagen !== null) {
+                    $stmt = $pdo->prepare("UPDATE Productos SET codigo=?, nombre=?, descripcion=?, precio=?, imagen=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
+                    $stmt->execute([$codigoInput, $nombre, $descripcion, $precio, $rutaImagen, $idCategoria, $id]);
+                } elseif ($codigoInput !== '') {
+                    $stmt = $pdo->prepare("UPDATE Productos SET codigo=?, nombre=?, descripcion=?, precio=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
+                    $stmt->execute([$codigoInput, $nombre, $descripcion, $precio, $idCategoria, $id]);
+                } elseif ($rutaImagen !== null) {
+                    $stmt = $pdo->prepare("UPDATE Productos SET nombre=?, descripcion=?, precio=?, imagen=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
+                    $stmt->execute([$nombre, $descripcion, $precio, $rutaImagen, $idCategoria, $id]);
+                } else {
+                    $stmt = $pdo->prepare("UPDATE Productos SET nombre=?, descripcion=?, precio=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
+                    $stmt->execute([$nombre, $descripcion, $precio, $idCategoria, $id]);
+                }
+
+                if ($rutaImagen !== null && !empty($rutaAnterior)) {
+                    $rutaFisicaAnterior = __DIR__ . '/../' . $rutaAnterior;
+                    if (is_file($rutaFisicaAnterior)) {
+                        unlink($rutaFisicaAnterior);
+                    }
+                }
+
+                $idGuardado = $id;
                 $exito = 'Producto actualizado correctamente.';
+            }
+
+            if ($idSucursalGerente !== null) {
+                try {
+                    $catStmt = $pdo->prepare("SELECT nombre_categoria FROM Categorias WHERE id_categoria = ?");
+                    $catStmt->execute([$idCategoria]);
+                    $categoriaNombre = (string) $catStmt->fetchColumn();
+
+                    actualizarInventarioSucursal($pdo, $idGuardado, $idSucursalGerente, $cantidadInventario, $precio, $categoriaNombre);
+                } catch (PDOException $e) {
+                    $errores[] = 'El producto se guardó, pero no se pudo actualizar la cantidad en inventario.';
+                }
+            } else {
+                $errores[] = 'Tu cuenta no tiene una sucursal asignada, así que no se registró inventario para este producto.';
             }
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_producto'] ?? 0);
@@ -137,12 +202,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $categorias = $pdo->query("SELECT id_categoria, nombre_categoria FROM Categorias ORDER BY nombre_categoria")->fetchAll();
-$productos = $pdo->query("
-    SELECT p.*, c.nombre_categoria
+
+$stmt = $pdo->prepare("
+    SELECT p.*, c.nombre_categoria, COALESCE(inv.cantidad_disponible, 0) AS stock_sucursal
     FROM Productos p
     LEFT JOIN Categorias c ON c.id_categoria = p.id_categoria
+    LEFT JOIN Inventario_Sucursal inv ON inv.id_producto = p.id_producto AND inv.id_sucursal = ?
     ORDER BY p.nombre
-")->fetchAll();
+");
+$stmt->execute([$idSucursalGerente]);
+$productos = $stmt->fetchAll();
+
+$verGerenteCss = filemtime(__DIR__ . '/gerente.css');
+$verGerenteJs = filemtime(__DIR__ . '/gerente.js');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -150,7 +222,7 @@ $productos = $pdo->query("
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Productos - Panel Gerente</title>
-    <link rel="stylesheet" href="gerente.css">
+    <link rel="stylesheet" href="gerente.css?v=<?= $verGerenteCss ?>">
 </head>
 <body>
     <div class="header">
@@ -171,6 +243,9 @@ $productos = $pdo->query("
             <button type="button" class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo producto</button>
         </div>
 
+        <?php if (!$idSucursalGerente): ?>
+            <div class="alert alert-error">Tu cuenta no tiene una sucursal asignada. Podrás registrar productos, pero no se guardará inventario hasta que un administrador te asigne una sucursal.</div>
+        <?php endif; ?>
         <?php if ($exito): ?>
             <div class="alert alert-success"><?= htmlspecialchars($exito) ?></div>
         <?php endif; ?>
@@ -187,16 +262,18 @@ $productos = $pdo->query("
                 <thead>
                     <tr>
                         <th>Imagen</th>
+                        <th>Clave</th>
                         <th>Producto</th>
                         <th>Categoría</th>
                         <th>Precio</th>
+                        <th>Inventario</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($productos)): ?>
-                        <tr><td colspan="6" class="empty-state">No hay productos registrados todavía.</td></tr>
+                        <tr><td colspan="8" class="empty-state">No hay productos registrados todavía.</td></tr>
                     <?php else: ?>
                         <?php foreach ($productos as $p): ?>
                             <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>">
@@ -207,6 +284,7 @@ $productos = $pdo->query("
                                         <div class="producto-thumb producto-thumb--placeholder">Sin imagen</div>
                                     <?php endif; ?>
                                 </td>
+                                <td><?= htmlspecialchars($p['codigo']) ?></td>
                                 <td>
                                     <div class="producto-nombre"><?= htmlspecialchars($p['nombre']) ?></div>
                                     <?php if (!empty($p['descripcion'])): ?>
@@ -215,6 +293,7 @@ $productos = $pdo->query("
                                 </td>
                                 <td><?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría') ?></td>
                                 <td>$<?= number_format((float) $p['precio'], 2) ?></td>
+                                <td><?= (int) $p['stock_sucursal'] ?></td>
                                 <td>
                                     <?php if ($p['estado'] === 'Activo'): ?>
                                         <span class="badge badge-activo">Activo</span>
@@ -227,11 +306,12 @@ $productos = $pdo->query("
                                         <button type="button" class="btn btn-ghost btn-sm"
                                             onclick="abrirModalEditar(this)"
                                             data-id="<?= $p['id_producto'] ?>"
+                                            data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
                                             data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
                                             data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
                                             data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
                                             data-categoria="<?= (int) $p['id_categoria'] ?>"
-                                            data-estado="<?= htmlspecialchars($p['estado'], ENT_QUOTES) ?>"
+                                            data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
                                             data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
                                         >Editar</button>
 
@@ -265,13 +345,8 @@ $productos = $pdo->query("
                 <input type="hidden" name="id_producto" value="">
 
                 <div class="form-group">
-                    <label>Nombre</label>
+                    <label>Nombre del producto</label>
                     <input type="text" name="nombre" placeholder="Ej. Coca-Cola lata 355 ml" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Descripción</label>
-                    <textarea name="descripcion" placeholder="Detalles del producto"></textarea>
                 </div>
 
                 <div class="form-row">
@@ -280,26 +355,33 @@ $productos = $pdo->query("
                         <input type="number" name="precio" min="0" step="0.01" placeholder="0.00" required>
                     </div>
                     <div class="form-group">
-                        <label>Categoría</label>
-                        <select name="id_categoria" required>
-                            <option value="">Selecciona una categoría</option>
-                            <?php foreach ($categorias as $c): ?>
-                                <option value="<?= $c['id_categoria'] ?>"><?= htmlspecialchars($c['nombre_categoria']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label>Cantidad en inventario</label>
+                        <input type="number" name="cantidad_inventario" min="0" step="1" value="0">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Estado</label>
-                    <select name="estado">
-                        <option value="Activo">Activo</option>
-                        <option value="Inactivo">Inactivo</option>
+                    <label>Categoría</label>
+                    <select name="id_categoria" required>
+                        <option value="">Selecciona una categoría</option>
+                        <?php foreach ($categorias as $c): ?>
+                            <option value="<?= $c['id_categoria'] ?>"><?= htmlspecialchars($c['nombre_categoria']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Imagen del producto</label>
+                    <label>Código de barras (opcional)</label>
+                    <input type="text" name="codigo" placeholder="Se genera uno automático si lo dejas vacío">
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción (opcional)</label>
+                    <textarea name="descripcion" placeholder="Detalles del producto"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Foto del producto</label>
                     <input type="file" id="inputImagen" name="imagen" accept="image/png,image/jpeg,image/webp">
                     <div class="imagen-preview" id="previewImagen"></div>
                 </div>
@@ -313,6 +395,6 @@ $productos = $pdo->query("
     </div>
 
     <script src="../auth.js"></script>
-    <script src="gerente.js"></script>
+    <script src="gerente.js?v=<?= $verGerenteJs ?>"></script>
 </body>
 </html>

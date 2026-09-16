@@ -348,7 +348,6 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
                         <th>Producto</th>
                         <th>Cantidad</th>
                         <th>Precio</th>
-                        <th>Descuento %</th>
                         <th>Importe</th>
                     </tr>
                 </thead>
@@ -369,9 +368,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
             <div class="summary-totals">
                 <div class="pill-field">Subtotal: <span id="lblSubtotal">$0.00</span></div>
-                <div class="pill-field">Descuento: <span id="lblDescuento">$0.00</span></div>
                 <div class="pill-field">Impuestos (IVA): <span id="lblImpuestos">$0.00</span></div>
-                <div class="pill-field">Te ahorraste: <span id="lblAhorro">$0.00</span></div>
                 <div class="pill-field" style="background-color: #d1d5db; font-size: 1rem; color: #111;">
                     Total: <span id="lblTotal">$0.00</span>
                 </div>
@@ -464,7 +461,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
                 const nombre = document.createElement('div');
                 nombre.textContent = p.nombre;
                 const detalle = document.createElement('small');
-                detalle.textContent = `Clave: ${p.id_producto} · Existencias: ${p.stock} · $${Number(p.precio).toFixed(2)}`;
+                detalle.textContent = `Clave: ${p.codigo} · Existencias: ${p.stock} · $${Number(p.precio).toFixed(2)}`;
                 info.appendChild(nombre);
                 info.appendChild(detalle);
 
@@ -493,11 +490,11 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             } else {
                 carrito.push({
                     id_producto: producto.id_producto,
+                    codigo: producto.codigo,
                     nombre: producto.nombre,
                     imagen: producto.imagen || null,
                     cantidad: 1,
-                    precio: Number(producto.precio) || 0,
-                    descuentoPct: 0
+                    precio: Number(producto.precio) || 0
                 });
             }
             renderCarrito();
@@ -508,7 +505,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             tbody.innerHTML = '';
 
             if (carrito.length === 0) {
-                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Busca un producto para agregarlo a la venta</td></tr>';
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Busca un producto para agregarlo a la venta</td></tr>';
                 filaSeleccionada = null;
                 calcularTotales();
                 return;
@@ -518,18 +515,17 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
                 const row = tbody.insertRow();
                 row.dataset.index = index;
 
-                const importe = item.cantidad * item.precio * (1 - item.descuentoPct / 100);
+                const importe = item.cantidad * item.precio;
 
                 const thumbHtml = item.imagen
                     ? `<img src="../${item.imagen}" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;">`
                     : '';
 
                 row.innerHTML = `
-                    <td>${item.id_producto}</td>
+                    <td>${item.codigo}</td>
                     <td class="producto-nombre">${thumbHtml}${item.nombre}</td>
                     <td><input type="number" min="1" step="1" value="${item.cantidad}" data-field="cantidad"></td>
                     <td>$${item.precio.toFixed(2)}</td>
-                    <td><input type="number" min="0" max="100" step="1" value="${item.descuentoPct}" data-field="descuentoPct"></td>
                     <td>$${importe.toFixed(2)}</td>
                 `;
 
@@ -581,22 +577,17 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
         function calcularTotales() {
             let subtotal = 0;
-            let descuento = 0;
 
             carrito.forEach(item => {
-                const importeBruto = item.cantidad * item.precio;
-                subtotal += importeBruto;
-                descuento += importeBruto * (item.descuentoPct / 100);
+                subtotal += item.cantidad * item.precio;
             });
 
-            const impuestos = (subtotal - descuento) * 0.16;
-            const total = subtotal - descuento + impuestos;
+            const impuestos = subtotal * 0.16;
+            const total = subtotal + impuestos;
 
             document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
             document.getElementById('lblSubtotal').innerText = `$${subtotal.toFixed(2)}`;
-            document.getElementById('lblDescuento').innerText = `$${descuento.toFixed(2)}`;
             document.getElementById('lblImpuestos').innerText = `$${impuestos.toFixed(2)}`;
-            document.getElementById('lblAhorro').innerText = `$${descuento.toFixed(2)}`;
             document.getElementById('lblTotal').innerText = `$${total.toFixed(2)}`;
         }
 

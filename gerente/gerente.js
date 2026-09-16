@@ -29,11 +29,12 @@ function abrirModalEditar(btn) {
     form.reset();
     form.querySelector('[name="action"]').value = 'editar';
     form.querySelector('[name="id_producto"]').value = btn.dataset.id;
+    form.querySelector('[name="codigo"]').value = btn.dataset.codigo;
     form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
     form.querySelector('[name="descripcion"]').value = btn.dataset.descripcion;
     form.querySelector('[name="precio"]').value = btn.dataset.precio;
     form.querySelector('[name="id_categoria"]').value = btn.dataset.categoria;
-    form.querySelector('[name="estado"]').value = btn.dataset.estado;
+    form.querySelector('[name="cantidad_inventario"]').value = btn.dataset.cantidad;
 
     const preview = document.getElementById('previewImagen');
     preview.innerHTML = btn.dataset.imagen

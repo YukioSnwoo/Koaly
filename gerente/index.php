@@ -23,6 +23,8 @@ if (!$gerente) {
     header('Location: ../index.php');
     exit;
 }
+
+$verGerenteCss = filemtime(__DIR__ . '/gerente.css');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -30,7 +32,7 @@ if (!$gerente) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Gerente</title>
-    <link rel="stylesheet" href="gerente.css">
+    <link rel="stylesheet" href="gerente.css?v=<?= $verGerenteCss ?>">
 </head>
 <body>
     <div class="header">

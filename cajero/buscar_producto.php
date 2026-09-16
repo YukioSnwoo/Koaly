@@ -19,14 +19,14 @@ if ($q === '') {
 }
 
 $stmt = $pdo->prepare("
-    SELECT p.id_producto, p.nombre, p.precio, p.imagen, COALESCE(SUM(ip.cantidad_disponible), 0) AS stock
+    SELECT p.id_producto, p.codigo, p.nombre, p.precio, p.imagen, COALESCE(SUM(ip.cantidad_disponible), 0) AS stock
     FROM Productos p
     LEFT JOIN Inventario_Sucursal ip ON ip.id_producto = p.id_producto
-    WHERE (p.id_producto = ? OR p.nombre LIKE ?) AND p.estado = 'Activo'
-    GROUP BY p.id_producto, p.nombre, p.precio, p.imagen
+    WHERE (p.codigo LIKE ? OR p.nombre LIKE ?) AND p.estado = 'Activo'
+    GROUP BY p.id_producto, p.codigo, p.nombre, p.precio, p.imagen
     ORDER BY p.nombre
     LIMIT 20
 ");
-$stmt->execute([ctype_digit($q) ? (int) $q : 0, "%$q%"]);
+$stmt->execute(["%$q%", "%$q%"]);
 
 echo json_encode($stmt->fetchAll());
