@@ -450,12 +450,26 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             productos.forEach(p => {
                 const item = document.createElement('div');
                 item.className = 'result-item';
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.gap = '10px';
+
+                const thumb = document.createElement('img');
+                thumb.src = p.imagen ? `../${p.imagen}` : '';
+                thumb.alt = '';
+                thumb.style.cssText = 'width:36px;height:36px;border-radius:6px;object-fit:cover;background:#eee;flex-shrink:0;';
+                if (!p.imagen) thumb.style.visibility = 'hidden';
+
+                const info = document.createElement('div');
                 const nombre = document.createElement('div');
                 nombre.textContent = p.nombre;
                 const detalle = document.createElement('small');
-                detalle.textContent = `Clave: ${p.id_producto} · Existencias: ${p.stock}`;
-                item.appendChild(nombre);
-                item.appendChild(detalle);
+                detalle.textContent = `Clave: ${p.id_producto} · Existencias: ${p.stock} · $${Number(p.precio).toFixed(2)}`;
+                info.appendChild(nombre);
+                info.appendChild(detalle);
+
+                item.appendChild(thumb);
+                item.appendChild(info);
                 item.onclick = () => {
                     agregarAlCarrito(p);
                     cerrarResultados();
@@ -480,8 +494,9 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
                 carrito.push({
                     id_producto: producto.id_producto,
                     nombre: producto.nombre,
+                    imagen: producto.imagen || null,
                     cantidad: 1,
-                    precio: 0,
+                    precio: Number(producto.precio) || 0,
                     descuentoPct: 0
                 });
             }
@@ -505,11 +520,15 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
                 const importe = item.cantidad * item.precio * (1 - item.descuentoPct / 100);
 
+                const thumbHtml = item.imagen
+                    ? `<img src="../${item.imagen}" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;">`
+                    : '';
+
                 row.innerHTML = `
                     <td>${item.id_producto}</td>
-                    <td class="producto-nombre">${item.nombre}</td>
+                    <td class="producto-nombre">${thumbHtml}${item.nombre}</td>
                     <td><input type="number" min="1" step="1" value="${item.cantidad}" data-field="cantidad"></td>
-                    <td><input type="number" min="0" step="0.01" value="${item.precio}" data-field="precio"></td>
+                    <td>$${item.precio.toFixed(2)}</td>
                     <td><input type="number" min="0" max="100" step="1" value="${item.descuentoPct}" data-field="descuentoPct"></td>
                     <td>$${importe.toFixed(2)}</td>
                 `;

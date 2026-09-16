@@ -17,5 +17,5 @@ function requireRol(rolEsperado) {
 
 function logout() {
     sessionStorage.removeItem('usuario');
-    window.location.href = '../index.php';
+    window.location.href = '../logout.php';
 }
