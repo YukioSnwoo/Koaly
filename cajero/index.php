@@ -1,3 +1,11 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
+    header('Location: ../index.php');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,10 +14,10 @@
     <title>Punto de Venta - Koaly</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        body { 
-            background-color: #d1d5db; 
-            padding: 15px; 
+
+        body {
+            background-color: #d1d5db;
+            padding: 15px;
             color: #333;
         }
 
@@ -34,21 +42,21 @@
 
         .header-logo { font-size: 1.5rem; font-weight: bold; }
         .header-user { justify-content: space-between; padding: 8px 15px; }
-        .user-avatar { 
-            width: 38px; 
-            height: 38px; 
-            background: #2d4d2e; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            background: #2d4d2e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0.75rem;
         }
 
         /* --- CONTENEDOR PRINCIPAL --- */
         .main-layout {
             display: grid;
-            grid-template-columns: 220px 1fr 300px;
+            grid-template-columns: 260px 1fr 300px;
             gap: 15px;
             height: calc(100vh - 100px);
         }
@@ -69,6 +77,45 @@
             gap: 12px;
         }
 
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #7cb07d;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            z-index: 10;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .search-results .result-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+
+        .search-results .result-item:last-child { border-bottom: none; }
+        .search-results .result-item:hover { background: #e5f0e5; }
+        .search-results .result-item small { display: block; color: #6b7280; }
+        .search-results .no-results { padding: 10px 12px; color: #6b7280; font-size: 0.85rem; }
+
         .btn-green {
             background-color: #639264;
             color: white;
@@ -80,6 +127,7 @@
             font-size: 0.9rem;
             transition: background 0.2s;
             text-align: center;
+            width: 100%;
         }
 
         .btn-green:hover { background-color: #436944; }
@@ -109,7 +157,7 @@
             background-color: white;
             border-radius: 12px;
             padding: 10px;
-            border: 2px solid #8b71d0; /* Borde de acento como en el prototipo */
+            border: 2px solid #8b71d0;
             overflow-y: auto;
         }
 
@@ -133,9 +181,25 @@
             font-size: 0.9rem;
         }
 
+        td.producto-nombre { text-align: left; font-weight: 600; }
+
+        td input {
+            width: 70px;
+            padding: 6px;
+            text-align: center;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
         tr.selected {
             background-color: #639264 !important;
             color: white;
+        }
+
+        tr.empty-row td {
+            color: #9ca3af;
+            padding: 30px 10px;
         }
 
         /* --- PANEL DERECHO (RESUMEN Y COBRO) --- */
@@ -184,6 +248,62 @@
         }
 
         .btn-pay:hover { background-color: #436944; }
+
+        /* --- MODAL DE PAGO --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            background: white;
+            border-radius: 14px;
+            padding: 25px;
+            width: 320px;
+            text-align: center;
+        }
+
+        .modal-box h2 { margin-bottom: 5px; color: #1f2937; }
+        .modal-box .modal-total { font-size: 1.4rem; font-weight: bold; color: #527d53; margin-bottom: 20px; }
+
+        .modal-payment-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .modal-payment-options button {
+            flex: 1;
+            padding: 18px 10px;
+            border-radius: 12px;
+            border: 2px solid #527d53;
+            background: white;
+            color: #527d53;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .modal-payment-options button:hover {
+            background: #527d53;
+            color: white;
+        }
+
+        .modal-cancel {
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -203,14 +323,15 @@
 
     <!-- Panel Principal -->
     <div class="main-layout">
-        
+
         <!-- Lateral Izquierdo -->
         <div class="sidebar">
             <div class="btn-group-top">
-                <button class="btn-green">Buscar producto</button>
-                <button class="btn-green" onclick="agregarProductoPorID()">Buscar Producto (ID)</button>
-                <button class="btn-green">Cupón</button>
-                <button class="btn-green">Agregar tarjeta de puntos</button>
+                <div class="search-box">
+                    <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave...">
+                    <button class="btn-green" onclick="buscarProducto()">Buscar producto</button>
+                    <div id="resultadosBusqueda" class="search-results" style="display:none;"></div>
+                </div>
             </div>
             <div class="btn-group-bottom">
                 <button class="btn-danger" onclick="eliminarFila()">Eliminar</button>
@@ -224,9 +345,11 @@
                 <thead>
                     <tr>
                         <th>Clave</th>
+                        <th>Producto</th>
                         <th>Cantidad</th>
                         <th>Precio</th>
-                        <th>Descuento</th>
+                        <th>Descuento %</th>
+                        <th>Importe</th>
                     </tr>
                 </thead>
                 <tbody id="listaProductos">
@@ -238,9 +361,9 @@
         <!-- Lateral Derecho (Totales) -->
         <div class="summary-panel">
             <div>
-                <div class="summary-header">Precios</div>
+                <div class="summary-header">Resumen</div>
                 <div id="desglosePrecios">
-                    <div class="pill-field"><span id="precioMain">$0.00</span></div>
+                    <div class="pill-field">Artículos: <span id="totalArticulos">0</span></div>
                 </div>
             </div>
 
@@ -252,83 +375,205 @@
                 <div class="pill-field" style="background-color: #d1d5db; font-size: 1rem; color: #111;">
                     Total: <span id="lblTotal">$0.00</span>
                 </div>
-                <button class="btn-pay" onclick="procesarPago()">Pagar</button>
+                <button class="btn-pay" onclick="abrirModalPago()">Pagar</button>
             </div>
         </div>
 
     </div>
 
+    <!-- Modal de método de pago -->
+    <div class="modal-overlay" id="modalPago">
+        <div class="modal-box">
+            <h2>Método de pago</h2>
+            <div class="modal-total" id="modalTotal">$0.00</div>
+            <div class="modal-payment-options">
+                <button onclick="procesarPago('Efectivo')">💵 Efectivo</button>
+                <button onclick="procesarPago('Tarjeta')">💳 Tarjeta</button>
+            </div>
+            <button class="modal-cancel" onclick="cerrarModalPago()">Cancelar</button>
+        </div>
+    </div>
+
     <script src="../auth.js"></script>
     <script>
-        // Verificación de autenticación de tu código base
         const usuario = requireRol(3);
         if (usuario) {
             document.getElementById('userName').textContent = usuario.nombre || 'Cajero';
             document.getElementById('sucursalName').textContent = usuario.id_sucursal || 'Sin asignar';
         }
 
+        let carrito = [];
         let filaSeleccionada = null;
 
-        // Agregar producto por ID (Demostración de interacción)
-        function agregarProductoPorID() {
-            const id = prompt("Ingrese la clave o ID del producto:");
-            if (!id) return;
+        const inputBuscar = document.getElementById('inputBuscar');
+        const resultadosBusqueda = document.getElementById('resultadosBusqueda');
 
-            const tbody = document.getElementById('listaProductos');
-            const row = tbody.insertRow();
-            
-            // Datos de prueba asignados dinámicamente
-            const precioBase = 5600.00;
-            const descuentoPct = 0;
+        inputBuscar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') buscarProducto();
+        });
 
-            row.innerHTML = `
-                <td>${id}</td>
-                <td>1. uni</td>
-                <td>$ ${precioBase.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                <td>%${descuentoPct}</td>
-            `;
-            
-            row.onclick = function() {
-                if (filaSeleccionada) filaSeleccionada.classList.remove('selected');
-                this.classList.add('selected');
-                filaSeleccionada = this;
-            };
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) {
+                resultadosBusqueda.style.display = 'none';
+            }
+        });
 
-            calcularTotales();
+        async function buscarProducto() {
+            const q = inputBuscar.value.trim();
+            if (!q) {
+                inputBuscar.focus();
+                return;
+            }
+
+            let productos = [];
+            try {
+                const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(q)}`);
+                productos = await res.json();
+            } catch (error) {
+                alert('No se pudo conectar con el servidor para buscar el producto.');
+                return;
+            }
+
+            if (!Array.isArray(productos) || productos.length === 0) {
+                resultadosBusqueda.innerHTML = '<div class="no-results">No se encontraron productos.</div>';
+                resultadosBusqueda.style.display = 'block';
+                return;
+            }
+
+            if (productos.length === 1) {
+                agregarAlCarrito(productos[0]);
+                cerrarResultados();
+                return;
+            }
+
+            resultadosBusqueda.innerHTML = '';
+            productos.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                const nombre = document.createElement('div');
+                nombre.textContent = p.nombre;
+                const detalle = document.createElement('small');
+                detalle.textContent = `Clave: ${p.id_producto} · Existencias: ${p.stock}`;
+                item.appendChild(nombre);
+                item.appendChild(detalle);
+                item.onclick = () => {
+                    agregarAlCarrito(p);
+                    cerrarResultados();
+                };
+                resultadosBusqueda.appendChild(item);
+            });
+            resultadosBusqueda.style.display = 'block';
         }
 
-        // Eliminar producto seleccionado
-        function eliminarFila() {
-            if (filaSeleccionada) {
-                filaSeleccionada.remove();
+        function cerrarResultados() {
+            resultadosBusqueda.style.display = 'none';
+            resultadosBusqueda.innerHTML = '';
+            inputBuscar.value = '';
+            inputBuscar.focus();
+        }
+
+        function agregarAlCarrito(producto) {
+            const existente = carrito.find(item => item.id_producto === producto.id_producto);
+            if (existente) {
+                existente.cantidad += 1;
+            } else {
+                carrito.push({
+                    id_producto: producto.id_producto,
+                    nombre: producto.nombre,
+                    cantidad: 1,
+                    precio: 0,
+                    descuentoPct: 0
+                });
+            }
+            renderCarrito();
+        }
+
+        function renderCarrito() {
+            const tbody = document.getElementById('listaProductos');
+            tbody.innerHTML = '';
+
+            if (carrito.length === 0) {
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Busca un producto para agregarlo a la venta</td></tr>';
                 filaSeleccionada = null;
                 calcularTotales();
-            } else {
-                alert("Selecciona una fila primero haciendo clic sobre ella.");
+                return;
             }
-        }
 
-        // Limpiar toda la lista
-        function limpiarTabla() {
-            document.getElementById('listaProductos').innerHTML = '';
-            filaSeleccionada = null;
+            carrito.forEach((item, index) => {
+                const row = tbody.insertRow();
+                row.dataset.index = index;
+
+                const importe = item.cantidad * item.precio * (1 - item.descuentoPct / 100);
+
+                row.innerHTML = `
+                    <td>${item.id_producto}</td>
+                    <td class="producto-nombre">${item.nombre}</td>
+                    <td><input type="number" min="1" step="1" value="${item.cantidad}" data-field="cantidad"></td>
+                    <td><input type="number" min="0" step="0.01" value="${item.precio}" data-field="precio"></td>
+                    <td><input type="number" min="0" max="100" step="1" value="${item.descuentoPct}" data-field="descuentoPct"></td>
+                    <td>$${importe.toFixed(2)}</td>
+                `;
+
+                row.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('click', (e) => e.stopPropagation());
+                    input.addEventListener('input', (e) => {
+                        const campo = e.target.dataset.field;
+                        let valor = parseFloat(e.target.value);
+                        if (isNaN(valor) || valor < 0) valor = 0;
+                        if (campo === 'cantidad' && valor < 1) valor = 1;
+                        carrito[index][campo] = valor;
+                        renderCarrito();
+                    });
+                });
+
+                row.addEventListener('click', function () {
+                    if (filaSeleccionada) filaSeleccionada.classList.remove('selected');
+                    this.classList.add('selected');
+                    filaSeleccionada = this;
+                });
+
+                if (filaSeleccionada && Number(filaSeleccionada.dataset.index) === index) {
+                    row.classList.add('selected');
+                    filaSeleccionada = row;
+                }
+            });
+
             calcularTotales();
         }
 
-        // Cálculos dinámicos
-        function calcularTotales() {
-            const filas = document.querySelectorAll('#listaProductos tr');
-            let subtotal = 0;
+        function eliminarFila() {
+            if (!filaSeleccionada) {
+                alert('Selecciona una fila primero haciendo clic sobre ella.');
+                return;
+            }
+            const index = Number(filaSeleccionada.dataset.index);
+            carrito.splice(index, 1);
+            filaSeleccionada = null;
+            renderCarrito();
+        }
 
-            filas.forEach(f => {
-                subtotal += 5600.00; // Valor base de la prueba
+        function limpiarTabla() {
+            if (carrito.length === 0) return;
+            if (!confirm('¿Vaciar toda la lista de productos?')) return;
+            carrito = [];
+            filaSeleccionada = null;
+            renderCarrito();
+        }
+
+        function calcularTotales() {
+            let subtotal = 0;
+            let descuento = 0;
+
+            carrito.forEach(item => {
+                const importeBruto = item.cantidad * item.precio;
+                subtotal += importeBruto;
+                descuento += importeBruto * (item.descuentoPct / 100);
             });
 
-            const descuento = 0.00;
-            const impuestos = subtotal * 0.16;
-            const total = subtotal + impuestos - descuento;
+            const impuestos = (subtotal - descuento) * 0.16;
+            const total = subtotal - descuento + impuestos;
 
-            document.getElementById('precioMain').innerText = `$${subtotal.toFixed(2)}`;
+            document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
             document.getElementById('lblSubtotal').innerText = `$${subtotal.toFixed(2)}`;
             document.getElementById('lblDescuento').innerText = `$${descuento.toFixed(2)}`;
             document.getElementById('lblImpuestos').innerText = `$${impuestos.toFixed(2)}`;
@@ -336,14 +581,30 @@
             document.getElementById('lblTotal').innerText = `$${total.toFixed(2)}`;
         }
 
-        function procesarPago() {
+        function abrirModalPago() {
             const total = document.getElementById('lblTotal').innerText;
-            if (total === "$0.00") {
-                alert("No hay productos en la lista de cobro.");
+            if (total === '$0.00') {
+                alert('No hay productos en la lista de cobro.');
                 return;
             }
-            alert(`Procesando venta por un total de ${total}`);
+            document.getElementById('modalTotal').innerText = total;
+            document.getElementById('modalPago').classList.add('open');
         }
+
+        function cerrarModalPago() {
+            document.getElementById('modalPago').classList.remove('open');
+        }
+
+        function procesarPago(metodo) {
+            const total = document.getElementById('lblTotal').innerText;
+            alert(`Venta procesada por ${total} con ${metodo}.`);
+            cerrarModalPago();
+            carrito = [];
+            filaSeleccionada = null;
+            renderCarrito();
+        }
+
+        renderCarrito();
     </script>
 </body>
 </html>
