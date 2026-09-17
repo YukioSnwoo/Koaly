@@ -13,7 +13,7 @@ $menu = [
 <aside class="sidebar">
     <div class="sidebar__brand">
         <div class="sidebar__brand-icon"><i class="ti ti-building-store"></i></div>
-        <span>Koaly admin</span>
+        <span>Koalicius admin</span>
     </div>
 
     <nav class="sidebar__nav">
