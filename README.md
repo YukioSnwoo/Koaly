@@ -162,6 +162,9 @@ Total.
 
 Método de pago.
 
+# Imagenes
+
+
 #  Link de la pagina
 
 https://koalicius.com/
