@@ -5,50 +5,123 @@ require 'header.php';
 <?php require 'sidebar.php'; ?>
 
 <?php
+require_once __DIR__ . '/sucursal_gerente.php';
+
+$error = '';
+
 // Procesar cambios antes de enviar cualquier contenido al navegador.
+// Regla: una sucursal solo está activa mientras tenga un gerente asignado.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'crear') {
-        $stmt = $pdo->prepare("INSERT INTO Sucursales (nombre, direccion, telefono, estado, fecha_inicio_estado) VALUES (?, ?, ?, 'Activa', ?)");
-        $stmt->execute([
-            trim($_POST['nombre'] ?? ''),
-            trim($_POST['direccion'] ?? ''),
-            trim($_POST['telefono'] ?? ''),
-            date('Y-m-d')
-        ]);
-
-        $idSucursal = $pdo->lastInsertId();
-        if (!empty($_POST['id_gerente'])) {
-            $upd = $pdo->prepare("UPDATE Usuarios SET id_sucursal = ? WHERE id_usuario = ? AND id_rol = 2");
-            $upd->execute([$idSucursal, $_POST['id_gerente']]);
+    try {
+        if (!csrfValido()) {
+            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
         }
-        header('Location: sucursales.php');
-        exit;
-    }
 
-    if ($action === 'editar') {
-        $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
-        $estado = ($_POST['estado'] ?? '') === 'Activa' ? 'Activa' : 'Cierre_Definitivo';
+        $nombre = trim($_POST['nombre'] ?? '');
+        $direccion = trim($_POST['direccion'] ?? '');
+        $telefono = trim($_POST['telefono'] ?? '');
+        $idGerenteNuevo = (int) ($_POST['id_gerente'] ?? 0);
 
-        $stmt = $pdo->prepare("UPDATE Sucursales SET nombre = ?, direccion = ?, telefono = ?, estado = ?, fecha_inicio_estado = ? WHERE id_sucursal = ?");
-        $stmt->execute([
-            trim($_POST['nombre'] ?? ''),
-            trim($_POST['direccion'] ?? ''),
-            trim($_POST['telefono'] ?? ''),
-            $estado,
-            date('Y-m-d'),
-            $idSucursal
-        ]);
+        if ($action === 'crear') {
+            if ($nombre === '' || $direccion === '') {
+                throw new RuntimeException('Nombre y dirección son obligatorios.');
+            }
+            if ($idGerenteNuevo > 0 && !gerenteAsignable($pdo, $idGerenteNuevo)) {
+                throw new RuntimeException('El gerente seleccionado no está disponible.');
+            }
 
-        // Una sucursal solo puede tener un gerente responsable.
-        $pdo->prepare("UPDATE Usuarios SET id_sucursal = NULL WHERE id_sucursal = ? AND id_rol = 2")->execute([$idSucursal]);
-        if (!empty($_POST['id_gerente'])) {
-            $upd = $pdo->prepare("UPDATE Usuarios SET id_sucursal = ? WHERE id_usuario = ? AND id_rol = 2");
-            $upd->execute([$idSucursal, $_POST['id_gerente']]);
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("INSERT INTO Sucursales (nombre, direccion, telefono, estado, fecha_inicio_estado) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $nombre,
+                $direccion,
+                $telefono,
+                $idGerenteNuevo > 0 ? SUCURSAL_ACTIVA : SUCURSAL_INACTIVA,
+                date('Y-m-d')
+            ]);
+
+            if ($idGerenteNuevo > 0) {
+                $idSucursal = (int) $pdo->lastInsertId();
+                $pdo->prepare("UPDATE Usuarios SET id_sucursal = ? WHERE id_usuario = ? AND id_rol = 2")
+                    ->execute([$idSucursal, $idGerenteNuevo]);
+            }
+            $pdo->commit();
+
+            header('Location: sucursales.php');
+            exit;
         }
-        header('Location: sucursales.php?id=' . $idSucursal);
-        exit;
+
+        if ($action === 'editar') {
+            $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
+            $estadoSolicitado = ($_POST['estado'] ?? '') === 'Activa' ? SUCURSAL_ACTIVA : SUCURSAL_INACTIVA;
+
+            $stmt = $pdo->prepare("
+                SELECT s.estado,
+                       (SELECT u.id_usuario FROM Usuarios u WHERE u.id_sucursal = s.id_sucursal AND u.id_rol = 2 LIMIT 1) AS id_gerente
+                FROM Sucursales s
+                WHERE s.id_sucursal = ?
+            ");
+            $stmt->execute([$idSucursal]);
+            $actual = $stmt->fetch();
+
+            if (!$actual) {
+                throw new RuntimeException('La sucursal no existe.');
+            }
+            if ($nombre === '' || $direccion === '') {
+                throw new RuntimeException('Nombre y dirección son obligatorios.');
+            }
+            if ($idGerenteNuevo > 0 && !gerenteAsignable($pdo, $idGerenteNuevo, $idSucursal)) {
+                throw new RuntimeException('El gerente seleccionado no está disponible.');
+            }
+
+            $idGerenteActual = (int) ($actual['id_gerente'] ?? 0);
+
+            if ($idGerenteNuevo === 0) {
+                if ($actual['estado'] !== SUCURSAL_ACTIVA && $estadoSolicitado === SUCURSAL_ACTIVA) {
+                    throw new RuntimeException('Asigna un gerente para poder activar la sucursal.');
+                }
+                $estadoFinal = SUCURSAL_INACTIVA;
+            } elseif ($idGerenteNuevo !== $idGerenteActual) {
+                $estadoFinal = SUCURSAL_ACTIVA;
+            } else {
+                $estadoFinal = $estadoSolicitado;
+            }
+
+            $fechaEstado = $actual['estado'] === $estadoFinal ? null : date('Y-m-d');
+
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("
+                UPDATE Sucursales
+                SET nombre = ?, direccion = ?, telefono = ?, estado = ?,
+                    fecha_inicio_estado = COALESCE(?, fecha_inicio_estado)
+                WHERE id_sucursal = ?
+            ");
+            $stmt->execute([$nombre, $direccion, $telefono, $estadoFinal, $fechaEstado, $idSucursal]);
+
+            // Una sucursal solo puede tener un gerente responsable.
+            $pdo->prepare("UPDATE Usuarios SET id_sucursal = NULL WHERE id_sucursal = ? AND id_rol = 2")->execute([$idSucursal]);
+            if ($idGerenteNuevo > 0) {
+                $pdo->prepare("UPDATE Usuarios SET id_sucursal = ? WHERE id_usuario = ? AND id_rol = 2")
+                    ->execute([$idSucursal, $idGerenteNuevo]);
+            }
+            $pdo->commit();
+
+            header('Location: sucursales.php?id=' . $idSucursal);
+            exit;
+        }
+    } catch (RuntimeException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $error = $e->getMessage();
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('sucursales.php: ' . $e->getMessage());
+        $error = 'No se pudo guardar. Inténtalo de nuevo.';
     }
 }
 
@@ -76,12 +149,14 @@ foreach ($sucursales as $sucursal) {
 }
 
 // Se incluyen gerentes libres y el gerente actual para poder conservarlo.
-$gerentes = $pdo->query("
+$stmt = $pdo->prepare("
     SELECT id_usuario, nombre
     FROM Usuarios
-    WHERE id_rol = 2 AND (id_sucursal IS NULL OR id_sucursal = " . $idSeleccionada . ")
+    WHERE id_rol = 2 AND (id_sucursal IS NULL OR id_sucursal = ?)
     ORDER BY nombre
-")->fetchAll();
+");
+$stmt->execute([$idSeleccionada]);
+$gerentes = $stmt->fetchAll();
 
 $cajeros = [];
 if ($sucursalSeleccionada) {
@@ -98,6 +173,10 @@ if ($sucursalSeleccionada) {
     </div>
     <button class="btn btn--primary" onclick="openModal('modalSucursal')"><i class="ti ti-plus"></i>Nueva sucursal</button>
 </div>
+
+<?php if ($error !== ''): ?>
+    <div style="margin-top:1rem;padding:10px 14px;border-radius:var(--radius-lg);background:var(--bg-danger);color:var(--text-danger)"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
 
 <?php if ($sucursalSeleccionada): ?>
     <div class="page-header" style="margin-top:1rem">
@@ -141,6 +220,7 @@ if ($sucursalSeleccionada) {
     <div class="table-wrap" style="margin-bottom:1.5rem">
         <form method="POST" style="padding:1rem">
             <input type="hidden" name="action" value="editar">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_sucursal" value="<?= $sucursalSeleccionada['id_sucursal'] ?>">
             <h3 style="font-size:15px;font-weight:500;margin-bottom:1rem">Editar sucursal</h3>
             <div class="grid-2">
@@ -162,6 +242,7 @@ if ($sucursalSeleccionada) {
                     </select>
                 </label>
             </div>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:8px">Una sucursal solo puede estar activa si tiene un gerente asignado. Si la dejas sin gerente, pasa a Inactiva.</p>
             <div style="display:flex;justify-content:flex-end;margin-top:1rem">
                 <button type="submit" class="btn btn--primary">Guardar cambios</button>
             </div>
@@ -209,6 +290,7 @@ if ($sucursalSeleccionada) {
         <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem">Nueva sucursal</h2>
         <form method="POST" action="sucursales.php">
             <input type="hidden" name="action" value="crear">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <label style="display:block;margin-bottom:10px">Nombre<input type="text" name="nombre" class="input" style="width:100%" required></label>
             <label style="display:block;margin-bottom:10px">Dirección<input type="text" name="direccion" class="input" style="width:100%" required></label>
             <label style="display:block;margin-bottom:10px">Teléfono<input type="tel" name="telefono" class="input" style="width:100%"></label>
@@ -217,6 +299,7 @@ if ($sucursalSeleccionada) {
                     <option value="">Sin asignar</option>
                     <?php foreach ($gerentes as $g): ?><option value="<?= $g['id_usuario'] ?>"><?= htmlspecialchars($g['nombre']) ?></option><?php endforeach; ?>
                 </select>
+                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px">Sin gerente, la sucursal queda Inactiva hasta que se asigne uno.</span>
             </label>
             <div style="display:flex;gap:8px;justify-content:flex-end">
                 <button type="button" class="btn btn--ghost" onclick="closeModal('modalSucursal')">Cancelar</button>
