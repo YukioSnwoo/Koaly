@@ -3,68 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rucursos Derechos</title>
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-            background: #f4f7fa;
-            padding: 40px 20px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            margin: auto;
-            background: #ffffff;
-            padding: 2rem;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            text-align: center;
-            color: #1e293b;
-            margin-bottom: 1.5rem;
-        }
-
-        video {
-            display: block;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto 1.5rem auto;
-            border-radius: 12px;
-            background: #000000;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-        }
-
-        p {
-            text-align: center;
-            color: #475569;
-            font-size: 1.15rem;
-            line-height: 1.6;
-        }
-    </style>
+    <link rel="stylesheet" href="cajero.css">
 </head>
-
 <body>
-
-    <div class="container">
-
-        <h1>hola benviendo a los Recursos Humanos</h1>
-
-        <p>
-            Ya puedes contactar con los Recursos Humanos.
-        </p>
-
-    </div>
-
+    <header class="topbar">
+        <div class="brand">Koaly</div>
+        <div class="store-info">Tel. Oficina 00 000 0000</div>
+        <div class="cashier-info"><span id="userName">NombreX NombreX</span><small>ApellidoX ApellidoX</small></div>
+        <div class="avatar">IMG</div>
+    </header>
+    <main class="pos-layout">
+        <aside class="sidebar">
+            <button class="side-button active" type="button" data-action="search">Buscar producto</button>
+            <button class="side-button" type="button" data-action="key">Buscar Producto (ID)</button>
+            <button class="side-button" type="button" data-action="coupon">Cupon</button>
+            <button class="side-button" type="button" data-action="points">Agregar tarjeta de puntos</button>
+            <div class="side-spacer"></div>
+            <button class="danger-button" id="clearCart" type="button">Eliminar</button>
+            <button class="orange-button" id="clearSearch" type="button">Limpiar</button>
+        </aside>
+        <section class="catalog-panel">
+            <div class="catalog-heading">
+                <div>
+                    <span class="eyebrow">Nueva venta</span>
+                    <h1>Productos</h1>
+                </div>
+                <form id="searchForm" class="catalog-search" role="search">
+                    <label class="sr-only" for="productSearch">Buscar producto</label>
+                    <input id="productSearch" name="buscar" type="search" placeholder="Buscar producto o clave" autocomplete="off">
+                    <button type="submit" aria-label="Buscar">Buscar</button>
+                </form>
+            </div>
+            <p class="catalog-message" id="emptyState">Escribe un nombre o clave para filtrar el catálogo.</p>
+            <div class="product-grid" id="productGrid"></div>
+        </section>
+        <aside class="checkout-panel">
+            <h2>Precios</h2>
+            <div class="cart-list" id="cartList">
+                <p class="cart-empty">Selecciona un producto</p>
+            </div>
+            <div class="totals">
+                <div><span>Subtotal:</span><strong id="subtotal">$0.00</strong></div>
+                <div><span>Descuento:</span><strong id="discount">$0.00</strong></div>
+                <div><span>Impuestos:</span><strong id="tax">$0.00</strong></div>
+                <div class="savings"><span>Te ahorras:</span><strong id="savings">$0.00</strong></div>
+                <div class="total"><span>Total:</span><strong id="total">$0.00</strong></div>
+            </div>
+            <button class="pay-button" type="button" id="payButton">Pagar</button>
+        </aside>
+    </main>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="cajero.js"></script>
 </body>
 </html>
