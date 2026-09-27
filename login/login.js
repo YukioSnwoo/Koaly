@@ -19,7 +19,8 @@ const COMMON_PASSWORDS = [
 const ROLE_ROUTES = {
     1: 'admin/',
     2: 'gerente/',
-    3: 'cajero/'
+    3: 'cajero/',
+    4: 'recursos_humanos/'
 };
 
 function getBlacklist(email) {
