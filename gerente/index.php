@@ -52,18 +52,22 @@ $verGerenteCss = filemtime(__DIR__ . '/gerente.css');
                 <h3>Productos</h3>
                 <p>Registrar, consultar, modificar y desactivar productos</p>
             </a>
-            <div class="card card--disabled">
-                <h3>Inventario</h3>
-                <p>Controlar existencias y actualizar stock (próximamente)</p>
-            </div>
-            <div class="card card--disabled">
-                <h3>Cajas</h3>
-                <p>Registrar y eliminar cajas de la sucursal (próximamente)</p>
-            </div>
-            <div class="card card--disabled">
-                <h3>Ventas</h3>
-                <p>Supervisar historial de ventas de la sucursal (próximamente)</p>
-            </div>
+            <a href="bajo_inventario.php" class="card">
+                <h3>Bajo inventario</h3>
+                <p>Consultar productos con existencias bajas en tu sucursal</p>
+            </a>
+            <a href="historial_ventas.php" class="card">
+                <h3>Historial de ventas</h3>
+                <p>Consultar todas las ventas realizadas en el sistema</p>
+            </a>
+            <a href="ventas_sucursal.php" class="card">
+                <h3>Ventas de mi sucursal</h3>
+                <p>Supervisar las ventas realizadas en tu sucursal</p>
+            </a>
+            <a href="sucursal.php" class="card">
+                <h3>Mi sucursal</h3>
+                <p>Consultar la información de tu sucursal asignada</p>
+            </a>
         </div>
     </div>
     <script src="../auth.js"></script>
