@@ -258,6 +258,7 @@ button { font: inherit; }
 .badge-inactivo { background: #f1f5f9; color: #64748b; }
 .badge-warning  { background: #fffbeb; color: #b45309; }
 .badge-danger   { background: #fef2f2; color: #dc2626; }
+.badge-metodo { background: #eef2ff; color: #4338ca; }
 
 /* ============================================================
    Toolbar
