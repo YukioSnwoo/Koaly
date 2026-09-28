@@ -4,10 +4,6 @@ require_once __DIR__ . '/guardia.php';
 $carpetaImagenes = __DIR__ . '/../Imagenes';
 $rutaImagenesRelativa = 'Imagenes';
 
-/**
- * Valida y mueve una imagen subida a la carpeta de imágenes del proyecto.
- * Devuelve la ruta relativa (desde la raíz del sitio) o null si no se subió nada.
- */
 function guardarImagenProducto(array $archivo, string $carpetaDestino, string $rutaRelativaBase): ?string
 {
     if (!isset($archivo['error']) || $archivo['error'] === UPLOAD_ERR_NO_FILE) {
@@ -206,14 +202,15 @@ $verGerenteJs = filemtime(__DIR__ . '/gerente.js');
     <link rel="stylesheet" href="gerente.css?v=<?= $verGerenteCss ?>">
 </head>
 <body>
-    <div class="header">
+    <header class="header">
         <h1>Koaly - Panel Gerente</h1>
         <div class="user-info">
             <span><?= htmlspecialchars($gerente['nombre']) ?></span>
-            <button onclick="logout()">Cerrar sesion</button>
+            <button type="button" onclick="if (confirm('¿Seguro que deseas cerrar sesión?')) logout();">Cerrar sesión</button>
         </div>
-    </div>
-    <div class="container">
+    </header>
+
+    <main class="container">
         <a href="index.php" class="back-link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="19" y1="12" x2="5" y2="12"/>
@@ -242,84 +239,113 @@ $verGerenteJs = filemtime(__DIR__ . '/gerente.js');
         </div>
 
         <div class="panel">
-            <table class="tabla-productos" id="tablaProductos">
-                <thead>
-                    <tr>
-                        <th>Imagen</th>
-                        <th>Clave</th>
-                        <th>Producto</th>
-                        <th>Categoría</th>
-                        <th>Precio</th>
-                        <th>Inventario</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($productos)): ?>
-                        <tr><td colspan="8" class="empty-state">No hay productos registrados todavía.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($productos as $p): ?>
-                            <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>">
-                                <td>
-                                    <?php if (!empty($p['imagen'])): ?>
-                                        <img class="producto-thumb" src="../<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>">
-                                    <?php else: ?>
-                                        <div class="producto-thumb producto-thumb--placeholder">Sin imagen</div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= htmlspecialchars($p['codigo']) ?></td>
-                                <td>
-                                    <div class="producto-nombre"><?= htmlspecialchars($p['nombre']) ?></div>
-                                    <?php if (!empty($p['descripcion'])): ?>
-                                        <div class="producto-desc"><?= htmlspecialchars($p['descripcion']) ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría') ?></td>
-                                <td>$<?= number_format((float) $p['precio'], 2) ?></td>
-                                <td><?= (int) $p['stock_sucursal'] ?></td>
-                                <td>
-                                    <?php if ($p['estado'] === 'Activo'): ?>
-                                        <span class="badge badge-activo">Activo</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-inactivo">Inactivo</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="acciones">
-                                        <button type="button" class="btn btn-ghost btn-sm"
-                                            onclick="abrirModalEditar(this)"
-                                            data-id="<?= $p['id_producto'] ?>"
-                                            data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
-                                            data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
-                                            data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
-                                            data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
-                                            data-categoria="<?= (int) $p['id_categoria'] ?>"
-                                            data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
-                                            data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
-                                        >Editar</button>
-
-                                        <form method="POST" style="display:inline">
-                                            <input type="hidden" name="action" value="cambiar_estado">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                                            <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
-                                            <?php if ($p['estado'] === 'Activo'): ?>
-                                                <input type="hidden" name="nuevo_estado" value="Inactivo">
-                                                <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
-                                            <?php else: ?>
-                                                <input type="hidden" name="nuevo_estado" value="Activo">
-                                                <button type="submit" class="btn btn-success btn-sm">Activar</button>
-                                            <?php endif; ?>
-                                        </form>
-                                    </div>
-                                </td>
+            <div class="tabla-scroll">
+                <table class="tabla-productos" id="tablaProductos">
+                    <thead>
+                        <tr>
+                            <th>Imagen</th>
+                            <th>Clave</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Inventario</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($productos)): ?>
+                            <tr>
+                                <td colspan="8" class="empty-state">No hay productos registrados todavía.</td>
                             </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                        <?php else: ?>
+                            <?php foreach ($productos as $p): ?>
+                                <?php
+                                    $stock = (int) $p['stock_sucursal'];
+                                    if ($stock === 0) {
+                                        $stockBadge = 'badge-danger';
+                                        $stockTexto = 'Agotado';
+                                    } elseif ($stock < 5) {
+                                        $stockBadge = 'badge-danger';
+                                        $stockTexto = $stock . ' ' . ($stock === 1 ? 'unidad' : 'unidades');
+                                    } elseif ($stock < 10) {
+                                        $stockBadge = 'badge-warning';
+                                        $stockTexto = $stock . ' unidades';
+                                    } else {
+                                        $stockBadge = 'badge-activo';
+                                        $stockTexto = $stock . ' unidades';
+                                    }
+                                ?>
+                                <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>">
+                                    <td>
+                                        <?php if (!empty($p['imagen'])): ?>
+                                            <img class="producto-thumb" src="../<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>">
+                                        <?php else: ?>
+                                            <div class="producto-thumb producto-thumb--placeholder">Sin imagen</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= htmlspecialchars($p['codigo']) ?></td>
+                                    <td>
+                                        <div class="producto-nombre"><?= htmlspecialchars($p['nombre']) ?></div>
+                                        <?php if (!empty($p['descripcion'])): ?>
+                                            <div class="producto-desc"><?= htmlspecialchars($p['descripcion']) ?></div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría') ?></td>
+                                    <td>$<?= number_format((float) $p['precio'], 2) ?></td>
+                                    <td>
+                                        <span class="badge <?= $stockBadge ?>"><?= $stockTexto ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if ($p['estado'] === 'Activo'): ?>
+                                            <span class="badge badge-activo">Activo</span>
+                                        <?php elseif ($p['estado'] === 'Descontinuado'): ?>
+                                            <span class="badge badge-danger">Descontinuado</span>
+                                        <?php elseif ($p['estado'] === 'Proximamente'): ?>
+                                            <span class="badge badge-warning">Próximamente</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-inactivo"><?= htmlspecialchars($p['estado'] ?: 'Sin estado') ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div class="acciones">
+                                            <button type="button" class="btn btn-ghost btn-sm"
+                                                onclick="abrirModalEditar(this)"
+                                                data-id="<?= $p['id_producto'] ?>"
+                                                data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
+                                                data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
+                                                data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
+                                                data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
+                                                data-categoria="<?= (int) $p['id_categoria'] ?>"
+                                                data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
+                                                data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
+                                            >Editar</button>
+
+                                            <form method="POST" style="display:inline"
+                                                  data-confirm="<?= $p['estado'] === 'Activo'
+                                                      ? '¿Desactivar este producto? No aparecerá disponible para venta.'
+                                                      : '¿Activar este producto?' ?>">
+                                                <input type="hidden" name="action" value="cambiar_estado">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                                                <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
+                                                <?php if ($p['estado'] === 'Activo'): ?>
+                                                    <input type="hidden" name="nuevo_estado" value="Inactivo">
+                                                    <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
+                                                <?php else: ?>
+                                                    <input type="hidden" name="nuevo_estado" value="Activo">
+                                                    <button type="submit" class="btn btn-success btn-sm">Activar</button>
+                                                <?php endif; ?>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </main>
 
     <!-- Modal: Nuevo / Editar producto -->
     <div class="modal-overlay" id="modalProducto">

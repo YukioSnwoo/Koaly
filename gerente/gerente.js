@@ -56,6 +56,18 @@ function abrirModalEditar(btn) {
 }
 
 /* ============================================================
+   Confirmación antes de cambiar estado de un producto
+   ============================================================ */
+document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!form.matches('form[data-confirm]')) return;
+    const mensaje = form.dataset.confirm || '¿Seguro?';
+    if (!confirm(mensaje)) {
+        e.preventDefault();
+    }
+});
+
+/* ============================================================
    Cursor personalizado
    ============================================================ */
 function initCustomCursor() {
