@@ -2,7 +2,8 @@
 require_once __DIR__ . '/guardia.php';
 
 $stmt = $pdo->prepare("
-    SELECT id_sucursal, nombre, direccion, telefono, email_contacto, estado
+    SELECT id_sucursal, nombre, direccion, telefono, email_contacto,
+           estado, fecha_inicio_estado, fecha_fin_estado, creado_en
     FROM Sucursales
     WHERE id_sucursal = ?
     LIMIT 1
@@ -10,7 +11,18 @@ $stmt = $pdo->prepare("
 $stmt->execute([$idSucursalGerente]);
 $sucursal = $stmt->fetch();
 
+// Mapeo de estado a clase de badge
+$estadoBadge = [
+    'Activa'            => 'badge-activo',
+    'Mantenimiento'     => 'badge-warning',
+    'Cierre_Temporal'   => 'badge-warning',
+    'Cierre_Definitivo' => 'badge-danger',
+];
+$claseBadge = $estadoBadge[$sucursal['estado'] ?? ''] ?? 'badge-inactivo';
+$estadoTexto = str_replace('_', ' ', $sucursal['estado'] ?? 'Desconocido');
+
 $verGerenteCss = filemtime(__DIR__ . '/gerente.css');
+$verGerenteJs  = filemtime(__DIR__ . '/gerente.js');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -21,14 +33,15 @@ $verGerenteCss = filemtime(__DIR__ . '/gerente.css');
     <link rel="stylesheet" href="gerente.css?v=<?= $verGerenteCss ?>">
 </head>
 <body>
-    <div class="header">
+    <header class="header">
         <h1>Koaly - Panel Gerente</h1>
         <div class="user-info">
             <span><?= htmlspecialchars($gerente['nombre']) ?></span>
-            <button onclick="logout()">Cerrar sesion</button>
+            <button type="button" onclick="if (confirm('¿Seguro que deseas cerrar sesión?')) logout();">Cerrar sesión</button>
         </div>
-    </div>
-    <div class="container">
+    </header>
+
+    <main class="container">
         <a href="index.php" class="back-link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="19" y1="12" x2="5" y2="12"/>
@@ -45,33 +58,78 @@ $verGerenteCss = filemtime(__DIR__ . '/gerente.css');
         </div>
 
         <?php if (!$sucursal): ?>
-            <div class="alert alert-error">No tienes una sucursal asignada. Contacta al administrador.</div>
+            <div class="panel">
+                <div class="empty-state">
+                    No se encontró información de tu sucursal. Contacta al administrador.
+                </div>
+            </div>
         <?php else: ?>
-            <div class="panel" style="padding: 2rem;">
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <p><?= htmlspecialchars($sucursal['nombre']) ?></p>
-                </div>
-                <div class="form-group">
-                    <label>Dirección</label>
-                    <p><?= htmlspecialchars($sucursal['direccion'] ?? 'No registrada') ?></p>
-                </div>
-                <div class="form-group">
-                    <label>Teléfono</label>
-                    <p><?= htmlspecialchars($sucursal['telefono'] ?? 'No registrado') ?></p>
-                </div>
-                <div class="form-group">
-                    <label>Email de contacto</label>
-                    <p><?= htmlspecialchars($sucursal['email_contacto'] ?? 'No registrado') ?></p>
-                </div>
-                <div class="form-group">
-                    <label>Estado</label>
-                    <p><span class="badge badge-activo"><?= htmlspecialchars($sucursal['estado']) ?></span></p>
+            <div class="panel">
+                <div class="info-grid">
+
+                    <div class="info-field info-field--full">
+                        <span class="info-label">Nombre</span>
+                        <span class="info-value info-value--strong">
+                            <?= htmlspecialchars($sucursal['nombre']) ?>
+                        </span>
+                    </div>
+
+                    <div class="info-field">
+                        <span class="info-label">Estado</span>
+                        <span>
+                            <span class="badge <?= $claseBadge ?>">
+                                <?= htmlspecialchars($estadoTexto) ?>
+                            </span>
+                        </span>
+                    </div>
+
+                    <div class="info-field">
+                        <span class="info-label">Gerente responsable</span>
+                        <span class="info-value">
+                            <?= htmlspecialchars($gerente['nombre']) ?>
+                        </span>
+                    </div>
+
+                    <div class="info-field info-field--full">
+                        <span class="info-label">Dirección</span>
+                        <span class="info-value <?= empty($sucursal['direccion']) ? 'info-value--muted' : '' ?>">
+                            <?= htmlspecialchars($sucursal['direccion'] ?: 'No registrada') ?>
+                        </span>
+                    </div>
+
+                    <div class="info-field">
+                        <span class="info-label">Teléfono</span>
+                        <span class="info-value <?= empty($sucursal['telefono']) ? 'info-value--muted' : '' ?>">
+                            <?= htmlspecialchars($sucursal['telefono'] ?: 'No registrado') ?>
+                        </span>
+                    </div>
+
+                    <div class="info-field">
+                        <span class="info-label">Email de contacto</span>
+                        <span class="info-value <?= empty($sucursal['email_contacto']) ? 'info-value--muted' : '' ?>">
+                            <?php if (!empty($sucursal['email_contacto'])): ?>
+                                <a href="mailto:<?= htmlspecialchars($sucursal['email_contacto']) ?>" style="color:#7c3aed; text-decoration:none;">
+                                    <?= htmlspecialchars($sucursal['email_contacto']) ?>
+                                </a>
+                            <?php else: ?>
+                                No registrado
+                            <?php endif; ?>
+                        </span>
+                    </div>
+
+                    <div class="info-field">
+                        <span class="info-label">Fecha de alta</span>
+                        <span class="info-value">
+                            <?= htmlspecialchars(date('d/m/Y', strtotime($sucursal['creado_en']))) ?>
+                        </span>
+                    </div>
+
                 </div>
             </div>
         <?php endif; ?>
-    </div>
+    </main>
 
     <script src="../auth.js"></script>
+    <script src="gerente.js?v=<?= $verGerenteJs ?>"></script>
 </body>
 </html>

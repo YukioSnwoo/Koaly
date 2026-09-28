@@ -333,6 +333,46 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 }
 
 /* ============================================================
+   Info grid (ficha de sucursal)
+   ============================================================ */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem 2rem;
+    padding: 2rem;
+}
+.info-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+.info-field--full {
+    grid-column: 1 / -1;
+}
+.info-field .info-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.info-field .info-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    line-height: 1.5;
+    word-break: break-word;
+}
+.info-field .info-value--muted {
+    color: #94a3b8;
+    font-style: italic;
+}
+.info-field .info-value--strong {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+/* ============================================================
    Modal
    ============================================================ */
 .modal-overlay {
