@@ -1,24 +1,5 @@
 <?php
-session_start();
-
-if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 2) {
-    header('Location: ../index.php');
-    exit;
-}
-
-require_once __DIR__ . '/../admin/database.php';
-
-$stmt = $pdo->prepare("SELECT id_usuario, nombre, id_sucursal FROM Usuarios WHERE id_usuario = ? LIMIT 1");
-$stmt->execute([$_SESSION['id_usuario']]);
-$gerente = $stmt->fetch();
-
-if (!$gerente) {
-    session_destroy();
-    header('Location: ../index.php');
-    exit;
-}
-
-$idSucursalGerente = $gerente['id_sucursal'] !== null ? (int) $gerente['id_sucursal'] : null;
+require_once __DIR__ . '/guardia.php';
 
 $carpetaImagenes = __DIR__ . '/../Imagenes';
 $rutaImagenesRelativa = 'Imagenes';
@@ -91,6 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     try {
+        if (!csrfValido()) {
+            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
+        }
+
         if ($action === 'crear' || $action === 'editar') {
             $id = (int) ($_POST['id_producto'] ?? 0);
             $nombre = trim($_POST['nombre'] ?? '');
@@ -169,18 +154,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $exito = 'Producto actualizado correctamente.';
             }
 
-            if ($idSucursalGerente !== null) {
-                try {
-                    $catStmt = $pdo->prepare("SELECT nombre_categoria FROM Categorias WHERE id_categoria = ?");
-                    $catStmt->execute([$idCategoria]);
-                    $categoriaNombre = (string) $catStmt->fetchColumn();
+            try {
+                $catStmt = $pdo->prepare("SELECT nombre_categoria FROM Categorias WHERE id_categoria = ?");
+                $catStmt->execute([$idCategoria]);
+                $categoriaNombre = (string) $catStmt->fetchColumn();
 
-                    actualizarInventarioSucursal($pdo, $idGuardado, $idSucursalGerente, $cantidadInventario, $precio, $categoriaNombre);
-                } catch (PDOException $e) {
-                    $errores[] = 'El producto se guardó, pero no se pudo actualizar la cantidad en inventario.';
-                }
-            } else {
-                $errores[] = 'Tu cuenta no tiene una sucursal asignada, así que no se registró inventario para este producto.';
+                actualizarInventarioSucursal($pdo, $idGuardado, $idSucursalGerente, $cantidadInventario, $precio, $categoriaNombre);
+            } catch (PDOException $e) {
+                $errores[] = 'El producto se guardó, pero no se pudo actualizar la cantidad en inventario.';
             }
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_producto'] ?? 0);
@@ -243,9 +224,6 @@ $verGerenteJs = filemtime(__DIR__ . '/gerente.js');
             <button type="button" class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo producto</button>
         </div>
 
-        <?php if (!$idSucursalGerente): ?>
-            <div class="alert alert-error">Tu cuenta no tiene una sucursal asignada. Podrás registrar productos, pero no se guardará inventario hasta que un administrador te asigne una sucursal.</div>
-        <?php endif; ?>
         <?php if ($exito): ?>
             <div class="alert alert-success"><?= htmlspecialchars($exito) ?></div>
         <?php endif; ?>
@@ -317,6 +295,7 @@ $verGerenteJs = filemtime(__DIR__ . '/gerente.js');
 
                                         <form method="POST" style="display:inline">
                                             <input type="hidden" name="action" value="cambiar_estado">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                                             <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
                                             <?php if ($p['estado'] === 'Activo'): ?>
                                                 <input type="hidden" name="nuevo_estado" value="Inactivo">
@@ -342,6 +321,7 @@ $verGerenteJs = filemtime(__DIR__ . '/gerente.js');
             <h2 id="tituloModalProducto">Nuevo producto</h2>
             <form id="formProducto" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="crear">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                 <input type="hidden" name="id_producto" value="">
 
                 <div class="form-group">

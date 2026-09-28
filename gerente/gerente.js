@@ -46,6 +46,7 @@ function abrirModalEditar(btn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+
     const inputImagen = document.getElementById('inputImagen');
     if (inputImagen) {
         inputImagen.addEventListener('change', () => {
