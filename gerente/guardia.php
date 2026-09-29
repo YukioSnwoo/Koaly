@@ -11,7 +11,7 @@ require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
 
 $stmt = $pdo->prepare("
-    SELECT u.id_usuario, u.nombre, u.id_rol, u.estado, u.id_sucursal,
+    SELECT u.id_usuario, u.nombre, u.id_rol, u.estado, u.id_sucursal, u.debe_cambiar,
            s.nombre AS sucursal_nombre, s.estado AS sucursal_estado
     FROM Usuarios u
     LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
@@ -33,6 +33,14 @@ if (
         setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
     }
     session_destroy();
+    header('Location: ../index.php');
+    exit;
+}
+
+// Forzar cambio de contraseña si aún no se ha hecho.
+// No destruimos sesión: el usuario está autenticado, solo debe cambiar su
+// contraseña antes de operar.
+if ((int) $gerente['debe_cambiar'] === 1) {
     header('Location: ../index.php');
     exit;
 }
