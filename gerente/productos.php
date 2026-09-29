@@ -119,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
+                $rutaAnterior = null;
                 if ($rutaImagen !== null) {
                     $anterior = $pdo->prepare("SELECT imagen FROM Productos WHERE id_producto = ?");
                     $anterior->execute([$id]);
@@ -190,223 +191,195 @@ $stmt = $pdo->prepare("
 $stmt->execute([$idSucursalGerente]);
 $productos = $stmt->fetchAll();
 
-$verGerenteCss = filemtime(__DIR__ . '/gerente.css');
-$verGerenteJs = filemtime(__DIR__ . '/gerente.js');
+$pageTitle    = 'Productos';
+$showBackLink = true;
+require __DIR__ . '/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productos - Panel Gerente</title>
-    <link rel="stylesheet" href="gerente.css?v=<?= $verGerenteCss ?>">
-</head>
-<body>
-    <header class="header">
-        <h1>Koaly - Panel Gerente</h1>
-        <div class="user-info">
-            <span><?= htmlspecialchars($gerente['nombre']) ?></span>
-            <button type="button" onclick="if (confirm('¿Seguro que deseas cerrar sesión?')) logout();">Cerrar sesión</button>
-        </div>
-    </header>
 
-    <main class="container">
-        <a href="index.php" class="back-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="19" y1="12" x2="5" y2="12"/>
-                <polyline points="12 19 5 12 12 5"/>
-            </svg>
-            Volver al panel
-        </a>
-
-        <div class="page-header">
-            <div>
-                <h1>Productos</h1>
-                <p>Registra, consulta, modifica y desactiva los productos del catálogo</p>
-            </div>
-            <button type="button" class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo producto</button>
-        </div>
-
-        <?php if ($exito): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($exito) ?></div>
-        <?php endif; ?>
-        <?php foreach ($errores as $error): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
-        <?php endforeach; ?>
-
-        <div class="toolbar">
-            <input type="text" id="buscarProducto" placeholder="Buscar producto por nombre...">
-        </div>
-
-        <div class="panel">
-            <div class="tabla-scroll">
-                <table class="tabla-productos" id="tablaProductos">
-                    <thead>
-                        <tr>
-                            <th>Imagen</th>
-                            <th>Clave</th>
-                            <th>Producto</th>
-                            <th>Categoría</th>
-                            <th>Precio</th>
-                            <th>Inventario</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($productos)): ?>
-                            <tr>
-                                <td colspan="8" class="empty-state">No hay productos registrados todavía.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($productos as $p): ?>
-                                <?php
-                                    $stock = (int) $p['stock_sucursal'];
-                                    if ($stock === 0) {
-                                        $stockBadge = 'badge-danger';
-                                        $stockTexto = 'Agotado';
-                                    } elseif ($stock < 5) {
-                                        $stockBadge = 'badge-danger';
-                                        $stockTexto = $stock . ' ' . ($stock === 1 ? 'unidad' : 'unidades');
-                                    } elseif ($stock < 10) {
-                                        $stockBadge = 'badge-warning';
-                                        $stockTexto = $stock . ' unidades';
-                                    } else {
-                                        $stockBadge = 'badge-activo';
-                                        $stockTexto = $stock . ' unidades';
-                                    }
-                                ?>
-                                <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>">
-                                    <td>
-                                        <?php if (!empty($p['imagen'])): ?>
-                                            <img class="producto-thumb" src="../<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>">
-                                        <?php else: ?>
-                                            <div class="producto-thumb producto-thumb--placeholder">Sin imagen</div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= htmlspecialchars($p['codigo']) ?></td>
-                                    <td>
-                                        <div class="producto-nombre"><?= htmlspecialchars($p['nombre']) ?></div>
-                                        <?php if (!empty($p['descripcion'])): ?>
-                                            <div class="producto-desc"><?= htmlspecialchars($p['descripcion']) ?></div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría') ?></td>
-                                    <td>$<?= number_format((float) $p['precio'], 2) ?></td>
-                                    <td>
-                                        <span class="badge <?= $stockBadge ?>"><?= $stockTexto ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if ($p['estado'] === 'Activo'): ?>
-                                            <span class="badge badge-activo">Activo</span>
-                                        <?php elseif ($p['estado'] === 'Descontinuado'): ?>
-                                            <span class="badge badge-danger">Descontinuado</span>
-                                        <?php elseif ($p['estado'] === 'Proximamente'): ?>
-                                            <span class="badge badge-warning">Próximamente</span>
-                                        <?php else: ?>
-                                            <span class="badge badge-inactivo"><?= htmlspecialchars($p['estado'] ?: 'Sin estado') ?></span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="acciones">
-                                            <button type="button" class="btn btn-ghost btn-sm"
-                                                onclick="abrirModalEditar(this)"
-                                                data-id="<?= $p['id_producto'] ?>"
-                                                data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
-                                                data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
-                                                data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
-                                                data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
-                                                data-categoria="<?= (int) $p['id_categoria'] ?>"
-                                                data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
-                                                data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
-                                            >Editar</button>
-
-                                            <form method="POST" style="display:inline"
-                                                  data-confirm="<?= $p['estado'] === 'Activo'
-                                                      ? '¿Desactivar este producto? No aparecerá disponible para venta.'
-                                                      : '¿Activar este producto?' ?>">
-                                                <input type="hidden" name="action" value="cambiar_estado">
-                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                                                <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
-                                                <?php if ($p['estado'] === 'Activo'): ?>
-                                                    <input type="hidden" name="nuevo_estado" value="Inactivo">
-                                                    <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
-                                                <?php else: ?>
-                                                    <input type="hidden" name="nuevo_estado" value="Activo">
-                                                    <button type="submit" class="btn btn-success btn-sm">Activar</button>
-                                                <?php endif; ?>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal: Nuevo / Editar producto -->
-    <div class="modal-overlay" id="modalProducto">
-        <div class="modal-box">
-            <h2 id="tituloModalProducto">Nuevo producto</h2>
-            <form id="formProducto" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="crear">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                <input type="hidden" name="id_producto" value="">
-
-                <div class="form-group">
-                    <label>Nombre del producto</label>
-                    <input type="text" name="nombre" placeholder="Ej. Coca-Cola lata 355 ml" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Precio</label>
-                        <input type="number" name="precio" min="0" step="0.01" placeholder="0.00" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Cantidad en inventario</label>
-                        <input type="number" name="cantidad_inventario" min="0" step="1" value="0">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Categoría</label>
-                    <select name="id_categoria" required>
-                        <option value="">Selecciona una categoría</option>
-                        <?php foreach ($categorias as $c): ?>
-                            <option value="<?= $c['id_categoria'] ?>"><?= htmlspecialchars($c['nombre_categoria']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Código de barras (opcional)</label>
-                    <input type="text" name="codigo" placeholder="Se genera uno automático si lo dejas vacío">
-                </div>
-
-                <div class="form-group">
-                    <label>Descripción (opcional)</label>
-                    <textarea name="descripcion" placeholder="Detalles del producto"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Foto del producto</label>
-                    <input type="file" id="inputImagen" name="imagen" accept="image/png,image/jpeg,image/webp">
-                    <div class="imagen-preview" id="previewImagen"></div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalProducto')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </div>
-            </form>
-        </div>
+<div class="page-header">
+    <div>
+        <h1>Productos</h1>
+        <p>Registra, consulta, modifica y desactiva los productos del catálogo</p>
     </div>
+    <button type="button" class="btn btn-primary" onclick="abrirModalNuevo()">+ Nuevo producto</button>
+</div>
 
-    <script src="../auth.js"></script>
-    <script src="gerente.js?v=<?= $verGerenteJs ?>"></script>
-</body>
-</html>
+<?php if ($exito): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($exito) ?></div>
+<?php endif; ?>
+<?php foreach ($errores as $error): ?>
+    <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+<?php endforeach; ?>
+
+<div class="toolbar">
+    <input type="text" id="buscarProducto" placeholder="Buscar producto por nombre...">
+</div>
+
+<div class="panel">
+    <div class="tabla-scroll">
+        <table class="tabla-productos" id="tablaProductos">
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>Clave</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Precio</th>
+                    <th>Inventario</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($productos)): ?>
+                    <tr>
+                        <td colspan="8" class="empty-state">No hay productos registrados todavía.</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($productos as $p): ?>
+                        <?php
+                            $stock = (int) $p['stock_sucursal'];
+                            if ($stock === 0) {
+                                $stockBadge = 'badge-danger';
+                                $stockTexto = 'Agotado';
+                            } elseif ($stock < 5) {
+                                $stockBadge = 'badge-danger';
+                                $stockTexto = $stock . ' ' . ($stock === 1 ? 'unidad' : 'unidades');
+                            } elseif ($stock < 10) {
+                                $stockBadge = 'badge-warning';
+                                $stockTexto = $stock . ' unidades';
+                            } else {
+                                $stockBadge = 'badge-activo';
+                                $stockTexto = $stock . ' unidades';
+                            }
+                        ?>
+                        <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>">
+                            <td>
+                                <?php if (!empty($p['imagen'])): ?>
+                                    <img class="producto-thumb" src="../<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>">
+                                <?php else: ?>
+                                    <div class="producto-thumb producto-thumb--placeholder">Sin imagen</div>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($p['codigo']) ?></td>
+                            <td>
+                                <div class="producto-nombre"><?= htmlspecialchars($p['nombre']) ?></div>
+                                <?php if (!empty($p['descripcion'])): ?>
+                                    <div class="producto-desc"><?= htmlspecialchars($p['descripcion']) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría') ?></td>
+                            <td>$<?= number_format((float) $p['precio'], 2) ?></td>
+                            <td>
+                                <span class="badge <?= $stockBadge ?>"><?= $stockTexto ?></span>
+                            </td>
+                            <td>
+                                <?php if ($p['estado'] === 'Activo'): ?>
+                                    <span class="badge badge-activo">Activo</span>
+                                <?php elseif ($p['estado'] === 'Descontinuado'): ?>
+                                    <span class="badge badge-danger">Descontinuado</span>
+                                <?php elseif ($p['estado'] === 'Proximamente'): ?>
+                                    <span class="badge badge-warning">Próximamente</span>
+                                <?php else: ?>
+                                    <span class="badge badge-inactivo"><?= htmlspecialchars($p['estado'] ?: 'Sin estado') ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="acciones">
+                                    <button type="button" class="btn btn-ghost btn-sm"
+                                        onclick="abrirModalEditar(this)"
+                                        data-id="<?= $p['id_producto'] ?>"
+                                        data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
+                                        data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
+                                        data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
+                                        data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
+                                        data-categoria="<?= (int) $p['id_categoria'] ?>"
+                                        data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
+                                        data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
+                                    >Editar</button>
+
+                                    <form method="POST" style="display:inline"
+                                          data-confirm="<?= $p['estado'] === 'Activo'
+                                              ? '¿Desactivar este producto? No aparecerá disponible para venta.'
+                                              : '¿Activar este producto?' ?>">
+                                        <input type="hidden" name="action" value="cambiar_estado">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                                        <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
+                                        <?php if ($p['estado'] === 'Activo'): ?>
+                                            <input type="hidden" name="nuevo_estado" value="Inactivo">
+                                            <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
+                                        <?php else: ?>
+                                            <input type="hidden" name="nuevo_estado" value="Activo">
+                                            <button type="submit" class="btn btn-success btn-sm">Activar</button>
+                                        <?php endif; ?>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Nuevo / Editar producto (dentro de main, position:fixed) -->
+<div class="modal-overlay" id="modalProducto">
+    <div class="modal-box">
+        <h2 id="tituloModalProducto">Nuevo producto</h2>
+        <form id="formProducto" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="crear">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="id_producto" value="">
+
+            <div class="form-group">
+                <label>Nombre del producto</label>
+                <input type="text" name="nombre" placeholder="Ej. Coca-Cola lata 355 ml" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Precio</label>
+                    <input type="number" name="precio" min="0" step="0.01" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad en inventario</label>
+                    <input type="number" name="cantidad_inventario" min="0" step="1" value="0">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Categoría</label>
+                <select name="id_categoria" required>
+                    <option value="">Selecciona una categoría</option>
+                    <?php foreach ($categorias as $c): ?>
+                        <option value="<?= $c['id_categoria'] ?>"><?= htmlspecialchars($c['nombre_categoria']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Código de barras (opcional)</label>
+                <input type="text" name="codigo" placeholder="Se genera uno automático si lo dejas vacío">
+            </div>
+
+            <div class="form-group">
+                <label>Descripción (opcional)</label>
+                <textarea name="descripcion" placeholder="Detalles del producto"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Foto del producto</label>
+                <input type="file" id="inputImagen" name="imagen" accept="image/png,image/jpeg,image/webp">
+                <div class="imagen-preview" id="previewImagen"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalProducto')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?php require __DIR__ . '/footer.php'; ?>

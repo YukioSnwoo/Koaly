@@ -12,7 +12,7 @@ function cerrarModal(id) {
 }
 
 document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal-overlay')) {
+    if (e.target.classList.contains('modal-overlay') && e.target.id !== 'modalConfirm') {
         e.target.classList.remove('open');
     }
 });
@@ -56,18 +56,6 @@ function abrirModalEditar(btn) {
 }
 
 /* ============================================================
-   Confirmación antes de cambiar estado de un producto
-   ============================================================ */
-document.addEventListener('submit', (e) => {
-    const form = e.target;
-    if (!form.matches('form[data-confirm]')) return;
-    const mensaje = form.dataset.confirm || '¿Seguro?';
-    if (!confirm(mensaje)) {
-        e.preventDefault();
-    }
-});
-
-/* ============================================================
    Cursor personalizado
    ============================================================ */
 function initCustomCursor() {
@@ -102,17 +90,131 @@ function initCustomCursor() {
         if (e.target.closest(interactivo)) dot.classList.remove('is-hover');
     });
 
-    document.addEventListener('mouseleave', () => document.body.classList.add('cursor-outside'));
-    document.addEventListener('mouseenter', () => document.body.classList.remove('cursor-outside'));
-
-    render(); // posiciona de inmediato en el centro
+    render();
 }
+
+/* ============================================================
+   Modal de confirmación (reemplaza window.confirm)
+   Se crea dinámicamente, no requiere HTML en cada página.
+   ============================================================ */
+function crearModalConfirmacion() {
+    if (document.getElementById('modalConfirm')) return;
+
+    const html = `
+        <div class="modal-overlay" id="modalConfirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitulo">
+            <div class="modal-box modal-box--sm">
+                <h2 id="confirmTitulo">Confirmar acción</h2>
+                <p class="confirm-mensaje" id="confirmMensaje"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" id="confirmCancelar">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAceptar">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    const overlay = document.getElementById('modalConfirm');
+    const btnCancelar = document.getElementById('confirmCancelar');
+    const btnAceptar = document.getElementById('confirmAceptar');
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay && overlay._rechazar) overlay._rechazar();
+    });
+
+    btnCancelar.addEventListener('click', () => {
+        if (overlay._rechazar) overlay._rechazar();
+    });
+
+    btnAceptar.addEventListener('click', () => {
+        if (overlay._resolver) overlay._resolver();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) {
+            if (overlay._rechazar) overlay._rechazar();
+        }
+    });
+}
+
+function pedirConfirmacion(mensaje, opciones = {}) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('modalConfirm');
+        if (!overlay) {
+            // Fallback si por alguna razón no se creó el modal
+            resolve(window.confirm(mensaje));
+            return;
+        }
+
+        const titulo = document.getElementById('confirmTitulo');
+        const mensajeEl = document.getElementById('confirmMensaje');
+        const btnAceptar = document.getElementById('confirmAceptar');
+
+        titulo.textContent = opciones.titulo || 'Confirmar acción';
+        mensajeEl.textContent = mensaje;
+        btnAceptar.textContent = opciones.textoAceptar || 'Aceptar';
+
+        // Estilo peligroso: botón rojo sólido
+        btnAceptar.classList.remove('btn-primary', 'btn-danger-solid');
+        btnAceptar.classList.add(opciones.peligroso ? 'btn-danger-solid' : 'btn-primary');
+
+        const cerrar = () => {
+            overlay.classList.remove('open');
+            overlay._resolver = null;
+            overlay._rechazar = null;
+        };
+
+        overlay._resolver = () => { cerrar(); resolve(true); };
+        overlay._rechazar = () => { cerrar(); resolve(false); };
+
+        overlay.classList.add('open');
+    });
+}
+
+/* ============================================================
+   Logout con confirmación (reemplaza confirm() nativo)
+   Uso en HTML: onclick="logoutConfirmado()"
+   ============================================================ */
+async function logoutConfirmado() {
+    const ok = await pedirConfirmacion(
+        'Se cerrará tu sesión actual. ¿Deseas continuar?',
+        {
+            titulo: 'Cerrar sesión',
+            textoAceptar: 'Cerrar sesión',
+            peligroso: true
+        }
+    );
+    if (ok && typeof logout === 'function') logout();
+}
+
+/* ============================================================
+   Interceptar formularios con data-confirm
+   ============================================================ */
+document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (!form.matches('form[data-confirm]')) return;
+    if (form.dataset.confirmado === '1') return;
+
+    e.preventDefault();
+
+    const ok = await pedirConfirmacion(form.dataset.confirm, {
+        titulo: form.dataset.confirmTitulo || 'Confirmar acción',
+        textoAceptar: form.dataset.confirmAceptar || 'Aceptar',
+        peligroso: form.dataset.confirmPeligroso === '1'
+    });
+
+    if (ok) {
+        form.dataset.confirmado = '1';
+        form.submit();
+    }
+});
 
 /* ============================================================
    Arranque
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
     initCustomCursor();
+    crearModalConfirmacion();
 
     const inputImagen = document.getElementById('inputImagen');
     if (inputImagen) {
