@@ -210,6 +210,55 @@ document.addEventListener('submit', async (e) => {
 });
 
 /* ============================================================
+   Modales de cajeros
+   ============================================================ */
+function abrirModalNuevoCajero() {
+    const form = document.getElementById('formCajero');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="action"]').value = 'crear';
+    form.querySelector('[name="id_usuario"]').value = '';
+    form.querySelector('[name="fecha_contratacion"]').value = new Date().toISOString().slice(0, 10);
+
+    const titulo = document.getElementById('tituloModalCajero');
+    if (titulo) titulo.textContent = 'Nuevo cajero';
+
+    const grupoPassword = document.getElementById('grupoPassword');
+    if (grupoPassword) grupoPassword.style.display = '';
+    const grupoFecha = document.getElementById('grupoFechaContratacion');
+    if (grupoFecha) grupoFecha.style.display = '';
+
+    const inputPassword = form.querySelector('[name="password"]');
+    if (inputPassword) inputPassword.required = true;
+
+    abrirModal('modalCajero');
+}
+
+function abrirModalEditarCajero(btn) {
+    const form = document.getElementById('formCajero');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="action"]').value = 'editar';
+    form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
+    form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
+    form.querySelector('[name="email"]').value = btn.dataset.email;
+    form.querySelector('[name="estado"]').value = btn.dataset.estado;
+
+    const titulo = document.getElementById('tituloModalCajero');
+    if (titulo) titulo.textContent = 'Editar cajero';
+
+    const grupoPassword = document.getElementById('grupoPassword');
+    if (grupoPassword) grupoPassword.style.display = 'none';
+    const grupoFecha = document.getElementById('grupoFechaContratacion');
+    if (grupoFecha) grupoFecha.style.display = 'none';
+
+    const inputPassword = form.querySelector('[name="password"]');
+    if (inputPassword) inputPassword.required = false;
+
+    abrirModal('modalCajero');
+}
+
+/* ============================================================
    Arranque
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
