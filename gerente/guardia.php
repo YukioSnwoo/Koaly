@@ -1,10 +1,7 @@
 <?php
-// Guardia de las páginas del gerente. En cada petición valida contra la base de datos
-// que el gerente siga activo y que su sucursal exista y esté activa; si no, cierra su sesión.
-// Deja disponibles: $pdo, $gerente e $idSucursalGerente.
-
-session_start();
-
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 2) {
     header('Location: ../index.php');
     exit;
@@ -14,7 +11,7 @@ require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
 
 $stmt = $pdo->prepare("
-    SELECT u.id_usuario, u.nombre, u.estado, u.id_sucursal,
+    SELECT u.id_usuario, u.nombre, u.id_rol, u.estado, u.id_sucursal, u.debe_cambiar,
            s.nombre AS sucursal_nombre, s.estado AS sucursal_estado
     FROM Usuarios u
     LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
@@ -31,7 +28,19 @@ if (
     || $gerente['sucursal_estado'] !== 'Activa'
 ) {
     $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $p = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
+    }
     session_destroy();
+    header('Location: ../index.php');
+    exit;
+}
+
+// Forzar cambio de contraseña si aún no se ha hecho.
+// No destruimos sesión: el usuario está autenticado, solo debe cambiar su
+// contraseña antes de operar.
+if ((int) $gerente['debe_cambiar'] === 1) {
     header('Location: ../index.php');
     exit;
 }
