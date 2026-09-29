@@ -915,6 +915,145 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 }
 
 /* ============================================================
+   Cajas — tarjetas verticales (estilo player card, variante)
+   ============================================================ */
+.cajas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+
+.caja-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem 1.25rem;
+    border-top: 4px solid #7c3aed;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    animation: fadeInUp 0.3s ease-out both;
+}
+.caja-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+}
+.caja-card.is-inactiva {
+    opacity: 0.72;
+}
+.caja-card.is-inactiva .caja-numero {
+    filter: grayscale(0.75);
+}
+
+.caja-numero {
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #6d28d9 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 6px 16px rgba(109,40,217,0.25);
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+
+.caja-nombre {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+    margin-bottom: 0.35rem;
+    word-break: break-word;
+}
+.caja-nombre--muted {
+    color: #94a3b8;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.caja-cajero {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    width: 100%;
+    margin-bottom: 1rem;
+    margin-top: 0.75rem;
+    min-width: 0;
+}
+.caja-cajero-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+.caja-cajero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+}
+.caja-cajero-label {
+    font-size: 0.62rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+.caja-cajero-nombre {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.caja-cajero--vacio .caja-cajero-info {
+    justify-content: center;
+}
+.caja-cajero--vacio .caja-cajero-nombre {
+    color: #94a3b8;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.caja-actions {
+    display: flex;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: auto;
+    flex-wrap: wrap;
+}
+.caja-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.75rem;
+}
+.caja-actions .btn-danger {
+    flex: 0 0 auto;
+    padding: 0.5rem 0.65rem;
+}
+
+/* ============================================================
    Responsive
    ============================================================ */
 @media (max-width: 640px) {

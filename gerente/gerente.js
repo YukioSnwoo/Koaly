@@ -410,6 +410,47 @@ document.addEventListener('click', (e) => {
 });
 
 /* ============================================================
+   Modales de cajas
+   ============================================================ */
+function abrirModalNuevaCaja() {
+    const form = document.getElementById('formCaja');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="action"]').value = 'crear';
+    form.querySelector('[name="id_caja"]').value = '';
+    form.querySelector('[name="estado"]').value = 'Activa';
+    form.querySelector('[name="id_cajero_asignado"]').value = '0';
+
+    const titulo = document.getElementById('tituloModalCaja');
+    if (titulo) titulo.textContent = 'Nueva caja';
+
+    abrirModal('modalCaja');
+}
+
+function abrirModalEditarCaja(btn) {
+    const form = document.getElementById('formCaja');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="action"]').value = 'editar';
+    form.querySelector('[name="id_caja"]').value = btn.dataset.id;
+    form.querySelector('[name="numero_caja"]').value = btn.dataset.numero;
+    form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
+    form.querySelector('[name="estado"]').value = btn.dataset.estado;
+    form.querySelector('[name="id_cajero_asignado"]').value = btn.dataset.cajero || '0';
+
+    const titulo = document.getElementById('tituloModalCaja');
+    if (titulo) titulo.textContent = 'Editar caja';
+
+    // Si el select custom existe, refrescar el trigger
+    const selectCustom = form.querySelector('[name="id_cajero_asignado"]');
+    if (selectCustom) {
+        selectCustom.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    abrirModal('modalCaja');
+}
+
+/* ============================================================
    Arranque
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {   
