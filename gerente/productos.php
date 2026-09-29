@@ -4,6 +4,10 @@ require_once __DIR__ . '/guardia.php';
 $carpetaImagenes = __DIR__ . '/../Imagenes';
 $rutaImagenesRelativa = 'Imagenes';
 
+/**
+ * Valida y mueve una imagen subida a la carpeta de imágenes del proyecto.
+ * Devuelve la ruta relativa (desde la raíz del sitio) o null si no se subió nada.
+ */
 function guardarImagenProducto(array $archivo, string $carpetaDestino, string $rutaRelativaBase): ?string
 {
     if (!isset($archivo['error']) || $archivo['error'] === UPLOAD_ERR_NO_FILE) {
@@ -64,8 +68,19 @@ function actualizarInventarioSucursal(PDO $pdo, int $idProducto, int $idSucursal
 $errores = [];
 $exito = '';
 
+/* ------------------------------------------------------------
+   PRG: recuperar mensaje flash tras un POST exitoso
+   ------------------------------------------------------------ */
+if (!empty($_SESSION['flash'])) {
+    $flash = $_SESSION['flash'];
+    unset($_SESSION['flash']);
+    $exito = $flash['msg'] ?? '';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    $rutaImagenSubida = null;   // ruta de la imagen que movimos a disco EN ESTE request
+    $rutaImagenAnterior = null; // ruta de la imagen previa (solo en editar, para limpiar)
 
     try {
         if (!csrfValido()) {
@@ -85,7 +100,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Completa nombre, categoría y un precio válido.');
             }
 
-            $rutaImagen = guardarImagenProducto($_FILES['imagen'] ?? [], $carpetaImagenes, $rutaImagenesRelativa);
+            // Validar categoría contra BD (evita FK error críptico)
+            $catCheck = $pdo->prepare("SELECT nombre_categoria FROM Categorias WHERE id_categoria = ?");
+            $catCheck->execute([$idCategoria]);
+            $categoriaNombre = $catCheck->fetchColumn();
+            if ($categoriaNombre === false) {
+                throw new RuntimeException('Categoría inválida.');
+            }
+            $categoriaNombre = (string) $categoriaNombre;
+
+            // Subir imagen nueva (fuera de la transacción — es I/O de disco)
+            $rutaImagenSubida = guardarImagenProducto($_FILES['imagen'] ?? [], $carpetaImagenes, $rutaImagenesRelativa);
+
+            if ($action === 'editar') {
+                if ($id <= 0) {
+                    throw new RuntimeException('Producto inválido.');
+                }
+
+                // IDOR: verificar que el producto está en el inventario de esta sucursal
+                $check = $pdo->prepare("
+                    SELECT 1 FROM Inventario_Sucursal
+                    WHERE id_sucursal = ? AND id_producto = ?
+                ");
+                $check->execute([$idSucursalGerente, $id]);
+                if ($check->fetch() === false) {
+                    throw new RuntimeException('Este producto no está en el inventario de tu sucursal.');
+                }
+
+                // Validar código duplicado
+                if ($codigoInput !== '') {
+                    $check = $pdo->prepare("SELECT 1 FROM Productos WHERE codigo = ? AND id_producto <> ?");
+                    $check->execute([$codigoInput, $id]);
+                    if ($check->fetch() !== false) {
+                        throw new RuntimeException('Ese código ya está en uso por otro producto.');
+                    }
+                }
+
+                // Guardar la ruta de la imagen anterior para borrarla al final
+                if ($rutaImagenSubida !== null) {
+                    $stmtImg = $pdo->prepare("SELECT imagen FROM Productos WHERE id_producto = ?");
+                    $stmtImg->execute([$id]);
+                    $rutaImagenAnterior = $stmtImg->fetchColumn() ?: null;
+                }
+            }
 
             if ($action === 'crear') {
                 if ($codigoInput !== '') {
@@ -98,68 +155,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $codigo = generarCodigoUnico($pdo);
                 }
+            }
 
+            /* ------------------------------------------------------------
+               Transacción: producto + inventario se guardan juntos.
+               Si algo falla, se revierte todo.
+               ------------------------------------------------------------ */
+            $pdo->beginTransaction();
+
+            if ($action === 'crear') {
                 $stmt = $pdo->prepare("
                     INSERT INTO Productos (codigo, nombre, descripcion, precio, imagen, id_categoria, estado, creado_en, modificado_en)
                     VALUES (?, ?, ?, ?, ?, ?, 'Activo', NOW(), NOW())
                 ");
-                $stmt->execute([$codigo, $nombre, $descripcion, $precio, $rutaImagen, $idCategoria]);
+                $stmt->execute([$codigo, $nombre, $descripcion, $precio, $rutaImagenSubida, $idCategoria]);
                 $idGuardado = (int) $pdo->lastInsertId();
-                $exito = 'Producto registrado correctamente.';
             } else {
-                if ($id <= 0) {
-                    throw new RuntimeException('Producto inválido.');
-                }
-
-                if ($codigoInput !== '') {
-                    $check = $pdo->prepare("SELECT 1 FROM Productos WHERE codigo = ? AND id_producto <> ?");
-                    $check->execute([$codigoInput, $id]);
-                    if ($check->fetch() !== false) {
-                        throw new RuntimeException('Ese código ya está en uso por otro producto.');
-                    }
-                }
-
-                $rutaAnterior = null;
-                if ($rutaImagen !== null) {
-                    $anterior = $pdo->prepare("SELECT imagen FROM Productos WHERE id_producto = ?");
-                    $anterior->execute([$id]);
-                    $rutaAnterior = $anterior->fetchColumn();
-                }
-
-                if ($codigoInput !== '' && $rutaImagen !== null) {
+                if ($codigoInput !== '' && $rutaImagenSubida !== null) {
                     $stmt = $pdo->prepare("UPDATE Productos SET codigo=?, nombre=?, descripcion=?, precio=?, imagen=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
-                    $stmt->execute([$codigoInput, $nombre, $descripcion, $precio, $rutaImagen, $idCategoria, $id]);
+                    $stmt->execute([$codigoInput, $nombre, $descripcion, $precio, $rutaImagenSubida, $idCategoria, $id]);
                 } elseif ($codigoInput !== '') {
                     $stmt = $pdo->prepare("UPDATE Productos SET codigo=?, nombre=?, descripcion=?, precio=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
                     $stmt->execute([$codigoInput, $nombre, $descripcion, $precio, $idCategoria, $id]);
-                } elseif ($rutaImagen !== null) {
+                } elseif ($rutaImagenSubida !== null) {
                     $stmt = $pdo->prepare("UPDATE Productos SET nombre=?, descripcion=?, precio=?, imagen=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
-                    $stmt->execute([$nombre, $descripcion, $precio, $rutaImagen, $idCategoria, $id]);
+                    $stmt->execute([$nombre, $descripcion, $precio, $rutaImagenSubida, $idCategoria, $id]);
                 } else {
                     $stmt = $pdo->prepare("UPDATE Productos SET nombre=?, descripcion=?, precio=?, id_categoria=?, modificado_en=NOW() WHERE id_producto=?");
                     $stmt->execute([$nombre, $descripcion, $precio, $idCategoria, $id]);
                 }
-
-                if ($rutaImagen !== null && !empty($rutaAnterior)) {
-                    $rutaFisicaAnterior = __DIR__ . '/../' . $rutaAnterior;
-                    if (is_file($rutaFisicaAnterior)) {
-                        unlink($rutaFisicaAnterior);
-                    }
-                }
-
                 $idGuardado = $id;
-                $exito = 'Producto actualizado correctamente.';
             }
 
-            try {
-                $catStmt = $pdo->prepare("SELECT nombre_categoria FROM Categorias WHERE id_categoria = ?");
-                $catStmt->execute([$idCategoria]);
-                $categoriaNombre = (string) $catStmt->fetchColumn();
+            actualizarInventarioSucursal($pdo, $idGuardado, $idSucursalGerente, $cantidadInventario, $precio, $categoriaNombre);
 
-                actualizarInventarioSucursal($pdo, $idGuardado, $idSucursalGerente, $cantidadInventario, $precio, $categoriaNombre);
-            } catch (PDOException $e) {
-                $errores[] = 'El producto se guardó, pero no se pudo actualizar la cantidad en inventario.';
+            $pdo->commit();
+
+            // Borrar la imagen anterior si la reemplazamos (best-effort)
+            if ($rutaImagenSubida !== null && $rutaImagenAnterior !== null) {
+                $f = __DIR__ . '/../' . $rutaImagenAnterior;
+                if (is_file($f)) @unlink($f);
             }
+
+            $_SESSION['flash'] = ['msg' => $action === 'crear'
+                ? 'Producto registrado correctamente.'
+                : 'Producto actualizado correctamente.'];
+            header('Location: productos.php');
+            exit;
+
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_producto'] ?? 0);
             $nuevoEstado = ($_POST['nuevo_estado'] ?? '') === 'Activo' ? 'Activo' : 'Inactivo';
@@ -168,13 +211,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Producto inválido.');
             }
 
+            // IDOR: verificar que el producto está en el inventario de esta sucursal
+            $check = $pdo->prepare("
+                SELECT 1 FROM Inventario_Sucursal
+                WHERE id_sucursal = ? AND id_producto = ?
+            ");
+            $check->execute([$idSucursalGerente, $id]);
+            if ($check->fetch() === false) {
+                throw new RuntimeException('Este producto no está en el inventario de tu sucursal.');
+            }
+
             $stmt = $pdo->prepare("UPDATE Productos SET estado=?, modificado_en=NOW() WHERE id_producto=?");
             $stmt->execute([$nuevoEstado, $id]);
-            $exito = 'Estado del producto actualizado.';
+
+            $_SESSION['flash'] = ['msg' => 'Estado del producto actualizado.'];
+            header('Location: productos.php');
+            exit;
         }
+
     } catch (RuntimeException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($rutaImagenSubida !== null) {
+            $f = __DIR__ . '/../' . $rutaImagenSubida;
+            if (is_file($f)) @unlink($f);
+        }
         $errores[] = $e->getMessage();
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($rutaImagenSubida !== null) {
+            $f = __DIR__ . '/../' . $rutaImagenSubida;
+            if (is_file($f)) @unlink($f);
+        }
         $errores[] = 'Error al guardar en la base de datos.';
     }
 }
@@ -182,7 +249,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $categorias = $pdo->query("SELECT id_categoria, nombre_categoria FROM Categorias ORDER BY nombre_categoria")->fetchAll();
 
 $stmt = $pdo->prepare("
-    SELECT p.*, c.nombre_categoria, COALESCE(inv.cantidad_disponible, 0) AS stock_sucursal
+    SELECT p.*, c.nombre_categoria,
+           COALESCE(inv.cantidad_disponible, 0) AS stock_sucursal,
+           (inv.id_producto IS NOT NULL) AS en_inventario
     FROM Productos p
     LEFT JOIN Categorias c ON c.id_categoria = p.id_categoria
     LEFT JOIN Inventario_Sucursal inv ON inv.id_producto = p.id_producto AND inv.id_sucursal = ?
@@ -239,7 +308,12 @@ require __DIR__ . '/header.php';
                     <?php foreach ($productos as $p): ?>
                         <?php
                             $stock = (int) $p['stock_sucursal'];
-                            if ($stock === 0) {
+                            $enInventario = (bool) $p['en_inventario'];
+
+                            if (!$enInventario) {
+                                $stockBadge = 'badge-inactivo';
+                                $stockTexto = 'No en tu inventario';
+                            } elseif ($stock === 0) {
                                 $stockBadge = 'badge-danger';
                                 $stockTexto = 'Agotado';
                             } elseif ($stock < 5) {
@@ -286,33 +360,39 @@ require __DIR__ . '/header.php';
                             </td>
                             <td>
                                 <div class="acciones">
-                                    <button type="button" class="btn btn-ghost btn-sm"
-                                        onclick="abrirModalEditar(this)"
-                                        data-id="<?= $p['id_producto'] ?>"
-                                        data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
-                                        data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
-                                        data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
-                                        data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
-                                        data-categoria="<?= (int) $p['id_categoria'] ?>"
-                                        data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
-                                        data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
-                                    >Editar</button>
+                                    <?php if ($enInventario): ?>
+                                        <button type="button" class="btn btn-ghost btn-sm"
+                                            onclick="abrirModalEditar(this)"
+                                            data-id="<?= $p['id_producto'] ?>"
+                                            data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
+                                            data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
+                                            data-descripcion="<?= htmlspecialchars($p['descripcion'] ?? '', ENT_QUOTES) ?>"
+                                            data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
+                                            data-categoria="<?= (int) $p['id_categoria'] ?>"
+                                            data-cantidad="<?= (int) $p['stock_sucursal'] ?>"
+                                            data-imagen="<?= htmlspecialchars($p['imagen'] ?? '', ENT_QUOTES) ?>"
+                                        >Editar</button>
 
-                                    <form method="POST" style="display:inline"
-                                          data-confirm="<?= $p['estado'] === 'Activo'
-                                              ? '¿Desactivar este producto? No aparecerá disponible para venta.'
-                                              : '¿Activar este producto?' ?>">
-                                        <input type="hidden" name="action" value="cambiar_estado">
-                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                                        <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
-                                        <?php if ($p['estado'] === 'Activo'): ?>
-                                            <input type="hidden" name="nuevo_estado" value="Inactivo">
-                                            <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
-                                        <?php else: ?>
-                                            <input type="hidden" name="nuevo_estado" value="Activo">
-                                            <button type="submit" class="btn btn-success btn-sm">Activar</button>
-                                        <?php endif; ?>
-                                    </form>
+                                        <form method="POST" style="display:inline"
+                                              data-confirm="<?= $p['estado'] === 'Activo'
+                                                  ? '¿Desactivar este producto? No aparecerá disponible para venta.'
+                                                  : '¿Activar este producto?' ?>">
+                                            <input type="hidden" name="action" value="cambiar_estado">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                                            <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
+                                            <?php if ($p['estado'] === 'Activo'): ?>
+                                                <input type="hidden" name="nuevo_estado" value="Inactivo">
+                                                <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
+                                            <?php else: ?>
+                                                <input type="hidden" name="nuevo_estado" value="Activo">
+                                                <button type="submit" class="btn btn-success btn-sm">Activar</button>
+                                            <?php endif; ?>
+                                        </form>
+                                    <?php else: ?>
+                                        <span style="color:#94a3b8; font-size:0.82rem; font-style:italic;">
+                                            Agrégalo desde Existencias
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -323,7 +403,7 @@ require __DIR__ . '/header.php';
     </div>
 </div>
 
-<!-- Modal: Nuevo / Editar producto (dentro de main, position:fixed) -->
+<!-- Modal: Nuevo / Editar producto -->
 <div class="modal-overlay" id="modalProducto">
     <div class="modal-box">
         <h2 id="tituloModalProducto">Nuevo producto</h2>
