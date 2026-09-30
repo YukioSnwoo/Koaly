@@ -5,6 +5,8 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
     header('Location: ../index.php');
     exit;
 }
+
+$verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -12,382 +14,142 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Punto de Venta - Koaly</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-
-        body {
-            background-color: #d1d5db;
-            padding: 15px;
-            color: #333;
-        }
-
-        /* --- ENCABEZADO SUPERIOR --- */
-        .top-bar {
-            display: grid;
-            grid-template-columns: 200px 1fr 280px;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .header-box {
-            background-color: #527d53;
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-
-        .header-logo { font-size: 1.5rem; font-weight: bold; }
-        .header-user { justify-content: space-between; padding: 8px 15px; }
-        .user-avatar {
-            width: 38px;
-            height: 38px;
-            background: #2d4d2e;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-        }
-
-        /* --- CONTENEDOR PRINCIPAL --- */
-        .main-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr 300px;
-            gap: 15px;
-            height: calc(100vh - 100px);
-        }
-
-        /* --- PANEL IZQUIERDO (BOTONES) --- */
-        .sidebar {
-            background-color: #527d53;
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .btn-group-top, .btn-group-bottom {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .search-box {
-            position: relative;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid #7cb07d;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
-
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-            z-index: 10;
-            max-height: 260px;
-            overflow-y: auto;
-        }
-
-        .search-results .result-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            color: #333;
-        }
-
-        .search-results .result-item:last-child { border-bottom: none; }
-        .search-results .result-item:hover { background: #e5f0e5; }
-        .search-results .result-item small { display: block; color: #6b7280; }
-        .search-results .no-results { padding: 10px 12px; color: #6b7280; font-size: 0.85rem; }
-
-        .btn-green {
-            background-color: #639264;
-            color: white;
-            border: 1px solid #7cb07d;
-            padding: 12px 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: background 0.2s;
-            text-align: center;
-            width: 100%;
-        }
-
-        .btn-green:hover { background-color: #436944; }
-
-        .btn-danger {
-            background-color: #8a252a;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .btn-warning {
-            background-color: #f56e11;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        /* --- PANEL CENTRAL (TABLA DE PRODUCTOS) --- */
-        .table-container {
-            background-color: white;
-            border-radius: 12px;
-            padding: 10px;
-            border: 2px solid #8b71d0;
-            overflow-y: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            background-color: #527d53;
-            color: white;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 0.95rem;
-        }
-
-        td {
-            padding: 10px;
-            text-align: center;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 0.9rem;
-        }
-
-        td.producto-nombre { text-align: left; font-weight: 600; }
-
-        td input {
-            width: 70px;
-            padding: 6px;
-            text-align: center;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 0.9rem;
-        }
-
-        tr.selected {
-            background-color: #639264 !important;
-            color: white;
-        }
-
-        tr.empty-row td {
-            color: #9ca3af;
-            padding: 30px 10px;
-        }
-
-        /* --- PANEL DERECHO (RESUMEN Y COBRO) --- */
-        .summary-panel {
-            background-color: #f3f4f6;
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .summary-header {
-            background-color: #527d53;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            border-radius: 12px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .pill-field {
-            background-color: #e5e0e0;
-            border-radius: 10px;
-            padding: 8px 15px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
-
-        .btn-pay {
-            background-color: #527d53;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .btn-pay:hover { background-color: #436944; }
-
-        /* --- MODAL DE PAGO --- */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-
-        .modal-overlay.open { display: flex; }
-
-        .modal-box {
-            background: white;
-            border-radius: 14px;
-            padding: 25px;
-            width: 320px;
-            text-align: center;
-        }
-
-        .modal-box h2 { margin-bottom: 5px; color: #1f2937; }
-        .modal-box .modal-total { font-size: 1.4rem; font-weight: bold; color: #527d53; margin-bottom: 20px; }
-
-        .modal-payment-options {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .modal-payment-options button {
-            flex: 1;
-            padding: 18px 10px;
-            border-radius: 12px;
-            border: 2px solid #527d53;
-            background: white;
-            color: #527d53;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.95rem;
-        }
-
-        .modal-payment-options button:hover {
-            background: #527d53;
-            color: white;
-        }
-
-        .modal-cancel {
-            background: none;
-            border: none;
-            color: #6b7280;
-            cursor: pointer;
-            font-size: 0.85rem;
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
 </head>
 <body>
 
     <!-- Encabezado -->
-    <div class="top-bar">
-        <div class="header-box header-logo">Koaly</div>
-        <div class="header-box">Tel. Oficina 00 0000 0000</div>
-        <div class="header-box header-user">
-            <div>
-                <div id="userName" style="font-size: 0.85rem;">Cajero</div>
-                <div style="font-size: 0.7rem; opacity: 0.8;">Sucursal: <span id="sucursalName">-</span></div>
+    <header class="header">
+        <h1>Koaly - Punto de Venta</h1>
+        <div class="user-info">
+            <div class="user-datos">
+                <span class="user-nombre" id="userName">Cajero</span>
+                <span class="user-sucursal">Sucursal: <span id="sucursalName">-</span></span>
             </div>
-            <div class="user-avatar" onclick="logout()" style="cursor:pointer;" title="Cerrar sesión">IMG</div>
+            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" title="Cerrar sesión" aria-label="Cerrar sesión">
+                <img src="../Imagenes/puertaSalida.jpeg" alt="">
+            </button>
         </div>
-    </div>
+    </header>
 
     <!-- Panel Principal -->
-    <div class="main-layout">
+    <main class="pos-layout">
 
         <!-- Lateral Izquierdo -->
-        <div class="sidebar">
-            <div class="btn-group-top">
+        <aside class="panel sidebar">
+            <div class="sidebar-group">
+                <div class="panel-title">Agregar producto</div>
                 <div class="search-box">
-                    <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave...">
-                    <button class="btn-green" onclick="buscarProducto()">Buscar producto</button>
+                    <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave..." autocomplete="off">
+                    <button type="button" class="btn btn-primary btn-block" onclick="buscarProducto()">Buscar producto</button>
                     <div id="resultadosBusqueda" class="search-results" style="display:none;"></div>
                 </div>
             </div>
-            <div class="btn-group-bottom">
-                <button class="btn-danger" onclick="eliminarFila()">Eliminar</button>
-                <button class="btn-warning" onclick="limpiarTabla()">Limpiar</button>
+            <div class="sidebar-group">
+                <button type="button" class="btn btn-danger btn-block" onclick="eliminarFila()">Eliminar</button>
+                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()">Limpiar</button>
             </div>
-        </div>
+        </aside>
 
         <!-- Tabla Central -->
-        <div class="table-container">
-            <table id="tablaVenta">
+        <section class="panel tabla-panel">
+            <table class="tabla-venta">
                 <thead>
                     <tr>
                         <th>Clave</th>
                         <th>Producto</th>
                         <th>Cantidad</th>
-                        <th>Precio</th>
-                        <th>Importe</th>
+                        <th class="col-num">Precio</th>
+                        <th class="col-num">Importe</th>
                     </tr>
                 </thead>
                 <tbody id="listaProductos">
                     <!-- Filas dinámicas -->
                 </tbody>
             </table>
-        </div>
+        </section>
 
         <!-- Lateral Derecho (Totales) -->
-        <div class="summary-panel">
+        <aside class="panel resumen">
             <div>
-                <div class="summary-header">Resumen</div>
-                <div id="desglosePrecios">
-                    <div class="pill-field">Artículos: <span id="totalArticulos">0</span></div>
-                </div>
+                <div class="panel-title">Resumen</div>
+                <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
             </div>
 
-            <div class="summary-totals">
-                <div class="pill-field">Subtotal: <span id="lblSubtotal">$0.00</span></div>
-                <div class="pill-field">Impuestos (IVA): <span id="lblImpuestos">$0.00</span></div>
-                <div class="pill-field" style="background-color: #d1d5db; font-size: 1rem; color: #111;">
-                    Total: <span id="lblTotal">$0.00</span>
-                </div>
-                <button class="btn-pay" onclick="abrirModalPago()">Pagar</button>
+            <div>
+                <div class="resumen-fila"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
+                <div class="resumen-fila"><span>Impuestos (IVA)</span><span id="lblImpuestos">$0.00</span></div>
+                <div class="resumen-total"><span>Total</span><span id="lblTotal">$0.00</span></div>
+                <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()">Pagar</button>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Modal: cerrar sesión -->
+    <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
+        <div class="modal-box">
+            <h2 id="tituloSalir">Cerrar sesión</h2>
+            <p class="modal-mensaje">¿Deseas cerrar sesión?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')">No, me quedo</button>
+                <button type="button" class="btn btn-danger-solid" onclick="logout()">Sí, cerrar sesión</button>
             </div>
         </div>
-
     </div>
 
-    <!-- Modal de método de pago -->
-    <div class="modal-overlay" id="modalPago">
+    <!-- Modal: método de pago -->
+    <div class="modal-overlay" id="modalPago" role="dialog" aria-modal="true" aria-labelledby="tituloPago">
         <div class="modal-box">
-            <h2>Método de pago</h2>
+            <h2 id="tituloPago">Método de pago</h2>
+            <div class="modal-total-label">Total a cobrar</div>
             <div class="modal-total" id="modalTotal">$0.00</div>
-            <div class="modal-payment-options">
-                <button onclick="procesarPago('Efectivo')">💵 Efectivo</button>
-                <button onclick="procesarPago('Tarjeta')">💳 Tarjeta</button>
+            <div class="metodos-pago">
+                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span>💵</span>Efectivo</button>
+                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span>💳</span>Tarjeta</button>
             </div>
-            <button class="modal-cancel" onclick="cerrarModalPago()">Cancelar</button>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: pago en efectivo -->
+    <div class="modal-overlay" id="modalEfectivo" role="dialog" aria-modal="true" aria-labelledby="tituloEfectivo">
+        <div class="modal-box">
+            <h2 id="tituloEfectivo">Pago en efectivo</h2>
+            <div class="modal-total-label">Total a cobrar</div>
+            <div class="modal-total" id="efectivoTotal">$0.00</div>
+            <div class="form-group">
+                <label for="inputRecibido">Efectivo recibido</label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputRecibido" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+            <div class="cambio-preview" id="cambioPreview"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()">Atrás</button>
+                <button type="button" class="btn btn-primary" id="btnCobrarEfectivo" onclick="cobrarEfectivo()" disabled>Cobrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: venta completada -->
+    <div class="modal-overlay" id="modalVenta" role="dialog" aria-modal="true" aria-labelledby="tituloVenta">
+        <div class="modal-box">
+            <h2 id="tituloVenta">Venta completada</h2>
+            <p class="modal-mensaje" id="ventaMensaje"></p>
+            <div id="ventaCambio" style="display:none;">
+                <div class="cambio-resultado">
+                    <div class="cambio-label">Cambio</div>
+                    <div class="cambio-monto" id="ventaCambioMonto">$0.00</div>
+                </div>
+                <div class="cambio-detalle" id="ventaCambioDetalle"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()">Aceptar</button>
+            </div>
         </div>
     </div>
 
@@ -401,9 +163,14 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
         let carrito = [];
         let filaSeleccionada = null;
+        let totalActual = 0;
 
         const inputBuscar = document.getElementById('inputBuscar');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
+        const inputRecibido = document.getElementById('inputRecibido');
+
+        const formatoDinero = (n) => `$${n.toFixed(2)}`;
+        const aCentavos = (n) => Math.round(n * 100);
 
         inputBuscar.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') buscarProducto();
@@ -415,6 +182,31 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             }
         });
 
+        /* ---------- Modales ---------- */
+        function abrirModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        // Clic fuera de la caja o Escape cierra el modal, excepto el de venta
+        // completada: la venta solo se cierra con "Aceptar".
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay && overlay.id !== 'modalVenta') cerrarModal(overlay.id);
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            document.querySelectorAll('.modal-overlay.open').forEach(overlay => {
+                if (overlay.id !== 'modalVenta') cerrarModal(overlay.id);
+            });
+        });
+
+        /* ---------- Búsqueda ---------- */
         async function buscarProducto() {
             const q = inputBuscar.value.trim();
             if (!q) {
@@ -447,14 +239,11 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             productos.forEach(p => {
                 const item = document.createElement('div');
                 item.className = 'result-item';
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.gap = '10px';
 
                 const thumb = document.createElement('img');
+                thumb.className = 'result-thumb';
                 thumb.src = p.imagen ? `../${p.imagen}` : '';
                 thumb.alt = '';
-                thumb.style.cssText = 'width:36px;height:36px;border-radius:6px;object-fit:cover;background:#eee;flex-shrink:0;';
                 if (!p.imagen) thumb.style.visibility = 'hidden';
 
                 const info = document.createElement('div');
@@ -483,6 +272,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             inputBuscar.focus();
         }
 
+        /* ---------- Carrito ---------- */
         function agregarAlCarrito(producto) {
             const existente = carrito.find(item => item.id_producto === producto.id_producto);
             if (existente) {
@@ -517,29 +307,43 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
                 const importe = item.cantidad * item.precio;
 
-                const thumbHtml = item.imagen
-                    ? `<img src="../${item.imagen}" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;">`
-                    : '';
+                row.insertCell().textContent = item.codigo;
 
-                row.innerHTML = `
-                    <td>${item.codigo}</td>
-                    <td class="producto-nombre">${thumbHtml}${item.nombre}</td>
-                    <td><input type="number" min="1" step="1" value="${item.cantidad}" data-field="cantidad"></td>
-                    <td>$${item.precio.toFixed(2)}</td>
-                    <td>$${importe.toFixed(2)}</td>
-                `;
+                const celdaProducto = row.insertCell();
+                const producto = document.createElement('div');
+                producto.className = 'producto-celda';
+                if (item.imagen) {
+                    const img = document.createElement('img');
+                    img.className = 'producto-thumb';
+                    img.src = `../${item.imagen}`;
+                    img.alt = '';
+                    producto.appendChild(img);
+                }
+                producto.appendChild(document.createTextNode(item.nombre));
+                celdaProducto.appendChild(producto);
 
-                row.querySelectorAll('input').forEach(input => {
-                    input.addEventListener('click', (e) => e.stopPropagation());
-                    input.addEventListener('input', (e) => {
-                        const campo = e.target.dataset.field;
-                        let valor = parseFloat(e.target.value);
-                        if (isNaN(valor) || valor < 0) valor = 0;
-                        if (campo === 'cantidad' && valor < 1) valor = 1;
-                        carrito[index][campo] = valor;
-                        renderCarrito();
-                    });
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '1';
+                input.step = '1';
+                input.value = item.cantidad;
+                input.className = 'input-cantidad';
+                input.addEventListener('click', (e) => e.stopPropagation());
+                input.addEventListener('input', (e) => {
+                    let valor = parseFloat(e.target.value);
+                    if (isNaN(valor) || valor < 1) valor = 1;
+                    carrito[index].cantidad = valor;
+                    renderCarrito();
                 });
+                row.insertCell().appendChild(input);
+
+                const celdaPrecio = row.insertCell();
+                celdaPrecio.className = 'col-num';
+                celdaPrecio.textContent = formatoDinero(item.precio);
+
+                const celdaImporte = row.insertCell();
+                celdaImporte.className = 'col-num';
+                celdaImporte.textContent = formatoDinero(importe);
 
                 row.addEventListener('click', function () {
                     if (filaSeleccionada) filaSeleccionada.classList.remove('selected');
@@ -583,35 +387,110 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             });
 
             const impuestos = subtotal * 0.16;
-            const total = subtotal + impuestos;
+            totalActual = aCentavos(subtotal + impuestos) / 100;
 
             document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
-            document.getElementById('lblSubtotal').innerText = `$${subtotal.toFixed(2)}`;
-            document.getElementById('lblImpuestos').innerText = `$${impuestos.toFixed(2)}`;
-            document.getElementById('lblTotal').innerText = `$${total.toFixed(2)}`;
+            document.getElementById('lblSubtotal').innerText = formatoDinero(subtotal);
+            document.getElementById('lblImpuestos').innerText = formatoDinero(impuestos);
+            document.getElementById('lblTotal').innerText = formatoDinero(totalActual);
         }
 
+        /* ---------- Pago ---------- */
         function abrirModalPago() {
-            const total = document.getElementById('lblTotal').innerText;
-            if (total === '$0.00') {
+            if (carrito.length === 0 || totalActual <= 0) {
                 alert('No hay productos en la lista de cobro.');
                 return;
             }
-            document.getElementById('modalTotal').innerText = total;
-            document.getElementById('modalPago').classList.add('open');
+            document.getElementById('modalTotal').innerText = formatoDinero(totalActual);
+            abrirModal('modalPago');
         }
 
-        function cerrarModalPago() {
-            document.getElementById('modalPago').classList.remove('open');
+        function abrirModalEfectivo() {
+            cerrarModal('modalPago');
+            document.getElementById('efectivoTotal').innerText = formatoDinero(totalActual);
+            inputRecibido.value = '';
+            actualizarCambioPreview();
+            abrirModal('modalEfectivo');
+            inputRecibido.focus();
         }
 
-        function procesarPago(metodo) {
-            const total = document.getElementById('lblTotal').innerText;
-            alert(`Venta procesada por ${total} con ${metodo}.`);
-            cerrarModalPago();
+        function volverAMetodos() {
+            cerrarModal('modalEfectivo');
+            abrirModal('modalPago');
+        }
+
+        // Muestra en vivo cuánto falta o cuánto cambio hay que dar
+        function actualizarCambioPreview() {
+            const preview = document.getElementById('cambioPreview');
+            const btnCobrar = document.getElementById('btnCobrarEfectivo');
+            const recibido = parseFloat(inputRecibido.value);
+
+            preview.classList.remove('error');
+
+            if (isNaN(recibido)) {
+                preview.textContent = '';
+                btnCobrar.disabled = true;
+                return;
+            }
+
+            const diferencia = aCentavos(recibido) - aCentavos(totalActual);
+            if (diferencia < 0) {
+                preview.textContent = `Faltan ${formatoDinero(-diferencia / 100)}`;
+                preview.classList.add('error');
+                btnCobrar.disabled = true;
+            } else {
+                preview.innerHTML = `Cambio: <strong>${formatoDinero(diferencia / 100)}</strong>`;
+                btnCobrar.disabled = false;
+            }
+        }
+
+        inputRecibido.addEventListener('input', actualizarCambioPreview);
+        inputRecibido.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnCobrarEfectivo').disabled) cobrarEfectivo();
+        });
+
+        function cobrarEfectivo() {
+            const recibido = parseFloat(inputRecibido.value);
+            if (isNaN(recibido) || aCentavos(recibido) < aCentavos(totalActual)) return;
+
+            const cambio = (aCentavos(recibido) - aCentavos(totalActual)) / 100;
+
+            cerrarModal('modalEfectivo');
+            mostrarVentaCompletada('Efectivo', {
+                recibido,
+                cambio
+            });
+        }
+
+        function pagarConTarjeta() {
+            cerrarModal('modalPago');
+            mostrarVentaCompletada('Tarjeta');
+        }
+
+        function mostrarVentaCompletada(metodo, efectivo = null) {
+            document.getElementById('ventaMensaje').textContent =
+                `Venta procesada por ${formatoDinero(totalActual)} con ${metodo}.`;
+
+            const bloqueCambio = document.getElementById('ventaCambio');
+            if (efectivo) {
+                document.getElementById('ventaCambioMonto').textContent = formatoDinero(efectivo.cambio);
+                document.getElementById('ventaCambioDetalle').textContent =
+                    `Recibido: ${formatoDinero(efectivo.recibido)} · Total: ${formatoDinero(totalActual)}`;
+                bloqueCambio.style.display = 'block';
+            } else {
+                bloqueCambio.style.display = 'none';
+            }
+
+            abrirModal('modalVenta');
+            document.getElementById('btnFinalizarVenta').focus();
+        }
+
+        function finalizarVenta() {
+            cerrarModal('modalVenta');
             carrito = [];
             filaSeleccionada = null;
             renderCarrito();
+            inputBuscar.focus();
         }
 
         renderCarrito();
