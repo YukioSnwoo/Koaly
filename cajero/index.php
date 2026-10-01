@@ -6,6 +6,8 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
     exit;
 }
 
+require_once __DIR__ . '/../admin/csrf.php';
+
 $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 ?>
 <!DOCTYPE html>
@@ -13,14 +15,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Punto de Venta - Koaly</title>
+    <title>CAJA</title>
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
 </head>
 <body>
 
     <!-- Encabezado -->
     <header class="header">
-        <h1>Koaly - Punto de Venta</h1>
+        <h1>Koaly</h1>
         <div class="user-info">
             <div class="user-datos">
                 <span class="user-nombre" id="userName">Cajero</span>
@@ -158,12 +161,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const usuario = requireRol(3);
         if (usuario) {
             document.getElementById('userName').textContent = usuario.nombre || 'Cajero';
-            document.getElementById('sucursalName').textContent = usuario.id_sucursal || 'Sin asignar';
+            document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || 'Sin asignar';
         }
 
         let carrito = [];
         let filaSeleccionada = null;
         let totalActual = 0;
+        let cobrando = false;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
         const inputBuscar = document.getElementById('inputBuscar');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
@@ -379,15 +384,19 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             renderCarrito();
         }
 
+        // Mismo cálculo en centavos que registrar_venta.php, para que el total
+        // que ve el cajero coincida con el que se guarda.
         function calcularTotales() {
-            let subtotal = 0;
+            let subtotalCentavos = 0;
 
             carrito.forEach(item => {
-                subtotal += item.cantidad * item.precio;
+                subtotalCentavos += aCentavos(item.precio) * item.cantidad;
             });
 
-            const impuestos = subtotal * 0.16;
-            totalActual = aCentavos(subtotal + impuestos) / 100;
+            const impuestosCentavos = Math.round(subtotalCentavos * 0.16);
+            const subtotal = subtotalCentavos / 100;
+            const impuestos = impuestosCentavos / 100;
+            totalActual = (subtotalCentavos + impuestosCentavos) / 100;
 
             document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
             document.getElementById('lblSubtotal').innerText = formatoDinero(subtotal);
@@ -449,33 +458,74 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (e.key === 'Enter' && !document.getElementById('btnCobrarEfectivo').disabled) cobrarEfectivo();
         });
 
-        function cobrarEfectivo() {
+        // Guarda la venta en la BD. Devuelve la respuesta del servidor o null si falló.
+        async function registrarVenta(metodo, efectivoRecibido = null) {
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('metodo', metodo);
+            datos.append('items', JSON.stringify(
+                carrito.map(i => ({ id_producto: i.id_producto, cantidad: i.cantidad }))
+            ));
+            if (efectivoRecibido !== null) datos.append('efectivo_recibido', efectivoRecibido.toFixed(2));
+
+            try {
+                const res = await fetch('registrar_venta.php', { method: 'POST', body: datos });
+                const json = await res.json();
+                if (!json.success) {
+                    alert(json.message || 'No se pudo registrar la venta.');
+                    return null;
+                }
+                return json;
+            } catch (error) {
+                alert('No se pudo conectar con el servidor. La venta NO se registró.');
+                return null;
+            }
+        }
+
+        function bloquearCobro(bloquear) {
+            cobrando = bloquear;
+            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo').forEach(b => {
+                b.disabled = bloquear;
+            });
+            document.getElementById('btnCobrarEfectivo').textContent = bloquear ? 'Guardando...' : 'Cobrar';
+            if (!bloquear) actualizarCambioPreview();
+        }
+
+        async function cobrarEfectivo() {
+            if (cobrando) return;
             const recibido = parseFloat(inputRecibido.value);
             if (isNaN(recibido) || aCentavos(recibido) < aCentavos(totalActual)) return;
 
-            const cambio = (aCentavos(recibido) - aCentavos(totalActual)) / 100;
+            bloquearCobro(true);
+            const venta = await registrarVenta('Efectivo', recibido);
+            bloquearCobro(false);
+            if (!venta) return;
 
             cerrarModal('modalEfectivo');
-            mostrarVentaCompletada('Efectivo', {
-                recibido,
-                cambio
-            });
+            mostrarVentaCompletada('Efectivo', venta);
         }
 
-        function pagarConTarjeta() {
+        async function pagarConTarjeta() {
+            if (cobrando) return;
+
+            bloquearCobro(true);
+            const venta = await registrarVenta('Tarjeta');
+            bloquearCobro(false);
+            if (!venta) return;
+
             cerrarModal('modalPago');
-            mostrarVentaCompletada('Tarjeta');
+            mostrarVentaCompletada('Tarjeta', venta);
         }
 
-        function mostrarVentaCompletada(metodo, efectivo = null) {
+        function mostrarVentaCompletada(metodo, venta) {
             document.getElementById('ventaMensaje').textContent =
-                `Venta procesada por ${formatoDinero(totalActual)} con ${metodo}.`;
+                `Venta #${venta.id_venta} registrada por ${formatoDinero(venta.total)} con ${metodo}.`;
 
             const bloqueCambio = document.getElementById('ventaCambio');
-            if (efectivo) {
-                document.getElementById('ventaCambioMonto').textContent = formatoDinero(efectivo.cambio);
+            if (venta.cambio !== null) {
+                document.getElementById('ventaCambioMonto').textContent = formatoDinero(venta.cambio);
                 document.getElementById('ventaCambioDetalle').textContent =
-                    `Recibido: ${formatoDinero(efectivo.recibido)} · Total: ${formatoDinero(totalActual)}`;
+                    `Recibido: ${formatoDinero(venta.recibido)} · Total: ${formatoDinero(venta.total)}`;
                 bloqueCambio.style.display = 'block';
             } else {
                 bloqueCambio.style.display = 'none';
