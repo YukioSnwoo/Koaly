@@ -4,6 +4,21 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  /* ── Theme toggle (dark / light) ── */
+  const THEME_KEY = 'koalicius-admin-theme';
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+      try { localStorage.setItem(THEME_KEY, isLight ? 'dark' : 'light'); } catch (e) {}
+    });
+  }
+
   /* ── Sidebar navigation (SPA-style page switching) ── */
   const links  = document.querySelectorAll('.sidebar__link[data-page]');
   const pages  = document.querySelectorAll('.admin-page');
