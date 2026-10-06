@@ -27,6 +27,12 @@ $menu = [
     </nav>
 
     <div class="sidebar__footer">
+        <button type="button" id="themeToggle" class="sidebar__link theme-toggle">
+            <i class="ti ti-sun theme-toggle__icon--light"></i>
+            <i class="ti ti-moon theme-toggle__icon--dark"></i>
+            <span class="theme-toggle__label--light"><?= htmlspecialchars($t['modo_claro']) ?></span>
+            <span class="theme-toggle__label--dark"><?= htmlspecialchars($t['modo_oscuro']) ?></span>
+        </button>
         <a href="config.php" class="sidebar__link <?= $pagina_actual === 'config.php' ? 'sidebar__link--active' : '' ?>">
             <i class="ti ti-settings"></i>
             <span><?= htmlspecialchars($t['configuracion']) ?></span>

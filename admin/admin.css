@@ -26,10 +26,36 @@
   --text-warning:   #ffa502;
   --fill-accent:    #6c5ce7;
   --fill-disabled:  #2a2d3a;
+  --row-hover:      rgba(255,255,255,0.02);
   --radius:         8px;
   --radius-lg:      12px;
   --sidebar-w:      200px;
   --font:           'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Light theme (lavanda suave) ── */
+:root[data-theme="light"] {
+  --bg:             #FAF9FC;
+  --surface-1:      #FFFFFF;
+  --surface-2:      #F3F1F8;
+  --border:         rgba(46,42,58,0.10);
+  --text-primary:   #2E2A3A;
+  --text-secondary: #6B6478;
+  --text-muted:     #9892A3;
+  --accent:         #9B87C4;
+  --accent-hover:   #7E6AA8;
+  --bg-accent:      rgba(155,135,196,0.15);
+  --bg-accent-muted:rgba(155,135,196,0.10);
+  --text-accent:    #7E6AA8;
+  --bg-success:     rgba(0,184,148,0.12);
+  --text-success:   #00946f;
+  --bg-danger:      rgba(255,71,87,0.12);
+  --text-danger:    #d8333f;
+  --bg-warning:     rgba(255,165,2,0.15);
+  --text-warning:   #a5680a;
+  --fill-accent:    #9B87C4;
+  --fill-disabled:  #E4E0ED;
+  --row-hover:      rgba(46,42,58,0.03);
 }
 
 /* ── Reset & Base ── */
@@ -41,6 +67,7 @@ body{
   color:var(--text-primary);
   min-height:100vh;
   -webkit-font-smoothing:antialiased;
+  transition:background .15s ease,color .15s ease;
 }
 
 /* ── Layout ── */
@@ -117,6 +144,20 @@ body{
   border-top:0.5px solid var(--border);
 }
 .sidebar__footer .sidebar__link{margin-top:0}
+
+.theme-toggle{
+  width:100%;
+  background:none;
+  border:none;
+  font-family:var(--font);
+  text-align:left;
+}
+.theme-toggle__label--dark,
+.theme-toggle__icon--dark{display:none}
+:root[data-theme="light"] .theme-toggle__label--light,
+:root[data-theme="light"] .theme-toggle__icon--light{display:none}
+:root[data-theme="light"] .theme-toggle__label--dark,
+:root[data-theme="light"] .theme-toggle__icon--dark{display:inline}
 
 .sidebar__lang{
   display:flex;
@@ -217,7 +258,7 @@ body{
 }
 .table td:last-child,
 .table th:last-child{text-align:right}
-.table tbody tr:hover{background:rgba(255,255,255,0.02)}
+.table tbody tr:hover{background:var(--row-hover)}
 
 /* ── Badges ── */
 .badge{

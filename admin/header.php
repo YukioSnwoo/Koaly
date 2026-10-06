@@ -32,12 +32,14 @@ $textos = [
         'gerentes' => 'Gerentes', 'inventario' => 'Inventario global',
         'ventas' => 'Ventas', 'reportes' => 'Reportes',
         'configuracion' => 'Configuración', 'cerrar_sesion' => 'Cerrar sesión',
+        'modo_claro' => 'Modo claro', 'modo_oscuro' => 'Modo oscuro',
     ],
     'en' => [
         'panel_general' => 'Dashboard', 'sucursales' => 'Branches',
         'gerentes' => 'Managers', 'inventario' => 'Global inventory',
         'ventas' => 'Sales', 'reportes' => 'Reports',
         'configuracion' => 'Settings', 'cerrar_sesion' => 'Log out',
+        'modo_claro' => 'Light mode', 'modo_oscuro' => 'Dark mode',
     ],
 ];
 $t = $textos[$idioma] ?? $textos['es'];
@@ -56,6 +58,15 @@ $iniciales = mb_substr($iniciales, 0, 2);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Koalicius · Admin</title>
+    <script>
+      (function(){
+        try {
+          if (localStorage.getItem('koalicius-admin-theme') === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="stylesheet" href="admin.css">
 </head>
 <body>
