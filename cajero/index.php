@@ -173,6 +173,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <div class="cambio-detalle" id="ventaCambioDetalle"></div>
             </div>
             <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 Imprimir ticket</button>
                 <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()">Aceptar</button>
             </div>
         </div>
@@ -1048,6 +1049,103 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             mostrarVentaCompletada('Tarjeta', venta);
         }
 
+        /* ---------- Ticket ---------- */
+        // Se imprime desde un iframe oculto con su propia hoja de estilos (80 mm),
+        // así la impresión no depende del diseño de la caja.
+        let ultimoTicket = null;
+
+        const escaparHtml = (texto) => String(texto ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+
+        function htmlTicket(t) {
+            const fila = (izq, der, clase = '') =>
+                `<div class="fila ${clase}"><span>${izq}</span><span>${der}</span></div>`;
+            const articulos = t.lineas.reduce((n, l) => n + Number(l.cantidad), 0);
+
+            const lineas = t.lineas.map(l => `
+                <div class="producto">
+                    <div class="producto-nombre">${escaparHtml(l.nombre)}</div>
+                    ${fila(`${l.cantidad} x ${formatoDinero(Number(l.precio))}`, formatoDinero(Number(l.importe)))}
+                </div>`).join('');
+
+            const pago = t.metodo === 'Efectivo' && t.recibido !== null
+                ? fila('Efectivo recibido', formatoDinero(t.recibido)) +
+                  fila('Cambio', formatoDinero(t.cambio), 'destacado')
+                : '';
+
+            return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
+<style>
+    @page { size: 80mm auto; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        width: 80mm; padding: 5mm 4mm 8mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12px; line-height: 1.35; color: #000;
+    }
+    .centro { text-align: center; }
+    .marca { font-size: 20px; font-weight: 700; letter-spacing: 0.2em; }
+    .sucursal { font-weight: 700; margin-top: 2px; }
+    .chico { font-size: 11px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .fila { display: flex; justify-content: space-between; gap: 8px; }
+    .fila span:last-child { text-align: right; white-space: nowrap; }
+    .producto { margin-bottom: 4px; }
+    .producto-nombre { font-weight: 700; word-break: break-word; }
+    .producto .fila { padding-left: 8px; }
+    .total { font-size: 16px; font-weight: 700; margin: 2px 0; }
+    .destacado { font-weight: 700; }
+    .gracias { margin-top: 8px; font-weight: 700; }
+</style></head>
+<body>
+    <div class="centro">
+        <div class="marca">KOALY</div>
+        ${t.sucursal ? `<div class="sucursal">Sucursal ${escaparHtml(t.sucursal)}</div>` : ''}
+        ${t.direccion ? `<div class="chico">${escaparHtml(t.direccion)}</div>` : ''}
+        ${t.telefono ? `<div class="chico">Tel. ${escaparHtml(t.telefono)}</div>` : ''}
+    </div>
+    <hr>
+    ${fila('Folio', `#${escaparHtml(t.folio)}`, 'destacado')}
+    ${fila('Fecha', escaparHtml(t.fecha))}
+    ${fila('Hora', escaparHtml(t.hora))}
+    ${t.caja ? fila('Caja', escaparHtml(t.caja)) : ''}
+    ${t.cajero ? fila('Atendió', escaparHtml(t.cajero)) : ''}
+    <hr>
+    ${lineas}
+    <hr>
+    ${fila('Artículos', articulos)}
+    ${fila('Subtotal', formatoDinero(t.subtotal))}
+    ${fila('IVA 16%', formatoDinero(t.iva))}
+    ${fila('TOTAL', formatoDinero(t.total), 'total')}
+    <hr>
+    ${fila('Forma de pago', escaparHtml(t.metodo))}
+    ${pago}
+    <hr>
+    <div class="centro chico">Precios con IVA incluido</div>
+    <div class="centro gracias">¡Gracias por su compra!</div>
+</body></html>`;
+        }
+
+        function imprimirTicket(ticket) {
+            if (!ticket) return;
+            let marco = document.getElementById('marcoTicket');
+            if (!marco) {
+                marco = document.createElement('iframe');
+                marco.id = 'marcoTicket';
+                marco.className = 'marco-ticket';
+                marco.setAttribute('aria-hidden', 'true');
+                marco.tabIndex = -1;
+                document.body.appendChild(marco);
+            }
+            marco.onload = () => {
+                marco.contentWindow.focus();
+                marco.contentWindow.print();
+                document.getElementById('btnFinalizarVenta').focus();
+            };
+            marco.srcdoc = htmlTicket(ticket);
+        }
+
         function mostrarVentaCompletada(metodo, venta) {
             document.getElementById('ventaMensaje').textContent =
                 `Venta #${venta.id_venta} registrada por ${formatoDinero(venta.total)} con ${metodo}.`;
@@ -1062,8 +1160,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 bloqueCambio.style.display = 'none';
             }
 
+            ultimoTicket = venta.ticket || null;
+            document.getElementById('btnReimprimir').style.display = ultimoTicket ? '' : 'none';
+
             abrirModal('modalVenta');
             document.getElementById('btnFinalizarVenta').focus();
+            imprimirTicket(ultimoTicket);
         }
 
         function finalizarVenta() {

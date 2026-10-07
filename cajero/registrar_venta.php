@@ -136,7 +136,7 @@ try {
     $ids = array_keys($cantidades);
     $marcas = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare("
-        SELECT p.id_producto, p.nombre, p.precio, i.cantidad_disponible
+        SELECT p.id_producto, p.codigo, p.nombre, p.precio, i.cantidad_disponible
         FROM Productos p
         LEFT JOIN Inventario_Sucursal i ON i.id_producto = p.id_producto AND i.id_sucursal = ?
         WHERE p.id_producto IN ($marcas) AND p.estado = 'Activo'
@@ -163,6 +163,8 @@ try {
 
         $lineas[] = [
             'id_producto'      => $idProducto,
+            'codigo'           => $p['codigo'],
+            'nombre'           => $p['nombre'],
             'cantidad'         => $cantidad,
             'existencia_final' => $disponible - $cantidad,
             'precio_centavos'  => $precioCentavos,
@@ -296,6 +298,72 @@ try {
     responder(500, ['success' => false, 'message' => $mensaje]);
 }
 
+/* ------------------------------------------------------------
+   Datos del ticket (después del commit: si algo falla aquí la venta
+   ya quedó guardada, así que solo se omite lo que no se pudo leer)
+   ------------------------------------------------------------ */
+$ticket = [
+    'folio'     => $idVenta,
+    'fecha'     => date('d/m/Y'),
+    'hora'      => date('H:i:s'),
+    'sucursal'  => null,
+    'direccion' => null,
+    'telefono'  => null,
+    'caja'      => null,
+    'cajero'    => null,
+    'metodo'    => $metodo,
+    'lineas'    => array_map(fn($l) => [
+        'codigo'   => $l['codigo'],
+        'nombre'   => $l['nombre'],
+        'cantidad' => $l['cantidad'],
+        'precio'   => $l['precio_centavos'] / 100,
+        'importe'  => $l['importe_centavos'] / 100,
+    ], $lineas),
+    'subtotal'  => $subtotalCentavos / 100,
+    'iva'       => $impuestosCentavos / 100,
+    'total'     => $totalCentavos / 100,
+    'recibido'  => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
+    'cambio'    => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
+];
+
+try {
+    // Fecha y hora tal como quedaron en la BD
+    $stmt = $pdo->prepare("SELECT fecha_hora FROM Ventas WHERE id_venta = ?");
+    $stmt->execute([$idVenta]);
+    if ($fechaHora = $stmt->fetchColumn()) {
+        $fecha = new DateTime($fechaHora);
+        $ticket['fecha'] = $fecha->format('d/m/Y');
+        $ticket['hora']  = $fecha->format('H:i:s');
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT u.nombre AS cajero, s.nombre AS sucursal, s.direccion, s.telefono
+        FROM Usuarios u
+        JOIN Sucursales s ON s.id_sucursal = ?
+        WHERE u.id_usuario = ?
+    ");
+    $stmt->execute([$idSucursal, $idCajero]);
+    if ($datos = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $ticket['cajero']    = $datos['cajero'];
+        $ticket['sucursal']  = $datos['sucursal'];
+        $ticket['direccion'] = $datos['direccion'] ?: null;
+        $ticket['telefono']  = $datos['telefono'] ?: null;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT numero_caja, nombre FROM Cajas
+        WHERE id_cajero_asignado = ? AND id_sucursal = ?
+        ORDER BY numero_caja
+        LIMIT 1
+    ");
+    $stmt->execute([$idCajero, $idSucursal]);
+    if ($caja = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $ticket['caja'] = 'Caja ' . $caja['numero_caja'] . ($caja['nombre'] ? ' · ' . $caja['nombre'] : '');
+    }
+} catch (Throwable $e) {
+    error_log('registrar_venta (ticket): ' . $e->getMessage());
+}
+
 responder(200, [
     'success'  => true,
     'id_venta' => $idVenta,
@@ -303,4 +371,5 @@ responder(200, [
     'total'    => $totalCentavos / 100,
     'recibido' => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
     'cambio'   => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
+    'ticket'   => $ticket,
 ]);

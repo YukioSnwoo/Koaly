@@ -521,3 +521,10 @@ kbd {
     .pos-layout { padding: 1rem; gap: 1rem; }
     .modal-box { padding: 1.25rem; }
 }
+
+/* Iframe donde se arma el ticket para imprimir (no se ve en pantalla) */
+.marco-ticket {
+    position: fixed; right: 0; bottom: 0;
+    width: 0; height: 0; border: 0;
+    visibility: hidden;
+}
