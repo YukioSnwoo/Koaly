@@ -41,7 +41,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         <!-- Lateral Izquierdo -->
         <aside class="panel sidebar">
             <div class="sidebar-group">
-                <div class="panel-title">Agregar producto</div>
                 <div class="search-box">
                     <div class="input-buscar">
                         <svg class="icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -81,12 +80,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
-            <div>
-                <div class="panel-title">Resumen</div>
-                <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
-            </div>
+            <div class="panel-title">Resumen</div>
+            <!-- Productos agrupados: la tabla es el historial, aquí se unifican -->
+            <ul class="resumen-lista" id="resumenLista"></ul>
 
             <div>
+                <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
                 <div class="resumen-fila"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
                 <div class="resumen-fila"><span>IVA 16% (incluido)</span><span id="lblImpuestos">$0.00</span></div>
                 <div class="resumen-total"><span>Total</span><span id="lblTotal">$0.00</span></div>
@@ -477,57 +476,89 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         const STOCK_BAJO = 5;
 
+        // Cada vez que se agrega un producto se crea una fila nueva (historial),
+        // aunque ya esté en la lista. El resumen y el ticket los agrupan por producto,
+        // y las existencias se validan contra la suma de todas sus filas.
         function agregarAlCarrito(producto) {
             const stock = Number(producto.stock) || 0;
-            const existente = carrito.find(item => item.id_producto === producto.id_producto);
-            if (existente) existente.stock = stock;
+            actualizarStockProducto(producto.id_producto, stock);
 
             if (stock <= 0) {
                 avisoAgotado(producto.nombre);
-                if (existente) renderCarrito();
+                renderCarrito();
                 return;
             }
 
-            if (existente) {
-                if (existente.cantidad + 1 > stock) {
-                    avisoInsuficiente(existente, existente.cantidad + 1);
-                    renderCarrito();
-                    return;
-                }
-                existente.cantidad += 1;
-                indiceResaltado = carrito.indexOf(existente);
-            } else {
-                carrito.push({
-                    id_producto: producto.id_producto,
-                    codigo: producto.codigo,
-                    nombre: producto.nombre,
-                    imagen: producto.imagen || null,
-                    cantidad: 1,
-                    precio: Number(producto.precio) || 0,
-                    stock: stock
-                });
-                indiceResaltado = carrito.length - 1;
+            const enLista = cantidadDeProducto(producto.id_producto);
+            if (enLista + 1 > stock) {
+                avisoInsuficiente(producto.nombre, stock, enLista + 1);
+                renderCarrito();
+                return;
             }
+
+            carrito.push({
+                id_producto: producto.id_producto,
+                codigo: producto.codigo,
+                nombre: producto.nombre,
+                imagen: producto.imagen || null,
+                cantidad: 1,
+                precio: Number(producto.precio) || 0,
+                stock: stock
+            });
+            indiceResaltado = carrito.length - 1;
             renderCarrito();
+
+            // La fila nueva queda abajo: se desplaza la tabla para que se vea
+            const filaNueva = document.querySelector('#listaProductos tr:last-child');
+            if (filaNueva) filaNueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
             if (stock < STOCK_BAJO) {
                 mostrarToast(`Quedan solo ${stock} ${stock === 1 ? 'unidad' : 'unidades'} de ${producto.nombre}.`, 'aviso');
             }
         }
 
-        // Cantidad entre 1 y las existencias de la sucursal. Si se pide de más, avisa y
-        // la deja en el máximo disponible (el servidor vuelve a validar al cobrar).
+        // Unidades de un producto sumando todas sus filas (opcionalmente sin contar una)
+        function cantidadDeProducto(idProducto, exceptoIndex = -1) {
+            return carrito.reduce((n, item, i) =>
+                (i !== exceptoIndex && item.id_producto === idProducto) ? n + item.cantidad : n, 0);
+        }
+
+        function actualizarStockProducto(idProducto, stock) {
+            carrito.forEach(item => {
+                if (item.id_producto === idProducto) item.stock = stock;
+            });
+        }
+
+        // Cantidad de una fila entre 1 y lo que queda disponible para ella (existencias
+        // menos lo que ya piden las otras filas del mismo producto). Si se pide de más,
+        // avisa y la deja en el máximo (el servidor vuelve a validar al cobrar).
         function cambiarCantidad(index, nuevaCantidad) {
             const item = carrito[index];
             let valor = Math.floor(nuevaCantidad);
             if (isNaN(valor) || valor < 1) valor = 1;
-            if (valor > item.stock) {
-                avisoInsuficiente(item, valor);
-                valor = Math.max(1, item.stock);
+            const otras = cantidadDeProducto(item.id_producto, index);
+            if (otras + valor > item.stock) {
+                avisoInsuficiente(item.nombre, item.stock, otras + valor);
+                valor = Math.max(1, item.stock - otras);
             }
             item.cantidad = valor;
             indiceResaltado = index;
             renderCarrito();
+        }
+
+        // Productos agrupados en el orden en que se agregaron por primera vez
+        function agruparCarrito() {
+            const grupos = new Map();
+            carrito.forEach(item => {
+                let g = grupos.get(item.id_producto);
+                if (!g) {
+                    g = { id_producto: item.id_producto, nombre: item.nombre, precio: item.precio, stock: item.stock, cantidad: 0, importe: 0 };
+                    grupos.set(item.id_producto, g);
+                }
+                g.cantidad += item.cantidad;
+                g.importe += item.cantidad * item.precio;
+            });
+            return [...grupos.values()];
         }
 
         /* ---------- Avisos de existencias ---------- */
@@ -539,28 +570,29 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             });
         }
 
-        function avisoInsuficiente(item, pedida) {
+        function avisoInsuficiente(nombre, stock, pedida) {
             mostrarAviso({
                 tipo: 'aviso',
                 titulo: 'Productos insuficientes',
-                mensaje: item.stock > 0
-                    ? `Pediste ${pedida} de "${item.nombre}", pero solo hay ${item.stock} ${item.stock === 1 ? 'disponible' : 'disponibles'}.`
-                    : `"${item.nombre}" ya no tiene existencias en esta sucursal.`
+                mensaje: stock > 0
+                    ? `Pediste ${pedida} de "${nombre}" en total, pero solo hay ${stock} ${stock === 1 ? 'disponible' : 'disponibles'}.`
+                    : `"${nombre}" ya no tiene existencias en esta sucursal.`
             });
         }
 
         // Texto de la etiqueta de existencias de una fila (null si no hace falta)
         function etiquetaExistencias(item) {
             if (item.stock <= 0) return { texto: 'Agotado', clase: 'stock-agotado' };
-            if (item.cantidad > item.stock) return { texto: `Solo hay ${item.stock}`, clase: 'stock-agotado' };
+            if (cantidadDeProducto(item.id_producto) > item.stock) return { texto: `Solo hay ${item.stock}`, clase: 'stock-agotado' };
             if (item.stock < STOCK_BAJO) return { texto: `Quedan ${item.stock}`, clase: 'stock-bajo' };
             return null;
         }
 
         // Pide al servidor las existencias actuales y las aplica al carrito.
-        // Devuelve las filas que piden más de lo disponible (o null si no hubo conexión).
+        // Devuelve los productos (agrupados) que piden más de lo disponible,
+        // o null si no hubo conexión.
         async function actualizarExistencias() {
-            const ids = carrito.map(i => i.id_producto).join(',');
+            const ids = [...new Set(carrito.map(i => i.id_producto))].join(',');
             let filas;
             try {
                 const res = await fetch(`verificar_existencias.php?ids=${encodeURIComponent(ids)}`);
@@ -574,21 +606,21 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 item.stock = stockPorId.get(Number(item.id_producto)) ?? 0;
             });
             renderCarrito();
-            return carrito.filter(item => item.cantidad > item.stock);
+            return agruparCarrito().filter(g => g.cantidad > g.stock);
         }
 
         function avisoFaltantes(faltantes) {
             const lista = document.createElement('ul');
             lista.className = 'lista-faltantes';
-            faltantes.forEach(item => {
+            faltantes.forEach(g => {
                 const li = document.createElement('li');
                 const nombre = document.createElement('strong');
-                nombre.textContent = item.nombre;
+                nombre.textContent = g.nombre;
                 const detalle = document.createElement('span');
-                detalle.textContent = item.stock > 0
-                    ? `Pides ${item.cantidad}, hay ${item.stock} ${item.stock === 1 ? 'disponible' : 'disponibles'}`
+                detalle.textContent = g.stock > 0
+                    ? `Pides ${g.cantidad}, hay ${g.stock} ${g.stock === 1 ? 'disponible' : 'disponibles'}`
                     : 'Agotado';
-                if (item.stock <= 0) detalle.className = 'stock-agotado';
+                if (g.stock <= 0) detalle.className = 'stock-agotado';
                 li.append(nombre, detalle);
                 lista.appendChild(li);
             });
@@ -605,17 +637,22 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             });
         }
 
-        // Deja cada producto en lo que hay y quita los agotados
+        // Deja cada producto en lo que hay: se descuenta de sus últimas filas
+        // (las más recientes) y se quitan las que quedan en 0 y los agotados.
         function ajustarADisponible() {
-            const quitados = carrito.filter(item => item.stock <= 0).length;
-            carrito = carrito.filter(item => item.stock > 0);
+            const agotados = new Set(carrito.filter(i => i.stock <= 0).map(i => i.id_producto)).size;
+            const restante = new Map();
+            carrito.forEach(item => restante.set(item.id_producto, Math.max(0, item.stock)));
             carrito.forEach(item => {
-                if (item.cantidad > item.stock) item.cantidad = item.stock;
+                const queda = restante.get(item.id_producto);
+                item.cantidad = Math.min(item.cantidad, queda);
+                restante.set(item.id_producto, queda - item.cantidad);
             });
+            carrito = carrito.filter(item => item.cantidad > 0);
             indiceSeleccionado = null;
             renderCarrito();
-            mostrarToast(quitados > 0
-                ? `Cantidades ajustadas. Se ${quitados === 1 ? 'quitó 1 producto agotado' : `quitaron ${quitados} productos agotados`}.`
+            mostrarToast(agotados > 0
+                ? `Cantidades ajustadas. Se ${agotados === 1 ? 'quitó 1 producto agotado' : `quitaron ${agotados} productos agotados`}.`
                 : 'Cantidades ajustadas a lo disponible.', 'exito');
         }
 
@@ -698,7 +735,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
                 // "+" sigue activo en el máximo: al pulsarlo avisa cuántos hay disponibles
                 const btnMas = crearBotonCantidad('+', 'Agregar uno', () => cambiarCantidad(index, item.cantidad + 1));
-                if (item.cantidad >= item.stock) {
+                if (cantidadDeProducto(item.id_producto) >= item.stock) {
                     btnMas.classList.add('qty-tope');
                     btnMas.title = `Solo hay ${item.stock} en existencia`;
                 }
@@ -833,7 +870,42 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         // Los precios ya incluyen IVA (LFPC art. 7 bis: el precio exhibido es el
         // total a pagar). El IVA solo se desglosa hacia atrás para el ticket.
         // Mismo cálculo en centavos que registrar_venta.php.
+        function renderResumen() {
+            const lista = document.getElementById('resumenLista');
+            lista.replaceChildren();
+
+            if (carrito.length === 0) {
+                const vacio = document.createElement('li');
+                vacio.className = 'resumen-vacio';
+                vacio.textContent = 'Sin productos';
+                lista.appendChild(vacio);
+                return;
+            }
+
+            agruparCarrito().forEach(g => {
+                const li = document.createElement('li');
+                li.className = 'resumen-item';
+
+                const nombre = document.createElement('span');
+                nombre.className = 'resumen-item-nombre';
+                nombre.textContent = g.nombre;
+                nombre.title = `${g.nombre} · ${formatoDinero(g.precio)} c/u`;
+
+                const cantidad = document.createElement('span');
+                cantidad.className = 'resumen-item-cantidad';
+                cantidad.textContent = `×${g.cantidad}`;
+
+                const importe = document.createElement('span');
+                importe.className = 'resumen-item-importe';
+                importe.textContent = formatoDinero(g.importe);
+
+                li.append(cantidad, nombre, importe);
+                lista.appendChild(li);
+            });
+        }
+
         function calcularTotales() {
+            renderResumen();
             let totalCentavos = 0;
 
             carrito.forEach(item => {
