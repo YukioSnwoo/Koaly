@@ -200,17 +200,77 @@ table.tabla-venta th.col-num { text-align: right; }
     object-fit: cover; border: 1px solid #e2e8f0; flex-shrink: 0;
 }
 
-.input-cantidad {
-    width: 70px;
-    padding: 0.35rem 0.5rem;
-    text-align: center;
-    border: 1px solid #e2e8f0; border-radius: 6px;
-    font-size: 0.9rem;
+/* Selector de cantidad [−] [n] [+] */
+.qty-stepper {
+    display: inline-flex; align-items: stretch;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    background: #fff; overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
-.input-cantidad:focus {
+.qty-stepper:focus-within {
     border-color: #7c3aed;
     box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
-    outline: none;
+}
+.qty-btn {
+    width: 32px; min-height: 34px;
+    border: none; background: #f8fafc;
+    color: #6d28d9; font-size: 1.1rem; font-weight: 700; line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.qty-btn:hover:not(:disabled) { background: #7c3aed; color: #fff; }
+.qty-btn:active:not(:disabled) { background: #6d28d9; }
+.qty-btn:disabled { color: #cbd5e1; cursor: not-allowed; }
+.qty-btn.qty-quitar:hover { background: #dc2626; color: #fff; }
+.qty-btn:focus-visible { outline: none; background: #ede9fe; }
+
+.input-cantidad {
+    width: 46px;
+    padding: 0.35rem 0.25rem;
+    text-align: center;
+    border: none;
+    border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;
+    font-size: 0.95rem; font-weight: 700; color: #1e293b;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.input-cantidad::-webkit-outer-spin-button,
+.input-cantidad::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.input-cantidad:focus { outline: none; background: #faf5ff; }
+
+/* Botón de bote de basura por fila */
+.col-acciones { width: 1%; text-align: right; }
+.btn-borrar {
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; border-radius: 8px;
+    background: transparent; color: #94a3b8;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.btn-borrar svg { width: 18px; height: 18px; }
+table.tabla-venta tbody tr:hover .btn-borrar,
+table.tabla-venta tbody tr.selected .btn-borrar { color: #ef4444; }
+.btn-borrar:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+.btn-borrar:active { transform: scale(0.92); }
+
+/* Fila recién agregada / modificada y fila que se elimina */
+table.tabla-venta tbody tr.bump .col-importe,
+table.tabla-venta tbody tr.bump .input-cantidad { animation: bump 0.3s ease-out; }
+table.tabla-venta tbody tr.removing { animation: filaSalida 0.2s ease-in forwards; pointer-events: none; }
+
+.atajo-hint { font-size: 0.75rem; color: #94a3b8; text-align: center; line-height: 1.6; }
+kbd {
+    display: inline-block;
+    padding: 0 0.35rem;
+    border: 1px solid #e2e8f0; border-bottom-width: 2px; border-radius: 4px;
+    background: #f8fafc; color: #475569;
+    font-family: inherit; font-size: 0.7rem; font-weight: 700;
+}
+
+.sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
 /* ============================================================
@@ -312,11 +372,46 @@ table.tabla-venta th.col-num { text-align: right; }
     margin-top: 1.25rem; flex-wrap: wrap;
 }
 
+/* Confirmación de eliminar */
+.modal-confirmar { text-align: center; width: 380px; }
+.modal-confirmar .modal-actions { justify-content: center; }
+.modal-confirmar .modal-actions .btn { flex: 1; }
+.icono-peligro {
+    width: 56px; height: 56px;
+    margin: 0 auto 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: #fef2f2; color: #dc2626;
+    box-shadow: 0 0 0 6px #fff5f5;
+    animation: sacudir 0.4s ease-out 0.1s;
+}
+.icono-peligro svg { width: 26px; height: 26px; }
+.eliminar-producto {
+    display: flex; align-items: center; gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+    text-align: left;
+}
+.eliminar-producto img {
+    width: 44px; height: 44px; border-radius: 8px;
+    object-fit: cover; border: 1px solid #e2e8f0; flex-shrink: 0;
+}
+.eliminar-producto strong { display: block; color: #1e293b; font-size: 0.95rem; }
+.eliminar-producto small { display: block; color: #64748b; font-size: 0.82rem; }
+
 /* ============================================================
    Animaciones
    ============================================================ */
 @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bump     { 0% { color: #7c3aed; transform: scale(1); } 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes filaSalida { to { opacity: 0; transform: translateX(24px); } }
+@keyframes sacudir  { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
 
 /* ============================================================
    Responsive

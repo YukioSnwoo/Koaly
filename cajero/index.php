@@ -51,6 +51,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="sidebar-group">
                 <button type="button" class="btn btn-danger btn-block" onclick="eliminarFila()">Eliminar</button>
                 <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()">Limpiar</button>
+                <p class="atajo-hint">Selecciona un producto y presiona <kbd>Supr</kbd> o <kbd>⌫</kbd> para quitarlo.</p>
             </div>
         </aside>
 
@@ -64,6 +65,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                         <th>Cantidad</th>
                         <th class="col-num">Precio</th>
                         <th class="col-num">Importe</th>
+                        <th class="col-acciones"><span class="sr-only">Acciones</span></th>
                     </tr>
                 </thead>
                 <tbody id="listaProductos">
@@ -97,6 +99,21 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')">No, me quedo</button>
                 <button type="button" class="btn btn-danger-solid" onclick="logout()">Sí, cerrar sesión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: confirmar eliminación (un producto o toda la lista) -->
+    <div class="modal-overlay" id="modalEliminar" role="dialog" aria-modal="true" aria-labelledby="tituloEliminar">
+        <div class="modal-box modal-confirmar">
+            <div class="icono-peligro" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </div>
+            <h2 id="tituloEliminar">¿Eliminar producto?</h2>
+            <div id="eliminarContenido"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+                <button type="button" class="btn btn-danger-solid" id="btnConfirmarEliminar" onclick="confirmarEliminar()">Sí, eliminar</button>
             </div>
         </div>
     </div>
@@ -165,7 +182,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         let carrito = [];
-        let filaSeleccionada = null;
+        let indiceSeleccionado = null;
+        let accionEliminar = null;
         let totalActual = 0;
         let cobrando = false;
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -278,10 +296,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* ---------- Carrito ---------- */
+        const ICONO_BASURA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+        let indiceResaltado = null;
+
         function agregarAlCarrito(producto) {
+            const stock = Number(producto.stock);
             const existente = carrito.find(item => item.id_producto === producto.id_producto);
             if (existente) {
                 existente.cantidad += 1;
+                existente.stock = stock;
+                indiceResaltado = carrito.indexOf(existente);
             } else {
                 carrito.push({
                     id_producto: producto.id_producto,
@@ -289,10 +313,34 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     nombre: producto.nombre,
                     imagen: producto.imagen || null,
                     cantidad: 1,
-                    precio: Number(producto.precio) || 0
+                    precio: Number(producto.precio) || 0,
+                    stock: stock
                 });
+                indiceResaltado = carrito.length - 1;
             }
             renderCarrito();
+        }
+
+        // Cantidad entre 1 y las existencias de la sucursal (el servidor vuelve a validar al cobrar)
+        function cambiarCantidad(index, nuevaCantidad) {
+            const item = carrito[index];
+            let valor = Math.floor(nuevaCantidad);
+            if (isNaN(valor) || valor < 1) valor = 1;
+            if (item.stock >= 1 && valor > item.stock) valor = item.stock;
+            item.cantidad = valor;
+            indiceResaltado = index;
+            renderCarrito();
+        }
+
+        function crearBotonCantidad(texto, etiqueta, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'qty-btn';
+            btn.textContent = texto;
+            btn.title = etiqueta;
+            btn.setAttribute('aria-label', etiqueta);
+            btn.addEventListener('click', onClick);
+            return btn;
         }
 
         function renderCarrito() {
@@ -300,8 +348,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             tbody.innerHTML = '';
 
             if (carrito.length === 0) {
-                tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Busca un producto para agregarlo a la venta</td></tr>';
-                filaSeleccionada = null;
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Busca un producto para agregarlo a la venta</td></tr>';
+                indiceSeleccionado = null;
+                indiceResaltado = null;
                 calcularTotales();
                 return;
             }
@@ -309,6 +358,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             carrito.forEach((item, index) => {
                 const row = tbody.insertRow();
                 row.dataset.index = index;
+                if (index === indiceSeleccionado) row.classList.add('selected');
 
                 const importe = item.cantidad * item.precio;
 
@@ -327,62 +377,161 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 producto.appendChild(document.createTextNode(item.nombre));
                 celdaProducto.appendChild(producto);
 
+                // Selector de cantidad: [−] [n] [+]. Con 1 unidad, "−" ofrece quitar el producto.
+                const stepper = document.createElement('div');
+                stepper.className = 'qty-stepper';
+
+                const btnMenos = crearBotonCantidad('−',
+                    item.cantidad <= 1 ? 'Quitar producto' : 'Quitar uno',
+                    () => item.cantidad <= 1 ? pedirEliminarProducto(index) : cambiarCantidad(index, item.cantidad - 1));
+                if (item.cantidad <= 1) btnMenos.classList.add('qty-quitar');
+
                 const input = document.createElement('input');
                 input.type = 'number';
                 input.min = '1';
                 input.step = '1';
+                if (item.stock >= 1) input.max = item.stock;
                 input.value = item.cantidad;
                 input.className = 'input-cantidad';
+                input.setAttribute('aria-label', `Cantidad de ${item.nombre}`);
                 input.addEventListener('click', (e) => e.stopPropagation());
-                input.addEventListener('input', (e) => {
-                    let valor = parseFloat(e.target.value);
-                    if (isNaN(valor) || valor < 1) valor = 1;
-                    carrito[index].cantidad = valor;
-                    renderCarrito();
+                input.addEventListener('change', (e) => cambiarCantidad(index, parseFloat(e.target.value)));
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') e.target.blur();
                 });
-                row.insertCell().appendChild(input);
+
+                const btnMas = crearBotonCantidad('+', 'Agregar uno', () => cambiarCantidad(index, item.cantidad + 1));
+                if (item.stock >= 1 && item.cantidad >= item.stock) {
+                    btnMas.disabled = true;
+                    btnMas.title = `Solo hay ${item.stock} en existencia`;
+                }
+
+                stepper.append(btnMenos, input, btnMas);
+                row.insertCell().appendChild(stepper);
 
                 const celdaPrecio = row.insertCell();
                 celdaPrecio.className = 'col-num';
                 celdaPrecio.textContent = formatoDinero(item.precio);
 
                 const celdaImporte = row.insertCell();
-                celdaImporte.className = 'col-num';
+                celdaImporte.className = 'col-num col-importe';
                 celdaImporte.textContent = formatoDinero(importe);
 
-                row.addEventListener('click', function () {
-                    if (filaSeleccionada) filaSeleccionada.classList.remove('selected');
-                    this.classList.add('selected');
-                    filaSeleccionada = this;
-                });
+                const btnBorrar = document.createElement('button');
+                btnBorrar.type = 'button';
+                btnBorrar.className = 'btn-borrar';
+                btnBorrar.title = 'Eliminar producto';
+                btnBorrar.setAttribute('aria-label', `Eliminar ${item.nombre}`);
+                btnBorrar.innerHTML = ICONO_BASURA;
+                btnBorrar.addEventListener('click', () => pedirEliminarProducto(index));
+                const celdaAcciones = row.insertCell();
+                celdaAcciones.className = 'col-acciones';
+                celdaAcciones.appendChild(btnBorrar);
 
-                if (filaSeleccionada && Number(filaSeleccionada.dataset.index) === index) {
-                    row.classList.add('selected');
-                    filaSeleccionada = row;
-                }
+                if (index === indiceResaltado) row.classList.add('bump');
+
+                row.addEventListener('click', () => seleccionarFila(index));
             });
 
+            indiceResaltado = null;
             calcularTotales();
         }
 
+        function seleccionarFila(index) {
+            indiceSeleccionado = index;
+            document.querySelectorAll('#listaProductos tr').forEach(tr => {
+                tr.classList.toggle('selected', Number(tr.dataset.index) === index);
+            });
+        }
+
+        /* ---------- Eliminar (con confirmación) ---------- */
+        function pedirEliminarProducto(index) {
+            const item = carrito[index];
+            if (!item) return;
+            seleccionarFila(index);
+
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'eliminar-producto';
+            if (item.imagen) {
+                const img = document.createElement('img');
+                img.src = `../${item.imagen}`;
+                img.alt = '';
+                tarjeta.appendChild(img);
+            }
+            const info = document.createElement('div');
+            const nombre = document.createElement('strong');
+            nombre.textContent = item.nombre;
+            const detalle = document.createElement('small');
+            detalle.textContent = `${item.cantidad} × ${formatoDinero(item.precio)} = ${formatoDinero(item.cantidad * item.precio)}`;
+            info.append(nombre, detalle);
+            tarjeta.appendChild(info);
+
+            abrirConfirmacion('¿Eliminar producto?', tarjeta, 'Sí, eliminar', () => quitarProducto(index));
+        }
+
         function eliminarFila() {
-            if (!filaSeleccionada) {
+            if (indiceSeleccionado === null || !carrito[indiceSeleccionado]) {
                 alert('Selecciona una fila primero haciendo clic sobre ella.');
                 return;
             }
-            const index = Number(filaSeleccionada.dataset.index);
-            carrito.splice(index, 1);
-            filaSeleccionada = null;
-            renderCarrito();
+            pedirEliminarProducto(indiceSeleccionado);
         }
 
         function limpiarTabla() {
             if (carrito.length === 0) return;
-            if (!confirm('¿Vaciar toda la lista de productos?')) return;
-            carrito = [];
-            filaSeleccionada = null;
-            renderCarrito();
+            const articulos = carrito.reduce((n, i) => n + i.cantidad, 0);
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = `Se quitarán ${carrito.length} producto(s) (${articulos} artículo(s)) de la venta actual.`;
+
+            abrirConfirmacion('¿Vaciar la venta?', mensaje, 'Sí, vaciar', () => {
+                carrito = [];
+                indiceSeleccionado = null;
+                renderCarrito();
+                inputBuscar.focus();
+            });
         }
+
+        function abrirConfirmacion(titulo, contenido, textoBoton, accion) {
+            document.getElementById('tituloEliminar').textContent = titulo;
+            document.getElementById('eliminarContenido').replaceChildren(contenido);
+            document.getElementById('btnConfirmarEliminar').textContent = textoBoton;
+            accionEliminar = accion;
+            abrirModal('modalEliminar');
+            // Foco en "Sí, eliminar": Enter confirma, Escape cancela
+            document.getElementById('btnConfirmarEliminar').focus();
+        }
+
+        function confirmarEliminar() {
+            cerrarModal('modalEliminar');
+            const accion = accionEliminar;
+            accionEliminar = null;
+            if (accion) accion();
+        }
+
+        // Anima la salida de la fila y luego la quita del carrito
+        function quitarProducto(index) {
+            const fila = document.querySelector(`#listaProductos tr[data-index="${index}"]`);
+            const quitar = () => {
+                carrito.splice(index, 1);
+                if (indiceSeleccionado === index) indiceSeleccionado = null;
+                else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+                renderCarrito();
+            };
+            if (!fila) return quitar();
+            fila.classList.add('removing');
+            setTimeout(quitar, 200);
+        }
+
+        // Supr / ⌫ elimina la fila seleccionada (si no se está escribiendo en un campo)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+            if (e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+            if (document.querySelector('.modal-overlay.open')) return;
+            if (indiceSeleccionado === null || !carrito[indiceSeleccionado]) return;
+            e.preventDefault();
+            pedirEliminarProducto(indiceSeleccionado);
+        });
 
         // Los precios ya incluyen IVA (LFPC art. 7 bis: el precio exhibido es el
         // total a pagar). El IVA solo se desglosa hacia atrás para el ticket.
@@ -539,7 +688,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         function finalizarVenta() {
             cerrarModal('modalVenta');
             carrito = [];
-            filaSeleccionada = null;
+            indiceSeleccionado = null;
             renderCarrito();
             inputBuscar.focus();
         }
