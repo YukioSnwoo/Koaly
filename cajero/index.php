@@ -178,6 +178,20 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         </div>
     </div>
 
+    <!-- Modal: avisos (existencias, errores al cobrar) -->
+    <div class="modal-overlay" id="modalAviso" role="alertdialog" aria-modal="true" aria-labelledby="tituloAviso" aria-describedby="avisoMensaje">
+        <div class="modal-box modal-confirmar">
+            <div class="icono-aviso" id="avisoIcono" aria-hidden="true"></div>
+            <h2 id="tituloAviso"></h2>
+            <p class="modal-mensaje" id="avisoMensaje"></p>
+            <div id="avisoContenido"></div>
+            <div class="modal-actions" id="avisoAcciones"></div>
+        </div>
+    </div>
+
+    <!-- Notificaciones breves (existencias bajas, ajustes) -->
+    <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
     <script src="../auth.js"></script>
     <script>
         const usuario = requireRol(3);
@@ -452,19 +466,34 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             indiceActivo = -1;
             inputBuscar.removeAttribute('aria-activedescendant');
             inputBuscar.value = '';
-            inputBuscar.focus();
+            // Si se abrió un aviso (p. ej. producto agotado), el foco se queda en él
+            if (!document.querySelector('.modal-overlay.open')) inputBuscar.focus();
         }
 
         /* ---------- Carrito ---------- */
         const ICONO_BASURA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
         let indiceResaltado = null;
 
+        const STOCK_BAJO = 5;
+
         function agregarAlCarrito(producto) {
-            const stock = Number(producto.stock);
+            const stock = Number(producto.stock) || 0;
             const existente = carrito.find(item => item.id_producto === producto.id_producto);
+            if (existente) existente.stock = stock;
+
+            if (stock <= 0) {
+                avisoAgotado(producto.nombre);
+                if (existente) renderCarrito();
+                return;
+            }
+
             if (existente) {
+                if (existente.cantidad + 1 > stock) {
+                    avisoInsuficiente(existente, existente.cantidad + 1);
+                    renderCarrito();
+                    return;
+                }
                 existente.cantidad += 1;
-                existente.stock = stock;
                 indiceResaltado = carrito.indexOf(existente);
             } else {
                 carrito.push({
@@ -479,17 +508,114 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 indiceResaltado = carrito.length - 1;
             }
             renderCarrito();
+
+            if (stock < STOCK_BAJO) {
+                mostrarToast(`Quedan solo ${stock} ${stock === 1 ? 'unidad' : 'unidades'} de ${producto.nombre}.`, 'aviso');
+            }
         }
 
-        // Cantidad entre 1 y las existencias de la sucursal (el servidor vuelve a validar al cobrar)
+        // Cantidad entre 1 y las existencias de la sucursal. Si se pide de más, avisa y
+        // la deja en el máximo disponible (el servidor vuelve a validar al cobrar).
         function cambiarCantidad(index, nuevaCantidad) {
             const item = carrito[index];
             let valor = Math.floor(nuevaCantidad);
             if (isNaN(valor) || valor < 1) valor = 1;
-            if (item.stock >= 1 && valor > item.stock) valor = item.stock;
+            if (valor > item.stock) {
+                avisoInsuficiente(item, valor);
+                valor = Math.max(1, item.stock);
+            }
             item.cantidad = valor;
             indiceResaltado = index;
             renderCarrito();
+        }
+
+        /* ---------- Avisos de existencias ---------- */
+        function avisoAgotado(nombre) {
+            mostrarAviso({
+                tipo: 'peligro',
+                titulo: 'Producto agotado',
+                mensaje: `"${nombre}" ya no tiene existencias en esta sucursal, no se puede agregar a la venta.`
+            });
+        }
+
+        function avisoInsuficiente(item, pedida) {
+            mostrarAviso({
+                tipo: 'aviso',
+                titulo: 'Productos insuficientes',
+                mensaje: item.stock > 0
+                    ? `Pediste ${pedida} de "${item.nombre}", pero solo hay ${item.stock} ${item.stock === 1 ? 'disponible' : 'disponibles'}.`
+                    : `"${item.nombre}" ya no tiene existencias en esta sucursal.`
+            });
+        }
+
+        // Texto de la etiqueta de existencias de una fila (null si no hace falta)
+        function etiquetaExistencias(item) {
+            if (item.stock <= 0) return { texto: 'Agotado', clase: 'stock-agotado' };
+            if (item.cantidad > item.stock) return { texto: `Solo hay ${item.stock}`, clase: 'stock-agotado' };
+            if (item.stock < STOCK_BAJO) return { texto: `Quedan ${item.stock}`, clase: 'stock-bajo' };
+            return null;
+        }
+
+        // Pide al servidor las existencias actuales y las aplica al carrito.
+        // Devuelve las filas que piden más de lo disponible (o null si no hubo conexión).
+        async function actualizarExistencias() {
+            const ids = carrito.map(i => i.id_producto).join(',');
+            let filas;
+            try {
+                const res = await fetch(`verificar_existencias.php?ids=${encodeURIComponent(ids)}`);
+                filas = await res.json();
+                if (!Array.isArray(filas)) return null;
+            } catch (error) {
+                return null;
+            }
+            const stockPorId = new Map(filas.map(f => [Number(f.id_producto), Number(f.stock)]));
+            carrito.forEach(item => {
+                item.stock = stockPorId.get(Number(item.id_producto)) ?? 0;
+            });
+            renderCarrito();
+            return carrito.filter(item => item.cantidad > item.stock);
+        }
+
+        function avisoFaltantes(faltantes) {
+            const lista = document.createElement('ul');
+            lista.className = 'lista-faltantes';
+            faltantes.forEach(item => {
+                const li = document.createElement('li');
+                const nombre = document.createElement('strong');
+                nombre.textContent = item.nombre;
+                const detalle = document.createElement('span');
+                detalle.textContent = item.stock > 0
+                    ? `Pides ${item.cantidad}, hay ${item.stock} ${item.stock === 1 ? 'disponible' : 'disponibles'}`
+                    : 'Agotado';
+                if (item.stock <= 0) detalle.className = 'stock-agotado';
+                li.append(nombre, detalle);
+                lista.appendChild(li);
+            });
+
+            mostrarAviso({
+                tipo: 'aviso',
+                titulo: 'Productos insuficientes',
+                mensaje: 'No se puede completar la venta con estas cantidades:',
+                contenido: lista,
+                botones: [
+                    { texto: 'Revisar', clase: 'btn-ghost' },
+                    { texto: 'Ajustar a lo disponible', clase: 'btn-primary', accion: ajustarADisponible }
+                ]
+            });
+        }
+
+        // Deja cada producto en lo que hay y quita los agotados
+        function ajustarADisponible() {
+            const quitados = carrito.filter(item => item.stock <= 0).length;
+            carrito = carrito.filter(item => item.stock > 0);
+            carrito.forEach(item => {
+                if (item.cantidad > item.stock) item.cantidad = item.stock;
+            });
+            indiceSeleccionado = null;
+            renderCarrito();
+            mostrarToast(quitados > 0
+                ? `Cantidades ajustadas. Se ${quitados === 1 ? 'quitó 1 producto agotado' : `quitaron ${quitados} productos agotados`}.`
+                : 'Cantidades ajustadas a lo disponible.', 'exito');
         }
 
         function crearBotonCantidad(texto, etiqueta, onClick) {
@@ -534,7 +660,17 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     img.alt = '';
                     producto.appendChild(img);
                 }
-                producto.appendChild(document.createTextNode(item.nombre));
+                const nombreProducto = document.createElement('div');
+                nombreProducto.textContent = item.nombre;
+                const etiqueta = etiquetaExistencias(item);
+                if (etiqueta) {
+                    const badge = document.createElement('span');
+                    badge.className = `stock-badge ${etiqueta.clase}`;
+                    badge.textContent = etiqueta.texto;
+                    nombreProducto.appendChild(badge);
+                    if (etiqueta.clase === 'stock-agotado') row.classList.add('fila-sin-stock');
+                }
+                producto.appendChild(nombreProducto);
                 celdaProducto.appendChild(producto);
 
                 // Selector de cantidad: [−] [n] [+]. Con 1 unidad, "−" ofrece quitar el producto.
@@ -550,7 +686,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 input.type = 'number';
                 input.min = '1';
                 input.step = '1';
-                if (item.stock >= 1) input.max = item.stock;
                 input.value = item.cantidad;
                 input.className = 'input-cantidad';
                 input.setAttribute('aria-label', `Cantidad de ${item.nombre}`);
@@ -560,9 +695,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     if (e.key === 'Enter') e.target.blur();
                 });
 
+                // "+" sigue activo en el máximo: al pulsarlo avisa cuántos hay disponibles
                 const btnMas = crearBotonCantidad('+', 'Agregar uno', () => cambiarCantidad(index, item.cantidad + 1));
-                if (item.stock >= 1 && item.cantidad >= item.stock) {
-                    btnMas.disabled = true;
+                if (item.cantidad >= item.stock) {
+                    btnMas.classList.add('qty-tope');
                     btnMas.title = `Solo hay ${item.stock} en existencia`;
                 }
 
@@ -714,12 +850,79 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             document.getElementById('lblTotal').innerText = formatoDinero(totalActual);
         }
 
+        /* ---------- Avisos y notificaciones ---------- */
+        const ICONOS_AVISO = {
+            aviso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+            peligro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>'
+        };
+
+        // botones: [{ texto, clase, accion }]. Todos cierran el aviso; luego corre la acción.
+        function mostrarAviso({ tipo = 'aviso', titulo, mensaje = '', contenido = null, botones = null }) {
+            const icono = document.getElementById('avisoIcono');
+            icono.className = `icono-aviso tipo-${tipo}`;
+            icono.innerHTML = ICONOS_AVISO[tipo] || ICONOS_AVISO.aviso;
+            document.getElementById('tituloAviso').textContent = titulo;
+            document.getElementById('avisoMensaje').textContent = mensaje;
+            document.getElementById('avisoContenido').replaceChildren(...(contenido ? [contenido] : []));
+
+            const acciones = document.getElementById('avisoAcciones');
+            acciones.replaceChildren();
+            (botones || [{ texto: 'Entendido', clase: 'btn-primary' }]).forEach(b => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `btn ${b.clase}`;
+                btn.textContent = b.texto;
+                btn.addEventListener('click', () => {
+                    cerrarModal('modalAviso');
+                    if (b.accion) b.accion();
+                    else inputBuscar.focus();
+                });
+                acciones.appendChild(btn);
+            });
+
+            abrirModal('modalAviso');
+            // Enter acepta el botón principal (el último)
+            acciones.lastElementChild.focus();
+        }
+
+        function mostrarToast(texto, tipo = 'aviso') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${tipo}`;
+            toast.textContent = texto;
+            document.getElementById('toasts').appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('saliendo');
+                setTimeout(() => toast.remove(), 250);
+            }, 4000);
+        }
+
         /* ---------- Pago ---------- */
-        function abrirModalPago() {
+        let verificandoPago = false;
+
+        // Antes de cobrar se confirman las existencias reales: las del carrito
+        // pueden haber cambiado desde que se agregó el producto.
+        async function abrirModalPago() {
             if (carrito.length === 0 || totalActual <= 0) {
                 alert('No hay productos en la lista de cobro.');
                 return;
             }
+            if (verificandoPago) return;
+
+            const btnPagar = document.querySelector('.btn-pagar');
+            verificandoPago = true;
+            btnPagar.disabled = true;
+            btnPagar.textContent = 'Verificando existencias...';
+            const faltantes = await actualizarExistencias();
+            verificandoPago = false;
+            btnPagar.disabled = false;
+            btnPagar.textContent = 'Pagar';
+
+            // Sin conexión (null) se sigue: registrar_venta.php vuelve a validar
+            if (faltantes && faltantes.length > 0) {
+                avisoFaltantes(faltantes);
+                return;
+            }
+
             document.getElementById('modalTotal').innerText = formatoDinero(totalActual);
             abrirModal('modalPago');
         }
@@ -778,18 +981,36 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             ));
             if (efectivoRecibido !== null) datos.append('efectivo_recibido', efectivoRecibido.toFixed(2));
 
+            let res, json;
             try {
-                const res = await fetch('registrar_venta.php', { method: 'POST', body: datos });
-                const json = await res.json();
-                if (!json.success) {
-                    alert(json.message || 'No se pudo registrar la venta.');
-                    return null;
-                }
-                return json;
+                res = await fetch('registrar_venta.php', { method: 'POST', body: datos });
+                json = await res.json();
             } catch (error) {
-                alert('No se pudo conectar con el servidor. La venta NO se registró.');
+                mostrarAviso({
+                    tipo: 'peligro',
+                    titulo: 'Sin conexión',
+                    mensaje: 'No se pudo conectar con el servidor. La venta NO se registró.'
+                });
                 return null;
             }
+            if (json.success) return json;
+
+            // 409: las existencias cambiaron entre la verificación y el cobro
+            cerrarModal('modalPago');
+            cerrarModal('modalEfectivo');
+            if (res.status === 409) {
+                const faltantes = await actualizarExistencias();
+                if (faltantes && faltantes.length > 0) {
+                    avisoFaltantes(faltantes);
+                    return null;
+                }
+            }
+            mostrarAviso({
+                tipo: 'peligro',
+                titulo: 'No se pudo registrar la venta',
+                mensaje: json.message || 'Ocurrió un error al guardar la venta.'
+            });
+            return null;
         }
 
         function bloquearCobro(bloquear) {
