@@ -485,7 +485,7 @@ require __DIR__ . '/header.php';
                     <input type="number" name="cantidad_inicial" min="0" step="1" value="0" required>
                 </div>
                 <div class="form-group">
-                    <label>Precio de venta</label>
+                    <label>Precio de venta (IVA incluido)</label>
                     <input type="number" name="precio_venta" min="0" step="0.01" placeholder="0.00" required>
                 </div>
             </div>

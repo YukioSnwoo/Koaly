@@ -81,7 +81,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             <div>
                 <div class="resumen-fila"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
-                <div class="resumen-fila"><span>Impuestos (IVA)</span><span id="lblImpuestos">$0.00</span></div>
+                <div class="resumen-fila"><span>IVA 16% (incluido)</span><span id="lblImpuestos">$0.00</span></div>
                 <div class="resumen-total"><span>Total</span><span id="lblTotal">$0.00</span></div>
                 <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()">Pagar</button>
             </div>
@@ -384,19 +384,20 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             renderCarrito();
         }
 
-        // Mismo cálculo en centavos que registrar_venta.php, para que el total
-        // que ve el cajero coincida con el que se guarda.
+        // Los precios ya incluyen IVA (LFPC art. 7 bis: el precio exhibido es el
+        // total a pagar). El IVA solo se desglosa hacia atrás para el ticket.
+        // Mismo cálculo en centavos que registrar_venta.php.
         function calcularTotales() {
-            let subtotalCentavos = 0;
+            let totalCentavos = 0;
 
             carrito.forEach(item => {
-                subtotalCentavos += aCentavos(item.precio) * item.cantidad;
+                totalCentavos += aCentavos(item.precio) * item.cantidad;
             });
 
-            const impuestosCentavos = Math.round(subtotalCentavos * 0.16);
+            const subtotalCentavos = Math.round(totalCentavos / 1.16);
             const subtotal = subtotalCentavos / 100;
-            const impuestos = impuestosCentavos / 100;
-            totalActual = (subtotalCentavos + impuestosCentavos) / 100;
+            const impuestos = (totalCentavos - subtotalCentavos) / 100;
+            totalActual = totalCentavos / 100;
 
             document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
             document.getElementById('lblSubtotal').innerText = formatoDinero(subtotal);
