@@ -127,13 +127,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $nuevo = $actual === 'Activo' ? 'Baja' : 'Activo';
+
+            $pdo->beginTransaction();
+
             $stmt = $pdo->prepare("
                 UPDATE Usuarios
                 SET estado = ?, fecha_inicio_estado = CURDATE()
                 WHERE id_usuario = ?
             ");
             $stmt->execute([$nuevo, $id]);
-            $exito = $nuevo === 'Activo' ? 'Cajero reactivado.' : 'Cajero dado de baja.';
+
+            $mensajeExtra = '';
+                if ($nuevo === 'Baja') {
+                    // Desasignar y desactivar las cajas de este cajero
+                    $stmt = $pdo->prepare("
+                        UPDATE Cajas
+                        SET estado = 'Inactiva', id_cajero_asignado = NULL
+                        WHERE id_cajero_asignado = ? AND id_sucursal = ?
+                    ");
+                    $stmt->execute([$id, $idSucursalGerente]);
+                    $cajasAfectadas = $stmt->rowCount();
+                    if ($cajasAfectadas > 0) {
+                        $mensajeExtra = ' Sus cajas quedaron inactivas.';
+                    }
+                }
+            
+
+            $pdo->commit();
+
+            $exito = ($nuevo === 'Activo' ? 'Cajero reactivado.' : 'Cajero dado de baja.') . $mensajeExtra;
         }
     } catch (RuntimeException $e) {
         $errores[] = $e->getMessage();

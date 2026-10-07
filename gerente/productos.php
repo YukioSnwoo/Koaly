@@ -65,6 +65,60 @@ function actualizarInventarioSucursal(PDO $pdo, int $idProducto, int $idSucursal
     $stmt->execute([$idSucursal, $idProducto, $categoriaNombre, $cantidad, $precio]);
 }
 
+/**
+ * Da de alta un producto del catálogo en el inventario de la sucursal
+ * y registra el movimiento. Pensada para el botón "+ Agregar a inventario"
+ * de esta página (independiente de existencias.php).
+ * Lanza RuntimeException con un mensaje legible si algo no cuadra.
+ */
+function agregarProductoAInventario(PDO $pdo, int $idSucursal, int $idProducto, int $cantidad, float $precio, int $idUsuario): void
+{
+    if ($idProducto <= 0 || $precio < 0) {
+        throw new RuntimeException('Datos inválidos.');
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT c.nombre_categoria
+        FROM Productos p
+        INNER JOIN Categorias c ON c.id_categoria = p.id_categoria
+        WHERE p.id_producto = ? AND p.estado = 'Activo'
+        LIMIT 1
+    ");
+    $stmt->execute([$idProducto]);
+    $categoriaNombre = $stmt->fetchColumn();
+    if ($categoriaNombre === false) {
+        throw new RuntimeException('Producto no encontrado o no está activo.');
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT 1 FROM Inventario_Sucursal
+        WHERE id_sucursal = ? AND id_producto = ?
+    ");
+    $stmt->execute([$idSucursal, $idProducto]);
+    if ($stmt->fetch() !== false) {
+        throw new RuntimeException('Ese producto ya está en el inventario de tu sucursal.');
+    }
+
+    $pdo->beginTransaction();
+
+    $stmt = $pdo->prepare("
+        INSERT INTO Inventario_Sucursal
+            (id_sucursal, id_producto, Categoria_Producto, cantidad_disponible, precio_venta)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$idSucursal, $idProducto, (string) $categoriaNombre, $cantidad, $precio]);
+
+    $stmt = $pdo->prepare("
+        INSERT INTO Movimientos_Inventario
+            (id_sucursal, id_producto, tipo_movimiento, cantidad,
+             existencia_posterior, motivo_detalle, realizado_por)
+        VALUES (?, ?, 'AJUSTE_MANUAL', ?, ?, 'Alta en inventario', ?)
+    ");
+    $stmt->execute([$idSucursal, $idProducto, $cantidad, $cantidad, $idUsuario]);
+
+    $pdo->commit();
+}
+
 $errores = [];
 $exito = '';
 
@@ -227,6 +281,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['flash'] = ['msg' => 'Estado del producto actualizado.'];
             header('Location: productos.php');
             exit;
+
+        } elseif ($action === 'agregar_inventario') {
+            agregarProductoAInventario(
+                $pdo,
+                (int) $idSucursalGerente,
+                (int) ($_POST['id_producto'] ?? 0),
+                max(0, (int) ($_POST['cantidad_inicial'] ?? 0)),
+                (float) ($_POST['precio_venta'] ?? -1),
+                (int) $gerente['id_usuario']
+            );
+
+            // PRG: la página recarga limpia y el modal queda cerrado.
+            $_SESSION['flash'] = ['msg' => 'Producto agregado al inventario.'];
+            header('Location: productos.php');
+            exit;
         }
 
     } catch (RuntimeException $e) {
@@ -282,6 +351,11 @@ require __DIR__ . '/header.php';
 
 <div class="toolbar">
     <input type="text" id="buscarProducto" placeholder="Buscar producto por nombre...">
+    <select id="filtroInventario" aria-label="Filtrar por inventario">
+        <option value="todos">Todos los productos</option>
+        <option value="con">En mi inventario</option>
+        <option value="sin">No en mi inventario</option>
+    </select>
 </div>
 
 <div class="panel">
@@ -327,7 +401,8 @@ require __DIR__ . '/header.php';
                                 $stockTexto = $stock . ' unidades';
                             }
                         ?>
-                        <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>">
+                        <tr data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>"
+                            data-en-inventario="<?= $enInventario ? '1' : '0' ?>">
                             <td>
                                 <?php if (!empty($p['imagen'])): ?>
                                     <img class="producto-thumb" src="../<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>">
@@ -389,9 +464,14 @@ require __DIR__ . '/header.php';
                                             <?php endif; ?>
                                         </form>
                                     <?php else: ?>
-                                        <span style="color:#94a3b8; font-size:0.82rem; font-style:italic;">
-                                            Agrégalo desde Existencias
-                                        </span>
+                                        <button type="button" class="btn btn-success btn-sm"
+                                            onclick="abrirModalAgregarInventario(this)"
+                                            data-id="<?= (int) $p['id_producto'] ?>"
+                                            data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
+                                            data-codigo="<?= htmlspecialchars($p['codigo'], ENT_QUOTES) ?>"
+                                            data-categoria="<?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría', ENT_QUOTES) ?>"
+                                            data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
+                                        >+ Agregar a inventario</button>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -407,7 +487,7 @@ require __DIR__ . '/header.php';
 <div class="modal-overlay" id="modalProducto">
     <div class="modal-box">
         <h2 id="tituloModalProducto">Nuevo producto</h2>
-        <form id="formProducto" method="POST" enctype="multipart/form-data">
+        <form id="formProducto" method="POST" action="productos.php" enctype="multipart/form-data">
             <input type="hidden" name="action" value="crear">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_producto" value="">
@@ -457,6 +537,41 @@ require __DIR__ . '/header.php';
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalProducto')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Agregar un producto del catálogo al inventario de mi sucursal -->
+<div class="modal-overlay" id="modalAgregarInventario">
+    <div class="modal-box">
+        <h2>Agregar al inventario</h2>
+
+        <div class="producto-resumen">
+            <div class="producto-resumen-nombre" id="agregarInvNombre"></div>
+            <div class="producto-resumen-meta" id="agregarInvMeta"></div>
+        </div>
+
+        <form id="formAgregarInventario" method="POST" action="productos.php"
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <input type="hidden" name="action" value="agregar_inventario">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="id_producto" value="">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cantidad inicial</label>
+                    <input type="number" name="cantidad_inicial" min="0" step="1" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Precio de venta</label>
+                    <input type="number" name="precio_venta" min="0" step="0.01" placeholder="0.00" required>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalAgregarInventario')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Agregar</button>
             </div>
         </form>
     </div>

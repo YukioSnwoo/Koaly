@@ -129,6 +129,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Ya existe otra caja con ese número en tu sucursal.');
             }
 
+            // Si el cajero ya estaba en OTRA caja, desasignarlo de la anterior
+            if ($idCajero > 0) {
+                $stmt = $pdo->prepare("
+                    UPDATE Cajas
+                    SET id_cajero_asignado = NULL
+                    WHERE id_cajero_asignado = ? AND id_sucursal = ? AND id_caja <> ?
+                ");
+                $stmt->execute([$idCajero, $idSucursalGerente, $id]);
+            }
+
             $stmt = $pdo->prepare("
                 UPDATE Cajas
                 SET numero_caja = ?, nombre = ?, estado = ?, id_cajero_asignado = ?
@@ -226,6 +236,22 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$idSucursalGerente]);
 $cajerosDisponibles = $stmt->fetchAll();
+
+// Mapa de cajeros ya asignados a alguna caja de esta sucursal
+// (para avisar cuando se intente reasignar)
+$stmt = $pdo->prepare("
+    SELECT id_cajero_asignado, id_caja, numero_caja
+    FROM Cajas
+    WHERE id_sucursal = ? AND id_cajero_asignado IS NOT NULL
+");
+$stmt->execute([$idSucursalGerente]);
+$cajerosConCaja = [];
+foreach ($stmt->fetchAll() as $row) {
+    $cajerosConCaja[(int) $row['id_cajero_asignado']] = [
+        'id_caja'     => (int) $row['id_caja'],
+        'numero_caja' => $row['numero_caja'],
+    ];
+}
 
 $totalActivas = 0;
 foreach ($cajas as $c) {
@@ -394,10 +420,17 @@ require __DIR__ . '/header.php';
                 <label>Cajero asignado (opcional)</label>
                 <select name="id_cajero_asignado">
                     <option value="0">Sin asignar</option>
-                    <?php foreach ($cajerosDisponibles as $cj): ?>
-                        <option value="<?= (int) $cj['id_usuario'] ?>"><?= htmlspecialchars($cj['nombre']) ?></option>
+                    <?php foreach ($cajerosDisponibles as $cj):
+                        $info = $cajerosConCaja[(int) $cj['id_usuario']] ?? null;
+                    ?>
+                        <option value="<?= (int) $cj['id_usuario'] ?>"
+                                data-caja-actual="<?= $info ? htmlspecialchars($info['numero_caja'], ENT_QUOTES) : '' ?>"
+                                data-caja-id="<?= $info ? (int) $info['id_caja'] : 0 ?>">
+                            <?= htmlspecialchars($cj['nombre']) ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
+                <div id="avisoReasignacion" class="aviso-reasignacion" aria-live="polite"></div>
                 <small style="display:block; color:#94a3b8; font-size:0.75rem; margin-top:0.3rem;">
                     Solo cajeros activos de tu sucursal.
                 </small>

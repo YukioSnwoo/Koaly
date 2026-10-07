@@ -6,11 +6,21 @@ $UMBRAL_BAJO = 10;
 $errores = [];
 $exito   = '';
 
+/* ------------------------------------------------------------
+   PRG: recuperar mensaje flash tras un POST exitoso
+   (evita que al recargar se reenvíe el formulario)
+   ------------------------------------------------------------ */
+if (!empty($_SESSION['flash'])) {
+    $exito = $_SESSION['flash']['msg'] ?? '';
+    unset($_SESSION['flash']);
+}
+
 /* ============================================================
    POST
    ============================================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    $mensajeExito = '';
 
     try {
         if (!csrfValido()) {
@@ -74,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $pdo->commit();
-            $exito = 'Stock actualizado correctamente.';
+            $mensajeExito = 'Stock actualizado correctamente.';
 
         /* -------- Agregar producto al inventario -------- */
         } elseif ($action === 'agregar_producto') {
@@ -141,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $pdo->commit();
-            $exito = 'Producto agregado al inventario.';
+            $mensajeExito = 'Producto agregado al inventario.';
 
         /* -------- Poner stock en cero -------- */
         } elseif ($action === 'poner_en_cero') {
@@ -191,7 +201,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $pdo->commit();
-            $exito = 'Producto puesto en cero.';
+            $mensajeExito = 'Producto puesto en cero.';
+        }
+
+        // PRG: tras guardar, redirigir a una URL limpia. Así la página carga
+        // sin parámetros, el modal queda cerrado y F5 no reenvía el POST.
+        if ($mensajeExito !== '') {
+            $_SESSION['flash'] = ['msg' => $mensajeExito];
+            header('Location: existencias.php');
+            exit;
         }
 
     } catch (RuntimeException $e) {
@@ -408,7 +426,7 @@ require __DIR__ . '/header.php';
             Producto: <strong id="ajustarProductoNombre" style="color:#1e293b;"></strong>
         </p>
 
-        <form id="formAjustarStock" method="POST">
+        <form id="formAjustarStock" method="POST" action="existencias.php">
             <input type="hidden" name="action" value="ajustar_stock">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_producto" value="">
@@ -460,23 +478,46 @@ require __DIR__ . '/header.php';
     <div class="modal-box">
         <h2>Agregar producto al inventario</h2>
         <p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">
-            Selecciona un producto del catálogo global que aún no esté en tu sucursal.
+            Busca un producto del catálogo global que aún no esté en tu sucursal.
         </p>
 
-        <form id="formAgregarProducto" method="POST">
+        <form id="formAgregarProducto" method="POST" action="existencias.php"
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
             <input type="hidden" name="action" value="agregar_producto">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
 
             <div class="form-group">
-                <label>Producto</label>
-                <select name="id_producto" required>
-                    <option value="">Selecciona un producto</option>
-                    <?php foreach ($productosDisponibles as $pd): ?>
-                        <option value="<?= (int) $pd['id_producto'] ?>" data-precio="<?= htmlspecialchars((string) $pd['precio'], ENT_QUOTES) ?>">
-                            <?= htmlspecialchars($pd['nombre']) ?> — <?= htmlspecialchars($pd['nombre_categoria'] ?? 'Sin categoría') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="buscarProductoAgregar">Producto</label>
+                <div class="picker" id="pickerProducto">
+                    <input type="hidden" name="id_producto" value="">
+
+                    <div class="picker-input-wrap">
+                        <svg class="picker-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <input type="text" id="buscarProductoAgregar" class="picker-input"
+                               placeholder="Buscar por nombre o código..."
+                               autocomplete="off" required
+                               role="combobox" aria-autocomplete="list"
+                               aria-expanded="false" aria-controls="listaProductosAgregar">
+                        <button type="button" class="picker-clear" aria-label="Quitar selección" hidden>&times;</button>
+                    </div>
+
+                    <ul class="picker-lista" id="listaProductosAgregar" role="listbox">
+                        <?php foreach ($productosDisponibles as $pd): ?>
+                            <li class="picker-item" role="option"
+                                data-id="<?= (int) $pd['id_producto'] ?>"
+                                data-nombre="<?= htmlspecialchars($pd['nombre'], ENT_QUOTES) ?>"
+                                data-precio="<?= htmlspecialchars((string) $pd['precio'], ENT_QUOTES) ?>"
+                                data-buscar="<?= htmlspecialchars($pd['nombre'] . ' ' . $pd['codigo'] . ' ' . ($pd['nombre_categoria'] ?? ''), ENT_QUOTES) ?>">
+                                <span class="picker-item-nombre"><?= htmlspecialchars($pd['nombre']) ?></span>
+                                <span class="picker-item-meta"><?= htmlspecialchars($pd['codigo']) ?> · <?= htmlspecialchars($pd['nombre_categoria'] ?? 'Sin categoría') ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                        <li class="picker-vacio" hidden>No se encontraron productos</li>
+                    </ul>
+                </div>
             </div>
 
             <div class="form-row">

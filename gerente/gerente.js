@@ -56,6 +56,37 @@ function abrirModalEditar(btn) {
 }
 
 /* ============================================================
+   Productos — "+ Agregar a inventario" (modal propio)
+   Independiente de existencias: no navega a otra página ni usa
+   parámetros en la URL, así que no puede reabrirse por su cuenta.
+   ============================================================ */
+function abrirModalAgregarInventario(btn) {
+    const form = document.getElementById('formAgregarInventario');
+    if (!form) return;
+    form.reset();
+
+    form.querySelector('[name="id_producto"]').value = btn.dataset.id;
+    form.querySelector('[name="cantidad_inicial"]').value = '0';
+
+    const precio = parseFloat(btn.dataset.precio);
+    form.querySelector('[name="precio_venta"]').value = precio > 0 ? precio.toFixed(2) : '';
+
+    const nombre = document.getElementById('agregarInvNombre');
+    if (nombre) nombre.textContent = btn.dataset.nombre;
+
+    const meta = document.getElementById('agregarInvMeta');
+    if (meta) meta.textContent = btn.dataset.codigo + ' · ' + btn.dataset.categoria;
+
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
+
+    abrirModal('modalAgregarInventario');
+
+    const cantidad = form.querySelector('[name="cantidad_inicial"]');
+    if (cantidad) setTimeout(() => cantidad.select(), 50);
+}
+
+/* ============================================================
    Cursor personalizado
    ============================================================ */
 function initCustomCursor() {
@@ -424,6 +455,14 @@ function abrirModalNuevaCaja() {
     const titulo = document.getElementById('tituloModalCaja');
     if (titulo) titulo.textContent = 'Nueva caja';
 
+    const aviso = document.getElementById('avisoReasignacion');
+        if (aviso) aviso.classList.remove('visible');
+            const selC = form.querySelector('[name="id_cajero_asignado"]');
+        if (selC) {
+            selC.removeEventListener('change', _actualizarAvisoReasignacion);
+            selC.addEventListener('change', _actualizarAvisoReasignacion);
+        }
+
     abrirModal('modalCaja');
 }
 
@@ -445,10 +484,51 @@ function abrirModalEditarCaja(btn) {
     const selectCustom = form.querySelector('[name="id_cajero_asignado"]');
     if (selectCustom) {
         selectCustom.dispatchEvent(new Event('change', { bubbles: true }));
+            const selC = form.querySelector('[name="id_cajero_asignado"]');
+            if (selC) {
+                selC.removeEventListener('change', _actualizarAvisoReasignacion);
+                selC.addEventListener('change', _actualizarAvisoReasignacion);
+                // Disparar manualmente por si acaso
+                setTimeout(_actualizarAvisoReasignacion, 50);
+            }
     }
 
     abrirModal('modalCaja');
 }
+
+
+/* ============================================================
+   Cajas — detectar reasignación de cajero
+   ============================================================ */
+function _actualizarAvisoReasignacion() {
+    const form = document.getElementById('formCaja');
+    if (!form) return;
+
+    const select = form.querySelector('[name="id_cajero_asignado"]');
+    const aviso  = document.getElementById('avisoReasignacion');
+    if (!select || !aviso) return;
+
+    const opt = select.options[select.selectedIndex];
+    const cajaActual   = opt.dataset.cajaActual || '';
+    const cajaActualId = parseInt(opt.dataset.cajaId || '0', 10);
+    const editingId    = parseInt(form.querySelector('[name="id_caja"]').value || '0', 10);
+
+    if (cajaActual && cajaActualId !== editingId) {
+        aviso.innerHTML = `<strong>Este cajero ya está asignado a la caja ${cajaActual}.</strong> Si guardas, se moverá a esta caja y se desasignará de la anterior.`;
+        aviso.classList.add('visible');
+
+        form.dataset.confirm = `Este cajero ya está asignado a la caja ${cajaActual}. Si continúas, se moverá a esta caja y se desasignará de la anterior. ¿Deseas continuar?`;
+        form.dataset.confirmTitulo = 'Reasignar cajero';
+        form.dataset.confirmAceptar = 'Reasignar';
+    } else {
+        aviso.classList.remove('visible');
+        delete form.dataset.confirm;
+        delete form.dataset.confirmTitulo;
+        delete form.dataset.confirmAceptar;
+        delete form.dataset.confirmado;
+    }
+}
+
 
 /* ============================================================
    Arranque
@@ -469,16 +549,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const buscador = document.getElementById('buscarProducto');
-    if (buscador) {
-        buscador.addEventListener('input', () => {
-            const q = buscador.value.trim().toLowerCase();
-            document.querySelectorAll('#tablaProductos tbody tr[data-nombre]').forEach(row => {
-                row.style.display = row.dataset.nombre.includes(q) ? '' : 'none';
-            });
-        });
-    }
+        const filtroInv = document.getElementById('filtroInventario');
+            if (buscador || filtroInv) {
+                const aplicarFiltroProductos = () => {
+                    const q = buscador ? buscador.value.trim().toLowerCase() : '';
+                    const tipo = filtroInv ? filtroInv.value : 'todos';
+
+                    document.querySelectorAll('#tablaProductos tbody tr[data-nombre]').forEach(row => {
+                        const coincideNombre = row.dataset.nombre.includes(q);
+                        const enInv = row.dataset.enInventario === '1';
+                        let coincideTipo = true;
+                        if (tipo === 'con') coincideTipo = enInv;
+                        else if (tipo === 'sin') coincideTipo = !enInv;
+
+                        row.style.display = (coincideNombre && coincideTipo) ? '' : 'none';
+                    });
+                };
+                if (buscador) buscador.addEventListener('input', aplicarFiltroProductos);
+                if (filtroInv) filtroInv.addEventListener('change', aplicarFiltroProductos);
+            }
     initFiltrosExistencias();
     initCustomSelects();
+    initBuscadorProducto();
 });
 
 /* ============================================================
@@ -509,7 +601,242 @@ function abrirModalAgregarProducto() {
     const form = document.getElementById('formAgregarProducto');
     if (!form) return;
     form.reset();
+    resetBuscadorProducto();
+
+    const btn = form.querySelector('[type="submit"]');
+    if (btn) btn.disabled = false;
+
     abrirModal('modalAgregarProducto');
+
+    // Foco directo en el buscador para empezar a escribir
+    const buscador = document.getElementById('buscarProductoAgregar');
+    if (buscador) setTimeout(() => buscador.focus(), 50);
+}
+
+/* ============================================================
+   Buscador de producto (existencias → "Agregar producto al inventario")
+   Reemplaza el <select> por un campo de búsqueda con lista filtrable.
+   Es independiente del select custom, así no se pisan entre sí.
+   El valor real viaja en <input type="hidden" name="id_producto">.
+   ============================================================ */
+function _normalizarTexto(txt) {
+    return (txt || '')
+        .toString()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')   // quita acentos: "café" == "cafe"
+        .trim();
+}
+
+let _resetBuscadorProducto = null;
+
+function resetBuscadorProducto() {
+    if (_resetBuscadorProducto) _resetBuscadorProducto();
+}
+
+function initBuscadorProducto() {
+    const picker = document.getElementById('pickerProducto');
+    if (!picker || picker.dataset.init === '1') return;
+    picker.dataset.init = '1';
+
+    const form     = picker.closest('form');
+    const inputId  = picker.querySelector('input[name="id_producto"]');
+    const envoltura = picker.querySelector('.picker-input-wrap');
+    const buscador = picker.querySelector('.picker-input');
+    const btnLimpiar = picker.querySelector('.picker-clear');
+    const lista    = picker.querySelector('.picker-lista');
+    const vacio    = picker.querySelector('.picker-vacio');
+    const items    = Array.from(lista.querySelectorAll('.picker-item'));
+    const precio   = form ? form.querySelector('[name="precio_venta"]') : null;
+    const MSG_ELEGIR = 'Selecciona un producto de la lista.';
+
+    items.forEach(li => { li._buscar = _normalizarTexto(li.dataset.buscar); });
+
+    // La lista flota sobre el <body> (position:fixed), igual que el panel del
+    // select custom: así el modal, que tiene overflow, no la recorta.
+    document.body.appendChild(lista);
+
+    let seleccionado = null;   // <li> elegido
+    let indiceActivo = -1;     // posición dentro de los visibles
+
+    const visibles = () => items.filter(li => !li.hidden);
+    const abierta  = () => lista.classList.contains('is-open');
+
+    const marcarActivo = (i, desplazar = true) => {
+        const vis = visibles();
+        items.forEach(li => li.classList.remove('is-focused'));
+        indiceActivo = (i >= 0 && i < vis.length) ? i : -1;
+        if (indiceActivo >= 0) {
+            vis[indiceActivo].classList.add('is-focused');
+            if (desplazar) vis[indiceActivo].scrollIntoView({ block: 'nearest' });
+        }
+    };
+
+    const filtrar = (mostrarTodos = false) => {
+        const palabras = mostrarTodos
+            ? []
+            : _normalizarTexto(buscador.value).split(/\s+/).filter(Boolean);
+
+        let hay = 0;
+        items.forEach(li => {
+            const coincide = palabras.every(p => li._buscar.includes(p));
+            li.hidden = !coincide;
+            if (coincide) hay++;
+        });
+        vacio.hidden = hay > 0;
+        marcarActivo(hay > 0 ? 0 : -1, false);
+        lista.scrollTop = 0;
+    };
+
+    const posicionarLista = () => {
+        const r = envoltura.getBoundingClientRect();
+        const alto = lista.offsetHeight;
+        const espacioAbajo = window.innerHeight - r.bottom;
+        const abrirArriba = espacioAbajo < alto + 12 && r.top > alto + 12;
+
+        lista.style.width = r.width + 'px';
+        lista.style.left  = r.left + 'px';
+        lista.style.top   = abrirArriba
+            ? (r.top - alto - 6) + 'px'
+            : (r.bottom + 6) + 'px';
+    };
+
+    const abrirLista = () => {
+        lista.classList.add('is-open');
+        buscador.setAttribute('aria-expanded', 'true');
+        posicionarLista();
+    };
+
+    const cerrarLista = () => {
+        lista.classList.remove('is-open');
+        buscador.setAttribute('aria-expanded', 'false');
+    };
+
+    const limpiarSeleccion = () => {
+        seleccionado = null;
+        inputId.value = '';
+        items.forEach(li => li.classList.remove('is-selected'));
+        btnLimpiar.hidden = true;
+        buscador.setCustomValidity(MSG_ELEGIR);
+    };
+
+    const seleccionar = (li) => {
+        seleccionado = li;
+        inputId.value = li.dataset.id;
+        buscador.value = li.dataset.nombre;
+        buscador.setCustomValidity('');
+        items.forEach(x => x.classList.toggle('is-selected', x === li));
+        btnLimpiar.hidden = false;
+
+        // Autocompletar precio. Si el usuario ya lo escribió a mano, no se toca.
+        if (precio && (precio.value === '' || precio.dataset.auto === '1')) {
+            const p = parseFloat(li.dataset.precio);
+            if (p > 0) {
+                precio.value = p.toFixed(2);
+                precio.dataset.auto = '1';
+            } else {
+                precio.value = '';
+                precio.dataset.auto = '';
+            }
+        }
+
+        cerrarLista();
+
+        // Siguiente paso natural: la cantidad
+        const cantidad = form ? form.querySelector('[name="cantidad_inicial"]') : null;
+        if (cantidad) { cantidad.focus(); cantidad.select(); }
+    };
+
+    if (precio) {
+        precio.addEventListener('input', () => { precio.dataset.auto = '0'; });
+    }
+
+    /* --- Eventos --- */
+    buscador.addEventListener('focus', () => {
+        filtrar(seleccionado !== null);   // con algo elegido, muestra toda la lista
+        abrirLista();
+        if (seleccionado) buscador.select();
+    });
+
+    buscador.addEventListener('input', () => {
+        if (seleccionado && buscador.value !== seleccionado.dataset.nombre) {
+            limpiarSeleccion();
+        }
+        filtrar();
+        abrirLista();
+    });
+
+    buscador.addEventListener('keydown', (e) => {
+        const vis = visibles();
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!abierta()) {
+                filtrar(seleccionado !== null);
+                abrirLista();
+                return;
+            }
+            if (!vis.length) return;
+            const delta = e.key === 'ArrowDown' ? 1 : -1;
+            marcarActivo((indiceActivo + delta + vis.length) % vis.length);
+
+        } else if (e.key === 'Enter') {
+            e.preventDefault();   // Enter en el buscador nunca envía el formulario
+            if (abierta() && vis[indiceActivo]) seleccionar(vis[indiceActivo]);
+
+        } else if (e.key === 'Escape') {
+            if (abierta()) {
+                e.stopPropagation();
+                cerrarLista();
+            }
+        }
+    });
+
+    // mousedown + preventDefault: evita que el input pierda el foco
+    // (y cierre la lista) antes de que se registre el click en la opción.
+    lista.addEventListener('mousedown', (e) => e.preventDefault());
+
+    lista.addEventListener('click', (e) => {
+        const li = e.target.closest('.picker-item');
+        if (li && !li.hidden) seleccionar(li);
+    });
+
+    lista.addEventListener('mouseover', (e) => {
+        const li = e.target.closest('.picker-item');
+        if (!li || li.hidden) return;
+        marcarActivo(visibles().indexOf(li), false);
+    });
+
+    btnLimpiar.addEventListener('click', () => {
+        limpiarSeleccion();
+        buscador.value = '';
+        buscador.focus();
+        filtrar();
+        abrirLista();
+    });
+
+    const reubicar = () => { if (abierta()) posicionarLista(); };
+    window.addEventListener('resize', reubicar);
+    window.addEventListener('scroll', reubicar, true);
+
+    picker.addEventListener('focusout', (e) => {
+        if (picker.contains(e.relatedTarget) || lista.contains(e.relatedTarget)) return;
+        cerrarLista();
+        if (seleccionado) buscador.value = seleccionado.dataset.nombre;
+    });
+
+    _resetBuscadorProducto = () => {
+        limpiarSeleccion();
+        buscador.value = '';
+        if (precio) { precio.value = ''; precio.dataset.auto = ''; }
+        cerrarLista();
+        items.forEach(li => { li.hidden = false; li.classList.remove('is-focused'); });
+        vacio.hidden = true;
+        indiceActivo = -1;
+    };
+
+    // Estado inicial: nada elegido todavía
+    limpiarSeleccion();
 }
 
 /* ============================================================

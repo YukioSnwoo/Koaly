@@ -22,4 +22,5 @@ Thumbs.db
 
 # OneDrive / temporales
 ~$*
-desktop.ini
+desktop.ini*.kate-swp
+*.swp
