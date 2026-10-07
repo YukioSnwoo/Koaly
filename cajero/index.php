@@ -43,9 +43,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="sidebar-group">
                 <div class="panel-title">Agregar producto</div>
                 <div class="search-box">
-                    <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave..." autocomplete="off">
+                    <div class="input-buscar">
+                        <svg class="icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                        <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave..." autocomplete="off"
+                               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="resultadosBusqueda">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <div id="resultadosBusqueda" class="search-results" role="listbox" style="display:none;"></div>
+                    </div>
                     <button type="button" class="btn btn-primary btn-block" onclick="buscarProducto()">Buscar producto</button>
-                    <div id="resultadosBusqueda" class="search-results" style="display:none;"></div>
                 </div>
             </div>
             <div class="sidebar-group">
@@ -195,16 +200,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const formatoDinero = (n) => `$${n.toFixed(2)}`;
         const aCentavos = (n) => Math.round(n * 100);
 
-        inputBuscar.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') buscarProducto();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-box')) {
-                resultadosBusqueda.style.display = 'none';
-            }
-        });
-
         /* ---------- Modales ---------- */
         function abrirModal(id) {
             document.getElementById(id).classList.add('open');
@@ -230,67 +225,232 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         });
 
         /* ---------- Búsqueda ---------- */
+        // Sugerencias en vivo mientras se escribe; Enter (o un lector de código de
+        // barras) agrega el producto resaltado o la coincidencia exacta de clave.
+        const MIN_CARACTERES = 2;
+        const ESPERA_MS = 250;
+        let temporizadorBusqueda = null;
+        let numeroBusqueda = 0;        // descarta respuestas que llegan fuera de orden
+        let resultadosActuales = [];
+        let consultaMostrada = null;   // consulta a la que pertenecen los resultados visibles
+        let indiceActivo = -1;
+
+        async function consultarProductos(q) {
+            const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(q)}`);
+            const productos = await res.json();
+            return Array.isArray(productos) ? productos : [];
+        }
+
+        inputBuscar.addEventListener('input', () => {
+            clearTimeout(temporizadorBusqueda);
+            const q = inputBuscar.value.trim();
+            if (q.length < MIN_CARACTERES) {
+                numeroBusqueda++;
+                ocultarResultados();
+                return;
+            }
+            temporizadorBusqueda = setTimeout(() => sugerir(q), ESPERA_MS);
+        });
+
+        inputBuscar.addEventListener('focus', () => {
+            const q = inputBuscar.value.trim();
+            if (q.length >= MIN_CARACTERES && q === consultaMostrada) mostrarResultados();
+        });
+
+        inputBuscar.addEventListener('keydown', (e) => {
+            const abiertos = resultadosBusqueda.style.display !== 'none' && resultadosActuales.length > 0;
+            if (e.key === 'ArrowDown' && abiertos) {
+                e.preventDefault();
+                activarResultado((indiceActivo + 1) % resultadosActuales.length);
+            } else if (e.key === 'ArrowUp' && abiertos) {
+                e.preventDefault();
+                activarResultado((indiceActivo - 1 + resultadosActuales.length) % resultadosActuales.length);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarProducto();
+            } else if (e.key === 'Escape') {
+                ocultarResultados();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) ocultarResultados();
+        });
+
+        async function sugerir(q) {
+            const numero = ++numeroBusqueda;
+            buscando(true);
+            let productos;
+            try {
+                productos = await consultarProductos(q);
+            } catch (error) {
+                if (numero !== numeroBusqueda) return;
+                buscando(false);
+                pintarMensaje('No se pudo conectar con el servidor.');
+                return;
+            }
+            if (numero !== numeroBusqueda) return;
+            buscando(false);
+            pintarResultados(q, productos);
+        }
+
+        // Enter o botón "Buscar producto"
         async function buscarProducto() {
+            clearTimeout(temporizadorBusqueda);
             const q = inputBuscar.value.trim();
             if (!q) {
                 inputBuscar.focus();
                 return;
             }
 
-            let productos = [];
+            // Si la lista visible corresponde a lo escrito, se agrega el resaltado
+            if (q === consultaMostrada && resultadosActuales[indiceActivo]) {
+                seleccionarResultado(resultadosActuales[indiceActivo]);
+                return;
+            }
+
+            const numero = ++numeroBusqueda;
+            buscando(true);
+            let productos;
             try {
-                const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(q)}`);
-                productos = await res.json();
+                productos = await consultarProductos(q);
             } catch (error) {
+                buscando(false);
                 alert('No se pudo conectar con el servidor para buscar el producto.');
                 return;
             }
+            if (numero !== numeroBusqueda) return;
+            buscando(false);
 
-            if (!Array.isArray(productos) || productos.length === 0) {
-                resultadosBusqueda.innerHTML = '<div class="no-results">No se encontraron productos.</div>';
-                resultadosBusqueda.style.display = 'block';
+            const exacto = productos.find(p => String(p.codigo).toLowerCase() === q.toLowerCase());
+            if (productos.length === 1 || exacto) {
+                seleccionarResultado(exacto || productos[0]);
                 return;
             }
+            pintarResultados(q, productos);
+        }
 
-            if (productos.length === 1) {
-                agregarAlCarrito(productos[0]);
-                cerrarResultados();
+        function pintarResultados(q, productos) {
+            resultadosActuales = productos;
+            consultaMostrada = q;
+
+            if (productos.length === 0) {
+                pintarMensaje(`Sin resultados para "${q}".`);
                 return;
             }
 
             resultadosBusqueda.innerHTML = '';
-            productos.forEach(p => {
+            productos.forEach((p, i) => {
                 const item = document.createElement('div');
                 item.className = 'result-item';
+                item.id = `resultado-${i}`;
+                item.setAttribute('role', 'option');
 
                 const thumb = document.createElement('img');
                 thumb.className = 'result-thumb';
-                thumb.src = p.imagen ? `../${p.imagen}` : '';
                 thumb.alt = '';
-                if (!p.imagen) thumb.style.visibility = 'hidden';
+                if (p.imagen) thumb.src = `../${p.imagen}`;
+                else thumb.style.visibility = 'hidden';
 
                 const info = document.createElement('div');
+                info.className = 'result-info';
                 const nombre = document.createElement('div');
-                nombre.textContent = p.nombre;
+                nombre.className = 'result-nombre';
+                nombre.appendChild(resaltarCoincidencia(p.nombre, q));
                 const detalle = document.createElement('small');
-                detalle.textContent = `Clave: ${p.codigo} · Existencias: ${p.stock} · $${Number(p.precio).toFixed(2)}`;
-                info.appendChild(nombre);
-                info.appendChild(detalle);
+                detalle.append('Clave: ', resaltarCoincidencia(String(p.codigo), q), ' · ');
+                const stock = document.createElement('span');
+                if (Number(p.stock) > 0) {
+                    stock.textContent = `Existencias: ${p.stock}`;
+                } else {
+                    stock.className = 'agotado';
+                    stock.textContent = 'Agotado';
+                }
+                detalle.appendChild(stock);
+                info.append(nombre, detalle);
 
-                item.appendChild(thumb);
-                item.appendChild(info);
-                item.onclick = () => {
-                    agregarAlCarrito(p);
-                    cerrarResultados();
-                };
+                const precio = document.createElement('div');
+                precio.className = 'result-precio';
+                precio.textContent = formatoDinero(Number(p.precio) || 0);
+
+                item.append(thumb, info, precio);
+                item.addEventListener('mousedown', (e) => e.preventDefault()); // no quitar el foco del input
+                item.addEventListener('mouseenter', () => activarResultado(i, false));
+                item.addEventListener('click', () => seleccionarResultado(p));
                 resultadosBusqueda.appendChild(item);
             });
+
+            // Resalta la clave exacta si la hay; si no, el primero
+            const exacto = productos.findIndex(p => String(p.codigo).toLowerCase() === q.toLowerCase());
+            activarResultado(exacto >= 0 ? exacto : 0);
+            mostrarResultados();
+        }
+
+        function pintarMensaje(texto) {
+            resultadosActuales = [];
+            indiceActivo = -1;
+            const div = document.createElement('div');
+            div.className = 'no-results';
+            div.textContent = texto;
+            resultadosBusqueda.replaceChildren(div);
+            mostrarResultados();
+        }
+
+        // Devuelve el texto con la parte que coincide envuelta en <mark>
+        function resaltarCoincidencia(texto, q) {
+            const fragmento = document.createDocumentFragment();
+            const pos = texto.toLowerCase().indexOf(q.toLowerCase());
+            if (pos === -1) {
+                fragmento.append(texto);
+                return fragmento;
+            }
+            const mark = document.createElement('mark');
+            mark.textContent = texto.slice(pos, pos + q.length);
+            fragmento.append(texto.slice(0, pos), mark, texto.slice(pos + q.length));
+            return fragmento;
+        }
+
+        function activarResultado(i, desplazar = true) {
+            indiceActivo = i;
+            resultadosBusqueda.querySelectorAll('.result-item').forEach((el, j) => {
+                el.classList.toggle('active', j === i);
+                el.setAttribute('aria-selected', j === i ? 'true' : 'false');
+            });
+            const activo = document.getElementById(`resultado-${i}`);
+            if (activo) {
+                inputBuscar.setAttribute('aria-activedescendant', activo.id);
+                if (desplazar) activo.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function seleccionarResultado(producto) {
+            agregarAlCarrito(producto);
+            cerrarResultados();
+        }
+
+        function buscando(activo) {
+            document.querySelector('.search-box').classList.toggle('cargando', activo);
+        }
+
+        function mostrarResultados() {
             resultadosBusqueda.style.display = 'block';
+            inputBuscar.setAttribute('aria-expanded', 'true');
+        }
+
+        function ocultarResultados() {
+            resultadosBusqueda.style.display = 'none';
+            inputBuscar.setAttribute('aria-expanded', 'false');
         }
 
         function cerrarResultados() {
-            resultadosBusqueda.style.display = 'none';
+            numeroBusqueda++;
+            buscando(false);
+            ocultarResultados();
             resultadosBusqueda.innerHTML = '';
+            resultadosActuales = [];
+            consultaMostrada = null;
+            indiceActivo = -1;
+            inputBuscar.removeAttribute('aria-activedescendant');
             inputBuscar.value = '';
             inputBuscar.focus();
         }
