@@ -319,6 +319,37 @@ kbd {
     padding: 1.25rem;
     display: flex; flex-direction: column; justify-content: space-between;
 }
+.resumen-lista {
+    list-style: none;
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    margin: 0 -0.25rem 0.75rem;
+    padding: 0 0.25rem;
+}
+.resumen-item {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px dashed #e2e8f0;
+    font-size: 0.88rem;
+    animation: fadeIn 0.2s ease-out;
+}
+.resumen-item:last-child { border-bottom: none; }
+.resumen-item-cantidad {
+    min-width: 2.3rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: #f3e8ff; color: #6d28d9;
+    font-size: 0.78rem; font-weight: 700; text-align: center;
+    flex-shrink: 0;
+}
+.resumen-item-nombre {
+    flex: 1; min-width: 0;
+    color: #1e293b; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.resumen-item-importe { font-weight: 700; color: #1e293b; white-space: nowrap; }
+.resumen-vacio { color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 1.5rem 0; }
+
 .resumen-fila {
     display: flex; justify-content: space-between;
     padding: 0.6rem 0;
@@ -512,6 +543,7 @@ kbd {
 @media (max-width: 1000px) {
     .pos-layout { grid-template-columns: 1fr; height: auto; }
     .tabla-panel { max-height: 60vh; }
+    .resumen-lista { max-height: 40vh; }
 }
 
 @media (max-width: 640px) {
@@ -520,4 +552,11 @@ kbd {
     .user-datos { display: none; }
     .pos-layout { padding: 1rem; gap: 1rem; }
     .modal-box { padding: 1.25rem; }
+}
+
+/* Iframe donde se arma el ticket para imprimir (no se ve en pantalla) */
+.marco-ticket {
+    position: fixed; right: 0; bottom: 0;
+    width: 0; height: 0; border: 0;
+    visibility: hidden;
 }
