@@ -11,12 +11,12 @@ require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
 
 $stmt = $pdo->prepare("
-    SELECT u.id_usuario, u.nombre, u.id_rol, u.estado, u.id_sucursal, u.debe_cambiar,
-           s.nombre AS sucursal_nombre, s.estado AS sucursal_estado
-    FROM Usuarios u
-    LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
-    WHERE u.id_usuario = ? AND u.id_rol = 2
-    LIMIT 1
+SELECT u.id_usuario, u.nombre, u.id_rol, u.estado, u.id_sucursal, u.debe_cambiar,
+s.nombre AS sucursal_nombre, s.estado AS sucursal_estado
+FROM Usuarios u
+LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
+WHERE u.id_usuario = ? AND u.id_rol = 2
+LIMIT 1
 ");
 $stmt->execute([$_SESSION['id_usuario']]);
 $gerente = $stmt->fetch();
