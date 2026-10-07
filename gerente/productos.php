@@ -293,7 +293,7 @@ require __DIR__ . '/header.php';
                     <th>Clave</th>
                     <th>Producto</th>
                     <th>Categoría</th>
-                    <th>Precio</th>
+                    <th>Precio (IVA incl.)</th>
                     <th>Inventario</th>
                     <th>Estado</th>
                     <th>Acciones</th>
@@ -419,7 +419,7 @@ require __DIR__ . '/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Precio</label>
+                    <label>Precio al público (IVA incluido)</label>
                     <input type="number" name="precio" min="0" step="0.01" placeholder="0.00" required>
                 </div>
                 <div class="form-group">

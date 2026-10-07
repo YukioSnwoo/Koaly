@@ -145,7 +145,7 @@ try {
     $stmt->execute(array_merge([$idSucursal], $ids));
     $productos = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), null, 'id_producto');
 
-    $subtotalCentavos = 0;
+    $totalCentavos = 0;
     $lineas = [];
     foreach ($cantidades as $idProducto => $cantidad) {
         $p = $productos[$idProducto] ?? null;
@@ -159,7 +159,7 @@ try {
 
         $precioCentavos  = (int) round((float) $p['precio'] * 100);
         $importeCentavos = $precioCentavos * $cantidad;
-        $subtotalCentavos += $importeCentavos;
+        $totalCentavos  += $importeCentavos;
 
         $lineas[] = [
             'id_producto'      => $idProducto,
@@ -170,8 +170,10 @@ try {
         ];
     }
 
-    $impuestosCentavos = (int) round($subtotalCentavos * 0.16);
-    $totalCentavos     = $subtotalCentavos + $impuestosCentavos;
+    // Los precios ya incluyen IVA (LFPC art. 7 bis): el total es la suma de los
+    // importes y el IVA 16% se desglosa hacia atrás.
+    $subtotalCentavos  = (int) round($totalCentavos / 1.16);
+    $impuestosCentavos = $totalCentavos - $subtotalCentavos;
 
     /* --- Efectivo recibido --- */
     $recibidoCentavos = null;
