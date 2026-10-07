@@ -281,6 +281,22 @@ table.tabla-venta tbody tr.bump .col-importe,
 table.tabla-venta tbody tr.bump .input-cantidad { animation: bump 0.3s ease-out; }
 table.tabla-venta tbody tr.removing { animation: filaSalida 0.2s ease-in forwards; pointer-events: none; }
 
+/* Existencias en la fila: "Quedan 3" (ámbar) / "Agotado", "Solo hay 7" (rojo) */
+.stock-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700;
+    vertical-align: middle; white-space: nowrap;
+}
+.stock-bajo { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.stock-agotado { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+table.tabla-venta tbody tr.fila-sin-stock { background: #fff7f7; box-shadow: inset 4px 0 0 #ef4444; }
+table.tabla-venta tbody tr.fila-sin-stock.selected { background: #fdeef0; }
+.qty-btn.qty-tope { color: #cbd5e1; }
+.qty-btn.qty-tope:hover { background: #f59e0b; color: #fff; }
+
 .atajo-hint { font-size: 0.75rem; color: #94a3b8; text-align: center; line-height: 1.6; }
 kbd {
     display: inline-block;
@@ -423,6 +439,57 @@ kbd {
 .eliminar-producto strong { display: block; color: #1e293b; font-size: 0.95rem; }
 .eliminar-producto small { display: block; color: #64748b; font-size: 0.82rem; }
 
+/* Avisos de existencias */
+.icono-aviso {
+    width: 56px; height: 56px;
+    margin: 0 auto 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    animation: sacudir 0.4s ease-out 0.1s;
+}
+.icono-aviso svg { width: 28px; height: 28px; }
+.icono-aviso.tipo-aviso { background: #fffbeb; color: #d97706; box-shadow: 0 0 0 6px #fffdf5; }
+.icono-aviso.tipo-peligro { background: #fef2f2; color: #dc2626; box-shadow: 0 0 0 6px #fff5f5; }
+
+.lista-faltantes {
+    list-style: none;
+    margin-top: 0.75rem;
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    background: #f8fafc;
+    text-align: left;
+    max-height: 220px; overflow-y: auto;
+}
+.lista-faltantes li {
+    display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.88rem;
+}
+.lista-faltantes li:last-child { border-bottom: none; }
+.lista-faltantes strong { color: #1e293b; }
+.lista-faltantes span { color: #b45309; font-weight: 600; white-space: nowrap; }
+.lista-faltantes span.stock-agotado { background: none; border: none; color: #dc2626; }
+
+/* Notificaciones breves */
+.toasts {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 200;
+    display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
+    pointer-events: none;
+}
+.toast {
+    max-width: 340px;
+    padding: 0.7rem 1rem 0.7rem 0.9rem;
+    border-radius: 10px;
+    background: #fff; color: #1e293b;
+    border: 1px solid #e2e8f0; border-left-width: 4px;
+    box-shadow: 0 10px 25px rgba(15,23,42,0.15);
+    font-size: 0.88rem; font-weight: 600;
+    animation: toastEntrada 0.25s ease-out;
+}
+.toast-aviso { border-left-color: #f59e0b; }
+.toast-exito { border-left-color: #16a34a; }
+.toast.saliendo { animation: toastSalida 0.25s ease-in forwards; }
+
 /* ============================================================
    Animaciones
    ============================================================ */
@@ -430,7 +497,9 @@ kbd {
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bump     { 0% { color: #7c3aed; transform: scale(1); } 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes filaSalida { to { opacity: 0; transform: translateX(24px); } }
-@keyframes girar    { to { transform: rotate(360deg); } }
+@keyframes toastEntrada { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastSalida  { to { opacity: 0; transform: translateX(24px); } }
+@keyframes girar   { to { transform: rotate(360deg); } }
 @keyframes sacudir { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
 
 @media (prefers-reduced-motion: reduce) {
