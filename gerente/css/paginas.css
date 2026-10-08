@@ -1,0 +1,460 @@
+/* ============================================================
+ *  paginas.css — Estilos específicos de cada página del gerente.
+ *  Depende de: base.css y componentes.css
+ *  ============================================================ */
+
+
+/* ============================================================
+ *  ██ INDEX — Hero
+ *  ============================================================ */
+.hero {
+    background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+    border: 1px solid #ede9fe;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.35s ease-out both;
+}
+.hero-eyebrow {
+    font-size: 0.8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: #7c3aed; margin-bottom: 0.35rem;
+}
+.hero h2 { color: #1e293b; font-size: 1.6rem; font-weight: 700; margin-bottom: 0.75rem; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.hero-chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    background: #f3e8ff; color: #6d28d9;
+    border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+}
+
+
+/* ============================================================
+ *  ██ INDEX — Section titles
+ *  ============================================================ */
+.section-title {
+    font-size: 0.95rem; font-weight: 600; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+
+/* ============================================================
+ *  ██ CAJEROS — Tarjetas verticales (player card)
+ *  ============================================================ */
+.cajeros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1.25rem;
+}
+
+.cajero-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem 1.25rem;
+    border-top: 4px solid #7c3aed;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    animation: fadeInUp 0.3s ease-out both;
+}
+.cajero-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+}
+.cajero-card.is-inactivo {
+    opacity: 0.72;
+}
+.cajero-card.is-inactivo .cajero-avatar {
+    filter: grayscale(0.75);
+}
+
+.cajero-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 6px 16px rgba(124,58,237,0.25);
+    flex-shrink: 0;
+}
+
+.cajero-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+    word-break: break-word;
+}
+
+.cajero-email {
+    font-size: 0.78rem;
+    color: #64748b;
+    word-break: break-all;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+}
+
+.cajero-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 1rem;
+}
+
+.cajero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.cajero-stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #7c3aed;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.cajero-stat-label {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.cajero-actions {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: auto;
+}
+.cajero-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+.cajero-empty {
+    grid-column: 1 / -1;
+}
+
+
+/* ============================================================
+ *  ██ CAJAS — Tarjetas verticales (player card, variante)
+ *  ============================================================ */
+.cajas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+
+.caja-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem 1.25rem;
+    border-top: 4px solid #7c3aed;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    animation: fadeInUp 0.3s ease-out both;
+}
+.caja-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+}
+.caja-card.is-inactiva {
+    opacity: 0.72;
+}
+.caja-card.is-inactiva .caja-numero {
+    filter: grayscale(0.75);
+}
+
+.caja-numero {
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #6d28d9 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 6px 16px rgba(109,40,217,0.25);
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+
+.caja-nombre {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+    margin-bottom: 0.35rem;
+    word-break: break-word;
+}
+.caja-nombre--muted {
+    color: #94a3b8;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.caja-cajero {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    width: 100%;
+    margin-bottom: 1rem;
+    margin-top: 0.75rem;
+    min-width: 0;
+}
+.caja-cajero-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+.caja-cajero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+}
+.caja-cajero-label {
+    font-size: 0.62rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+.caja-cajero-nombre {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.caja-cajero--vacio .caja-cajero-info {
+    justify-content: center;
+}
+.caja-cajero--vacio .caja-cajero-nombre {
+    color: #94a3b8;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.caja-actions {
+    display: flex;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: auto;
+    flex-wrap: wrap;
+}
+.caja-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.75rem;
+}
+.caja-actions .btn-danger {
+    flex: 0 0 auto;
+    padding: 0.5rem 0.65rem;
+}
+
+
+/* ============================================================
+ *  ██ CAJAS — Aviso de reasignación de cajero
+ *  ============================================================ */
+.aviso-reasignacion {
+    display: none;
+    margin-top: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+.aviso-reasignacion.visible {
+    display: block;
+}
+.aviso-reasignacion strong {
+    color: #78350f;
+}
+
+
+/* ============================================================
+ *  ██ EXISTENCIAS — Buscador de producto (picker)
+ *  ============================================================ */
+.picker { position: relative; }
+
+.picker-input-wrap { position: relative; }
+
+.picker-icono {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.form-group input[type="text"].picker-input {
+    padding-left: 2.4rem;
+    padding-right: 2.4rem;
+}
+
+.picker-clear {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+.picker-clear:hover { background: #f1f5f9; color: #475569; }
+.picker-clear[hidden] { display: none; }
+
+.picker-lista {
+    position: fixed;
+    z-index: 9999;
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.08);
+    max-height: 240px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+.picker-lista.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.picker-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #1e293b;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.1s, color 0.1s;
+}
+.picker-item[hidden] { display: none; }
+
+.picker-item-nombre {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.picker-item-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.picker-item.is-focused {
+    background: #f3e8ff;
+    color: #6d28d9;
+}
+.picker-item.is-focused .picker-item-meta { color: #7c3aed; }
+
+.picker-item.is-selected {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+.picker-item.is-selected .picker-item-nombre { font-weight: 600; }
+
+.picker-vacio {
+    padding: 0.85rem 0.75rem;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+.picker-vacio[hidden] { display: none; }
+
+
+/* ============================================================
+ *  ██ EXISTENCIAS — Resumen del producto en el modal
+ *  ============================================================ */
+.producto-resumen {
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 1.1rem;
+    background: #faf5ff;
+    border: 1px solid #ede9fe;
+    border-radius: 10px;
+}
+.producto-resumen-nombre {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+.producto-resumen-meta {
+    margin-top: 2px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
