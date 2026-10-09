@@ -169,6 +169,14 @@ Método de pago.
 ## Panel de Gerente
 <img width="1520" height="861" alt="image" src="https://github.com/user-attachments/assets/8128eab0-64d3-4b57-8ecf-0964c5b6ddaf" />
 
+## Función de agregar nuevo producto
+<img width="1029" height="738" alt="image" src="https://github.com/user-attachments/assets/2be3fe10-af43-4b6b-b62d-04e483a6c82e" />
+
+## Cajas
+<img width="1533" height="688" alt="image" src="https://github.com/user-attachments/assets/f16c9ead-5e7a-4a37-9bed-3993830cbc5b" />
+
+##  Historial de ventas
+<img width="1406" height="786" alt="image" src="https://github.com/user-attachments/assets/7be0082e-1f44-4c4b-9b4d-a10da632f45b" />
 
 
 #  Link de la pagina
