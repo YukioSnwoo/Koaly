@@ -166,6 +166,10 @@ Método de pago.
 ## Inicio de sesion  
 <img width="821" height="528" alt="Login-captura" src="https://github.com/user-attachments/assets/03145792-1c9a-432b-8fbc-fc553cca9b94" />
 
+## Panel de Gerente
+<img width="1520" height="861" alt="image" src="https://github.com/user-attachments/assets/8128eab0-64d3-4b57-8ecf-0964c5b6ddaf" />
+
+
 
 #  Link de la pagina
 
