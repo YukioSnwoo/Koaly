@@ -240,6 +240,3 @@ La aplicación contará con soporte para los siguientes idiomas:
 
 ![MYSQL](https://img.shields.io/badge/MYSQL-DATABASE-00758F?style=for-the-badge&logo=mysql&logoColor=white)
 
-#  Estado del proyecto
-
-##  En desarrollo
