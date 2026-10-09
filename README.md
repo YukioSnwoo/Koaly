@@ -163,8 +163,7 @@ Total.
 Método de pago.
 
 # Imagenes
-![Nombre de la imagen<img width="821" height="528" alt="Login-captura" src="https://github.com/user-attachments/assets/ba885976-a8d7-4762-9f57-7baf26255346" />
-](https://github.com...)
+<img width="821" height="528" alt="Login-captura" src="https://github.com/user-attachments/assets/03145792-1c9a-432b-8fbc-fc553cca9b94" />
 
 
 #  Link de la pagina
