@@ -7,13 +7,13 @@
 
 ## Descripción
 
-Koaly es una aplicación web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
+Koaly es una sitio web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
 
-La aplicación contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
+El sitio web contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
 
 ## Características de la Plataforma
 
-Desarrollar una aplicación web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
+Desarrollar una pagina web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
 
 El sistema busca facilitar la gestión centralizada de la información y mantener actualizado el inventario después de cada venta.
 
@@ -188,7 +188,7 @@ https://koalicius.com/
 
 #  Idiomas
 
-La aplicación contará con soporte para los siguientes idiomas:
+EL sitio wed dendra soporte para los siguientes idiomas:
 ## 🇲🇽 Español.
 ## 🇺🇸 Inglés.
 
