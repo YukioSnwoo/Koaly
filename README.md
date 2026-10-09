@@ -163,6 +163,7 @@ Total.
 Método de pago.
 
 # Imagenes
+El aparatado de ingresa secion  
 <img width="821" height="528" alt="Login-captura" src="https://github.com/user-attachments/assets/03145792-1c9a-432b-8fbc-fc553cca9b94" />
 
 
