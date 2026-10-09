@@ -167,19 +167,19 @@ Método de pago.
 <img width="762" height="526" alt="image" src="https://github.com/user-attachments/assets/d12e8873-e341-4c71-b954-44af1674a7bf" />
 
 ## Panel de Gerente
-<img width="1464" height="858" alt="image" src="https://github.com/user-attachments/assets/23a93f9d-3cc8-4682-b981-8f08be9f2622" />
+<img width="1662" height="946" alt="image" src="https://github.com/user-attachments/assets/3f363b99-b665-4ba3-9f08-d0ad846a5e84" />
 
 ## Función de agregar nuevo producto
-<img width="542" height="702" alt="image" src="https://github.com/user-attachments/assets/9534c2a3-903f-4358-ad1e-e73327cdd41b" />
+<img width="1800" height="874" alt="image" src="https://github.com/user-attachments/assets/22ff853a-ba44-41c3-ad8d-f8eba626d751" />
 
 ## Cajas
-<img width="1502" height="658" alt="image" src="https://github.com/user-attachments/assets/7317090d-3afd-4793-ace3-e4c2e6e7312a" />
+<img width="1895" height="830" alt="image" src="https://github.com/user-attachments/assets/bc46ba57-52cd-4a06-a73c-5db6bb408c59" />
 
 ##  Historial de ventas
-<img width="1511" height="718" alt="image" src="https://github.com/user-attachments/assets/69f5cbaa-1380-4487-b19b-13132979f212" />
+<img width="1821" height="864" alt="image" src="https://github.com/user-attachments/assets/5e49024f-b4ba-442e-be52-302653ed1b12" />
 
 ## Existencias
-<img width="1466" height="820" alt="image" src="https://github.com/user-attachments/assets/8fe17a98-0ddd-4164-a6db-d6c416f56bab" />
+<img width="1677" height="938" alt="image" src="https://github.com/user-attachments/assets/da0decd6-f079-4bfc-8115-02206213541c" />
 
 
 #  Link de la pagina
