@@ -9,19 +9,6 @@
  * ██ PRODUCTOS — Modales y filtros
  * ============================================================ */
 
-function abrirModalNuevo() {
-    const form = document.getElementById('formProducto');
-    if (!form) return;
-    form.reset();
-    form.querySelector('[name="action"]').value = 'crear';
-    form.querySelector('[name="id_producto"]').value = '';
-    const titulo = document.getElementById('tituloModalProducto');
-    if (titulo) titulo.textContent = 'Nuevo producto';
-    const preview = document.getElementById('previewImagen');
-    if (preview) preview.innerHTML = '';
-    abrirModal('modalProducto');
-}
-
 function abrirModalEditar(btn) {
     const form = document.getElementById('formProducto');
     if (!form) return;
@@ -73,6 +60,16 @@ function abrirModalAgregarInventario(btn) {
     if (cantidad) setTimeout(() => cantidad.select(), 50);
 }
 
+function abrirModalSolicitarProducto() {
+    const form = document.getElementById('formSolicitarProducto');
+    if (!form) return;
+    form.reset();
+
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
+
+    abrirModal('modalSolicitarProducto');
+}
 
 /* ============================================================
  * ██ CAJEROS — Modales
