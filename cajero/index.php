@@ -49,11 +49,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                         <span class="spinner" aria-hidden="true"></span>
                         <div id="resultadosBusqueda" class="search-results" role="listbox" style="display:none;"></div>
                     </div>
-                    <button type="button" class="btn btn-primary btn-block" onclick="buscarProducto()">Buscar producto</button>
                 </div>
             </div>
             <div class="sidebar-group">
-                <button type="button" class="btn btn-danger btn-block" onclick="eliminarFila()">Eliminar</button>
                 <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()">Limpiar</button>
                 <p class="atajo-hint">Selecciona un producto y presiona <kbd>Supr</kbd> o <kbd>⌫</kbd> para quitarlo.</p>
             </div>
@@ -308,7 +306,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             pintarResultados(q, productos);
         }
 
-        // Enter o botón "Buscar producto"
+        // Enter en el buscador
         async function buscarProducto() {
             clearTimeout(temporizadorBusqueda);
             const q = inputBuscar.value.trim();
@@ -801,14 +799,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             tarjeta.appendChild(info);
 
             abrirConfirmacion('¿Eliminar producto?', tarjeta, 'Sí, eliminar', () => quitarProducto(index));
-        }
-
-        function eliminarFila() {
-            if (indiceSeleccionado === null || !carrito[indiceSeleccionado]) {
-                alert('Selecciona una fila primero haciendo clic sobre ella.');
-                return;
-            }
-            pedirEliminarProducto(indiceSeleccionado);
         }
 
         function limpiarTabla() {
