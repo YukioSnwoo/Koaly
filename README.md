@@ -1,30 +1,242 @@
-## 📖 Descripción
+#  Koaly
 
-## 🚀 Características de la Plataforma
+![HTML](https://img.shields.io/badge/HTML-5-orange?logo=html5&logoColor=white)
+![CSS](https://img.shields.io/badge/CSS-3-blue?logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow?logo=javascript&logoColor=black)
+![PHP](https://img.shields.io/badge/PHP-Backend-purple?logo=php&logoColor=white)
 
-## ⚙️ Cómo usar la plataforma
+## Descripción
 
-# Koaly
----
+Koaly es una sitio web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
 
-## 📬 Contacto  
--**Ramirez Larios Uriel Dominyk**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/Elurielll)
+El sitio web contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
 
--**Guzman Solis Angel Moisés**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/TenshiGS)
+## Características de la Plataforma
 
--**Matias Mendoza Jennifer Dalila**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/YukioSnwoo)
+Desarrollar una pagina web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
 
--**Gomez Nava Erick**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/Enava7-22)
+El sistema busca facilitar la gestión centralizada de la información y mantener actualizado el inventario después de cada venta.
 
--**Alvarez Ruelas Fernando**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/fernandoalvarez2442-sys)
+#  Roles del sistema
+## Administrador General
 
--**Heredia Cesar**
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-black?style=for-the-badge&logo=github)](https://github.com/goshin69)
+El Administrador General tendrá acceso a la información general del sistema y podrá:
 
----
-## 🌐Base de datos
+Iniciar sesión.
+
+Crear sucursales.
+
+Consultar sucursales.
+
+Modificar información de las sucursales.
+
+Eliminar sucursales.
+
+Registrar gerentes.
+
+Asignar gerentes a las sucursales.
+
+Consultar los inventarios de las diferentes sucursales.
+
+Consultar las ventas realizadas en las sucursales.
+
+Consultar información general del sistema.
+
+##  Gerente
+
+Cada sucursal contará con un gerente encargado de administrar y supervisar las operaciones de su sede.
+
+El gerente podrá:
+
+
+Iniciar sesión.
+
+Consultar la información de su sucursal.
+
+Registrar productos.
+
+Consultar productos.
+
+Modificar productos.
+
+Registrar nuevas cajas.
+
+Eliminar cajas.
+
+Controlar el inventario.
+
+Actualizar existencias.
+
+Consultar productos con bajo inventario.
+
+Consultar el historial de ventas.
+
+Supervisar las ventas realizadas en su sucursal.
+
+##  Cajero
+
+Los cajeros tendrán acceso al módulo de Punto de Venta para registrar las compras realizadas por los clientes.
+
+Podrán:
+
+Buscar productos.
+
+Agregar productos a una venta.
+
+Calcular el subtotal.
+
+Calcular el total.
+
+Registrar el método de pago.
+
+Confirmar la venta.
+
+Generar un ticket o comprobante.
+
+Actualizar automáticamente el inventari
+
+
+##  Gestión de sucursales
+
+Cada sucursal contará con información propia, incluyendo:
+
+Nombre.
+
+Dirección.
+
+Teléfono.
+
+Información de contacto.
+
+Estado.
+
+Gerente responsable.
+
+Inventario propio.
+
+Uno o varios cajeros.
+
+
+Cada sucursal administrará de forma independiente sus productos, inventario y ventas.
+
+##  Gestión de inventario
+
+El sistema permitirá llevar un control del inventario de cada sucursal.
+
+Entre sus principales funciones se encuentran:
+
+Registro de productos.
+
+Consulta de productos.
+
+Modificación de productos.
+
+Control de existencias.
+
+Actualización automática del inventario.
+
+Consulta de productos con bajo inventario.
+
+
+Cuando se realice una venta, el sistema actualizará automáticamente la cantidad disponible del product
+
+##  Punto de Venta
+
+El módulo de Punto de Venta permitirá registrar las compras realizadas por los clientes.
+
+Cada venta estará relacionada con:
+
+Sucursal.
+
+Cajero.
+
+Fecha y hora.
+
+Productos vendidos.
+
+Cantidades.
+
+Precio.
+
+Total.
+
+Método de pago.
+
+# Imagenes
+## Inicio de sesion  
+<img width="762" height="526" alt="image" src="https://github.com/user-attachments/assets/d12e8873-e341-4c71-b954-44af1674a7bf" />
+
+## Panel de Gerente
+<img width="1662" height="946" alt="image" src="https://github.com/user-attachments/assets/3f363b99-b665-4ba3-9f08-d0ad846a5e84" />
+
+## Función de agregar nuevo producto
+<img width="1800" height="874" alt="image" src="https://github.com/user-attachments/assets/22ff853a-ba44-41c3-ad8d-f8eba626d751" />
+
+## Cajas
+<img width="1895" height="830" alt="image" src="https://github.com/user-attachments/assets/bc46ba57-52cd-4a06-a73c-5db6bb408c59" />
+
+##  Historial de ventas
+<img width="1821" height="864" alt="image" src="https://github.com/user-attachments/assets/5e49024f-b4ba-442e-be52-302653ed1b12" />
+
+## Existencias
+<img width="1677" height="938" alt="image" src="https://github.com/user-attachments/assets/da0decd6-f079-4bfc-8115-02206213541c" />
+
+
+#  Link de la pagina
+
+https://koalicius.com/
+
+#  Idiomas
+
+EL sitio wed dendra soporte para los siguientes idiomas:
+## 🇲🇽 Español.
+## 🇺🇸 Inglés.
+
+##  Contacto  
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/goshin69">
+        <img src="https://github.com/goshin69.png" width="70"><br>
+        Cesar Heredia
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Enava7-22">
+        <img src="https://github.com/Enava7-22.png" width="70"><br>
+       Erick Nava Gomez
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/fernandoalvarez2442-sys">
+        <img src="https://github.com/fernandoalvarez2442-sys.png" width="70"><br>
+        Fernando Alvarez Ruelas
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/YukioSnwoo">
+        <img src="https://github.com/YukioSnwoo.png" width="70"><br>
+        Matias Mendoza Jennifer Dalila
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/TenshiGS">
+        <img src="https://github.com/TenshiGS.png" width="70"><br>
+       Angel Moisés Guzmán Solis
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Elurielll">
+        <img src="https://github.com/Elurielll.png" width="70"><br>
+        Uriel Dominyk Ramírez Larios
+      </a>
+    </td>
+  </tr>
+</table>
+
+
+## Base de datos
+![HOSTINGER](https://img.shields.io/badge/HOSTINGER-WEB%20HOSTING-673DE6?style=for-the-badge&logo=hostinger&logoColor=white)
+
+![MYSQL](https://img.shields.io/badge/MYSQL-DATABASE-00758F?style=for-the-badge&logo=mysql&logoColor=white)
+
