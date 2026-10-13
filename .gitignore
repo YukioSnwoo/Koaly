@@ -1,6 +1,18 @@
+    # Credenciales — NUNCA subir
+admin/database.php
+admin/config.php
 .env
-.env.*
-!.env.example
-actualizar_passwords.php
+*.env.local
+
+# Imágenes subidas por usuarios
+Imagenes/*.png
+Imagenes/*.jpg
+Imagenes/*.jpeg
+Imagenes/*.webp
+!Imagenes/.gitkeep
+# Iconos de la interfaz (no son subidas de usuarios)
+!Imagenes/puertaSalida.jpeg
+
+# Sistema
 .DS_Store
 private/
