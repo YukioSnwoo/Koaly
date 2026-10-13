@@ -376,7 +376,7 @@ body{
   display:flex;
   align-items:flex-end;
   gap:16px;
-  height:140px;
+  height:200px;
   padding:0 8px;
   margin-bottom:1.5rem;
   border-bottom:0.5px solid var(--border);

@@ -3,3 +3,4 @@
 !.env.example
 actualizar_passwords.php
 .DS_Store
+private/
