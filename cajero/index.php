@@ -71,9 +71,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
-            <div class="panel-title">Resumen</div>
-            <!-- Productos agrupados: la tabla es el historial, aquí se unifican -->
-            <ul class="resumen-lista" id="resumenLista"></ul>
+            <!-- Escaneo: historial en tiempo real, los escaneos seguidos del mismo producto se juntan (p1 ×3, p2, p1) -->
+            <div class="panel-title">Escaneo</div>
+            <ul class="resumen-lista" id="escaneoLista"></ul>
+
+            <!-- Resumen: todo agrupado por producto (p1 ×4, p2) -->
+            <div class="resumen-agrupado" id="resumenAgrupado" hidden>
+                <div class="panel-title">Resumen</div>
+                <ul class="resumen-lista" id="resumenLista"></ul>
+            </div>
 
             <div>
                 <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
@@ -500,9 +506,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         const STOCK_BAJO = 5;
 
-        // Cada vez que se agrega un producto se crea una fila nueva (historial),
-        // aunque ya esté en la lista. El resumen y el ticket los agrupan por producto,
-        // y las existencias se validan contra la suma de todas sus filas.
+        // El carrito es el historial de escaneo: si el producto es el mismo que el
+        // de la última fila se suma ahí; si no, se crea una fila nueva (p1 ×3, p2, p1).
+        // El resumen y el ticket las agrupan por producto, y las existencias se
+        // validan contra la suma de todas sus filas.
         function agregarAlCarrito(producto) {
             const stock = Number(producto.stock) || 0;
             actualizarStockProducto(producto.id_producto, stock);
@@ -520,15 +527,20 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 return;
             }
 
-            carrito.push({
-                id_producto: producto.id_producto,
-                codigo: producto.codigo,
-                nombre: producto.nombre,
-                imagen: producto.imagen || null,
-                cantidad: 1,
-                precio: Number(producto.precio) || 0,
-                stock: stock
-            });
+            const ultima = carrito[carrito.length - 1];
+            if (ultima && ultima.id_producto === producto.id_producto) {
+                ultima.cantidad++;
+            } else {
+                carrito.push({
+                    id_producto: producto.id_producto,
+                    codigo: producto.codigo,
+                    nombre: producto.nombre,
+                    imagen: producto.imagen || null,
+                    cantidad: 1,
+                    precio: Number(producto.precio) || 0,
+                    stock: stock
+                });
+            }
             indiceResaltado = carrito.length - 1;
             renderCarrito();
 
@@ -570,6 +582,23 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             item.cantidad = valor;
             indiceResaltado = index;
             renderCarrito();
+        }
+
+        // Quita una fila; si las de antes y después son del mismo producto se
+        // juntan, para que el escaneo siga sin líneas seguidas repetidas
+        function quitarFila(index) {
+            carrito.splice(index, 1);
+            if (indiceSeleccionado === index) indiceSeleccionado = null;
+            else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+
+            const antes = carrito[index - 1];
+            const despues = carrito[index];
+            if (antes && despues && antes.id_producto === despues.id_producto) {
+                antes.cantidad += despues.cantidad;
+                carrito.splice(index, 1);
+                if (indiceSeleccionado === index) indiceSeleccionado = index - 1;
+                else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+            }
         }
 
         // Productos agrupados en el orden en que se agregaron por primera vez
@@ -705,9 +734,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 carrito[index].cantidad--;
                 indiceResaltado = index;
             } else {
-                carrito.splice(index, 1);
-                if (indiceSeleccionado === index) indiceSeleccionado = null;
-                else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+                quitarFila(index);
             }
             renderCarrito();
         }
@@ -949,8 +976,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 row.addEventListener('click', () => seleccionarFila(index));
             });
 
+            calcularTotales();          // el resumen también resalta la línea nueva
             indiceResaltado = null;
-            calcularTotales();
             actualizarCatalogo();
         }
 
@@ -1029,9 +1056,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         function quitarProducto(index) {
             const fila = document.querySelector(`#listaProductos tr[data-index="${index}"]`);
             const quitar = () => {
-                carrito.splice(index, 1);
-                if (indiceSeleccionado === index) indiceSeleccionado = null;
-                else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+                quitarFila(index);
                 renderCarrito();
             };
             if (!fila) return quitar();
@@ -1049,38 +1074,61 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             pedirEliminarProducto(indiceSeleccionado);
         });
 
+        // Línea de las listas del panel derecho: [×n] nombre / precio c/u   importe
+        function lineaResumen({ nombre, precio, cantidad }, nueva) {
+            const li = document.createElement('li');
+            li.className = 'resumen-item';
+            if (nueva) li.classList.add('nuevo');
+
+            const etiquetaCantidad = document.createElement('span');
+            etiquetaCantidad.className = 'resumen-item-cantidad';
+            etiquetaCantidad.textContent = `×${cantidad}`;
+
+            const info = document.createElement('span');
+            info.className = 'resumen-item-info';
+            const etiquetaNombre = document.createElement('span');
+            etiquetaNombre.className = 'resumen-item-nombre';
+            etiquetaNombre.textContent = nombre;
+            etiquetaNombre.title = nombre;
+            const etiquetaPrecio = document.createElement('small');
+            etiquetaPrecio.textContent = `${formatoDinero(precio)} c/u`;
+            info.append(etiquetaNombre, etiquetaPrecio);
+
+            const importe = document.createElement('span');
+            importe.className = 'resumen-item-importe';
+            importe.textContent = formatoDinero(cantidad * precio);
+
+            li.append(etiquetaCantidad, info, importe);
+            return li;
+        }
+
         function renderResumen() {
-            const lista = document.getElementById('resumenLista');
-            lista.replaceChildren();
+            const escaneo = document.getElementById('escaneoLista');
+            const resumen = document.getElementById('resumenLista');
+            document.getElementById('resumenAgrupado').hidden = carrito.length === 0;
 
             if (carrito.length === 0) {
                 const vacio = document.createElement('li');
                 vacio.className = 'resumen-vacio';
                 vacio.textContent = 'Sin productos';
-                lista.appendChild(vacio);
+                escaneo.replaceChildren(vacio);
+                resumen.replaceChildren();
                 return;
             }
 
-            agruparCarrito().forEach(g => {
-                const li = document.createElement('li');
-                li.className = 'resumen-item';
+            // Escaneo: las filas del carrito tal cual, en el orden en que se registraron
+            const lineas = carrito.map((item, index) => lineaResumen(item, index === indiceResaltado));
+            escaneo.replaceChildren(...lineas);
 
-                const nombre = document.createElement('span');
-                nombre.className = 'resumen-item-nombre';
-                nombre.textContent = g.nombre;
-                nombre.title = `${g.nombre} · ${formatoDinero(g.precio)} c/u`;
+            // Resumen: agrupado por producto; se resalta el del último movimiento
+            const idResaltado = carrito[indiceResaltado]?.id_producto;
+            resumen.replaceChildren(...agruparCarrito().map(g => lineaResumen(g, g.id_producto === idResaltado)));
 
-                const cantidad = document.createElement('span');
-                cantidad.className = 'resumen-item-cantidad';
-                cantidad.textContent = `×${g.cantidad}`;
-
-                const importe = document.createElement('span');
-                importe.className = 'resumen-item-importe';
-                importe.textContent = formatoDinero(g.importe);
-
-                li.append(cantidad, nombre, importe);
-                lista.appendChild(li);
-            });
+            // Mantiene a la vista lo último que se registró
+            const nueva = lineas[indiceResaltado];
+            if (nueva) nueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            const grupoNuevo = resumen.querySelector('.nuevo');
+            if (grupoNuevo) grupoNuevo.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
 
         // Los precios exhibidos ya son el total a pagar (impuestos incluidos).

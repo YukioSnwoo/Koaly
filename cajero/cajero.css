@@ -461,12 +461,25 @@ kbd {
 }
 .resumen-item {
     display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.55rem 0;
+    padding: 0.5rem 0.4rem;
     border-bottom: 1px dashed #e2e8f0;
+    border-radius: 6px;
     font-size: 0.88rem;
-    animation: fadeIn 0.2s ease-out;
 }
+/* Línea recién registrada o modificada */
+.resumen-item.nuevo { animation: lineaNueva 1.2s ease-out; }
 .resumen-item:last-child { border-bottom: none; }
+
+/* Resumen agrupado: debajo del escaneo, más compacto */
+.resumen-agrupado {
+    display: flex; flex-direction: column;
+    max-height: 32%; min-height: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e2e8f0;
+}
+.resumen-agrupado[hidden] { display: none; }
+.resumen-agrupado .resumen-lista { margin-bottom: 0.5rem; }
+.resumen-agrupado .resumen-item { padding-top: 0.35rem; padding-bottom: 0.35rem; }
 .resumen-item-cantidad {
     min-width: 2.3rem;
     padding: 0.1rem 0.4rem;
@@ -475,11 +488,12 @@ kbd {
     font-size: 0.78rem; font-weight: 700; text-align: center;
     flex-shrink: 0;
 }
+.resumen-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
 .resumen-item-nombre {
-    flex: 1; min-width: 0;
     color: #1e293b; font-weight: 600;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.resumen-item-info small { color: #64748b; font-size: 0.75rem; }
 .resumen-item-importe { font-weight: 700; color: #1e293b; white-space: nowrap; }
 .resumen-vacio { color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 1.5rem 0; }
 
@@ -661,6 +675,7 @@ kbd {
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bump     { 0% { color: #7c3aed; transform: scale(1); } 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes tarjetaPulso { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes lineaNueva { 0% { background: #ede9fe; transform: translateX(8px); opacity: 0.4; } 25% { transform: translateX(0); opacity: 1; } 100% { background: transparent; } }
 @keyframes filaSalida { to { opacity: 0; transform: translateX(24px); } }
 @keyframes toastEntrada { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toastSalida  { to { opacity: 0; transform: translateX(24px); } }
