@@ -6,6 +6,7 @@ require 'header.php';
 
 <?php
 require_once __DIR__ . '/sucursal_gerente.php';
+require_once __DIR__ . '/profanity_filter.php';
 
 $error = '';
 
@@ -27,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($nombre === '') {
                 throw new RuntimeException('El nombre es obligatorio.');
             }
+            rechazarSiProfano($nombre);
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException('Ingresa un correo electrónico válido.');
             }

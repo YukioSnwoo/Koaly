@@ -6,6 +6,7 @@ require 'header.php';
 
 <?php
 require_once __DIR__ . '/sucursal_gerente.php';
+require_once __DIR__ . '/profanity_filter.php';
 
 $error = '';
 
@@ -28,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($nombre === '' || $direccion === '') {
                 throw new RuntimeException('Nombre y dirección son obligatorios.');
             }
+            rechazarSiProfano($nombre);
             if ($idGerenteNuevo > 0 && !gerenteAsignable($pdo, $idGerenteNuevo)) {
                 throw new RuntimeException('El gerente seleccionado no está disponible.');
             }
