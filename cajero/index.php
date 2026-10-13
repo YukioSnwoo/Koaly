@@ -53,27 +53,20 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             </div>
             <div class="sidebar-group">
                 <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()">Limpiar</button>
-                <p class="atajo-hint">Selecciona un producto y presiona <kbd>Supr</kbd> o <kbd>⌫</kbd> para quitarlo.</p>
             </div>
         </aside>
 
-        <!-- Tabla Central -->
-        <section class="panel tabla-panel">
-            <table class="tabla-venta">
-                <thead>
-                    <tr>
-                        <th>Clave</th>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                        <th class="col-num">Precio</th>
-                        <th class="col-num">Importe</th>
-                        <th class="col-acciones"><span class="sr-only">Acciones</span></th>
-                    </tr>
-                </thead>
-                <tbody id="listaProductos">
-                    <!-- Filas dinámicas -->
-                </tbody>
-            </table>
+        <!-- Catálogo Central -->
+        <section class="panel catalogo-panel">
+            <h2 class="catalogo-titulo">Productos</h2>
+            <div class="catalogo-grid" id="catalogo">
+                <!-- Tarjetas dinámicas -->
+            </div>
+            <div class="catalogo-pie">
+                <button type="button" class="btn btn-ghost btn-lista" onclick="abrirLista()">
+                    Lista de venta <span class="contador-lista" id="contadorLista">0</span>
+                </button>
+            </div>
         </section>
 
         <!-- Lateral Derecho (Totales) -->
@@ -84,8 +77,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             <div>
                 <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
-                <div class="resumen-fila"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
-                <div class="resumen-fila"><span>IVA 16% (incluido)</span><span id="lblImpuestos">$0.00</span></div>
                 <div class="resumen-total"><span>Total</span><span id="lblTotal">$0.00</span></div>
                 <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()">Pagar</button>
             </div>
@@ -101,6 +92,36 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')">No, me quedo</button>
                 <button type="button" class="btn btn-danger-solid" onclick="logout()">Sí, cerrar sesión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: lista de venta (historial: una fila por cada vez que se agregó un producto).
+         Va antes de los demás modales para que la confirmación y los avisos queden encima. -->
+    <div class="modal-overlay" id="modalLista" role="dialog" aria-modal="true" aria-labelledby="tituloLista">
+        <div class="modal-box modal-lista">
+            <h2 id="tituloLista">Lista de venta</h2>
+            <p class="atajo-hint">Selecciona un producto y presiona <kbd>Supr</kbd> o <kbd>⌫</kbd> para quitarlo.</p>
+            <div class="tabla-scroll">
+                <table class="tabla-venta">
+                    <thead>
+                        <tr>
+                            <th>Clave</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th class="col-num">Precio</th>
+                            <th class="col-num">Importe</th>
+                            <th class="col-acciones"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaProductos">
+                        <!-- Filas dinámicas -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <span class="lista-total">Total <strong id="listaTotal">$0.00</strong></span>
+                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')">Cerrar</button>
             </div>
         </div>
     </div>
@@ -229,11 +250,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             });
         });
 
+        // El modal de encima es el último abierto en el documento
+        function modalSuperior() {
+            return [...document.querySelectorAll('.modal-overlay.open')].pop() || null;
+        }
+
+        // Escape cierra solo el de encima: la lista puede tener una confirmación abierta
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
-            document.querySelectorAll('.modal-overlay.open').forEach(overlay => {
-                if (overlay.id !== 'modalVenta') cerrarModal(overlay.id);
-            });
+            const abierto = modalSuperior();
+            if (abierto && abierto.id !== 'modalVenta') cerrarModal(abierto.id);
         });
 
         /* ---------- Búsqueda ---------- */
@@ -525,6 +551,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             carrito.forEach(item => {
                 if (item.id_producto === idProducto) item.stock = stock;
             });
+            const enCatalogo = catalogo.find(p => p.id_producto === idProducto);
+            if (enCatalogo) enCatalogo.stock = stock;
         }
 
         // Cantidad de una fila entre 1 y lo que queda disponible para ella (existencias
@@ -557,6 +585,157 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 g.importe += item.cantidad * item.precio;
             });
             return [...grupos.values()];
+        }
+
+        /* ---------- Catálogo ---------- */
+        // Tarjetas de todos los productos activos; un clic agrega uno a la venta.
+        // Las tarjetas se crean una vez y solo se actualizan sus etiquetas.
+        const ICONO_PRODUCTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>';
+        let catalogo = [];
+        const tarjetasCatalogo = new Map();   // id_producto -> elementos de su tarjeta
+
+        async function cargarCatalogo() {
+            const grid = document.getElementById('catalogo');
+            if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo('Cargando productos...'));
+            let productos;
+            try {
+                const res = await fetch('catalogo_productos.php');
+                productos = await res.json();
+                if (!Array.isArray(productos)) throw new Error('Respuesta inválida');
+            } catch (error) {
+                // Si falla una recarga se conserva el catálogo que ya se ve
+                if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo('No se pudo cargar el catálogo. Puedes usar el buscador.'));
+                return;
+            }
+            catalogo = productos;
+            renderCatalogo();
+        }
+
+        function mensajeCatalogo(texto) {
+            const div = document.createElement('div');
+            div.className = 'catalogo-mensaje';
+            div.textContent = texto;
+            return div;
+        }
+
+        function renderCatalogo() {
+            const grid = document.getElementById('catalogo');
+            tarjetasCatalogo.clear();
+
+            if (catalogo.length === 0) {
+                grid.replaceChildren(mensajeCatalogo('No hay productos activos.'));
+                return;
+            }
+
+            grid.replaceChildren(...catalogo.map(p => {
+                // La tarjeta lleva dos botones: toda el área agrega uno y el círculo
+                // rojo de la esquina resta uno (para corregir un clic de más)
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'producto-card';
+
+                const agregar = document.createElement('button');
+                agregar.type = 'button';
+                agregar.className = 'producto-card-agregar';
+
+                const marco = document.createElement('div');
+                marco.className = 'producto-card-img';
+                if (p.imagen) {
+                    const img = document.createElement('img');
+                    img.src = `../${p.imagen}`;
+                    img.alt = '';
+                    img.loading = 'lazy';
+                    marco.appendChild(img);
+                } else {
+                    marco.innerHTML = ICONO_PRODUCTO;
+                }
+
+                const enVenta = document.createElement('span');
+                enVenta.className = 'producto-card-cantidad';
+
+                const nombre = document.createElement('span');
+                nombre.className = 'producto-card-nombre';
+                nombre.textContent = p.nombre;
+
+                const pie = document.createElement('span');
+                pie.className = 'producto-card-pie';
+                const precio = document.createElement('span');
+                precio.className = 'producto-card-precio';
+                precio.textContent = formatoDinero(Number(p.precio) || 0);
+                const existencias = document.createElement('span');
+                pie.append(precio, existencias);
+
+                agregar.append(marco, enVenta, nombre, pie);
+                agregar.addEventListener('click', () => {
+                    const antes = cantidadDeProducto(p.id_producto);
+                    agregarAlCarrito(p);
+                    if (cantidadDeProducto(p.id_producto) > antes) animarTarjeta(tarjeta);
+                });
+
+                const restar = document.createElement('button');
+                restar.type = 'button';
+                restar.className = 'producto-card-restar';
+                restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+                restar.title = 'Quitar uno';
+                restar.setAttribute('aria-label', `Quitar uno de ${p.nombre}`);
+                restar.addEventListener('click', () => {
+                    restarUno(p.id_producto);
+                    animarTarjeta(tarjeta);
+                });
+
+                tarjeta.append(agregar, restar);
+                tarjetasCatalogo.set(p.id_producto, { producto: p, tarjeta, agregar, enVenta, existencias });
+                return tarjeta;
+            }));
+
+            actualizarCatalogo();
+        }
+
+        function animarTarjeta(tarjeta) {
+            tarjeta.classList.remove('bump');
+            void tarjeta.offsetWidth;   // reinicia la animación
+            tarjeta.classList.add('bump');
+        }
+
+        // Resta una unidad de la fila más reciente del producto; si esa fila
+        // queda en 0 se quita de la lista
+        function restarUno(idProducto) {
+            const index = carrito.findLastIndex(item => item.id_producto === idProducto);
+            if (index === -1) return;
+            if (carrito[index].cantidad > 1) {
+                carrito[index].cantidad--;
+                indiceResaltado = index;
+            } else {
+                carrito.splice(index, 1);
+                if (indiceSeleccionado === index) indiceSeleccionado = null;
+                else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+            }
+            renderCarrito();
+        }
+
+        // Cantidad en la venta y existencias de cada tarjeta
+        function actualizarCatalogo() {
+            tarjetasCatalogo.forEach(({ producto, tarjeta, agregar, enVenta, existencias }) => {
+                const stock = Number(producto.stock) || 0;
+                const cantidad = cantidadDeProducto(producto.id_producto);
+
+                tarjeta.classList.toggle('en-venta', cantidad > 0);
+                tarjeta.classList.toggle('agotado', stock <= 0);
+                enVenta.textContent = cantidad > 0 ? `×${cantidad}` : '';
+
+                if (stock <= 0) {
+                    existencias.className = 'stock-badge stock-agotado';
+                    existencias.textContent = 'Agotado';
+                } else if (stock < STOCK_BAJO) {
+                    existencias.className = 'stock-badge stock-bajo';
+                    existencias.textContent = `Quedan ${stock}`;
+                } else {
+                    existencias.className = '';
+                    existencias.textContent = '';
+                }
+
+                agregar.setAttribute('aria-label', `Agregar ${producto.nombre}, ${formatoDinero(Number(producto.precio) || 0)}` +
+                    (cantidad > 0 ? `, ${cantidad} en la venta` : '') + (stock <= 0 ? ', agotado' : ''));
+            });
         }
 
         /* ---------- Avisos de existencias ---------- */
@@ -602,6 +781,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const stockPorId = new Map(filas.map(f => [Number(f.id_producto), Number(f.stock)]));
             carrito.forEach(item => {
                 item.stock = stockPorId.get(Number(item.id_producto)) ?? 0;
+            });
+            catalogo.forEach(p => {
+                const stock = stockPorId.get(Number(p.id_producto));
+                if (stock !== undefined) p.stock = stock;
             });
             renderCarrito();
             return agruparCarrito().filter(g => g.cantidad > g.stock);
@@ -670,10 +853,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             tbody.innerHTML = '';
 
             if (carrito.length === 0) {
-                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Busca un producto para agregarlo a la venta</td></tr>';
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Agrega productos desde el catálogo o el buscador</td></tr>';
                 indiceSeleccionado = null;
                 indiceResaltado = null;
                 calcularTotales();
+                actualizarCatalogo();
                 return;
             }
 
@@ -767,6 +951,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             indiceResaltado = null;
             calcularTotales();
+            actualizarCatalogo();
+        }
+
+        function abrirLista() {
+            abrirModal('modalLista');
+            const seleccionada = document.querySelector('#listaProductos tr.selected') ||
+                                 document.querySelector('#listaProductos tr:last-child');
+            if (seleccionada) seleccionada.scrollIntoView({ block: 'nearest' });
         }
 
         function seleccionarFila(index) {
@@ -847,19 +1039,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             setTimeout(quitar, 200);
         }
 
-        // Supr / ⌫ elimina la fila seleccionada (si no se está escribiendo en un campo)
+        // Supr / ⌫ elimina la fila seleccionada de la lista (si no se está escribiendo en un campo)
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Delete' && e.key !== 'Backspace') return;
             if (e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
-            if (document.querySelector('.modal-overlay.open')) return;
+            if (modalSuperior()?.id !== 'modalLista') return;
             if (indiceSeleccionado === null || !carrito[indiceSeleccionado]) return;
             e.preventDefault();
             pedirEliminarProducto(indiceSeleccionado);
         });
 
-        // Los precios ya incluyen IVA (LFPC art. 7 bis: el precio exhibido es el
-        // total a pagar). El IVA solo se desglosa hacia atrás para el ticket.
-        // Mismo cálculo en centavos que registrar_venta.php.
         function renderResumen() {
             const lista = document.getElementById('resumenLista');
             lista.replaceChildren();
@@ -894,23 +1083,18 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             });
         }
 
+        // Los precios exhibidos ya son el total a pagar (impuestos incluidos).
+        // Mismo cálculo en centavos que registrar_venta.php.
         function calcularTotales() {
             renderResumen();
-            let totalCentavos = 0;
-
-            carrito.forEach(item => {
-                totalCentavos += aCentavos(item.precio) * item.cantidad;
-            });
-
-            const subtotalCentavos = Math.round(totalCentavos / 1.16);
-            const subtotal = subtotalCentavos / 100;
-            const impuestos = (totalCentavos - subtotalCentavos) / 100;
+            const totalCentavos = carrito.reduce((n, i) => n + aCentavos(i.precio) * i.cantidad, 0);
+            const articulos = carrito.reduce((n, i) => n + i.cantidad, 0);
             totalActual = totalCentavos / 100;
 
-            document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
-            document.getElementById('lblSubtotal').innerText = formatoDinero(subtotal);
-            document.getElementById('lblImpuestos').innerText = formatoDinero(impuestos);
+            document.getElementById('totalArticulos').innerText = articulos;
             document.getElementById('lblTotal').innerText = formatoDinero(totalActual);
+            document.getElementById('listaTotal').innerText = formatoDinero(totalActual);
+            document.getElementById('contadorLista').innerText = articulos;
         }
 
         /* ---------- Avisos y notificaciones ---------- */
@@ -1235,10 +1419,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             carrito = [];
             indiceSeleccionado = null;
             renderCarrito();
+            cargarCatalogo();   // existencias nuevas después de la venta
             inputBuscar.focus();
         }
 
         renderCarrito();
+        cargarCatalogo();
     </script>
 </body>
 </html>
