@@ -9,6 +9,7 @@ Imagenes/*.png
 Imagenes/*.jpg
 Imagenes/*.jpeg
 Imagenes/*.webp
+Imagenes/*.avif
 !Imagenes/.gitkeep
 # Iconos de la interfaz (no son subidas de usuarios)
 !Imagenes/puertaSalida.jpeg
