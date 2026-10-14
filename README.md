@@ -7,13 +7,13 @@
 
 ## Descripción
 
-Koaly es una aplicación web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
+Koaly es una sitio web diseñada para facilitar la administración de una empresa con diferentes sucursales. El sistema permite gestionar productos, inventarios, ventas, usuarios y sucursales desde una plataforma centralizada.
 
-La aplicación contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
+El sitio web contará con diferentes roles de usuario, permitiendo controlar las acciones disponibles para cada tipo de usuario. Además, cada sucursal tendrá su propio inventario y podrá registrar sus ventas de manera independiente.
 
 ## Características de la Plataforma
 
-Desarrollar una aplicación web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
+Desarrollar una pagina web de punto de venta e inventario multi-sede que permita administrar diferentes sucursales, controlar el inventario de productos y registrar las ventas realizadas en cada una de ellas.
 
 El sistema busca facilitar la gestión centralizada de la información y mantener actualizado el inventario después de cada venta.
 
@@ -163,6 +163,23 @@ Total.
 Método de pago.
 
 # Imagenes
+## Inicio de sesion  
+<img width="762" height="526" alt="image" src="https://github.com/user-attachments/assets/d12e8873-e341-4c71-b954-44af1674a7bf" />
+
+## Panel de Gerente
+<img width="1662" height="946" alt="image" src="https://github.com/user-attachments/assets/3f363b99-b665-4ba3-9f08-d0ad846a5e84" />
+
+## Función de agregar nuevo producto
+<img width="1800" height="874" alt="image" src="https://github.com/user-attachments/assets/22ff853a-ba44-41c3-ad8d-f8eba626d751" />
+
+## Cajas
+<img width="1895" height="830" alt="image" src="https://github.com/user-attachments/assets/bc46ba57-52cd-4a06-a73c-5db6bb408c59" />
+
+##  Historial de ventas
+<img width="1821" height="864" alt="image" src="https://github.com/user-attachments/assets/5e49024f-b4ba-442e-be52-302653ed1b12" />
+
+## Existencias
+<img width="1677" height="938" alt="image" src="https://github.com/user-attachments/assets/da0decd6-f079-4bfc-8115-02206213541c" />
 
 
 #  Link de la pagina
@@ -171,7 +188,7 @@ https://koalicius.com/
 
 #  Idiomas
 
-La aplicación contará con soporte para los siguientes idiomas:
+EL sitio wed dendra soporte para los siguientes idiomas:
 ## 🇲🇽 Español.
 ## 🇺🇸 Inglés.
 
@@ -223,6 +240,3 @@ La aplicación contará con soporte para los siguientes idiomas:
 
 ![MYSQL](https://img.shields.io/badge/MYSQL-DATABASE-00758F?style=for-the-badge&logo=mysql&logoColor=white)
 
-#  Estado del proyecto
-
-##  En desarrollo

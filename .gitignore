@@ -9,7 +9,10 @@ Imagenes/*.png
 Imagenes/*.jpg
 Imagenes/*.jpeg
 Imagenes/*.webp
+Imagenes/*.avif
 !Imagenes/.gitkeep
+# Iconos de la interfaz (no son subidas de usuarios)
+!Imagenes/puertaSalida.jpeg
 
 # Sistema
 .DS_Store
@@ -22,5 +25,9 @@ Thumbs.db
 
 # OneDrive / temporales
 ~$*
-desktop.ini*.kate-swp
+desktop.ini
+*.kate-swp
 *.swp
+
+# Privado
+private/

@@ -318,7 +318,7 @@ foreach ($opcionesStock as $valor => $texto): ?>
 <th>Clave</th>
 <th>Producto</th>
 <th>Categoría</th>
-<th>Precio venta</th>
+<th>Precio venta (IVA incl.)</th>
 <th>Stock</th>
 <th>Acciones</th>
 </tr>
@@ -411,7 +411,7 @@ Producto: <strong id="ajustarProductoNombre" style="color:#1e293b;"></strong>
 <p id="ajustarStockActual" style="padding:0.6rem 0.8rem; background:#f8fafc; border-radius:8px; font-weight:600; color:#475569;"></p>
 </div>
 <div class="form-group">
-<label>Precio de venta</label>
+<label>Precio de venta (IVA incluido)</label>
 <p id="ajustarStockPrecio" style="padding:0.6rem 0.8rem; background:#f8fafc; border-radius:8px; font-weight:600; color:#475569;"></p>
 </div>
 </div>
@@ -461,7 +461,7 @@ Solo cambia el precio en tu sucursal.
 <input type="hidden" name="id_producto" value="">
 
 <div class="form-group">
-<label>Nuevo precio de venta</label>
+<label>Nuevo precio de venta (IVA incluido)</label>
 <input type="number" name="precio_venta" min="0" step="0.01" placeholder="0.00" required>
 </div>
 
@@ -526,7 +526,7 @@ data-buscar="<?= htmlspecialchars($pd['nombre'] . ' ' . $pd['codigo'] . ' ' . ($
 <input type="number" name="cantidad_inicial" min="0" step="1" value="0" required>
 </div>
 <div class="form-group">
-<label>Precio de venta</label>
+<label>Precio de venta (IVA incluido)</label>
 <input type="number" name="precio_venta" min="0" step="0.01" placeholder="0.00" required>
 </div>
 </div>
