@@ -458,3 +458,29 @@
     font-size: 0.8rem;
     color: #64748b;
 }
+
+
+/* ============================================================
+ *  Ventas de mi sucursal — desgloses y artículos por venta
+ *  ============================================================ */
+.ventas-desgloses {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.ventas-desgloses .panel { margin-bottom: 0; }
+.ventas-desgloses .section-title { font-size: 1rem; margin-bottom: 0.5rem; }
+
+.venta-articulos summary {
+    cursor: pointer;
+    color: #7c3aed;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.venta-articulos ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1rem;
+    font-size: 0.85rem;
+    color: #475569;
+}

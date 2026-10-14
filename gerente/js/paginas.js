@@ -9,31 +9,6 @@
  * ██ PRODUCTOS — Modales y filtros
  * ============================================================ */
 
-function abrirModalEditar(btn) {
-    const form = document.getElementById('formProducto');
-    if (!form) return;
-    form.reset();
-    form.querySelector('[name="action"]').value = 'editar';
-    form.querySelector('[name="id_producto"]').value = btn.dataset.id;
-    form.querySelector('[name="codigo"]').value = btn.dataset.codigo;
-    form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
-    form.querySelector('[name="descripcion"]').value = btn.dataset.descripcion;
-    form.querySelector('[name="precio"]').value = btn.dataset.precio;
-    form.querySelector('[name="id_categoria"]').value = btn.dataset.categoria;
-    form.querySelector('[name="cantidad_inventario"]').value = btn.dataset.cantidad;
-
-    const preview = document.getElementById('previewImagen');
-    if (preview) {
-        preview.innerHTML = btn.dataset.imagen
-        ? `<img src="../${btn.dataset.imagen}" alt=""><span>Imagen actual (sube una nueva para reemplazarla)</span>`
-        : '<span>Sin imagen actual</span>';
-    }
-
-    const titulo = document.getElementById('tituloModalProducto');
-    if (titulo) titulo.textContent = 'Editar producto';
-    abrirModal('modalProducto');
-}
-
 function abrirModalAgregarInventario(btn) {
     const form = document.getElementById('formAgregarInventario');
     if (!form) return;
@@ -234,6 +209,23 @@ function abrirModalAjustarStock(btn) {
     abrirModal('modalAjustarStock');
 }
 
+function abrirModalCambiarPrecio(btn) {
+    const form = document.getElementById('formCambiarPrecio');
+    if (!form) return;
+    form.reset();
+
+    form.querySelector('[name="id_producto"]').value = btn.dataset.id;
+    const precio = parseFloat(btn.dataset.precio);
+    const input = form.querySelector('[name="precio_venta"]');
+    input.value = precio > 0 ? precio.toFixed(2) : '';
+
+    const nombre = document.getElementById('precioProductoNombre');
+    if (nombre) nombre.textContent = btn.dataset.nombre;
+
+    abrirModal('modalCambiarPrecio');
+    setTimeout(() => input.select(), 50);
+}
+
 function abrirModalAgregarProducto() {
     const form = document.getElementById('formAgregarProducto');
     if (!form) return;
@@ -255,6 +247,8 @@ function initFiltrosExistencias() {
 
     if (!buscador && !filtro) return;
 
+    const umbral = (filtro && parseInt(filtro.dataset.umbral, 10)) || 10;
+
     const aplicar = () => {
         const q    = buscador ? buscador.value.trim().toLowerCase() : '';
         const tipo = filtro   ? filtro.value : 'todos';
@@ -265,8 +259,9 @@ function initFiltrosExistencias() {
 
             let coincideTipo = true;
             if (tipo === 'agotado') coincideTipo = stock === 0;
-            else if (tipo === 'bajo') coincideTipo = stock > 0 && stock < 10;
-            else if (tipo === 'normal') coincideTipo = stock >= 10;
+            else if (tipo === 'bajo') coincideTipo = stock > 0 && stock < umbral;
+            else if (tipo === 'normal') coincideTipo = stock >= umbral;
+            else if (tipo === 'alerta') coincideTipo = stock < umbral;
 
             row.style.display = (coincideNombre && coincideTipo) ? '' : 'none';
         });
@@ -274,6 +269,7 @@ function initFiltrosExistencias() {
 
     if (buscador) buscador.addEventListener('input', aplicar);
     if (filtro)   filtro.addEventListener('change', aplicar);
+    aplicar(); // el filtro puede venir preseleccionado (?stock=alerta)
 }
 
 
@@ -530,18 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Componentes
     initCustomSelects();
 
-    // Productos — preview de imagen + filtro
-    const inputImagen = document.getElementById('inputImagen');
-    if (inputImagen) {
-        inputImagen.addEventListener('change', () => {
-            const preview = document.getElementById('previewImagen');
-            const archivo = inputImagen.files[0];
-            if (!archivo || !preview) return;
-            const url = URL.createObjectURL(archivo);
-            preview.innerHTML = `<img src="${url}" alt=""><span>${archivo.name}</span>`;
-        });
-    }
-
+    // Productos — filtro
     const buscador = document.getElementById('buscarProducto');
     const filtroInv = document.getElementById('filtroInventario');
     if (buscador || filtroInv) {
