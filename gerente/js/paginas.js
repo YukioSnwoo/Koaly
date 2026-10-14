@@ -209,6 +209,26 @@ function abrirModalAjustarStock(btn) {
     abrirModal('modalAjustarStock');
 }
 
+function abrirModalRecibir(btn) {
+    const form = document.getElementById('formRecibir');
+    if (!form) return;
+    form.reset();
+
+    form.querySelector('[name="id_producto"]').value = btn.dataset.id;
+
+    const nombre = document.getElementById('recibirProductoNombre');
+    if (nombre) nombre.textContent = btn.dataset.nombre;
+    const stock = document.getElementById('recibirStockActual');
+    if (stock) stock.textContent = btn.dataset.stock;
+
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
+
+    abrirModal('modalRecibir');
+    const cantidad = form.querySelector('[name="cantidad_recibida"]');
+    setTimeout(() => cantidad.focus(), 50);
+}
+
 function abrirModalCambiarPrecio(btn) {
     const form = document.getElementById('formCambiarPrecio');
     if (!form) return;

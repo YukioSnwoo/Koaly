@@ -36,6 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($idProducto <= 0 || $cantidadNueva < 0) {
                 throw new RuntimeException('Cantidad inválida.');
             }
+            if (!isset(MOTIVOS_AJUSTE[$motivo])) {
+                throw new RuntimeException('Motivo de ajuste inválido.');
+            }
 
             // Leer y bloquear la fila dentro de la transacción: una venta
             // concurrente no puede cambiar el stock hasta el commit.
@@ -64,20 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $delta = $cantidadNueva - $cantidadActual;
             $motivoCompleto = $motivo . ($detalle !== '' ? ' — ' . $detalle : '');
 
-            $stmt = $pdo->prepare("
-            INSERT INTO Movimientos_Inventario
-            (id_sucursal, id_producto, tipo_movimiento, cantidad,
-                                  existencia_posterior, motivo_detalle, realizado_por)
-            VALUES (?, ?, 'AJUSTE_MANUAL', ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $idSucursalGerente,
-                $idProducto,
-                $delta,
-                $cantidadNueva,
-                $motivoCompleto,
-                (int) $gerente['id_usuario']
-            ]);
+            registrarMovimiento(
+                $pdo, (int) $idSucursalGerente, $idProducto, MOTIVOS_AJUSTE[$motivo],
+                $delta, $cantidadNueva, $motivoCompleto, (int) $gerente['id_usuario']
+            );
 
             $pdo->commit();
             $mensajeExito = 'Stock actualizado correctamente.';
@@ -120,21 +113,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$idSucursalGerente, $idProducto]);
 
-            $stmt = $pdo->prepare("
-            INSERT INTO Movimientos_Inventario
-            (id_sucursal, id_producto, tipo_movimiento, cantidad,
-                                  existencia_posterior, motivo_detalle, realizado_por)
-            VALUES (?, ?, 'AJUSTE_MANUAL', ?, 0, 'Puesto en cero por gerente', ?)
-            ");
-            $stmt->execute([
-                $idSucursalGerente,
-                $idProducto,
-                -$cantidadActual,
-                (int) $gerente['id_usuario']
-            ]);
+            registrarMovimiento(
+                $pdo, (int) $idSucursalGerente, $idProducto, 'AJUSTE_MANUAL',
+                -$cantidadActual, 0, 'Puesto en cero por gerente', (int) $gerente['id_usuario']
+            );
 
             $pdo->commit();
             $mensajeExito = 'Producto puesto en cero.';
+
+            /* -------- Recibir mercancía (entrada de proveedor) -------- */
+        } elseif ($action === 'recibir_mercancia') {
+            $idProducto = (int) ($_POST['id_producto'] ?? 0);
+            $recibida   = (int) ($_POST['cantidad_recibida'] ?? 0);
+            $proveedor  = trim($_POST['proveedor'] ?? '');
+            $folio      = trim($_POST['folio'] ?? '');
+
+            if ($idProducto <= 0 || $recibida <= 0) {
+                throw new RuntimeException('Indica cuántas unidades recibiste.');
+            }
+            if (mb_strlen($proveedor) > 100 || mb_strlen($folio) > 50) {
+                throw new RuntimeException('Proveedor (máx. 100) o folio (máx. 50) demasiado largos.');
+            }
+
+            $pdo->beginTransaction();
+            $cantidadActual = leerStockParaActualizar($pdo, (int) $idSucursalGerente, $idProducto);
+            if ($cantidadActual === null) {
+                throw new RuntimeException('El producto no está en el inventario de tu sucursal.');
+            }
+
+            $cantidadNueva = $cantidadActual + $recibida;
+            $stmt = $pdo->prepare("
+            UPDATE Inventario_Sucursal
+            SET cantidad_disponible = ?
+            WHERE id_sucursal = ? AND id_producto = ?
+            ");
+            $stmt->execute([$cantidadNueva, $idSucursalGerente, $idProducto]);
+
+            $partes = array_filter([
+                $proveedor !== '' ? 'Proveedor: ' . $proveedor : null,
+                $folio !== '' ? 'Folio: ' . $folio : null,
+            ]);
+            $motivoRecepcion = 'Recepción de mercancía' . ($partes ? ' — ' . implode(' · ', $partes) : '');
+
+            registrarMovimiento(
+                $pdo, (int) $idSucursalGerente, $idProducto, 'COMPRA_PROVEEDOR',
+                $recibida, $cantidadNueva, $motivoRecepcion, (int) $gerente['id_usuario']
+            );
+
+            $pdo->commit();
+            $mensajeExito = "Recepción registrada: +{$recibida} unidades (ahora hay {$cantidadNueva}).";
 
             /* -------- Cambiar precio de venta (solo en esta sucursal) -------- */
         } elseif ($action === 'cambiar_precio') {
@@ -244,11 +271,14 @@ require __DIR__ . '/header.php';
 <h1>Existencias</h1>
 <p>Controla y ajusta el stock de los productos en tu sucursal</p>
 </div>
+<div class="acciones">
+<a href="movimientos.php" class="btn btn-ghost">Movimientos</a>
 <?php if (!empty($productosDisponibles)): ?>
 <button type="button" class="btn btn-primary" onclick="abrirModalAgregarProducto()">
 + Agregar producto al inventario
 </button>
 <?php endif; ?>
+</div>
 </div>
 
 <?php if ($exito): ?>
@@ -369,6 +399,15 @@ data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
 data-precio="<?= htmlspecialchars((string) $precio, ENT_QUOTES) ?>"
 >Precio</button>
 
+<button type="button" class="btn btn-success btn-sm"
+onclick="abrirModalRecibir(this)"
+data-id="<?= (int) $p['id_producto'] ?>"
+data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
+data-stock="<?= $stock ?>"
+>Recibir</button>
+
+<a class="btn btn-ghost btn-sm" href="movimientos.php?producto=<?= (int) $p['id_producto'] ?>">Historial</a>
+
 <?php if ($stock > 0): ?>
 <form method="POST" style="display:contents"
 data-confirm="Se pondrá el stock de '<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>' en 0. El producto seguirá en el inventario como agotado."
@@ -441,6 +480,45 @@ Producto: <strong id="ajustarProductoNombre" style="color:#1e293b;"></strong>
 <div class="modal-actions">
 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalAjustarStock')">Cancelar</button>
 <button type="submit" class="btn btn-primary">Guardar ajuste</button>
+</div>
+</form>
+</div>
+</div>
+
+<!-- Modal: Recibir mercancía -->
+<div class="modal-overlay" id="modalRecibir">
+<div class="modal-box">
+<h2>Recibir mercancía</h2>
+<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">
+Producto: <strong id="recibirProductoNombre" style="color:#1e293b;"></strong><br>
+Stock actual: <strong id="recibirStockActual"></strong>. Lo recibido se <strong>suma</strong> al stock.
+</p>
+
+<form id="formRecibir" method="POST" action="existencias.php"
+onsubmit="this.querySelector('[type=submit]').disabled = true;">
+<input type="hidden" name="action" value="recibir_mercancia">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+<input type="hidden" name="id_producto" value="">
+
+<div class="form-group">
+<label>Unidades recibidas</label>
+<input type="number" name="cantidad_recibida" min="1" step="1" required>
+</div>
+
+<div class="form-row">
+<div class="form-group">
+<label>Proveedor (opcional)</label>
+<input type="text" name="proveedor" maxlength="100" placeholder="Ej. Coca-Cola FEMSA">
+</div>
+<div class="form-group">
+<label>Folio / factura (opcional)</label>
+<input type="text" name="folio" maxlength="50" placeholder="Ej. F-10293">
+</div>
+</div>
+
+<div class="modal-actions">
+<button type="button" class="btn btn-ghost" onclick="cerrarModal('modalRecibir')">Cancelar</button>
+<button type="submit" class="btn btn-primary">Registrar recepción</button>
 </div>
 </form>
 </div>

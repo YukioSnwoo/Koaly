@@ -484,3 +484,52 @@
     font-size: 0.85rem;
     color: #475569;
 }
+
+.caja-ventas {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+}
+.caja-ventas strong { color: #16a34a; }
+
+
+/* ============================================================
+ *  Cajeros — contraseña temporal y enlace a ventas
+ *  ============================================================ */
+.alert-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.password-temporal {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: #fff;
+    padding: 0.1rem 0.45rem;
+    border-radius: 6px;
+    user-select: all;
+}
+.cajero-ver-ventas {
+    display: block;
+    font-size: 0.8rem;
+    color: #7c3aed;
+    text-decoration: none;
+    margin: -0.25rem 0 0.75rem;
+}
+.cajero-ver-ventas:hover { text-decoration: underline; }
+
+
+/* ============================================================
+ *  Inicio — resumen del día
+ *  ============================================================ */
+.hero-chip--muted { opacity: 0.75; font-weight: 500; }
+.kpi--link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kpi--link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15,23,42,0.08);
+}

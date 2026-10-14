@@ -129,6 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Ya existe otra caja con ese número en tu sucursal.');
             }
 
+            // Desasignar de otra caja + actualizar esta: todo o nada
+            $pdo->beginTransaction();
+
             // Si el cajero ya estaba en OTRA caja, desasignarlo de la anterior
             if ($idCajero > 0) {
                 $stmt = $pdo->prepare("
@@ -151,6 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idCajero,
                 $id
             ]);
+
+            $pdo->commit();
 
             $_SESSION['flash'] = ['msg' => 'Caja actualizada correctamente.'];
             header('Location: cajas.php');
@@ -196,7 +201,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Caja inválida.');
             }
 
-            // Cuando exista Ventas.id_caja, validar aquí que no haya ventas asociadas.
+            // Una caja con ventas no se borra: perdería el historial (y la FK lo impide).
+            $check = $pdo->prepare("SELECT COUNT(*) FROM Ventas WHERE id_caja = ?");
+            $check->execute([$id]);
+            $numVentas = (int) $check->fetchColumn();
+            if ($numVentas > 0) {
+                throw new RuntimeException(
+                    "Esta caja tiene {$numVentas} venta" . ($numVentas === 1 ? '' : 's')
+                    . " registrada" . ($numVentas === 1 ? '' : 's') . ". No se puede eliminar; desactívala."
+                );
+            }
+
             $stmt = $pdo->prepare("DELETE FROM Cajas WHERE id_caja = ?");
             $stmt->execute([$id]);
 
@@ -206,8 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     } catch (RuntimeException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         $errores[] = $e->getMessage();
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         $errores[] = 'Error al guardar en la base de datos.';
     }
 }
@@ -219,7 +236,10 @@ $stmt = $pdo->prepare("
     SELECT c.id_caja, c.numero_caja, c.nombre, c.estado,
            c.id_cajero_asignado,
            u.nombre AS cajero_nombre,
-           c.creado_en
+           c.creado_en,
+           (SELECT COUNT(*) FROM Ventas v WHERE v.id_caja = c.id_caja) AS num_ventas,
+           (SELECT COALESCE(SUM(v.total), 0) FROM Ventas v
+             WHERE v.id_caja = c.id_caja AND v.fecha_hora >= CURDATE()) AS monto_hoy
     FROM Cajas c
     LEFT JOIN Usuarios u ON u.id_usuario = c.id_cajero_asignado
     WHERE c.id_sucursal = ?
@@ -341,6 +361,12 @@ require __DIR__ . '/header.php';
                     <?php endif; ?>
                 </div>
 
+                <div class="caja-ventas">
+                    <span><strong>$<?= number_format((float) $c['monto_hoy'], 2) ?></strong> hoy</span>
+                    <span>&middot;</span>
+                    <span><?= (int) $c['num_ventas'] ?> venta<?= (int) $c['num_ventas'] === 1 ? '' : 's' ?> en total</span>
+                </div>
+
                 <div class="caja-actions">
                     <button type="button" class="btn btn-ghost btn-sm"
                         onclick="abrirModalEditarCaja(this)"
@@ -366,6 +392,7 @@ require __DIR__ . '/header.php';
                         </button>
                     </form>
 
+                    <?php if ((int) $c['num_ventas'] === 0): ?>
                     <form method="POST" style="display:contents"
                           data-confirm="Se eliminará la caja '<?= htmlspecialchars($c['numero_caja'], ENT_QUOTES) ?>' permanentemente. Esta acción no se puede deshacer."
                           data-confirm-titulo="Eliminar caja"
@@ -381,6 +408,7 @@ require __DIR__ . '/header.php';
                             </svg>
                         </button>
                     </form>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>

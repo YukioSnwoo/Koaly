@@ -26,6 +26,55 @@ function badgeStock(int $stock): array
 }
 
 /**
+ * Motivos de ajuste manual → tipo_movimiento del kardex.
+ * Los que no tienen tipo propio en el ENUM quedan como AJUSTE_MANUAL.
+ */
+const MOTIVOS_AJUSTE = [
+    'Conteo físico'         => 'AJUSTE_MANUAL',
+    'Merma'                 => 'AJUSTE_MERMA',
+    'Robo'                  => 'AJUSTE_ROBO',
+    'Devolución de cliente' => 'DEVOLUCION_CLIENTE',
+    'Error de captura'      => 'AJUSTE_MANUAL',
+    'Otro'                  => 'AJUSTE_MANUAL',
+];
+
+/** Etiquetas legibles de Movimientos_Inventario.tipo_movimiento. */
+const TIPOS_MOVIMIENTO = [
+    'VENTA'              => 'Venta',
+    'COMPRA_PROVEEDOR'   => 'Recepción',
+    'AJUSTE_MERMA'       => 'Merma',
+    'AJUSTE_ROBO'        => 'Robo',
+    'DEVOLUCION_CLIENTE' => 'Devolución',
+    'TRASLADO'           => 'Traslado',
+    'AJUSTE_MANUAL'      => 'Ajuste',
+];
+
+/**
+ * Registra una fila en el kardex (Movimientos_Inventario).
+ * $cantidad es el delta con signo; $existencia la cantidad que quedó.
+ * No maneja transacciones — se asume que el llamador lo hace.
+ */
+function registrarMovimiento(
+    PDO $pdo,
+    int $idSucursal,
+    int $idProducto,
+    string $tipo,
+    int $cantidad,
+    int $existencia,
+    string $motivo,
+    int $idUsuario,
+    ?int $referenciaId = null
+): void {
+    $stmt = $pdo->prepare("
+    INSERT INTO Movimientos_Inventario
+    (id_sucursal, id_producto, tipo_movimiento, cantidad,
+     existencia_posterior, referencia_id, motivo_detalle, realizado_por)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$idSucursal, $idProducto, $tipo, $cantidad, $existencia, $referenciaId, $motivo, $idUsuario]);
+}
+
+/**
  * Lee el stock de un producto en una sucursal bloqueando la fila (FOR UPDATE)
  * para que ninguna venta lo cambie hasta el commit.
  * Debe llamarse dentro de una transacción. Devuelve null si no existe la fila.
@@ -137,13 +186,7 @@ function agregarProductoAInventario(PDO $pdo, int $idSucursal, int $idProducto, 
     ");
     $stmt->execute([$idSucursal, $idProducto, (string) $categoriaNombre, $cantidad, $precio]);
 
-    $stmt = $pdo->prepare("
-    INSERT INTO Movimientos_Inventario
-    (id_sucursal, id_producto, tipo_movimiento, cantidad,
-                          existencia_posterior, motivo_detalle, realizado_por)
-    VALUES (?, ?, 'AJUSTE_MANUAL', ?, ?, 'Alta en inventario', ?)
-    ");
-    $stmt->execute([$idSucursal, $idProducto, $cantidad, $cantidad, $idUsuario]);
+    registrarMovimiento($pdo, $idSucursal, $idProducto, 'AJUSTE_MANUAL', $cantidad, $cantidad, 'Alta en inventario', $idUsuario);
 
     $pdo->commit();
 }

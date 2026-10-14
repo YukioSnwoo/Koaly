@@ -1,5 +1,44 @@
 <?php
 require_once __DIR__ . '/guardia.php';
+require_once __DIR__ . '/includes/productos.php';
+
+/* ------------------------------------------------------------
+   Resumen del día para el inicio
+   ------------------------------------------------------------ */
+$stmt = $pdo->prepare("
+    SELECT
+        COALESCE(SUM(CASE WHEN fecha_hora >= CURDATE() THEN total END), 0)        AS monto_hoy,
+        COUNT(CASE WHEN fecha_hora >= CURDATE() THEN 1 END)                         AS num_hoy,
+        COALESCE(SUM(CASE WHEN fecha_hora <  CURDATE() THEN total END), 0)        AS monto_ayer
+    FROM Ventas
+    WHERE id_sucursal = ? AND fecha_hora >= CURDATE() - INTERVAL 1 DAY
+");
+$stmt->execute([$idSucursalGerente]);
+$ventasHoy = $stmt->fetch();
+
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) AS en_alerta,
+           COUNT(CASE WHEN cantidad_disponible = 0 THEN 1 END) AS agotados
+    FROM Inventario_Sucursal
+    WHERE id_sucursal = ? AND cantidad_disponible < ?
+");
+$stmt->execute([$idSucursalGerente, STOCK_UMBRAL_BAJO]);
+$stockAlerta = $stmt->fetch();
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM Solicitudes_Productos WHERE id_sucursal = ? AND estado = 'Pendiente'");
+$stmt->execute([$idSucursalGerente]);
+$solicitudesPendientes = (int) $stmt->fetchColumn();
+
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) AS total, COUNT(CASE WHEN estado = 'Activa' THEN 1 END) AS activas
+    FROM Cajas WHERE id_sucursal = ?
+");
+$stmt->execute([$idSucursalGerente]);
+$cajasResumen = $stmt->fetch();
+
+$stmt = $pdo->prepare("SELECT direccion, telefono, email_contacto FROM Sucursales WHERE id_sucursal = ?");
+$stmt->execute([$idSucursalGerente]);
+$sucursal = $stmt->fetch() ?: [];
 
 $pageTitle = 'Panel Gerente';
 require __DIR__ . '/header.php';
@@ -18,7 +57,41 @@ require __DIR__ . '/header.php';
             </svg>
             <?= htmlspecialchars($gerente['sucursal_nombre'] ?? 'Sin sucursal') ?>
         </span>
+        <?php foreach (['direccion', 'telefono', 'email_contacto'] as $campo): ?>
+            <?php if (!empty($sucursal[$campo])): ?>
+                <span class="hero-chip hero-chip--muted"><?= htmlspecialchars($sucursal[$campo]) ?></span>
+            <?php endif; ?>
+        <?php endforeach; ?>
     </div>
+</section>
+
+<section class="kpi-grid" aria-label="Resumen de hoy">
+    <a href="ventas_sucursal.php?periodo=hoy" class="kpi kpi--ok kpi--link">
+        <span class="kpi-label">Ventas de hoy</span>
+        <span class="kpi-value kpi-value--ok">$<?= number_format((float) $ventasHoy['monto_hoy'], 2) ?></span>
+        <span class="kpi-sub">
+            <?= (int) $ventasHoy['num_hoy'] ?> ticket<?= (int) $ventasHoy['num_hoy'] === 1 ? '' : 's' ?>
+            &middot; ayer $<?= number_format((float) $ventasHoy['monto_ayer'], 2) ?>
+        </span>
+    </a>
+    <a href="existencias.php?stock=alerta" class="kpi <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi--danger' : '' ?> kpi--link">
+        <span class="kpi-label">Stock en alerta</span>
+        <span class="kpi-value <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi-value--danger' : '' ?>"><?= (int) $stockAlerta['en_alerta'] ?></span>
+        <span class="kpi-sub">
+            <?= (int) $stockAlerta['agotados'] ?> agotado<?= (int) $stockAlerta['agotados'] === 1 ? '' : 's' ?>
+            &middot; menos de <?= STOCK_UMBRAL_BAJO ?> u.
+        </span>
+    </a>
+    <a href="productos.php" class="kpi <?= $solicitudesPendientes > 0 ? 'kpi--warn' : '' ?> kpi--link">
+        <span class="kpi-label">Solicitudes pendientes</span>
+        <span class="kpi-value <?= $solicitudesPendientes > 0 ? 'kpi-value--warn' : '' ?>"><?= $solicitudesPendientes ?></span>
+        <span class="kpi-sub">productos pedidos al admin</span>
+    </a>
+    <a href="cajas.php" class="kpi kpi--link">
+        <span class="kpi-label">Cajas activas</span>
+        <span class="kpi-value"><?= (int) $cajasResumen['activas'] ?> / <?= (int) $cajasResumen['total'] ?></span>
+        <span class="kpi-sub">registradas en tu sucursal</span>
+    </a>
 </section>
 
 <section aria-labelledby="operacion-title" style="margin-bottom: 2rem;">
@@ -55,7 +128,7 @@ require __DIR__ . '/header.php';
 </section>
 
 <section aria-labelledby="personal-title" style="margin-bottom: 2rem;">
-    <h2 id="personal-title" class="section-title">Personal y sucursal</h2>
+    <h2 id="personal-title" class="section-title">Personal y cajas</h2>
     <div class="cards">
         <a href="cajeros.php" class="card">
             <div class="card-head">
@@ -84,21 +157,6 @@ require __DIR__ . '/header.php';
                 <h3>Cajas</h3>
             </div>
             <p>Registrar, editar y eliminar las cajas de tu sucursal.</p>
-        </a>
-
-        <a href="sucursal.php" class="card">
-            <div class="card-head">
-                <span class="card-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l1.5-6h15L21 9"/>
-                        <path d="M3 9v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9"/>
-                        <path d="M3 9h18"/>
-                        <path d="M9 21V13h6v8"/>
-                    </svg>
-                </span>
-                <h3>Mi sucursal</h3>
-            </div>
-            <p>Información de contacto y datos de tu sucursal asignada.</p>
         </a>
     </div>
 </section>
