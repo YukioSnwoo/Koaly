@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/guardia.php';
+require_once __DIR__ . '/includes/csv.php';
 
 const VENTAS_POR_PAGINA = 50;
 
@@ -92,6 +93,44 @@ $construirWhere = static function (string $ini, string $fin) use ($idSucursalGer
 };
 
 [$where, $params] = $construirWhere($inicio, $fin);
+
+/* ============================================================
+ * Exportar CSV: todas las ventas del periodo con los filtros actuales
+ * ============================================================ */
+if (($_GET['exportar'] ?? '') === 'csv') {
+    $stmt = $pdo->prepare("
+        SELECT v.id_venta, v.fecha_hora, u.nombre AS cajero, m.nombre_metodo,
+               (SELECT COALESCE(SUM(dv.cantidad), 0) FROM Detalle_Venta dv WHERE dv.id_venta = v.id_venta) AS articulos,
+               v.subtotal, v.total
+        FROM Ventas v
+        INNER JOIN Usuarios u     ON u.id_usuario = v.id_cajero
+        INNER JOIN Metodos_Pago m ON m.id_metodo_pago = v.id_metodo_pago
+        WHERE $where
+        ORDER BY v.fecha_hora, v.id_venta
+    ");
+    $stmt->execute($params);
+
+    $filas = (function () use ($stmt) {
+        while ($v = $stmt->fetch()) {
+            yield [
+                $v['id_venta'],
+                date('d/m/Y H:i', strtotime($v['fecha_hora'])),
+                $v['cajero'],
+                $v['nombre_metodo'],
+                (int) $v['articulos'],
+                number_format((float) $v['subtotal'], 2, '.', ''),
+                number_format((float) $v['total'] - (float) $v['subtotal'], 2, '.', ''),
+                number_format((float) $v['total'], 2, '.', ''),
+            ];
+        }
+    })();
+
+    enviarCsv(
+        'ventas_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
+        ['Folio', 'Fecha', 'Cajero', 'Método de pago', 'Artículos', 'Subtotal', 'IVA', 'Total'],
+        $filas
+    );
+}
 
 /* ============================================================
  * KPIs (sobre todo el periodo, no sobre la página mostrada)
@@ -224,6 +263,8 @@ require __DIR__ . '/header.php';
             <?php endif; ?>
         </p>
     </div>
+    <a class="btn btn-ghost"
+       href="<?= htmlspecialchars($urlVentas($filtrosRango + ['exportar' => 'csv'])) ?>">Exportar CSV</a>
 </div>
 
 <div class="acciones" style="margin-bottom: 0.75rem;">

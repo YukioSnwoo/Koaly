@@ -74,8 +74,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException('Estado inválido.');
             }
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaContratacion)) {
+            $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $fechaContratacion);
+            if (!$fecha || $fecha->format('Y-m-d') !== $fechaContratacion) {
                 throw new RuntimeException('La fecha de contratación no es válida.');
+            }
+            if ($fecha > new DateTimeImmutable('today')) {
+                throw new RuntimeException('La fecha de contratación no puede ser futura.');
             }
 
             $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ?");
@@ -405,7 +409,7 @@ require __DIR__ . '/header.php';
 
                 <div class="form-group" id="grupoFechaContratacion">
                     <label>Fecha de contratación</label>
-                    <input type="date" name="fecha_contratacion" value="<?= date('Y-m-d') ?>">
+                    <input type="date" name="fecha_contratacion" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
                 </div>
             </div>
 

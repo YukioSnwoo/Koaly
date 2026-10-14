@@ -248,13 +248,18 @@ $stmt = $pdo->prepare("
 $stmt->execute([$idSucursalGerente]);
 $cajas = $stmt->fetchAll();
 
+// Cajeros activos + los que ya tienen caja aunque no estén activos (vacaciones,
+// licencia…): si no aparecieran, editar la caja los desasignaría sin avisar.
 $stmt = $pdo->prepare("
-    SELECT id_usuario, nombre
+    SELECT id_usuario, nombre, estado
     FROM Usuarios
-    WHERE id_rol = 3 AND id_sucursal = ? AND estado = 'Activo'
+    WHERE id_rol = 3 AND id_sucursal = ?
+      AND (estado = 'Activo'
+           OR id_usuario IN (SELECT id_cajero_asignado FROM Cajas
+                             WHERE id_sucursal = ? AND id_cajero_asignado IS NOT NULL))
     ORDER BY nombre
 ");
-$stmt->execute([$idSucursalGerente]);
+$stmt->execute([$idSucursalGerente, $idSucursalGerente]);
 $cajerosDisponibles = $stmt->fetchAll();
 
 // Mapa de cajeros ya asignados a alguna caja de esta sucursal
@@ -454,13 +459,13 @@ require __DIR__ . '/header.php';
                         <option value="<?= (int) $cj['id_usuario'] ?>"
                                 data-caja-actual="<?= $info ? htmlspecialchars($info['numero_caja'], ENT_QUOTES) : '' ?>"
                                 data-caja-id="<?= $info ? (int) $info['id_caja'] : 0 ?>">
-                            <?= htmlspecialchars($cj['nombre']) ?>
+                            <?= htmlspecialchars($cj['nombre']) ?><?= $cj['estado'] !== 'Activo' ? ' (' . htmlspecialchars($cj['estado']) . ')' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
                 <div id="avisoReasignacion" class="aviso-reasignacion" aria-live="polite"></div>
                 <small style="display:block; color:#94a3b8; font-size:0.75rem; margin-top:0.3rem;">
-                    Solo cajeros activos de tu sucursal.
+                    Cajeros activos de tu sucursal (y el que ya tenga asignado, aunque no esté activo).
                 </small>
             </div>
 

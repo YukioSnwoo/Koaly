@@ -38,6 +38,12 @@ const MOTIVOS_AJUSTE = [
     'Otro'                  => 'AJUSTE_MANUAL',
 ];
 
+/**
+ * Los cambios de precio de venta se registran en el kardex con cantidad 0 y
+ * este prefijo en motivo_detalle (no hay tabla de historial de precios).
+ */
+const PREFIJO_CAMBIO_PRECIO = 'Cambio de precio:';
+
 /** Etiquetas legibles de Movimientos_Inventario.tipo_movimiento. */
 const TIPOS_MOVIMIENTO = [
     'VENTA'              => 'Venta',

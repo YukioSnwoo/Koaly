@@ -188,14 +188,16 @@ function _actualizarAvisoReasignacion() {
  * ██ EXISTENCIAS — Modales y filtros
  * ============================================================ */
 
-function abrirModalAjustarStock(btn) {
+/** cantidadSugerida: p. ej. 0 desde "Poner en cero" (igual exige motivo). */
+function abrirModalAjustarStock(btn, cantidadSugerida = null) {
     const form = document.getElementById('formAjustarStock');
     if (!form) return;
     form.reset();
 
     form.querySelector('[name="id_producto"]').value    = btn.dataset.id;
     form.querySelector('[name="cantidad_actual"]').value = btn.dataset.stock;
-    form.querySelector('[name="cantidad_nueva"]').value  = btn.dataset.stock;
+    form.querySelector('[name="cantidad_nueva"]').value  =
+        cantidadSugerida !== null ? cantidadSugerida : btn.dataset.stock;
 
     const nombre = document.getElementById('ajustarProductoNombre');
     if (nombre) nombre.textContent = btn.dataset.nombre;

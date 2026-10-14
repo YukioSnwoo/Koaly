@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
+require_once __DIR__ . '/includes/csv.php';
 
 const MOVIMIENTOS_POR_PAGINA = 50;
 
@@ -47,6 +48,45 @@ if ($idProducto > 0) {
 if ($tipo !== '') {
     $where .= " AND m.tipo_movimiento = ?";
     $params[] = $tipo;
+}
+
+/* ============================================================
+ * Exportar CSV con los filtros actuales
+ * ============================================================ */
+if (($_GET['exportar'] ?? '') === 'csv') {
+    $stmt = $pdo->prepare("
+        SELECT m.fecha_hora, p.codigo, p.nombre AS producto, m.tipo_movimiento,
+               m.cantidad, m.existencia_posterior, m.motivo_detalle, u.nombre AS usuario
+        FROM Movimientos_Inventario m
+        INNER JOIN Productos p ON p.id_producto = m.id_producto
+        LEFT JOIN Usuarios u   ON u.id_usuario = m.realizado_por
+        WHERE $where
+        ORDER BY m.fecha_hora, m.id_movimiento
+    ");
+    $stmt->execute($params);
+
+    $filas = (function () use ($stmt) {
+        while ($m = $stmt->fetch()) {
+            $esPrecio = (int) $m['cantidad'] === 0
+                && str_starts_with((string) $m['motivo_detalle'], PREFIJO_CAMBIO_PRECIO);
+            yield [
+                date('d/m/Y H:i', strtotime($m['fecha_hora'])),
+                $m['codigo'],
+                $m['producto'],
+                $esPrecio ? 'Precio' : (TIPOS_MOVIMIENTO[$m['tipo_movimiento']] ?? $m['tipo_movimiento']),
+                (int) $m['cantidad'],
+                (int) $m['existencia_posterior'],
+                $m['motivo_detalle'] ?? '',
+                $m['usuario'] ?? '',
+            ];
+        }
+    })();
+
+    enviarCsv(
+        'movimientos_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
+        ['Fecha', 'Código', 'Producto', 'Tipo', 'Cantidad', 'Quedaron', 'Detalle', 'Realizó'],
+        $filas
+    );
 }
 
 /* ============================================================
@@ -118,7 +158,11 @@ require __DIR__ . '/header.php';
             <?php endif; ?>
         </p>
     </div>
-    <a href="existencias.php" class="btn btn-ghost">← Existencias</a>
+    <div class="acciones">
+        <a href="<?= htmlspecialchars('movimientos.php?' . http_build_query($filtros + ['exportar' => 'csv'])) ?>"
+           class="btn btn-ghost">Exportar CSV</a>
+        <a href="existencias.php" class="btn btn-ghost">← Existencias</a>
+    </div>
 </div>
 
 <form method="GET" action="movimientos.php" class="toolbar">
@@ -180,7 +224,11 @@ require __DIR__ . '/header.php';
                 </thead>
                 <tbody>
                     <?php foreach ($movimientos as $m): ?>
-                        <?php $cant = (int) $m['cantidad']; ?>
+                        <?php
+                            $cant = (int) $m['cantidad'];
+                            $esPrecio = $cant === 0
+                                && str_starts_with((string) $m['motivo_detalle'], PREFIJO_CAMBIO_PRECIO);
+                        ?>
                         <tr>
                             <td><?= htmlspecialchars(date('d/m/Y H:i', strtotime($m['fecha_hora']))) ?></td>
                             <td>
@@ -188,13 +236,21 @@ require __DIR__ . '/header.php';
                                 <div class="producto-desc"><?= htmlspecialchars($m['codigo']) ?></div>
                             </td>
                             <td>
-                                <span class="badge <?= $badgeTipo[$m['tipo_movimiento']] ?? 'badge-inactivo' ?>">
-                                    <?= htmlspecialchars(TIPOS_MOVIMIENTO[$m['tipo_movimiento']] ?? $m['tipo_movimiento']) ?>
-                                </span>
+                                <?php if ($esPrecio): ?>
+                                    <span class="badge badge-warning">Precio</span>
+                                <?php else: ?>
+                                    <span class="badge <?= $badgeTipo[$m['tipo_movimiento']] ?? 'badge-inactivo' ?>">
+                                        <?= htmlspecialchars(TIPOS_MOVIMIENTO[$m['tipo_movimiento']] ?? $m['tipo_movimiento']) ?>
+                                    </span>
+                                <?php endif; ?>
                             </td>
-                            <td style="font-weight:700; color: <?= $cant >= 0 ? '#16a34a' : '#dc2626' ?>;">
-                                <?= $cant > 0 ? '+' : '' ?><?= $cant ?>
-                            </td>
+                            <?php if ($esPrecio): ?>
+                                <td style="color:#94a3b8;">—</td>
+                            <?php else: ?>
+                                <td style="font-weight:700; color: <?= $cant >= 0 ? '#16a34a' : '#dc2626' ?>;">
+                                    <?= $cant > 0 ? '+' : '' ?><?= $cant ?>
+                                </td>
+                            <?php endif; ?>
                             <td><?= (int) $m['existencia_posterior'] ?></td>
                             <td style="font-size:0.85rem; color:#475569;">
                                 <?= htmlspecialchars($m['motivo_detalle'] ?? '') ?>

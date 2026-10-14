@@ -88,39 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mensajeExito = 'Producto agregado al inventario.';
 
-            /* -------- Poner stock en cero -------- */
-        } elseif ($action === 'poner_en_cero') {
-            $idProducto = (int) ($_POST['id_producto'] ?? 0);
-
-            if ($idProducto <= 0) {
-                throw new RuntimeException('Producto inválido.');
-            }
-
-            $pdo->beginTransaction();
-            $cantidadActual = leerStockParaActualizar($pdo, (int) $idSucursalGerente, $idProducto);
-
-            if ($cantidadActual === null) {
-                throw new RuntimeException('Producto no encontrado en tu inventario.');
-            }
-            if ($cantidadActual === 0) {
-                throw new RuntimeException('Ese producto ya está en cero.');
-            }
-
-            $stmt = $pdo->prepare("
-            UPDATE Inventario_Sucursal
-            SET cantidad_disponible = 0
-            WHERE id_sucursal = ? AND id_producto = ?
-            ");
-            $stmt->execute([$idSucursalGerente, $idProducto]);
-
-            registrarMovimiento(
-                $pdo, (int) $idSucursalGerente, $idProducto, 'AJUSTE_MANUAL',
-                -$cantidadActual, 0, 'Puesto en cero por gerente', (int) $gerente['id_usuario']
-            );
-
-            $pdo->commit();
-            $mensajeExito = 'Producto puesto en cero.';
-
             /* -------- Recibir mercancía (entrada de proveedor) -------- */
         } elseif ($action === 'recibir_mercancia') {
             $idProducto = (int) ($_POST['id_producto'] ?? 0);
@@ -172,10 +139,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Precio inválido.');
             }
 
+            $pdo->beginTransaction();
             $stmt = $pdo->prepare("
             SELECT precio_venta
             FROM Inventario_Sucursal
             WHERE id_sucursal = ? AND id_producto = ?
+            FOR UPDATE
             ");
             $stmt->execute([$idSucursalGerente, $idProducto]);
             $precioActual = $stmt->fetchColumn();
@@ -194,6 +163,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$precioVenta, $idSucursalGerente, $idProducto]);
 
+            // Rastro de quién cambió el precio y cuándo: se registra en el kardex
+            // con cantidad 0 (no mueve stock). Ver PREFIJO_CAMBIO_PRECIO.
+            $stockActual = leerStockParaActualizar($pdo, (int) $idSucursalGerente, $idProducto) ?? 0;
+            registrarMovimiento(
+                $pdo, (int) $idSucursalGerente, $idProducto, 'AJUSTE_MANUAL', 0, $stockActual,
+                sprintf('%s $%s → $%s', PREFIJO_CAMBIO_PRECIO, number_format((float) $precioActual, 2), number_format($precioVenta, 2)),
+                (int) $gerente['id_usuario']
+            );
+
+            $pdo->commit();
             $mensajeExito = 'Precio de venta actualizado.';
         }
 
@@ -217,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  D atos para la vista                   *
  ============================================================ */
 $stmt = $pdo->prepare("
-SELECT p.id_producto, p.codigo, p.nombre, p.imagen,
+SELECT p.id_producto, p.codigo, p.nombre, p.imagen, p.estado AS estado_producto,
 c.nombre_categoria,
 i.cantidad_disponible, i.precio_venta
 FROM Inventario_Sucursal i
@@ -372,6 +351,11 @@ data-stock="<?= $stock ?>">
 <td><?= htmlspecialchars($p['codigo']) ?></td>
 <td>
 <div class="producto-nombre"><?= htmlspecialchars($p['nombre']) ?></div>
+<?php if ($p['estado_producto'] !== 'Activo'): ?>
+<span class="badge badge-danger" title="La caja no vende productos que no están activos en el catálogo">
+No se vende: <?= htmlspecialchars($p['estado_producto'] === 'Proximamente' ? 'Próximamente' : ($p['estado_producto'] ?: 'Sin estado')) ?>
+</span>
+<?php endif; ?>
 </td>
 <td><?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría') ?></td>
 <td>
@@ -409,16 +393,13 @@ data-stock="<?= $stock ?>"
 <a class="btn btn-ghost btn-sm" href="movimientos.php?producto=<?= (int) $p['id_producto'] ?>">Historial</a>
 
 <?php if ($stock > 0): ?>
-<form method="POST" style="display:contents"
-data-confirm="Se pondrá el stock de '<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>' en 0. El producto seguirá en el inventario como agotado."
-data-confirm-titulo="Poner stock en cero"
-data-confirm-aceptar="Poner en cero"
-data-confirm-peligroso="1">
-<input type="hidden" name="action" value="poner_en_cero">
-<input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-<input type="hidden" name="id_producto" value="<?= (int) $p['id_producto'] ?>">
-<button type="submit" class="btn btn-danger btn-sm">Poner en cero</button>
-</form>
+<button type="button" class="btn btn-danger btn-sm"
+onclick="abrirModalAjustarStock(this, 0)"
+data-id="<?= (int) $p['id_producto'] ?>"
+data-nombre="<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>"
+data-stock="<?= $stock ?>"
+data-precio="<?= htmlspecialchars((string) $precio, ENT_QUOTES) ?>"
+>Poner en cero</button>
 <?php endif; ?>
 </div>
 </td>
