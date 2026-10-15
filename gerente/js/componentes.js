@@ -47,7 +47,7 @@ function initCustomSelect(select) {
 
     const pintarTrigger = () => {
         const opt = select.options[select.selectedIndex];
-        const texto = opt ? opt.text : 'Selecciona…';
+        const texto = opt ? opt.text : tj('seleccionar');
         // El texto va con textContent: opt.text ya viene decodificado y puede traer "<"
         trigger.innerHTML = `<span></span>
         <svg class="select-custom-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -67,9 +67,9 @@ function initCustomSelect(select) {
             inputBusqueda = document.createElement('input');
             inputBusqueda.type = 'text';
             inputBusqueda.className = 'select-custom-search-input';
-            inputBusqueda.placeholder = 'Buscar...';
+            inputBusqueda.placeholder = tj('buscar');
             inputBusqueda.setAttribute('autocomplete', 'off');
-            inputBusqueda.setAttribute('aria-label', 'Buscar opción');
+            inputBusqueda.setAttribute('aria-label', tj('buscar_opcion'));
 
             wrap.appendChild(inputBusqueda);
             panel.appendChild(wrap);

@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if (!csrfValido()) {
-            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
+            throw new RuntimeException(t('error.formulario_expirado'));
         }
 
         if ($action === 'crear') {
@@ -63,29 +63,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fechaContratacion = $_POST['fecha_contratacion'] ?? date('Y-m-d');
 
             if ($nombre === '' || mb_strlen($nombre) > 100) {
-                throw new RuntimeException('El nombre es obligatorio (máx. 100 caracteres).');
+                throw new RuntimeException(t('error.nombre_cajero'));
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
-                throw new RuntimeException('El email no es válido.');
+                throw new RuntimeException(t('error.email_invalido'));
             }
             if (mb_strlen($password) < 8) {
-                throw new RuntimeException('La contraseña temporal debe tener al menos 8 caracteres.');
+                throw new RuntimeException(t('error.password_corta'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
-                throw new RuntimeException('Estado inválido.');
+                throw new RuntimeException(t('error.estado_invalido'));
             }
             $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $fechaContratacion);
             if (!$fecha || $fecha->format('Y-m-d') !== $fechaContratacion) {
-                throw new RuntimeException('La fecha de contratación no es válida.');
+                throw new RuntimeException(t('error.fecha_contratacion'));
             }
             if ($fecha > new DateTimeImmutable('today')) {
-                throw new RuntimeException('La fecha de contratación no puede ser futura.');
+                throw new RuntimeException(t('error.fecha_contratacion_futura'));
             }
 
             $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ?");
             $check->execute([$email]);
             if ($check->fetch() !== false) {
-                throw new RuntimeException('Ese email ya está registrado por otro usuario.');
+                throw new RuntimeException(t('error.email_duplicado'));
             }
 
             $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, 3, ?, ?, CURDATE(), ?, 1)
             ");
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
-            $mensajeExito = 'Cajero registrado correctamente.';
+            $mensajeExito = t('cajeros.creado');
 
         } elseif ($action === 'editar') {
             $id     = (int) ($_POST['id_usuario'] ?? 0);
@@ -106,16 +106,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estado = $_POST['estado'] ?? 'Activo';
 
             if ($id <= 0) {
-                throw new RuntimeException('Cajero inválido.');
+                throw new RuntimeException(t('error.cajero_invalido'));
             }
             if ($nombre === '' || mb_strlen($nombre) > 100) {
-                throw new RuntimeException('El nombre es obligatorio (máx. 100 caracteres).');
+                throw new RuntimeException(t('error.nombre_cajero'));
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
-                throw new RuntimeException('El email no es válido.');
+                throw new RuntimeException(t('error.email_invalido'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
-                throw new RuntimeException('Estado inválido.');
+                throw new RuntimeException(t('error.estado_invalido'));
             }
 
             // Verificar que el cajero pertenece a esta sucursal y es rol 3 (evita IDOR)
@@ -126,13 +126,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$id, $idSucursalGerente]);
             $estadoAnterior = $check->fetchColumn();
             if ($estadoAnterior === false) {
-                throw new RuntimeException('Cajero inválido.');
+                throw new RuntimeException(t('error.cajero_invalido'));
             }
 
             $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ? AND id_usuario <> ?");
             $check->execute([$email, $id]);
             if ($check->fetch() !== false) {
-                throw new RuntimeException('Ese email ya está en uso por otro usuario.');
+                throw new RuntimeException(t('error.email_duplicado'));
             }
 
             $pdo->beginTransaction();
@@ -148,10 +148,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$nombre, $email, $estado, $estado, $id]);
 
-            $mensajeExito = 'Cajero actualizado correctamente.';
+            $mensajeExito = t('cajeros.actualizado');
             if ($estado === 'Baja' && $estadoAnterior !== 'Baja'
                 && liberarCajasDeCajero($pdo, $id, $idSucursalGerente) > 0) {
-                $mensajeExito .= ' Sus cajas quedaron inactivas.';
+                $mensajeExito .= ' ' . t('cajeros.cajas_inactivas');
             } elseif ($estado !== 'Activo' && $estado !== 'Baja') {
                 // Vacaciones, incapacidad o licencia: su caja no puede seguir activa,
                 // pero conserva la asignación para cuando regrese.
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$id, $idSucursalGerente]);
                 if ($stmt->rowCount() > 0) {
-                    $mensajeExito .= ' Su caja quedó inactiva mientras no esté activo.';
+                    $mensajeExito .= ' ' . t('cajeros.caja_inactiva_temporal');
                 }
             }
 
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
             if ($id <= 0) {
-                throw new RuntimeException('Cajero inválido.');
+                throw new RuntimeException(t('error.cajero_invalido'));
             }
 
             $check = $pdo->prepare("
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$id, $idSucursalGerente]);
             $actual = $check->fetchColumn();
             if ($actual === false) {
-                throw new RuntimeException('Cajero inválido.');
+                throw new RuntimeException(t('error.cajero_invalido'));
             }
 
             $nuevo = $actual === 'Activo' ? 'Baja' : 'Activo';
@@ -196,12 +196,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mensajeExtra = '';
             if ($nuevo === 'Baja' && liberarCajasDeCajero($pdo, $id, $idSucursalGerente) > 0) {
-                $mensajeExtra = ' Sus cajas quedaron inactivas.';
+                $mensajeExtra = ' ' . t('cajeros.cajas_inactivas');
             }
 
             $pdo->commit();
 
-            $mensajeExito = ($nuevo === 'Activo' ? 'Cajero reactivado.' : 'Cajero dado de baja.') . $mensajeExtra;
+            $mensajeExito = t($nuevo === 'Activo' ? 'cajeros.reactivado' : 'cajeros.baja') . $mensajeExtra;
 
         } elseif ($action === 'restablecer_password') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
@@ -213,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$id, $idSucursalGerente]);
             $nombreCajero = $check->fetchColumn();
             if ($nombreCajero === false) {
-                throw new RuntimeException('Cajero inválido.');
+                throw new RuntimeException(t('error.cajero_invalido'));
             }
 
             // Sin caracteres ambiguos (0/O, 1/l/I) para dictarla sin errores
@@ -228,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([password_hash($temporal, PASSWORD_DEFAULT), $id]);
 
-            $mensajeExito  = "Contraseña de {$nombreCajero} restablecida. Deberá cambiarla al iniciar sesión.";
+            $mensajeExito  = t('cajeros.password_restablecida', ['nombre' => $nombreCajero]);
             $flashPassword = $temporal;
         }
 
@@ -243,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = $e->getMessage();
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        $errores[] = 'Error al guardar en la base de datos.';
+        $errores[] = t('error.base_datos');
     }
 }
 
@@ -267,20 +267,19 @@ foreach ($cajeros as $c) {
     if ($c['estado'] === 'Activo') $totalActivos++;
 }
 
-$pageTitle    = 'Cajeros';
+$pageTitle    = t('cajeros.titulo');
 $showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 
 <div class="page-header">
     <div>
-        <h1>Cajeros</h1>
+        <h1><?= e(t('cajeros.titulo')) ?></h1>
         <p>
-            <?= $totalActivos ?> activo<?= $totalActivos === 1 ? '' : 's' ?>
-            de <?= count($cajeros) ?> registrado<?= count($cajeros) === 1 ? '' : 's' ?>
+            <?= e(t('cajeros.resumen', ['activos' => numero($totalActivos), 'total' => numero(count($cajeros))])) ?>
         </p>
     </div>
-    <button type="button" class="btn btn-primary" onclick="abrirModalNuevoCajero()">+ Nuevo cajero</button>
+    <button type="button" class="btn btn-primary" onclick="abrirModalNuevoCajero()">+ <?= e(t('cajeros.nuevo')) ?></button>
 </div>
 
 <?php if ($exito): ?>
@@ -288,8 +287,8 @@ require __DIR__ . '/header.php';
 <?php endif; ?>
 <?php if ($passwordTemporal): ?>
     <div class="alert alert-warning">
-        Contraseña temporal: <code class="password-temporal"><?= htmlspecialchars($passwordTemporal) ?></code>
-        &middot; Entrégala al cajero ahora: no se volverá a mostrar.
+        <?= e(t('cajeros.password_temporal')) ?>: <code class="password-temporal"><?= e($passwordTemporal) ?></code>
+        · <?= e(t('cajeros.password_temporal_aviso')) ?>
     </div>
 <?php endif; ?>
 <?php foreach ($errores as $error): ?>
@@ -299,7 +298,7 @@ require __DIR__ . '/header.php';
 <?php if (empty($cajeros)): ?>
     <div class="panel">
         <div class="empty-state">
-            Aún no hay cajeros registrados en tu sucursal. Usa "+ Nuevo cajero" para agregar el primero.
+            <?= e(t('cajeros.vacio')) ?>
         </div>
     </div>
 <?php else: ?>
@@ -322,21 +321,21 @@ require __DIR__ . '/header.php';
                 <div class="cajero-name"><?= htmlspecialchars($c['nombre']) ?></div>
                 <div class="cajero-email"><?= htmlspecialchars($c['email']) ?></div>
                 <div style="margin-bottom: 0.85rem;">
-                    <span class="badge <?= $estadoBadge ?>"><?= htmlspecialchars($c['estado']) ?></span>
+                    <span class="badge <?= $estadoBadge ?>"><?= e(t('estado_usuario.' . $c['estado'])) ?></span>
                 </div>
 
                 <div class="cajero-stats">
                     <div class="cajero-stat">
                         <span class="cajero-stat-value"><?= (int) $c['total_ventas'] ?></span>
-                        <span class="cajero-stat-label">Ventas del mes</span>
+                        <span class="cajero-stat-label"><?= e(t('cajeros.ventas_mes')) ?></span>
                     </div>
                     <div class="cajero-stat">
-                        <span class="cajero-stat-value">$<?= number_format((float) $c['monto_total'], 0) ?></span>
-                        <span class="cajero-stat-label">Vendido del mes</span>
+                        <span class="cajero-stat-value"><?= dinero($c['monto_total']) ?></span>
+                        <span class="cajero-stat-label"><?= e(t('cajeros.monto_mes')) ?></span>
                     </div>
                 </div>
 
-                <a class="cajero-ver-ventas" href="ventas_sucursal.php?periodo=mes&amp;id_cajero=<?= (int) $c['id_usuario'] ?>">Ver sus ventas →</a>
+                <a class="cajero-ver-ventas" href="ventas_sucursal.php?periodo=mes&amp;id_cajero=<?= (int) $c['id_usuario'] ?>"><?= e(t('cajeros.ver_ventas')) ?></a>
 
                 <div class="cajero-actions">
                     <button type="button" class="btn btn-ghost btn-sm"
@@ -345,32 +344,30 @@ require __DIR__ . '/header.php';
                         data-nombre="<?= htmlspecialchars($c['nombre'], ENT_QUOTES) ?>"
                         data-email="<?= htmlspecialchars($c['email'], ENT_QUOTES) ?>"
                         data-estado="<?= htmlspecialchars($c['estado'], ENT_QUOTES) ?>"
-                    >Editar</button>
+                    ><?= e(t('comun.editar')) ?></button>
 
                     <?php if ($c['estado'] !== 'Baja'): ?>
                     <form method="POST" style="display:contents"
-                          data-confirm="Se generará una contraseña temporal para <?= htmlspecialchars($c['nombre'], ENT_QUOTES) ?>. La actual dejará de funcionar."
-                          data-confirm-titulo="Restablecer contraseña"
-                          data-confirm-aceptar="Restablecer">
+                          data-confirm="<?= e(t('cajeros.confirmar_password', ['nombre' => $c['nombre']])) ?>"
+                          data-confirm-titulo="<?= e(t('cajeros.restablecer_titulo')) ?>"
+                          data-confirm-aceptar="<?= e(t('cajeros.restablecer')) ?>">
                         <input type="hidden" name="action" value="restablecer_password">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                         <input type="hidden" name="id_usuario" value="<?= (int) $c['id_usuario'] ?>">
-                        <button type="submit" class="btn btn-ghost btn-sm">Contraseña</button>
+                        <button type="submit" class="btn btn-ghost btn-sm"><?= e(t('cajeros.boton_password')) ?></button>
                     </form>
                     <?php endif; ?>
 
                     <form method="POST" style="display:contents"
-                          data-confirm="<?= $esActivo
-                              ? '¿Dar de baja a ' . htmlspecialchars($c['nombre'], ENT_QUOTES) . '? No podrá iniciar sesión.'
-                              : '¿Reactivar a ' . htmlspecialchars($c['nombre'], ENT_QUOTES) . '?' ?>"
-                          data-confirm-titulo="<?= $esActivo ? 'Dar de baja' : 'Reactivar' ?>"
-                          data-confirm-aceptar="<?= $esActivo ? 'Dar de baja' : 'Reactivar' ?>"
+                          data-confirm="<?= e(t($esActivo ? 'cajeros.confirmar_baja' : 'cajeros.confirmar_reactivar', ['nombre' => $c['nombre']])) ?>"
+                          data-confirm-titulo="<?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>"
+                          data-confirm-aceptar="<?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>"
                           <?= $esActivo ? 'data-confirm-peligroso="1"' : '' ?>>
                         <input type="hidden" name="action" value="cambiar_estado">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                         <input type="hidden" name="id_usuario" value="<?= (int) $c['id_usuario'] ?>">
                         <button type="submit" class="btn btn-sm <?= $esActivo ? 'btn-danger' : 'btn-success' ?>">
-                            <?= $esActivo ? 'Desactivar' : 'Activar' ?>
+                            <?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>
                         </button>
                     </form>
                 </div>
@@ -382,51 +379,49 @@ require __DIR__ . '/header.php';
 <!-- Modal: Nuevo / Editar cajero -->
 <div class="modal-overlay" id="modalCajero">
     <div class="modal-box">
-        <h2 id="tituloModalCajero">Nuevo cajero</h2>
+        <h2 id="tituloModalCajero"><?= e(t('cajeros.nuevo')) ?></h2>
         <form id="formCajero" method="POST">
             <input type="hidden" name="action" value="crear">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_usuario" value="">
 
             <div class="form-group">
-                <label>Nombre completo</label>
-                <input type="text" name="nombre" placeholder="Ej. María López Hernández" maxlength="100" required>
+                <label><?= e(t('cajeros.campo_nombre')) ?></label>
+                <input type="text" name="nombre" placeholder="<?= e(t('cajeros.campo_nombre_ej')) ?>" maxlength="100" required>
             </div>
 
             <div class="form-group">
-                <label>Email</label>
-                <input type="email" name="email" placeholder="correo@tienda.com" maxlength="100" required>
+                <label><?= e(t('cajeros.campo_email')) ?></label>
+                <input type="email" name="email" placeholder="<?= e(t('cajeros.campo_email_ej')) ?>" maxlength="100" required>
             </div>
 
             <div class="form-group" id="grupoPassword">
-                <label>Contraseña temporal</label>
-                <input type="text" name="password" placeholder="Mínimo 8 caracteres" minlength="8">
+                <label><?= e(t('cajeros.password_temporal')) ?></label>
+                <input type="text" name="password" placeholder="<?= e(t('cajeros.campo_password_ej')) ?>" minlength="8">
                 <small style="display:block; color: #64748b; font-size:0.75rem; margin-top:0.3rem;">
-                    El cajero deberá cambiarla al iniciar sesión por primera vez.
+                    <?= e(t('cajeros.campo_password_ayuda')) ?>
                 </small>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Estado</label>
+                    <label><?= e(t('cat.col_estado')) ?></label>
                     <select name="estado" required>
-                        <option value="Activo">Activo</option>
-                        <option value="Vacaciones">Vacaciones</option>
-                        <option value="Incapacidad">Incapacidad</option>
-                        <option value="Licencia">Licencia</option>
-                        <option value="Baja">Baja</option>
+                        <?php foreach ($ESTADOS_VALIDOS as $est): ?>
+                            <option value="<?= $est ?>"><?= e(t('estado_usuario.' . $est)) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="form-group" id="grupoFechaContratacion">
-                    <label>Fecha de contratación</label>
+                    <label><?= e(t('cajeros.campo_fecha')) ?></label>
                     <input type="date" name="fecha_contratacion" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCajero')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCajero')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn-primary"><?= e(t('comun.guardar')) ?></button>
             </div>
         </form>
     </div>

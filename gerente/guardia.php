@@ -62,4 +62,6 @@ if ((int) $gerente['debe_cambiar'] === 1) {
 
 $_SESSION['ultima_actividad'] = time();
 
+require_once __DIR__ . '/includes/i18n.php';
+
 $idSucursalGerente = (int) $gerente['id_sucursal'];

@@ -1,0 +1,106 @@
+<?php
+/**
+ * Idiomas del panel del gerente.
+ *
+ * El idioma vive en $_SESSION['idioma'], la misma clave que usa el panel del
+ * admin, así la preferencia es una sola en todo el sitio.
+ * Los textos están en gerente/lang/{es,en,fr}.php. Para agregar un idioma:
+ * crear lang/xx.php con las mismas claves y añadirlo a IDIOMAS.
+ *
+ * Los textos que se GUARDAN en la base de datos (motivos del kardex) se
+ * escriben siempre en español con tEs(): son registros, no interfaz.
+ */
+
+const IDIOMAS = [
+    'es' => 'Español',
+    'en' => 'English',
+    'fr' => 'Français',
+];
+
+$idioma = (string) ($_SESSION['idioma'] ?? 'es');
+if (!isset(IDIOMAS[$idioma])) {
+    $idioma = 'es';
+}
+
+$GLOBALS['I18N_IDIOMA'] = $idioma;
+$GLOBALS['I18N_ES']     = require __DIR__ . '/../lang/es.php';
+$GLOBALS['I18N']        = $idioma === 'es' ? $GLOBALS['I18N_ES'] : require __DIR__ . "/../lang/{$idioma}.php";
+
+/** Reemplaza {nombre} por los valores de $vars. */
+function i18nReemplazar(string $texto, array $vars): string
+{
+    foreach ($vars as $k => $v) {
+        $texto = str_replace('{' . $k . '}', (string) $v, $texto);
+    }
+    return $texto;
+}
+
+/** Texto traducido. Si falta en el idioma actual usa el español; si falta en ambos, la clave. */
+function t(string $clave, array $vars = []): string
+{
+    $texto = $GLOBALS['I18N'][$clave] ?? $GLOBALS['I18N_ES'][$clave] ?? $clave;
+    return i18nReemplazar(is_array($texto) ? $texto[1] : $texto, $vars);
+}
+
+/**
+ * Texto con plural. La traducción es [singular, plural]; {n} es la cantidad.
+ * En francés 0 y 1 son singular; en español e inglés solo 1.
+ */
+function tn(string $clave, int $n, array $vars = []): string
+{
+    $formas = $GLOBALS['I18N'][$clave] ?? $GLOBALS['I18N_ES'][$clave] ?? [$clave, $clave];
+    $singular = $GLOBALS['I18N_IDIOMA'] === 'fr' ? abs($n) <= 1 : abs($n) === 1;
+    return i18nReemplazar($singular ? $formas[0] : $formas[1], ['n' => numero($n)] + $vars);
+}
+
+/** Texto en español, para lo que se guarda en la base de datos. */
+function tEs(string $clave, array $vars = []): string
+{
+    return i18nReemplazar((string) ($GLOBALS['I18N_ES'][$clave] ?? $clave), $vars);
+}
+
+function idiomaActual(): string
+{
+    return $GLOBALS['I18N_IDIOMA'];
+}
+
+/** Número con separadores del idioma (fr: 1 234,5). */
+function numero(float|int $n, int $decimales = 0): string
+{
+    return idiomaActual() === 'fr'
+        ? number_format($n, $decimales, ',', "\u{202F}")
+        : number_format($n, $decimales, '.', ',');
+}
+
+/** Importe en pesos. */
+function dinero(float|int|string|null $n): string
+{
+    $n = (float) $n;
+    return idiomaActual() === 'fr' ? numero($n, 2) . "\u{00A0}\$" : '$' . numero($n, 2);
+}
+
+/** Fecha (y hora) de un valor de la base de datos o DateTimeInterface. */
+function fecha(string|DateTimeInterface $valor, bool $conHora = true): string
+{
+    $ts = $valor instanceof DateTimeInterface ? $valor->getTimestamp() : strtotime($valor);
+    $formato = idiomaActual() === 'en' ? 'm/d/Y' : 'd/m/Y';
+    return date($formato . ($conHora ? ' H:i' : ''), $ts);
+}
+
+/** Atajo de htmlspecialchars para la vista. */
+function e(?string $texto): string
+{
+    return htmlspecialchars((string) $texto, ENT_QUOTES, 'UTF-8');
+}
+
+/** Textos que necesita el JavaScript, como JSON para footer.php. */
+function i18nParaJs(): string
+{
+    $js = [];
+    foreach ($GLOBALS['I18N_ES'] as $clave => $_) {
+        if (str_starts_with($clave, 'js.')) {
+            $js[substr($clave, 3)] = t($clave);
+        }
+    }
+    return json_encode($js, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+}

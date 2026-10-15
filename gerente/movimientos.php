@@ -21,20 +21,18 @@ if ($desde > $hasta) {
     [$desde, $hasta] = [$hasta, $desde];
 }
 
-// Productos del inventario de la sucursal (también valida ?producto=)
 $stmt = $pdo->prepare("
-    SELECT p.id_producto, p.codigo, p.nombre
+    SELECT p.id_producto, p.nombre
     FROM Inventario_Sucursal i
     INNER JOIN Productos p ON p.id_producto = i.id_producto
     WHERE i.id_sucursal = ?
     ORDER BY p.nombre
 ");
 $stmt->execute([$idSucursalGerente]);
-$productos = $stmt->fetchAll();
-$productosPorId = array_column($productos, null, 'id_producto');
+$productos = array_column($stmt->fetchAll(), 'nombre', 'id_producto');
 
 $idProducto = (int) ($_GET['producto'] ?? 0);
-if (!isset($productosPorId[$idProducto])) $idProducto = 0;
+if (!isset($productos[$idProducto])) $idProducto = 0;
 
 $tipo = (string) ($_GET['tipo'] ?? '');
 if (!isset(TIPOS_MOVIMIENTO[$tipo])) $tipo = '';
@@ -50,30 +48,31 @@ if ($tipo !== '') {
     $params[] = $tipo;
 }
 
+$selectMovimientos = "
+    SELECT m.fecha_hora, m.tipo_movimiento, m.cantidad, m.existencia_posterior,
+           m.motivo_detalle, m.id_producto,
+           p.nombre AS producto, p.codigo,
+           u.nombre AS usuario
+    FROM Movimientos_Inventario m
+    INNER JOIN Productos p ON p.id_producto = m.id_producto
+    LEFT JOIN Usuarios u   ON u.id_usuario = m.realizado_por
+    WHERE $where
+";
+
 /* ============================================================
  * Exportar CSV con los filtros actuales
  * ============================================================ */
 if (($_GET['exportar'] ?? '') === 'csv') {
-    $stmt = $pdo->prepare("
-        SELECT m.fecha_hora, p.codigo, p.nombre AS producto, m.tipo_movimiento,
-               m.cantidad, m.existencia_posterior, m.motivo_detalle, u.nombre AS usuario
-        FROM Movimientos_Inventario m
-        INNER JOIN Productos p ON p.id_producto = m.id_producto
-        LEFT JOIN Usuarios u   ON u.id_usuario = m.realizado_por
-        WHERE $where
-        ORDER BY m.fecha_hora, m.id_movimiento
-    ");
+    $stmt = $pdo->prepare($selectMovimientos . " ORDER BY m.fecha_hora, m.id_movimiento");
     $stmt->execute($params);
 
     $filas = (function () use ($stmt) {
         while ($m = $stmt->fetch()) {
-            $esPrecio = (int) $m['cantidad'] === 0
-                && str_starts_with((string) $m['motivo_detalle'], PREFIJO_CAMBIO_PRECIO);
             yield [
-                date('d/m/Y H:i', strtotime($m['fecha_hora'])),
+                fecha($m['fecha_hora']),
                 $m['codigo'],
                 $m['producto'],
-                $esPrecio ? 'Precio' : (TIPOS_MOVIMIENTO[$m['tipo_movimiento']] ?? $m['tipo_movimiento']),
+                esCambioPrecio($m) ? t('tipo.PRECIO') : etiquetaTipo($m['tipo_movimiento']),
                 (int) $m['cantidad'],
                 (int) $m['existencia_posterior'],
                 $m['motivo_detalle'] ?? '',
@@ -83,15 +82,49 @@ if (($_GET['exportar'] ?? '') === 'csv') {
     })();
 
     enviarCsv(
-        'movimientos_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
-        ['Fecha', 'Código', 'Producto', 'Tipo', 'Cantidad', 'Quedaron', 'Detalle', 'Realizó'],
+        t('mov.csv_archivo') . '_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
+        [t('comun.fecha'), t('mov.codigo'), t('comun.producto'), t('mov.tipo'), t('mov.cantidad'),
+         t('mov.quedaron'), t('mov.detalle'), t('mov.realizo')],
         $filas
     );
 }
 
 /* ============================================================
- * Resumen: entradas y salidas del periodo
+ * Filas (carga normal y carga progresiva con ?parcial=1)
  * ============================================================ */
+$pintarFilas = static function (array $movimientos): string {
+    ob_start();
+    foreach ($movimientos as $m) {
+        $cant = (int) $m['cantidad'];
+        $esPrecio = esCambioPrecio($m);
+        ?>
+        <tr>
+            <td><?= e(fecha($m['fecha_hora'])) ?></td>
+            <td>
+                <a class="enlace-producto" href="producto.php?id=<?= (int) $m['id_producto'] ?>">
+                    <span class="producto-nombre"><?= e($m['producto']) ?></span>
+                    <span class="producto-desc"><?= e($m['codigo']) ?></span>
+                </a>
+            </td>
+            <td>
+                <?php if ($esPrecio): ?>
+                    <span class="badge badge-warning"><?= e(t('tipo.PRECIO')) ?></span>
+                <?php else: ?>
+                    <span class="badge <?= TIPOS_MOVIMIENTO[$m['tipo_movimiento']] ?? 'badge-inactivo' ?>"><?= e(etiquetaTipo($m['tipo_movimiento'])) ?></span>
+                <?php endif; ?>
+            </td>
+            <td class="num <?= $esPrecio ? '' : ($cant >= 0 ? 'texto-ok' : 'texto-peligro') ?>">
+                <?= $esPrecio ? '—' : ($cant > 0 ? '+' : '') . numero($cant) ?>
+            </td>
+            <td class="num"><?= numero((int) $m['existencia_posterior']) ?></td>
+            <td class="texto-tenue"><?= e($m['motivo_detalle'] ?? '') ?></td>
+            <td><?= e($m['usuario'] ?? '—') ?></td>
+        </tr>
+        <?php
+    }
+    return ob_get_clean();
+};
+
 $stmt = $pdo->prepare("
     SELECT COUNT(*) AS num,
            COALESCE(SUM(CASE WHEN m.cantidad > 0 THEN m.cantidad END), 0) AS entradas,
@@ -103,37 +136,22 @@ $stmt->execute($params);
 $resumen = $stmt->fetch();
 $numMovimientos = (int) $resumen['num'];
 
-/* ============================================================
- * Listado paginado
- * ============================================================ */
 $totalPaginas = max(1, (int) ceil($numMovimientos / MOVIMIENTOS_POR_PAGINA));
 $pagina = min($totalPaginas, max(1, (int) ($_GET['pagina'] ?? 1)));
-$offset = ($pagina - 1) * MOVIMIENTOS_POR_PAGINA;
 
-$stmt = $pdo->prepare("
-    SELECT m.fecha_hora, m.tipo_movimiento, m.cantidad, m.existencia_posterior,
-           m.referencia_id, m.motivo_detalle,
-           p.nombre AS producto, p.codigo,
-           u.nombre AS usuario
-    FROM Movimientos_Inventario m
-    INNER JOIN Productos p ON p.id_producto = m.id_producto
-    LEFT JOIN Usuarios u   ON u.id_usuario = m.realizado_por
-    WHERE $where
-    ORDER BY m.fecha_hora DESC, m.id_movimiento DESC
-    LIMIT " . MOVIMIENTOS_POR_PAGINA . " OFFSET " . $offset
-);
+$stmt = $pdo->prepare($selectMovimientos
+    . " ORDER BY m.fecha_hora DESC, m.id_movimiento DESC LIMIT " . MOVIMIENTOS_POR_PAGINA
+    . " OFFSET " . (($pagina - 1) * MOVIMIENTOS_POR_PAGINA));
 $stmt->execute($params);
 $movimientos = $stmt->fetchAll();
 
-$badgeTipo = [
-    'VENTA'              => 'badge-metodo',
-    'COMPRA_PROVEEDOR'   => 'badge-activo',
-    'DEVOLUCION_CLIENTE' => 'badge-activo',
-    'AJUSTE_MERMA'       => 'badge-warning',
-    'AJUSTE_ROBO'        => 'badge-danger',
-    'TRASLADO'           => 'badge-inactivo',
-    'AJUSTE_MANUAL'      => 'badge-inactivo',
-];
+if (($_GET['parcial'] ?? '') === '1') {
+    header('Content-Type: text/html; charset=UTF-8');
+    header('X-Hay-Mas: ' . ($pagina < $totalPaginas ? '1' : '0'));
+    header('X-Mostrando: ' . min($numMovimientos, $pagina * MOVIMIENTOS_POR_PAGINA));
+    echo $pintarFilas($movimientos);
+    exit;
+}
 
 $filtros = array_filter([
     'producto' => $idProducto ?: null,
@@ -141,141 +159,101 @@ $filtros = array_filter([
     'desde'    => $desde->format('Y-m-d'),
     'hasta'    => $hasta->format('Y-m-d'),
 ]);
-$urlPagina = fn(int $n) => 'movimientos.php?' . http_build_query($filtros + ['pagina' => $n]);
+$url = static fn(array $extra) => 'movimientos.php?' . http_build_query($filtros + $extra);
 
-$pageTitle    = 'Movimientos de inventario';
+$pageTitle    = t('mov.titulo');
 $showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 
 <div class="page-header">
     <div>
-        <h1>Movimientos de inventario</h1>
+        <h1><?= e(t('mov.titulo')) ?></h1>
         <p>
-            Entradas y salidas de tu sucursal
+            <?= e(t('mov.subtitulo')) ?>
             <?php if ($idProducto): ?>
-                &middot; <strong><?= htmlspecialchars($productosPorId[$idProducto]['nombre']) ?></strong>
+                · <a href="producto.php?id=<?= $idProducto ?>"><strong><?= e($productos[$idProducto]) ?></strong></a>
             <?php endif; ?>
         </p>
     </div>
     <div class="acciones">
-        <a href="<?= htmlspecialchars('movimientos.php?' . http_build_query($filtros + ['exportar' => 'csv'])) ?>"
-           class="btn btn-ghost">Exportar CSV</a>
-        <a href="existencias.php" class="btn btn-ghost">← Existencias</a>
+        <a href="<?= e($url(['exportar' => 'csv'])) ?>" class="btn btn-ghost"><?= e(t('comun.exportar_csv')) ?></a>
+        <a href="existencias.php" class="btn btn-ghost"><?= e(t('exist.titulo')) ?></a>
     </div>
 </div>
 
-<form method="GET" action="movimientos.php" class="toolbar">
-    <select name="producto" aria-label="Producto">
-        <option value="0">Todos los productos</option>
-        <?php foreach ($productos as $p): ?>
-            <option value="<?= (int) $p['id_producto'] ?>"<?= (int) $p['id_producto'] === $idProducto ? ' selected' : '' ?>>
-                <?= htmlspecialchars($p['nombre']) ?>
-            </option>
+<form method="GET" action="movimientos.php" class="toolbar" onchange="if (event.target.tagName === 'SELECT') this.submit()">
+    <select name="producto" aria-label="<?= e(t('comun.producto')) ?>">
+        <option value="0"><?= e(t('mov.filtro_productos')) ?></option>
+        <?php foreach ($productos as $id => $nombre): ?>
+            <option value="<?= (int) $id ?>"<?= (int) $id === $idProducto ? ' selected' : '' ?>><?= e($nombre) ?></option>
         <?php endforeach; ?>
     </select>
-    <select name="tipo" aria-label="Tipo de movimiento">
-        <option value="">Todos los tipos</option>
-        <?php foreach (TIPOS_MOVIMIENTO as $valor => $texto): ?>
-            <option value="<?= $valor ?>"<?= $valor === $tipo ? ' selected' : '' ?>><?= $texto ?></option>
+    <select name="tipo" aria-label="<?= e(t('mov.tipo')) ?>">
+        <option value=""><?= e(t('mov.filtro_tipos')) ?></option>
+        <?php foreach (array_keys(TIPOS_MOVIMIENTO) as $valor): ?>
+            <option value="<?= $valor ?>"<?= $valor === $tipo ? ' selected' : '' ?>><?= e(etiquetaTipo($valor)) ?></option>
         <?php endforeach; ?>
     </select>
-    <input type="date" name="desde" value="<?= $desde->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>" aria-label="Desde">
-    <input type="date" name="hasta" value="<?= $hasta->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>" aria-label="Hasta">
-    <button type="submit" class="btn btn-primary">Aplicar</button>
+    <input type="date" name="desde" value="<?= $desde->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>" aria-label="<?= e(t('ventas.rango_del')) ?>">
+    <input type="date" name="hasta" value="<?= $hasta->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>" aria-label="<?= e(t('ventas.rango_al')) ?>">
+    <button type="submit" class="btn btn-primary"><?= e(t('comun.aplicar')) ?></button>
 </form>
 
 <section class="kpi-grid">
     <div class="kpi">
-        <span class="kpi-label">Movimientos</span>
-        <span class="kpi-value"><?= number_format($numMovimientos) ?></span>
-        <span class="kpi-sub"><?= $desde->format('d/m/Y') ?> – <?= $hasta->format('d/m/Y') ?></span>
+        <span class="kpi-label"><?= e(t('mov.kpi_movimientos')) ?></span>
+        <span class="kpi-value"><?= numero($numMovimientos) ?></span>
+        <span class="kpi-sub"><?= e(fecha($desde, false)) ?> – <?= e(fecha($hasta, false)) ?></span>
     </div>
     <div class="kpi kpi--ok">
-        <span class="kpi-label">Entradas</span>
-        <span class="kpi-value kpi-value--ok">+<?= number_format((int) $resumen['entradas']) ?></span>
-        <span class="kpi-sub">unidades</span>
+        <span class="kpi-label"><?= e(t('mov.kpi_entradas')) ?></span>
+        <span class="kpi-value kpi-value--ok">+<?= numero((int) $resumen['entradas']) ?></span>
+        <span class="kpi-sub"><?= e(t('mov.kpi_unidades')) ?></span>
     </div>
     <div class="kpi kpi--danger">
-        <span class="kpi-label">Salidas</span>
-        <span class="kpi-value kpi-value--danger">−<?= number_format((int) $resumen['salidas']) ?></span>
-        <span class="kpi-sub">unidades</span>
+        <span class="kpi-label"><?= e(t('mov.kpi_salidas')) ?></span>
+        <span class="kpi-value kpi-value--danger">−<?= numero((int) $resumen['salidas']) ?></span>
+        <span class="kpi-sub"><?= e(t('mov.kpi_unidades')) ?></span>
     </div>
 </section>
 
 <?php if ($numMovimientos === 0): ?>
     <div class="panel">
-        <div class="empty-state">No hay movimientos con estos filtros.</div>
+        <div class="empty-state"><?= e(t('mov.vacio')) ?></div>
     </div>
 <?php else: ?>
-    <div class="panel">
+    <section class="panel">
         <div class="tabla-scroll">
             <table class="tabla-productos">
                 <thead>
                     <tr>
-                        <th>Fecha</th>
-                        <th>Producto</th>
-                        <th>Tipo</th>
-                        <th>Cantidad</th>
-                        <th>Quedaron</th>
-                        <th>Detalle</th>
-                        <th>Realizó</th>
+                        <th><?= e(t('comun.fecha')) ?></th>
+                        <th><?= e(t('comun.producto')) ?></th>
+                        <th><?= e(t('mov.tipo')) ?></th>
+                        <th class="num"><?= e(t('mov.cantidad')) ?></th>
+                        <th class="num"><?= e(t('mov.quedaron')) ?></th>
+                        <th><?= e(t('mov.detalle')) ?></th>
+                        <th><?= e(t('mov.realizo')) ?></th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php foreach ($movimientos as $m): ?>
-                        <?php
-                            $cant = (int) $m['cantidad'];
-                            $esPrecio = $cant === 0
-                                && str_starts_with((string) $m['motivo_detalle'], PREFIJO_CAMBIO_PRECIO);
-                        ?>
-                        <tr>
-                            <td><?= htmlspecialchars(date('d/m/Y H:i', strtotime($m['fecha_hora']))) ?></td>
-                            <td>
-                                <div class="producto-nombre"><?= htmlspecialchars($m['producto']) ?></div>
-                                <div class="producto-desc"><?= htmlspecialchars($m['codigo']) ?></div>
-                            </td>
-                            <td>
-                                <?php if ($esPrecio): ?>
-                                    <span class="badge badge-warning">Precio</span>
-                                <?php else: ?>
-                                    <span class="badge <?= $badgeTipo[$m['tipo_movimiento']] ?? 'badge-inactivo' ?>">
-                                        <?= htmlspecialchars(TIPOS_MOVIMIENTO[$m['tipo_movimiento']] ?? $m['tipo_movimiento']) ?>
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <?php if ($esPrecio): ?>
-                                <td style="color: #64748b;">—</td>
-                            <?php else: ?>
-                                <td style="font-weight:700; color: <?= $cant >= 0 ? '#15803d' : '#dc2626' ?>;">
-                                    <?= $cant > 0 ? '+' : '' ?><?= $cant ?>
-                                </td>
-                            <?php endif; ?>
-                            <td><?= (int) $m['existencia_posterior'] ?></td>
-                            <td style="font-size:0.85rem; color:#475569;">
-                                <?= htmlspecialchars($m['motivo_detalle'] ?? '') ?>
-                            </td>
-                            <td style="font-size:0.85rem;"><?= htmlspecialchars($m['usuario'] ?? '—') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                <tbody data-scroll-infinito
+                       data-url="<?= e($url(['parcial' => '1'])) ?>"
+                       data-pagina="<?= $pagina ?>"
+                       data-total-paginas="<?= $totalPaginas ?>">
+                    <?= $pintarFilas($movimientos) ?>
                 </tbody>
             </table>
         </div>
-
-        <?php if ($totalPaginas > 1): ?>
-            <div class="acciones" style="justify-content: space-between; align-items: center; padding: 1rem 0 0;">
-                <span style="color:#64748b; font-size:0.9rem;">Página <?= $pagina ?> de <?= $totalPaginas ?></span>
-                <span class="acciones">
-                    <?php if ($pagina > 1): ?>
-                        <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($urlPagina($pagina - 1)) ?>">← Anterior</a>
-                    <?php endif; ?>
-                    <?php if ($pagina < $totalPaginas): ?>
-                        <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($urlPagina($pagina + 1)) ?>">Siguiente →</a>
-                    <?php endif; ?>
+        <?php if ($pagina < $totalPaginas): ?>
+            <div class="carga-progresiva">
+                <a class="btn btn-ghost btn-sm" data-cargar-mas href="<?= e($url(['pagina' => $pagina + 1])) ?>"><?= e(t('comun.cargar_mas')) ?></a>
+                <span class="texto-tenue" data-contador data-total="<?= $numMovimientos ?>">
+                    <?= e(t('comun.mostrando', ['n' => numero(min($numMovimientos, $pagina * MOVIMIENTOS_POR_PAGINA)), 'total' => numero($numMovimientos)])) ?>
                 </span>
             </div>
         <?php endif; ?>
-    </div>
+    </section>
 <?php endif; ?>
 
 <?php require __DIR__ . '/footer.php'; ?>

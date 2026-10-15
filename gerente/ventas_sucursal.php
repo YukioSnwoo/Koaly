@@ -3,6 +3,7 @@ require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/csv.php';
 
 const VENTAS_POR_PAGINA = 50;
+const SIN_CAJA = -1;
 
 /* ============================================================
  * 1. Periodo: rango explícito (?desde=&hasta=) o un atajo (?periodo=)
@@ -10,11 +11,19 @@ const VENTAS_POR_PAGINA = 50;
  * ============================================================ */
 $hoy = new DateTimeImmutable('today');
 
+// Primer día con ventas de la sucursal (para "Todo")
+$stmt = $pdo->prepare("SELECT MIN(fecha_hora) FROM Ventas WHERE id_sucursal = ?");
+$stmt->execute([$idSucursalGerente]);
+$primeraVenta = $stmt->fetchColumn();
+$inicioHistorico = $primeraVenta ? new DateTimeImmutable(substr($primeraVenta, 0, 10)) : $hoy;
+
 $atajos = [
-    'hoy' => ['Hoy',       $hoy],
-    '7'   => ['7 días',    $hoy->modify('-6 days')],
-    '30'  => ['30 días',   $hoy->modify('-29 days')],
-    'mes' => ['Este mes',  $hoy->modify('first day of this month')],
+    'hoy'  => [t('ventas.periodo_hoy'),  $hoy],
+    '7'    => [t('ventas.periodo_7'),    $hoy->modify('-6 days')],
+    '30'   => [t('ventas.periodo_30'),   $hoy->modify('-29 days')],
+    'mes'  => [t('ventas.periodo_mes'),  $hoy->modify('first day of this month')],
+    'anio' => [t('ventas.periodo_anio'), $hoy->setDate((int) $hoy->format('Y'), 1, 1)],
+    'todo' => [t('ventas.periodo_todo'), min($inicioHistorico, $hoy)],
 ];
 
 $leerFecha = static function (string $valor): ?DateTimeImmutable {
@@ -30,7 +39,7 @@ if ($desde && $hasta) {
         [$desde, $hasta] = [$hasta, $desde];
     }
 } else {
-    $clave = array_key_exists($_GET['periodo'] ?? '', $atajos) ? $_GET['periodo'] : 'hoy';
+    $clave = array_key_exists($_GET['periodo'] ?? '', $atajos) ? (string) $_GET['periodo'] : 'hoy';
     $desde = $atajos[$clave][1];
     $hasta = $hoy;
 }
@@ -42,14 +51,11 @@ foreach ($atajos as $clave => [, $inicioAtajo]) {
         break;
     }
 }
+$esTodo = $atajoActivo === 'todo';
 
-$dias = (int) $desde->diff($hasta)->days + 1;
-
-// Rango semiabierto [inicio, fin)
+$dias   = (int) $desde->diff($hasta)->days + 1;
 $inicio = $desde->format('Y-m-d 00:00:00');
 $fin    = $hasta->modify('+1 day')->format('Y-m-d 00:00:00');
-
-// Periodo anterior de la misma duración, para comparar
 $inicioAnterior = $desde->modify("-{$dias} days")->format('Y-m-d 00:00:00');
 
 $wherePeriodo  = "v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?";
@@ -72,11 +78,9 @@ $stmt = $pdo->prepare("SELECT id_caja, numero_caja, nombre FROM Cajas WHERE id_s
 $stmt->execute([$idSucursalGerente]);
 $cajas = [];
 foreach ($stmt->fetchAll() as $c) {
-    $cajas[(int) $c['id_caja']] = 'Caja ' . $c['numero_caja'] . ($c['nombre'] ? ' · ' . $c['nombre'] : '');
+    $cajas[(int) $c['id_caja']] = t('cajas.caja_n', ['n' => $c['numero_caja']]) . ($c['nombre'] ? ' · ' . $c['nombre'] : '');
 }
-const SIN_CAJA = -1;
 
-// Productos vendidos en el periodo (para "ventas que incluyen…")
 $stmt = $pdo->prepare("
     SELECT DISTINCT p.id_producto, p.nombre
     FROM Detalle_Venta dv
@@ -98,24 +102,24 @@ if ($idCaja !== SIN_CAJA && !isset($cajas[$idCaja])) $idCaja = 0;
 if (!isset($productosVendidos[$idProducto])) $idProducto = 0;
 
 $ordenes = [
-    'recientes'      => ['Más recientes',          'v.fecha_hora DESC'],
-    'antiguas'       => ['Más antiguas',           'v.fecha_hora ASC'],
-    'monto_desc'     => ['Mayor monto',            'v.total DESC'],
-    'monto_asc'      => ['Menor monto',            'v.total ASC'],
-    'articulos_desc' => ['Más artículos',          'articulos DESC'],
-    'articulos_asc'  => ['Menos artículos',        'articulos ASC'],
-    'efectivo'       => ['Efectivo primero',       "(m.nombre_metodo = 'Efectivo') DESC, v.fecha_hora DESC"],
-    'tarjeta'        => ['Tarjeta primero',        "(m.nombre_metodo LIKE 'Tarjeta%') DESC, v.fecha_hora DESC"],
+    'recientes'      => [t('ventas.orden_recientes'),      'v.fecha_hora DESC'],
+    'antiguas'       => [t('ventas.orden_antiguas'),       'v.fecha_hora ASC'],
+    'monto_desc'     => [t('ventas.orden_monto_desc'),     'v.total DESC'],
+    'monto_asc'      => [t('ventas.orden_monto_asc'),      'v.total ASC'],
+    'articulos_desc' => [t('ventas.orden_articulos_desc'), 'articulos DESC'],
+    'articulos_asc'  => [t('ventas.orden_articulos_asc'),  'articulos ASC'],
+    'efectivo'       => [t('ventas.orden_efectivo'),       "(m.nombre_metodo = 'Efectivo') DESC, v.fecha_hora DESC"],
+    'tarjeta'        => [t('ventas.orden_tarjeta'),        "(m.nombre_metodo LIKE 'Tarjeta%') DESC, v.fecha_hora DESC"],
 ];
 $orden = (string) ($_GET['orden'] ?? '');
 if (!array_key_exists($orden, $ordenes)) $orden = 'recientes';
 
-// Agrupar: [etiqueta, ORDER BY del grupo, columna de la fila que identifica el grupo]
+// [etiqueta, ORDER BY del grupo, columna de la fila que identifica el grupo]
 $agrupaciones = [
-    ''       => ['Sin agrupar',  null,                                   null],
-    'cajero' => ['Por cajero',   'u.nombre, v.id_cajero',                'id_cajero'],
-    'metodo' => ['Por método',   'm.nombre_metodo',                      'id_metodo_pago'],
-    'caja'   => ['Por caja',     '(v.id_caja IS NULL), c.numero_caja',   'id_caja'],
+    ''       => [t('ventas.agrupar_ninguno'), null,                                 null],
+    'cajero' => [t('ventas.agrupar_cajero'),  'u.nombre, v.id_cajero',              'id_cajero'],
+    'metodo' => [t('ventas.agrupar_metodo'),  'm.nombre_metodo',                    'id_metodo_pago'],
+    'caja'   => [t('ventas.agrupar_caja'),    '(v.id_caja IS NULL), c.numero_caja', 'id_caja'],
 ];
 $agrupar = (string) ($_GET['agrupar'] ?? '');
 if (!array_key_exists($agrupar, $agrupaciones)) $agrupar = '';
@@ -159,8 +163,8 @@ $selectVentas = "
 ";
 
 $nombreCaja = static fn(array $v): string => $v['id_caja'] === null
-    ? 'Sin caja'
-    : 'Caja ' . $v['numero_caja'] . ($v['caja_nombre'] ? ' · ' . $v['caja_nombre'] : '');
+    ? t('ventas.sin_caja')
+    : t('cajas.caja_n', ['n' => $v['numero_caja']]) . ($v['caja_nombre'] ? ' · ' . $v['caja_nombre'] : '');
 
 /* ============================================================
  * Exportar CSV: la tabla tal como está filtrada y ordenada
@@ -173,7 +177,7 @@ if (($_GET['exportar'] ?? '') === 'csv') {
         while ($v = $stmt->fetch()) {
             yield [
                 $v['id_venta'],
-                date('d/m/Y H:i', strtotime($v['fecha_hora'])),
+                fecha($v['fecha_hora']),
                 $v['cajero_nombre'],
                 $nombreCaja($v),
                 $v['nombre_metodo'],
@@ -186,10 +190,127 @@ if (($_GET['exportar'] ?? '') === 'csv') {
     })();
 
     enviarCsv(
-        'ventas_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
-        ['Folio', 'Fecha', 'Cajero', 'Caja', 'Método de pago', 'Artículos', 'Subtotal', 'IVA', 'Total'],
+        t('ventas.csv_archivo') . '_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
+        [t('ventas.col_folio'), t('comun.fecha'), t('ventas.col_cajero'), t('ventas.col_caja'), t('ventas.col_metodo'),
+         t('ventas.col_articulos'), t('ventas.col_subtotal'), t('ventas.col_iva'), t('ventas.col_total')],
         $filas
     );
+}
+
+/* ============================================================
+ * Filas de la tabla. Se usa en la carga normal y en la carga
+ * progresiva (?parcial=1), que pide la página siguiente al bajar.
+ * $grupoPrevio: último grupo ya pintado, para no repetir su encabezado.
+ * ============================================================ */
+$totalesGrupo = [];
+if ($agrupar !== '') {
+    $colGrupo = ['cajero' => 'v.id_cajero', 'metodo' => 'v.id_metodo_pago', 'caja' => 'v.id_caja'][$agrupar];
+    $stmt = $pdo->prepare("SELECT $colGrupo AS clave, COUNT(*) AS num, SUM(v.total) AS monto FROM Ventas v WHERE $whereTabla GROUP BY $colGrupo");
+    $stmt->execute($paramsTabla);
+    foreach ($stmt->fetchAll() as $g) {
+        $totalesGrupo[(string) $g['clave']] = $g;
+    }
+}
+
+$cargarPagina = static function (int $pagina) use ($pdo, $selectVentas, $paramsTabla): array {
+    $stmt = $pdo->prepare($selectVentas . " LIMIT " . VENTAS_POR_PAGINA . " OFFSET " . (($pagina - 1) * VENTAS_POR_PAGINA));
+    $stmt->execute($paramsTabla);
+    $ventas = $stmt->fetchAll();
+
+    $articulos = [];
+    if ($ventas) {
+        $ids = array_map(fn($v) => (int) $v['id_venta'], $ventas);
+        $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("
+            SELECT dv.id_venta, p.nombre, dv.cantidad
+            FROM Detalle_Venta dv
+            INNER JOIN Productos p ON p.id_producto = dv.id_producto
+            WHERE dv.id_venta IN ($marcas)
+            ORDER BY p.nombre
+        ");
+        $stmt->execute($ids);
+        foreach ($stmt->fetchAll() as $a) {
+            $articulos[(int) $a['id_venta']][] = $a;
+        }
+    }
+    return [$ventas, $articulos];
+};
+
+/** Devuelve [html de las filas, clave del último grupo pintado]. */
+$pintarFilas = static function (array $ventas, array $articulosPorVenta, ?string $grupoPrevio)
+    use ($agrupar, $agrupaciones, $totalesGrupo, $nombreCaja): array {
+    $grupoActual = $grupoPrevio;
+    ob_start();
+    foreach ($ventas as $v) {
+        if ($agrupar !== '') {
+            $claveGrupo = (string) ($v[$agrupaciones[$agrupar][2]] ?? '');
+            if ($claveGrupo !== $grupoActual) {
+                $grupoActual = $claveGrupo;
+                $titulo = match ($agrupar) {
+                    'cajero' => $v['cajero_nombre'],
+                    'metodo' => $v['nombre_metodo'],
+                    'caja'   => $nombreCaja($v),
+                };
+                $tg = $totalesGrupo[$claveGrupo] ?? ['num' => 0, 'monto' => 0];
+                echo '<tr class="fila-grupo"><td colspan="8"><strong>' . e($titulo) . '</strong><span>'
+                    . e(tn('ventas.n_ventas', (int) $tg['num'])) . ' · ' . dinero($tg['monto'])
+                    . '</span></td></tr>';
+            }
+        }
+        $articulos = $articulosPorVenta[(int) $v['id_venta']] ?? [];
+        $numArticulos = (int) $v['articulos'];
+        ?>
+        <tr>
+            <td><strong>#<?= (int) $v['id_venta'] ?></strong></td>
+            <td><?= e(fecha($v['fecha_hora'])) ?></td>
+            <td><?= e($v['cajero_nombre']) ?></td>
+            <td>
+                <?php if ($v['id_caja'] === null): ?>
+                    <span class="badge badge-warning" title="<?= e(t('ventas.sin_caja_ayuda')) ?>"><?= e(t('ventas.sin_caja')) ?></span>
+                <?php else: ?>
+                    <?= e(t('cajas.caja_n', ['n' => $v['numero_caja']])) ?>
+                <?php endif; ?>
+            </td>
+            <td><span class="badge badge-metodo"><?= e($v['nombre_metodo']) ?></span></td>
+            <td>
+                <?php if ($articulos): ?>
+                    <details class="venta-articulos">
+                        <summary><?= e(tn('ventas.n_articulos', $numArticulos)) ?></summary>
+                        <ul>
+                            <?php foreach ($articulos as $a): ?>
+                                <li><?= numero((int) $a['cantidad']) ?> × <?= e($a['nombre']) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
+                <?php else: ?>
+                    <span class="texto-tenue">—</span>
+                <?php endif; ?>
+            </td>
+            <td class="num"><?= dinero($v['subtotal']) ?></td>
+            <td class="num"><strong><?= dinero($v['total']) ?></strong></td>
+        </tr>
+        <?php
+    }
+    return [ob_get_clean(), $grupoActual];
+};
+
+$stmt = $pdo->prepare("SELECT COUNT(*) AS num, COALESCE(SUM(v.total), 0) AS monto FROM Ventas v WHERE $whereTabla");
+$stmt->execute($paramsTabla);
+$resumenTabla = $stmt->fetch();
+$numTabla     = (int) $resumenTabla['num'];
+$totalPaginas = max(1, (int) ceil($numTabla / VENTAS_POR_PAGINA));
+$pagina       = min($totalPaginas, max(1, (int) ($_GET['pagina'] ?? 1)));
+
+// Carga progresiva: solo las filas de la página pedida
+if (($_GET['parcial'] ?? '') === '1') {
+    [$ventas, $articulos] = $cargarPagina($pagina);
+    [$html, $ultimoGrupo] = $pintarFilas($ventas, $articulos, isset($_GET['grupo_previo']) ? (string) $_GET['grupo_previo'] : null);
+    header('Content-Type: text/html; charset=UTF-8');
+    header('X-Hay-Mas: ' . ($pagina < $totalPaginas ? '1' : '0'));
+    header('X-Ultimo-Grupo: ' . rawurlencode((string) $ultimoGrupo));
+    header('X-Mostrando: ' . min($numTabla, $pagina * VENTAS_POR_PAGINA));
+    echo $html;
+    exit;
 }
 
 /* ============================================================
@@ -206,10 +327,13 @@ $stmt = $pdo->prepare("SELECT COALESCE(SUM(dv.cantidad), 0) FROM Detalle_Venta d
 $stmt->execute($paramsPeriodo);
 $unidades = (int) $stmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(v.total), 0) FROM Ventas v WHERE $wherePeriodo");
-$stmt->execute([$idSucursalGerente, $inicioAnterior, $inicio]);
-$montoAnterior = (float) $stmt->fetchColumn();
-$variacion = $montoAnterior > 0 ? ($monto - $montoAnterior) / $montoAnterior * 100 : null;
+$variacion = null;
+if (!$esTodo) {
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(v.total), 0) FROM Ventas v WHERE $wherePeriodo");
+    $stmt->execute([$idSucursalGerente, $inicioAnterior, $inicio]);
+    $montoAnterior = (float) $stmt->fetchColumn();
+    $variacion = $montoAnterior > 0 ? ($monto - $montoAnterior) / $montoAnterior * 100 : null;
+}
 
 /* ============================================================
  * 4. Desgloses del periodo
@@ -262,53 +386,11 @@ $stmt->execute($paramsPeriodo);
 $topProductos = $stmt->fetchAll();
 
 /* ============================================================
- * 5. Tabla: total filtrado, totales por grupo y página actual
- * ============================================================ */
-$stmt = $pdo->prepare("SELECT COUNT(*) AS num, COALESCE(SUM(v.total), 0) AS monto FROM Ventas v WHERE $whereTabla");
-$stmt->execute($paramsTabla);
-$resumenTabla = $stmt->fetch();
-$numTabla = (int) $resumenTabla['num'];
-
-// Totales de cada grupo con los filtros de la tabla (para los encabezados de grupo)
-$totalesGrupo = [];
-if ($agrupar !== '') {
-    $colGrupo = ['cajero' => 'v.id_cajero', 'metodo' => 'v.id_metodo_pago', 'caja' => 'v.id_caja'][$agrupar];
-    $stmt = $pdo->prepare("SELECT $colGrupo AS clave, COUNT(*) AS num, SUM(v.total) AS monto FROM Ventas v WHERE $whereTabla GROUP BY $colGrupo");
-    $stmt->execute($paramsTabla);
-    foreach ($stmt->fetchAll() as $g) {
-        $totalesGrupo[(string) $g['clave']] = $g;
-    }
-}
-
-$totalPaginas = max(1, (int) ceil($numTabla / VENTAS_POR_PAGINA));
-$pagina = min($totalPaginas, max(1, (int) ($_GET['pagina'] ?? 1)));
-$offset = ($pagina - 1) * VENTAS_POR_PAGINA;
-
-$stmt = $pdo->prepare($selectVentas . " LIMIT " . VENTAS_POR_PAGINA . " OFFSET " . $offset);
-$stmt->execute($paramsTabla);
-$ventas = $stmt->fetchAll();
-
-$articulosPorVenta = [];
-if ($ventas) {
-    $ids = array_map(fn($v) => (int) $v['id_venta'], $ventas);
-    $marcas = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $pdo->prepare("
-        SELECT dv.id_venta, p.nombre, dv.cantidad
-        FROM Detalle_Venta dv
-        INNER JOIN Productos p ON p.id_producto = dv.id_producto
-        WHERE dv.id_venta IN ($marcas)
-        ORDER BY p.nombre
-    ");
-    $stmt->execute($ids);
-    foreach ($stmt->fetchAll() as $a) {
-        $articulosPorVenta[(int) $a['id_venta']][] = $a;
-    }
-}
-
-/* ============================================================
  * URLs: cada enlace conserva el resto del estado
  * ============================================================ */
-$estadoPeriodo = ['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d')];
+$estadoPeriodo = $atajoActivo
+    ? ['periodo' => $atajoActivo]
+    : ['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d')];
 $estadoTabla = array_filter([
     'id_cajero'   => $idCajero ?: null,
     'id_metodo'   => $idMetodo ?: null,
@@ -321,99 +403,97 @@ $url = static fn(array $params) => 'ventas_sucursal.php?' . http_build_query(arr
 
 $hayFiltros = $idCajero || $idMetodo || $idCaja || $idProducto;
 $pct = static fn(float $parte, float $todo) => $todo > 0 ? round($parte / $todo * 100) : 0;
-$dinero = static fn($n) => '$' . number_format((float) $n, 2);
 
-$pageTitle    = 'Ventas de mi Sucursal';
+$pageTitle    = t('ventas.titulo');
 $showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 
 <div class="page-header">
     <div>
-        <h1>Ventas de mi sucursal</h1>
+        <h1><?= e(t('ventas.titulo')) ?></h1>
         <p>
-            Sucursal: <strong><?= htmlspecialchars($gerente['sucursal_nombre']) ?></strong>
-            &middot;
+            <?= e($gerente['sucursal_nombre']) ?> ·
             <?php if ($dias === 1): ?>
-                <?= $desde->format('d/m/Y') ?>
+                <?= e(fecha($desde, false)) ?>
             <?php else: ?>
-                <?= $desde->format('d/m/Y') ?> – <?= $hasta->format('d/m/Y') ?> (<?= $dias ?> días)
+                <?= e(fecha($desde, false)) ?> – <?= e(fecha($hasta, false)) ?> (<?= e(tn('comun.n_dias', $dias)) ?>)
             <?php endif; ?>
         </p>
     </div>
-    <a class="btn btn-ghost" href="<?= htmlspecialchars($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>">Exportar CSV</a>
+    <a class="btn btn-ghost" href="<?= e($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>"><?= e(t('comun.exportar_csv')) ?></a>
 </div>
 
 <!-- Periodo: afecta a todo -->
 <div class="ventas-periodo">
     <div class="acciones">
         <?php foreach ($atajos as $clave => [$texto]): ?>
-            <a href="<?= htmlspecialchars($url(['periodo' => $clave] + $estadoTabla)) ?>"
-               class="btn btn-sm <?= $clave === $atajoActivo ? 'btn-primary' : 'btn-ghost' ?>"><?= $texto ?></a>
+            <a href="<?= e($url(['periodo' => $clave] + $estadoTabla)) ?>"
+               class="btn btn-sm <?= $clave === $atajoActivo ? 'btn-primary' : 'btn-ghost' ?>"><?= e($texto) ?></a>
         <?php endforeach; ?>
     </div>
     <form method="GET" action="ventas_sucursal.php" class="ventas-rango">
         <?php foreach ($estadoTabla as $k => $v): ?>
-            <input type="hidden" name="<?= $k ?>" value="<?= htmlspecialchars((string) $v) ?>">
+            <input type="hidden" name="<?= $k ?>" value="<?= e((string) $v) ?>">
         <?php endforeach; ?>
-        <label>Del <input type="date" name="desde" value="<?= $desde->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>"></label>
-        <label>al <input type="date" name="hasta" value="<?= $hasta->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>"></label>
-        <button type="submit" class="btn btn-ghost btn-sm">Ver periodo</button>
+        <label><?= e(t('ventas.rango_del')) ?> <input type="date" name="desde" value="<?= $desde->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>"></label>
+        <label><?= e(t('ventas.rango_al')) ?> <input type="date" name="hasta" value="<?= $hasta->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>"></label>
+        <button type="submit" class="btn btn-ghost btn-sm"><?= e(t('ventas.rango_aplicar')) ?></button>
     </form>
 </div>
 
 <section class="kpi-grid">
     <div class="kpi kpi--ok">
-        <span class="kpi-label">Monto vendido</span>
-        <span class="kpi-value kpi-value--ok"><?= $dinero($monto) ?></span>
+        <span class="kpi-label"><?= e(t('ventas.kpi_monto')) ?></span>
+        <span class="kpi-value kpi-value--ok"><?= dinero($monto) ?></span>
         <span class="kpi-sub">
-            <?php if ($variacion === null): ?>
-                sin ventas en el periodo anterior
+            <?php if ($esTodo): ?>
+                <?= e(t('ventas.kpi_desde', ['fecha' => fecha($desde, false)])) ?>
+            <?php elseif ($variacion === null): ?>
+                <?= e(t('ventas.kpi_sin_anterior')) ?>
             <?php else: ?>
-                <span style="color: <?= $variacion >= 0 ? '#15803d' : '#dc2626' ?>; font-weight: 600;">
-                    <?= $variacion >= 0 ? '▲' : '▼' ?> <?= number_format(abs($variacion), 1) ?>%
+                <span class="<?= $variacion >= 0 ? 'texto-ok' : 'texto-peligro' ?>" style="font-weight: 600;">
+                    <?= $variacion >= 0 ? '▲' : '▼' ?> <?= numero(abs($variacion), 1) ?>%
                 </span>
-                vs. <?= $dias === 1 ? 'día anterior' : "{$dias} días anteriores" ?>
+                <?= e(tn('ventas.kpi_vs_anterior', $dias)) ?>
             <?php endif; ?>
         </span>
     </div>
     <div class="kpi">
-        <span class="kpi-label">Ventas</span>
-        <span class="kpi-value"><?= number_format($numVentas) ?></span>
-        <span class="kpi-sub">tickets en el periodo</span>
+        <span class="kpi-label"><?= e(t('ventas.kpi_ventas')) ?></span>
+        <span class="kpi-value"><?= numero($numVentas) ?></span>
+        <span class="kpi-sub"><?= e(t('ventas.kpi_ventas_sub')) ?></span>
     </div>
     <div class="kpi">
-        <span class="kpi-label">Ticket promedio</span>
-        <span class="kpi-value"><?= $dinero($ticket) ?></span>
-        <span class="kpi-sub">monto / ventas</span>
+        <span class="kpi-label"><?= e(t('ventas.kpi_ticket')) ?></span>
+        <span class="kpi-value"><?= dinero($ticket) ?></span>
+        <span class="kpi-sub"><?= e(t('ventas.kpi_ticket_sub')) ?></span>
     </div>
     <div class="kpi">
-        <span class="kpi-label">Unidades vendidas</span>
-        <span class="kpi-value"><?= number_format($unidades) ?></span>
-        <span class="kpi-sub">artículos en el periodo</span>
+        <span class="kpi-label"><?= e(t('ventas.kpi_unidades')) ?></span>
+        <span class="kpi-value"><?= numero($unidades) ?></span>
+        <span class="kpi-sub"><?= e(t('ventas.kpi_unidades_sub')) ?></span>
     </div>
 </section>
 
 <?php if ($ventasSinCaja > 0): ?>
     <div class="alert alert-warning">
-        <?= $ventasSinCaja === 1 ? '1 venta de este periodo se registró' : $ventasSinCaja . ' ventas de este periodo se registraron' ?>
-        <strong>sin caja asignada</strong>.
-        <a href="<?= htmlspecialchars($url($estadoPeriodo + ['id_caja' => SIN_CAJA])) ?>">Ver cuáles</a>
+        <?= e(tn('ventas.aviso_sin_caja', $ventasSinCaja)) ?>
+        <a href="<?= e($url($estadoPeriodo + ['id_caja' => SIN_CAJA]) . '#tabla-ventas') ?>"><?= e(t('ventas.aviso_sin_caja_ver')) ?></a>
     </div>
 <?php endif; ?>
 
 <?php if ($numVentas === 0): ?>
     <div class="panel">
-        <div class="empty-state">No hay ventas en este periodo.</div>
+        <div class="empty-state"><?= e(t('ventas.vacio')) ?></div>
     </div>
 <?php else: ?>
 
-    <!-- Desgloses del periodo. Los tres primeros agrupan la tabla de abajo. -->
     <?php
     $desgloses = [
-        'metodo' => ['Por método de pago', $porMetodo],
-        'cajero' => ['Por cajero',         $porCajero],
-        'caja'   => ['Por caja',           $porCaja],
+        'metodo' => [t('ventas.desglose_metodo'), $porMetodo],
+        'cajero' => [t('ventas.desglose_cajero'), $porCajero],
+        'caja'   => [t('ventas.desglose_caja'),   $porCaja],
     ];
     ?>
     <div class="ventas-desgloses">
@@ -421,10 +501,10 @@ require __DIR__ . '/header.php';
             <?php $activo = $agrupar === $clave; ?>
             <section class="desglose <?= $activo ? 'is-activo' : '' ?>">
                 <header class="desglose-head">
-                    <h2><?= $titulo ?></h2>
+                    <h2><?= e($titulo) ?></h2>
                     <a class="btn btn-sm <?= $activo ? 'btn-primary' : 'btn-ghost' ?>"
-                       href="<?= htmlspecialchars($url($estadoPeriodo + ['agrupar' => $activo ? null : $clave] + $estadoTabla) . '#tabla-ventas') ?>">
-                        <?= $activo ? 'Agrupado ✓' : 'Agrupar tabla' ?>
+                       href="<?= e($url($estadoPeriodo + ['agrupar' => $activo ? null : $clave] + $estadoTabla) . '#tabla-ventas') ?>">
+                        <?= e($activo ? t('ventas.agrupado') : t('ventas.agrupar_tabla')) ?>
                     </a>
                 </header>
                 <ul class="desglose-lista">
@@ -432,9 +512,9 @@ require __DIR__ . '/header.php';
                         <?php $porcentaje = $pct((float) $f['monto'], $monto); ?>
                         <li>
                             <div class="desglose-fila">
-                                <span class="desglose-nombre"><?= htmlspecialchars($f['etiqueta']) ?></span>
-                                <span class="desglose-num"><?= (int) $f['num'] ?> venta<?= (int) $f['num'] === 1 ? '' : 's' ?></span>
-                                <strong class="desglose-monto"><?= $dinero($f['monto']) ?></strong>
+                                <span class="desglose-nombre"><?= e($f['etiqueta']) ?></span>
+                                <span class="desglose-num"><?= e(tn('ventas.n_ventas', (int) $f['num'])) ?></span>
+                                <strong class="desglose-monto"><?= dinero($f['monto']) ?></strong>
                                 <span class="desglose-pct"><?= $porcentaje ?>%</span>
                             </div>
                             <div class="desglose-barra"><span style="width: <?= $porcentaje ?>%"></span></div>
@@ -445,175 +525,119 @@ require __DIR__ . '/header.php';
         <?php endforeach; ?>
 
         <section class="desglose">
-            <header class="desglose-head"><h2>Más vendidos</h2></header>
-            <?php if (empty($topProductos)): ?>
-                <p class="desglose-vacio">Sin detalle de productos.</p>
-            <?php else: ?>
-                <ol class="desglose-lista desglose-lista--top">
-                    <?php foreach ($topProductos as $f): ?>
-                        <li>
-                            <div class="desglose-fila">
-                                <span class="desglose-nombre">
-                                    <?= htmlspecialchars($f['nombre']) ?>
-                                    <small><?= htmlspecialchars($f['codigo']) ?></small>
-                                </span>
-                                <strong class="desglose-monto"><?= (int) $f['unidades'] ?> u.</strong>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ol>
-            <?php endif; ?>
+            <header class="desglose-head"><h2><?= e(t('ventas.desglose_top')) ?></h2></header>
+            <ol class="desglose-lista desglose-lista--top">
+                <?php foreach ($topProductos as $f): ?>
+                    <li>
+                        <div class="desglose-fila">
+                            <span class="desglose-nombre"><?= e($f['nombre']) ?> <small><?= e($f['codigo']) ?></small></span>
+                            <strong class="desglose-monto"><?= e(tn('stock.unidades', (int) $f['unidades'])) ?></strong>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
         </section>
     </div>
 
-    <!-- Tabla de ventas con sus propias herramientas justo encima -->
+    <!-- Tabla de ventas con sus herramientas justo encima -->
     <section class="panel ventas-tabla" id="tabla-ventas">
         <div class="ventas-tabla-head">
             <div>
-                <h2 class="section-title">Ventas</h2>
+                <h2 class="section-title"><?= e(t('ventas.tabla_titulo')) ?></h2>
                 <p>
-                    <?= number_format($numTabla) ?> de <?= number_format($numVentas) ?> ventas
-                    &middot; <?= $dinero($resumenTabla['monto']) ?>
+                    <?= e(t('ventas.tabla_resumen', ['n' => numero($numTabla), 'total' => numero($numVentas)])) ?>
+                    · <?= dinero($resumenTabla['monto']) ?>
                     <?php if ($hayFiltros): ?>
-                        &middot; <a href="<?= htmlspecialchars($url($estadoPeriodo + array_intersect_key($estadoTabla, ['orden' => 1, 'agrupar' => 1])) . '#tabla-ventas') ?>">Quitar filtros</a>
+                        · <a href="<?= e($url($estadoPeriodo + array_intersect_key($estadoTabla, ['orden' => 1, 'agrupar' => 1])) . '#tabla-ventas') ?>"><?= e(t('comun.quitar_filtros')) ?></a>
                     <?php endif; ?>
                 </p>
             </div>
-            <div class="segmentado" role="group" aria-label="Agrupar ventas">
+            <div class="segmentado" role="group" aria-label="<?= e(t('ventas.agrupar_aria')) ?>">
                 <?php foreach ($agrupaciones as $clave => [$texto]): ?>
-                    <a href="<?= htmlspecialchars($url($estadoPeriodo + ['agrupar' => $clave ?: null] + $estadoTabla) . '#tabla-ventas') ?>"
+                    <a href="<?= e($url($estadoPeriodo + ['agrupar' => $clave ?: null] + $estadoTabla) . '#tabla-ventas') ?>"
                        class="<?= $clave === $agrupar ? 'is-activo' : '' ?>"
-                       <?= $clave === $agrupar ? 'aria-current="true"' : '' ?>><?= $texto ?></a>
+                       <?= $clave === $agrupar ? 'aria-current="true"' : '' ?>><?= e($texto) ?></a>
                 <?php endforeach; ?>
             </div>
         </div>
 
         <form method="GET" action="ventas_sucursal.php#tabla-ventas" class="toolbar ventas-filtros" onchange="this.submit()">
-            <input type="hidden" name="desde" value="<?= $desde->format('Y-m-d') ?>">
-            <input type="hidden" name="hasta" value="<?= $hasta->format('Y-m-d') ?>">
-            <?php if ($agrupar): ?><input type="hidden" name="agrupar" value="<?= $agrupar ?>"><?php endif; ?>
+            <?php foreach ($estadoPeriodo as $k => $v): ?>
+                <input type="hidden" name="<?= $k ?>" value="<?= e($v) ?>">
+            <?php endforeach; ?>
+            <?php if ($agrupar): ?><input type="hidden" name="agrupar" value="<?= e($agrupar) ?>"><?php endif; ?>
 
-            <select name="orden" aria-label="Ordenar">
+            <select name="orden" aria-label="<?= e(t('ventas.ordenar')) ?>">
                 <?php foreach ($ordenes as $clave => [$texto]): ?>
-                    <option value="<?= $clave ?>"<?= $clave === $orden ? ' selected' : '' ?>>Ordenar: <?= $texto ?></option>
+                    <option value="<?= $clave ?>"<?= $clave === $orden ? ' selected' : '' ?>><?= e(t('ventas.ordenar')) ?>: <?= e($texto) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="id_cajero" aria-label="Cajero">
-                <option value="0">Todos los cajeros</option>
+            <select name="id_cajero" aria-label="<?= e(t('ventas.col_cajero')) ?>">
+                <option value="0"><?= e(t('ventas.filtro_cajeros')) ?></option>
                 <?php foreach ($cajeros as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idCajero ? ' selected' : '' ?>><?= htmlspecialchars($nombre) ?></option>
+                    <option value="<?= (int) $id ?>"<?= (int) $id === $idCajero ? ' selected' : '' ?>><?= e($nombre) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="id_metodo" aria-label="Método de pago">
-                <option value="0">Todos los métodos</option>
+            <select name="id_metodo" aria-label="<?= e(t('ventas.col_metodo')) ?>">
+                <option value="0"><?= e(t('ventas.filtro_metodos')) ?></option>
                 <?php foreach ($metodos as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idMetodo ? ' selected' : '' ?>><?= htmlspecialchars($nombre) ?></option>
+                    <option value="<?= (int) $id ?>"<?= (int) $id === $idMetodo ? ' selected' : '' ?>><?= e($nombre) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="id_caja" aria-label="Caja">
-                <option value="0">Todas las cajas</option>
+            <select name="id_caja" aria-label="<?= e(t('ventas.col_caja')) ?>">
+                <option value="0"><?= e(t('ventas.filtro_cajas')) ?></option>
                 <?php foreach ($cajas as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idCaja ? ' selected' : '' ?>><?= htmlspecialchars($nombre) ?></option>
+                    <option value="<?= (int) $id ?>"<?= (int) $id === $idCaja ? ' selected' : '' ?>><?= e($nombre) ?></option>
                 <?php endforeach; ?>
-                <option value="<?= SIN_CAJA ?>"<?= $idCaja === SIN_CAJA ? ' selected' : '' ?>>Sin caja</option>
+                <option value="<?= SIN_CAJA ?>"<?= $idCaja === SIN_CAJA ? ' selected' : '' ?>><?= e(t('ventas.sin_caja')) ?></option>
             </select>
-            <select name="id_producto" aria-label="Ventas que incluyen el producto">
-                <option value="0">Con cualquier producto</option>
+            <select name="id_producto" aria-label="<?= e(t('ventas.filtro_producto_aria')) ?>">
+                <option value="0"><?= e(t('ventas.filtro_productos')) ?></option>
                 <?php foreach ($productosVendidos as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idProducto ? ' selected' : '' ?>>Incluye: <?= htmlspecialchars($nombre) ?></option>
+                    <option value="<?= (int) $id ?>"<?= (int) $id === $idProducto ? ' selected' : '' ?>><?= e(t('ventas.filtro_incluye', ['p' => $nombre])) ?></option>
                 <?php endforeach; ?>
             </select>
-            <noscript><button type="submit" class="btn btn-primary">Aplicar</button></noscript>
+            <noscript><button type="submit" class="btn btn-primary"><?= e(t('comun.aplicar')) ?></button></noscript>
         </form>
 
         <?php if ($numTabla === 0): ?>
-            <div class="empty-state">Ninguna venta coincide con estos filtros.</div>
+            <div class="empty-state"><?= e(t('ventas.sin_coincidencias')) ?></div>
         <?php else: ?>
+            <?php
+                [$ventas, $articulos] = $cargarPagina($pagina);
+                [$filasHtml, $ultimoGrupo] = $pintarFilas($ventas, $articulos, null);
+            ?>
             <div class="tabla-scroll">
                 <table class="tabla-productos">
                     <thead>
                         <tr>
-                            <th>#Venta</th>
-                            <th>Fecha</th>
-                            <th>Cajero</th>
-                            <th>Caja</th>
-                            <th>Método</th>
-                            <th>Artículos</th>
-                            <th class="num">Subtotal</th>
-                            <th class="num">Total</th>
+                            <th><?= e(t('ventas.col_folio')) ?></th>
+                            <th><?= e(t('comun.fecha')) ?></th>
+                            <th><?= e(t('ventas.col_cajero')) ?></th>
+                            <th><?= e(t('ventas.col_caja')) ?></th>
+                            <th><?= e(t('ventas.col_metodo')) ?></th>
+                            <th><?= e(t('ventas.col_articulos')) ?></th>
+                            <th class="num"><?= e(t('ventas.col_subtotal')) ?></th>
+                            <th class="num"><?= e(t('ventas.col_total')) ?></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php $grupoActual = null; ?>
-                        <?php foreach ($ventas as $v): ?>
-                            <?php
-                                if ($agrupar !== '') {
-                                    $claveGrupo = (string) ($v[$agrupaciones[$agrupar][2]] ?? '');
-                                    if ($claveGrupo !== $grupoActual) {
-                                        $grupoActual = $claveGrupo;
-                                        $tituloGrupo = match ($agrupar) {
-                                            'cajero' => $v['cajero_nombre'],
-                                            'metodo' => $v['nombre_metodo'],
-                                            'caja'   => $nombreCaja($v),
-                                        };
-                                        $tg = $totalesGrupo[$claveGrupo] ?? ['num' => 0, 'monto' => 0];
-                                        echo '<tr class="fila-grupo"><td colspan="8">'
-                                            . '<strong>' . htmlspecialchars($tituloGrupo) . '</strong>'
-                                            . '<span>' . (int) $tg['num'] . ' venta' . ((int) $tg['num'] === 1 ? '' : 's')
-                                            . ' &middot; ' . $dinero($tg['monto']) . '</span>'
-                                            . '</td></tr>';
-                                    }
-                                }
-                                $articulos = $articulosPorVenta[(int) $v['id_venta']] ?? [];
-                                $numArticulos = (int) $v['articulos'];
-                            ?>
-                            <tr>
-                                <td><strong>#<?= (int) $v['id_venta'] ?></strong></td>
-                                <td><?= htmlspecialchars(date('d/m/Y H:i', strtotime($v['fecha_hora']))) ?></td>
-                                <td><?= htmlspecialchars($v['cajero_nombre']) ?></td>
-                                <td>
-                                    <?php if ($v['id_caja'] === null): ?>
-                                        <span class="badge badge-warning" title="Venta registrada sin caja asignada">Sin caja</span>
-                                    <?php else: ?>
-                                        <?= htmlspecialchars('Caja ' . $v['numero_caja']) ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td><span class="badge badge-metodo"><?= htmlspecialchars($v['nombre_metodo']) ?></span></td>
-                                <td>
-                                    <?php if ($articulos): ?>
-                                        <details class="venta-articulos">
-                                            <summary><?= $numArticulos ?> <?= $numArticulos === 1 ? 'artículo' : 'artículos' ?></summary>
-                                            <ul>
-                                                <?php foreach ($articulos as $a): ?>
-                                                    <li><?= (int) $a['cantidad'] ?> × <?= htmlspecialchars($a['nombre']) ?></li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </details>
-                                    <?php else: ?>
-                                        <span style="color: #64748b;">—</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="num"><?= $dinero($v['subtotal']) ?></td>
-                                <td class="num"><strong><?= $dinero($v['total']) ?></strong></td>
-                            </tr>
-                        <?php endforeach; ?>
+                    <tbody data-scroll-infinito
+                           data-url="<?= e($url($estadoPeriodo + $estadoTabla + ['parcial' => '1'])) ?>"
+                           data-pagina="<?= $pagina ?>"
+                           data-total-paginas="<?= $totalPaginas ?>"
+                           data-ultimo-grupo="<?= e((string) $ultimoGrupo) ?>">
+                        <?= $filasHtml ?>
                     </tbody>
                 </table>
             </div>
-
-            <?php if ($totalPaginas > 1): ?>
-                <div class="ventas-paginacion">
-                    <span>
-                        Página <?= $pagina ?> de <?= $totalPaginas ?> &middot;
-                        <?= $offset + 1 ?>–<?= $offset + count($ventas) ?> de <?= number_format($numTabla) ?>
-                    </span>
-                    <span class="acciones">
-                        <?php if ($pagina > 1): ?>
-                            <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($url($estadoPeriodo + $estadoTabla + ['pagina' => $pagina - 1]) . '#tabla-ventas') ?>">← Anterior</a>
-                        <?php endif; ?>
-                        <?php if ($pagina < $totalPaginas): ?>
-                            <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($url($estadoPeriodo + $estadoTabla + ['pagina' => $pagina + 1]) . '#tabla-ventas') ?>">Siguiente →</a>
-                        <?php endif; ?>
+            <?php if ($pagina < $totalPaginas): ?>
+                <div class="carga-progresiva">
+                    <a class="btn btn-ghost btn-sm" data-cargar-mas
+                       href="<?= e($url($estadoPeriodo + $estadoTabla + ['pagina' => $pagina + 1]) . '#tabla-ventas') ?>">
+                        <?= e(t('comun.cargar_mas')) ?>
+                    </a>
+                    <span class="texto-tenue" data-contador data-total="<?= $numTabla ?>">
+                        <?= e(t('comun.mostrando', ['n' => numero(min($numTabla, $pagina * VENTAS_POR_PAGINA)), 'total' => numero($numTabla)])) ?>
                     </span>
                 </div>
             <?php endif; ?>

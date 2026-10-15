@@ -5,6 +5,17 @@
 
 
 /* ============================================================
+ * Traducciones: footer.php deja en window.I18N las claves "js.*"
+ * de gerente/lang/{idioma}.php. tj('clave', {n: 3}) reemplaza {n}.
+ * ============================================================ */
+function tj(clave, vars = {}) {
+    let texto = (window.I18N && window.I18N[clave]) || clave;
+    for (const [k, v] of Object.entries(vars)) texto = texto.split('{' + k + '}').join(String(v));
+    return texto;
+}
+
+
+/* ============================================================
  * Modal helpers — abrir, cerrar, click en overlay
  * ============================================================ */
 function abrirModal(id) {
@@ -76,11 +87,11 @@ function crearModalConfirmacion() {
     const html = `
     <div class="modal-overlay" id="modalConfirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitulo">
     <div class="modal-box modal-box--sm">
-    <h2 id="confirmTitulo">Confirmar acción</h2>
+    <h2 id="confirmTitulo"></h2>
     <p class="confirm-mensaje" id="confirmMensaje"></p>
     <div class="modal-actions">
-    <button type="button" class="btn btn-ghost" id="confirmCancelar">Cancelar</button>
-    <button type="button" class="btn btn-primary" id="confirmAceptar">Aceptar</button>
+    <button type="button" class="btn btn-ghost" id="confirmCancelar"></button>
+    <button type="button" class="btn btn-primary" id="confirmAceptar"></button>
     </div>
     </div>
     </div>
@@ -90,6 +101,7 @@ function crearModalConfirmacion() {
     const overlay = document.getElementById('modalConfirm');
     const btnCancelar = document.getElementById('confirmCancelar');
     const btnAceptar = document.getElementById('confirmAceptar');
+    btnCancelar.textContent = tj('cancelar');
 
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay && overlay._rechazar) overlay._rechazar();
@@ -123,9 +135,9 @@ function pedirConfirmacion(mensaje, opciones = {}) {
         const mensajeEl = document.getElementById('confirmMensaje');
         const btnAceptar = document.getElementById('confirmAceptar');
 
-        titulo.textContent = opciones.titulo || 'Confirmar acción';
+        titulo.textContent = opciones.titulo || tj('confirmar_titulo');
         mensajeEl.textContent = mensaje;
-        btnAceptar.textContent = opciones.textoAceptar || 'Aceptar';
+        btnAceptar.textContent = opciones.textoAceptar || tj('aceptar');
 
         // Estilo peligroso: botón rojo sólido
         btnAceptar.classList.remove('btn-primary', 'btn-danger-solid');
@@ -151,10 +163,10 @@ function pedirConfirmacion(mensaje, opciones = {}) {
  * ============================================================ */
 async function logoutConfirmado() {
     const ok = await pedirConfirmacion(
-        'Se cerrará tu sesión actual. ¿Deseas continuar?',
+        tj('cerrar_sesion_mensaje'),
         {
-            titulo: 'Cerrar sesión',
-            textoAceptar: 'Cerrar sesión',
+            titulo: tj('cerrar_sesion'),
+            textoAceptar: tj('cerrar_sesion'),
             peligroso: true
         }
     );
@@ -175,8 +187,8 @@ document.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const ok = await pedirConfirmacion(form.dataset.confirm, {
-        titulo: form.dataset.confirmTitulo || 'Confirmar acción',
-        textoAceptar: form.dataset.confirmAceptar || 'Aceptar',
+        titulo: form.dataset.confirmTitulo || tj('confirmar_titulo'),
+        textoAceptar: form.dataset.confirmAceptar || tj('aceptar'),
         peligroso: form.dataset.confirmPeligroso === '1'
     });
 
@@ -184,4 +196,18 @@ document.addEventListener('submit', async (e) => {
         form.dataset.confirmado = '1';
         form.submit();
     }
+});
+
+
+/* ============================================================
+ * Menú de idioma (<details class="idioma">): cerrar al hacer clic
+ * fuera o con Escape.
+ * ============================================================ */
+document.addEventListener('click', (e) => {
+    document.querySelectorAll('details.idioma[open]').forEach(d => {
+        if (!d.contains(e.target)) d.removeAttribute('open');
+    });
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
 });

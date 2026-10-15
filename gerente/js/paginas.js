@@ -59,7 +59,7 @@ function abrirModalNuevoCajero() {
     form.querySelector('[name="fecha_contratacion"]').value = new Date().toISOString().slice(0, 10);
 
     const titulo = document.getElementById('tituloModalCajero');
-    if (titulo) titulo.textContent = 'Nuevo cajero';
+    if (titulo) titulo.textContent = tj('nuevo_cajero');
 
     const grupoPassword = document.getElementById('grupoPassword');
     if (grupoPassword) grupoPassword.style.display = '';
@@ -83,7 +83,7 @@ function abrirModalEditarCajero(btn) {
     form.querySelector('[name="estado"]').value = btn.dataset.estado;
 
     const titulo = document.getElementById('tituloModalCajero');
-    if (titulo) titulo.textContent = 'Editar cajero';
+    if (titulo) titulo.textContent = tj('editar_cajero');
 
     const grupoPassword = document.getElementById('grupoPassword');
     if (grupoPassword) grupoPassword.style.display = 'none';
@@ -111,7 +111,7 @@ function abrirModalNuevaCaja() {
     form.querySelector('[name="id_cajero_asignado"]').value = '0';
 
     const titulo = document.getElementById('tituloModalCaja');
-    if (titulo) titulo.textContent = 'Nueva caja';
+    if (titulo) titulo.textContent = tj('nueva_caja');
 
     const aviso = document.getElementById('avisoReasignacion');
     if (aviso) aviso.classList.remove('visible');
@@ -137,7 +137,7 @@ function abrirModalEditarCaja(btn) {
     form.querySelector('[name="id_cajero_asignado"]').value = btn.dataset.cajero || '0';
 
     const titulo = document.getElementById('tituloModalCaja');
-    if (titulo) titulo.textContent = 'Editar caja';
+    if (titulo) titulo.textContent = tj('editar_caja');
 
     // Si el select custom existe, refrescar el trigger
     const selectCustom = form.querySelector('[name="id_cajero_asignado"]');
@@ -168,12 +168,13 @@ function _actualizarAvisoReasignacion() {
     const editingId    = parseInt(form.querySelector('[name="id_caja"]').value || '0', 10);
 
     if (cajaActual && cajaActualId !== editingId) {
-        aviso.innerHTML = `<strong>Este cajero ya está asignado a la caja ${cajaActual}.</strong> Si guardas, se moverá a esta caja y se desasignará de la anterior.`;
+        // textContent: el número de caja lo captura el gerente
+        aviso.textContent = tj('reasignar_aviso', { caja: cajaActual });
         aviso.classList.add('visible');
 
-        form.dataset.confirm = `Este cajero ya está asignado a la caja ${cajaActual}. Si continúas, se moverá a esta caja y se desasignará de la anterior. ¿Deseas continuar?`;
-        form.dataset.confirmTitulo = 'Reasignar cajero';
-        form.dataset.confirmAceptar = 'Reasignar';
+        form.dataset.confirm = tj('reasignar_confirmar', { caja: cajaActual });
+        form.dataset.confirmTitulo = tj('reasignar_titulo');
+        form.dataset.confirmAceptar = tj('reasignar_aceptar');
     } else {
         aviso.classList.remove('visible');
         delete form.dataset.confirm;
@@ -185,68 +186,9 @@ function _actualizarAvisoReasignacion() {
 
 
 /* ============================================================
- * ██ EXISTENCIAS — Modales y filtros
+ * ██ EXISTENCIAS — Alta de producto y filtros de la cuadrícula
+ *    (ajustar, recibir y precio están en producto.php)
  * ============================================================ */
-
-/** cantidadSugerida: p. ej. 0 desde "Poner en cero" (igual exige motivo). */
-function abrirModalAjustarStock(btn, cantidadSugerida = null) {
-    const form = document.getElementById('formAjustarStock');
-    if (!form) return;
-    form.reset();
-
-    form.querySelector('[name="id_producto"]').value    = btn.dataset.id;
-    form.querySelector('[name="cantidad_actual"]').value = btn.dataset.stock;
-    form.querySelector('[name="cantidad_nueva"]').value  =
-        cantidadSugerida !== null ? cantidadSugerida : btn.dataset.stock;
-
-    const nombre = document.getElementById('ajustarProductoNombre');
-    if (nombre) nombre.textContent = btn.dataset.nombre;
-
-    const actual = document.getElementById('ajustarStockActual');
-    if (actual) actual.textContent = btn.dataset.stock + ' unidades';
-
-    const precio = document.getElementById('ajustarStockPrecio');
-    if (precio) precio.textContent = '$' + parseFloat(btn.dataset.precio).toFixed(2);
-
-    abrirModal('modalAjustarStock');
-}
-
-function abrirModalRecibir(btn) {
-    const form = document.getElementById('formRecibir');
-    if (!form) return;
-    form.reset();
-
-    form.querySelector('[name="id_producto"]').value = btn.dataset.id;
-
-    const nombre = document.getElementById('recibirProductoNombre');
-    if (nombre) nombre.textContent = btn.dataset.nombre;
-    const stock = document.getElementById('recibirStockActual');
-    if (stock) stock.textContent = btn.dataset.stock;
-
-    const submit = form.querySelector('[type="submit"]');
-    if (submit) submit.disabled = false;
-
-    abrirModal('modalRecibir');
-    const cantidad = form.querySelector('[name="cantidad_recibida"]');
-    setTimeout(() => cantidad.focus(), 50);
-}
-
-function abrirModalCambiarPrecio(btn) {
-    const form = document.getElementById('formCambiarPrecio');
-    if (!form) return;
-    form.reset();
-
-    form.querySelector('[name="id_producto"]').value = btn.dataset.id;
-    const precio = parseFloat(btn.dataset.precio);
-    const input = form.querySelector('[name="precio_venta"]');
-    input.value = precio > 0 ? precio.toFixed(2) : '';
-
-    const nombre = document.getElementById('precioProductoNombre');
-    if (nombre) nombre.textContent = btn.dataset.nombre;
-
-    abrirModal('modalCambiarPrecio');
-    setTimeout(() => input.select(), 50);
-}
 
 function abrirModalAgregarProducto() {
     const form = document.getElementById('formAgregarProducto');
@@ -275,7 +217,8 @@ function initFiltrosExistencias() {
         const q    = buscador ? buscador.value.trim().toLowerCase() : '';
         const tipo = filtro   ? filtro.value : 'todos';
 
-        document.querySelectorAll('#tablaExistencias tbody tr[data-nombre]').forEach(row => {
+        let visibles = 0;
+        document.querySelectorAll('#gridExistencias [data-nombre]').forEach(row => {
             const coincideNombre = row.dataset.nombre.includes(q);
             const stock = parseInt(row.dataset.stock, 10);
 
@@ -285,8 +228,12 @@ function initFiltrosExistencias() {
             else if (tipo === 'normal') coincideTipo = stock >= umbral;
             else if (tipo === 'alerta') coincideTipo = stock < umbral;
 
-            row.style.display = (coincideNombre && coincideTipo) ? '' : 'none';
+            const visible = coincideNombre && coincideTipo;
+            row.hidden = !visible;
+            if (visible) visibles++;
         });
+        const vacio = document.getElementById('sinResultados');
+        if (vacio) vacio.hidden = visibles > 0;
     };
 
     if (buscador) buscador.addEventListener('input', aplicar);
@@ -330,7 +277,7 @@ function initBuscadorProducto() {
     const vacio    = picker.querySelector('.picker-vacio');
     const items    = Array.from(lista.querySelectorAll('.picker-item'));
     const precio   = form ? form.querySelector('[name="precio_venta"]') : null;
-    const MSG_ELEGIR = 'Selecciona un producto de la lista.';
+    const MSG_ELEGIR = tj('elegir_producto');
 
     items.forEach(li => { li._buscar = _normalizarTexto(li.dataset.buscar); });
 
@@ -572,5 +519,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Existencias
     initFiltrosExistencias();
+    initScrollInfinito();
     initBuscadorProducto();
 });
+
+
+/* ============================================================
+ * ██ CARGA PROGRESIVA — Ventas y Movimientos
+ * <tbody data-scroll-infinito data-url data-pagina data-total-paginas>
+ * Al acercarse al final pide ?pagina=N&parcial=1 y agrega las filas.
+ * El servidor responde X-Hay-Mas, X-Ultimo-Grupo y X-Mostrando.
+ * Sin JS queda el enlace "Cargar más" (abre la página siguiente).
+ * ============================================================ */
+function initScrollInfinito() {
+    const formato = new Intl.NumberFormat(document.documentElement.lang || 'es');
+
+    document.querySelectorAll('tbody[data-scroll-infinito]').forEach(tbody => {
+        const zona = tbody.closest('section, .panel')?.querySelector('.carga-progresiva');
+        const boton = zona?.querySelector('[data-cargar-mas]');
+        const contador = zona?.querySelector('[data-contador]');
+        if (!zona || !boton) return;
+
+        let pagina = parseInt(tbody.dataset.pagina, 10) || 1;
+        const totalPaginas = parseInt(tbody.dataset.totalPaginas, 10) || 1;
+        let cargando = false;
+        let observador = null;
+
+        const terminar = () => {
+            if (observador) observador.disconnect();
+            zona.remove();
+        };
+
+        const cerca = () => zona.isConnected && zona.getBoundingClientRect().top < window.innerHeight + 400;
+
+        const cargar = async () => {
+            if (cargando || pagina >= totalPaginas) return;
+            cargando = true;
+            boton.textContent = tj('cargando');
+            boton.setAttribute('aria-busy', 'true');
+
+            const url = new URL(tbody.dataset.url, window.location.href);
+            url.searchParams.set('pagina', pagina + 1);
+            if (tbody.dataset.ultimoGrupo !== undefined) url.searchParams.set('grupo_previo', tbody.dataset.ultimoGrupo);
+
+            try {
+                const res = await fetch(url, { credentials: 'same-origin' });
+                if (!res.ok) throw new Error(res.status);
+                tbody.insertAdjacentHTML('beforeend', await res.text());
+                pagina++;
+                tbody.dataset.ultimoGrupo = decodeURIComponent(res.headers.get('X-Ultimo-Grupo') || '');
+
+                const mostrando = res.headers.get('X-Mostrando');
+                if (contador && mostrando) {
+                    contador.textContent = tj('mostrando', {
+                        n: formato.format(mostrando),
+                        total: formato.format(contador.dataset.total || mostrando),
+                    });
+                }
+                if (res.headers.get('X-Hay-Mas') !== '1') terminar();
+            } catch (e) {
+                boton.textContent = tj('reintentar');
+                cargando = false;
+                return;
+            }
+
+            cargando = false;
+            boton.textContent = tj('cargar_mas');
+            boton.removeAttribute('aria-busy');
+            // Si las filas nuevas no llenan la pantalla, seguir cargando
+            if (cerca()) cargar();
+        };
+
+        boton.addEventListener('click', (e) => { e.preventDefault(); cargar(); });
+
+        if ('IntersectionObserver' in window) {
+            observador = new IntersectionObserver(
+                (entradas) => { if (entradas.some(en => en.isIntersecting)) cargar(); },
+                { rootMargin: '400px 0px' }
+            );
+            observador.observe(zona);
+        }
+    });
+}

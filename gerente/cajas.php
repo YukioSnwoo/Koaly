@@ -11,7 +11,7 @@ function validarCajeroDeCaja(PDO $pdo, int $idCajero, int $idSucursal, string $e
 {
     if ($idCajero <= 0) {
         if ($estadoCaja === 'Activa') {
-            throw new RuntimeException('Una caja activa necesita un cajero asignado. Asígnale uno o márcala como Inactiva o Mantenimiento.');
+            throw new RuntimeException(t('error.caja_sin_cajero'));
         }
         return null;
     }
@@ -23,10 +23,10 @@ function validarCajeroDeCaja(PDO $pdo, int $idCajero, int $idSucursal, string $e
     $check->execute([$idCajero, $idSucursal]);
     $estadoCajero = $check->fetchColumn();
     if ($estadoCajero === false) {
-        throw new RuntimeException('El cajero seleccionado no es válido para tu sucursal.');
+        throw new RuntimeException(t('error.cajero_invalido_sucursal'));
     }
     if ($estadoCaja === 'Activa' && $estadoCajero !== 'Activo') {
-        throw new RuntimeException("El cajero está en estado \"{$estadoCajero}\". Una caja activa necesita un cajero activo.");
+        throw new RuntimeException(t('error.cajero_no_activo', ['estado' => t('estado_usuario.' . $estadoCajero)]));
     }
     return $idCajero;
 }
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if (!csrfValido()) {
-            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
+            throw new RuntimeException(t('error.formulario_expirado'));
         }
 
         /* -------- Crear -------- */
@@ -59,13 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idCajero     = (int) ($_POST['id_cajero_asignado'] ?? 0);
 
             if ($numeroCaja === '' || mb_strlen($numeroCaja) > 20) {
-                throw new RuntimeException('El número de caja es obligatorio (máx. 20 caracteres).');
+                throw new RuntimeException(t('error.numero_caja'));
             }
             if (mb_strlen($nombre) > 50) {
-                throw new RuntimeException('El nombre no debe superar 50 caracteres.');
+                throw new RuntimeException(t('error.nombre_caja'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
-                throw new RuntimeException('Estado inválido.');
+                throw new RuntimeException(t('error.estado_invalido'));
             }
             $idCajero = validarCajeroDeCaja($pdo, $idCajero, $idSucursalGerente, $estado);
 
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $check->execute([$idCajero, $idSucursalGerente]);
                 $otraCaja = $check->fetchColumn();
                 if ($otraCaja !== false) {
-                    throw new RuntimeException("Ese cajero ya está asignado a la caja {$otraCaja}. Reasígnalo editando esa caja o elige otro.");
+                    throw new RuntimeException(t('error.cajero_ya_asignado', ['caja' => $otraCaja]));
                 }
             }
 
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $check->execute([$idSucursalGerente, $numeroCaja]);
             if ($check->fetch() !== false) {
-                throw new RuntimeException('Ya existe una caja con ese número en tu sucursal.');
+                throw new RuntimeException(t('error.caja_duplicada'));
             }
 
             $stmt = $pdo->prepare("
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idCajero
             ]);
 
-            $_SESSION['flash'] = ['msg' => 'Caja registrada correctamente.'];
+            $_SESSION['flash'] = ['msg' => t('cajas.creada')];
             header('Location: cajas.php');
             exit;
 
@@ -112,16 +112,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idCajero     = (int) ($_POST['id_cajero_asignado'] ?? 0);
 
             if ($id <= 0) {
-                throw new RuntimeException('Caja inválida.');
+                throw new RuntimeException(t('error.caja_invalida'));
             }
             if ($numeroCaja === '' || mb_strlen($numeroCaja) > 20) {
-                throw new RuntimeException('El número de caja es obligatorio (máx. 20 caracteres).');
+                throw new RuntimeException(t('error.numero_caja'));
             }
             if (mb_strlen($nombre) > 50) {
-                throw new RuntimeException('El nombre no debe superar 50 caracteres.');
+                throw new RuntimeException(t('error.nombre_caja'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
-                throw new RuntimeException('Estado inválido.');
+                throw new RuntimeException(t('error.estado_invalido'));
             }
 
             // IDOR: verificar que la caja pertenece a la sucursal del gerente
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $check->execute([$id, $idSucursalGerente]);
             if ($check->fetch() === false) {
-                throw new RuntimeException('Caja inválida.');
+                throw new RuntimeException(t('error.caja_invalida'));
             }
 
             $idCajero = validarCajeroDeCaja($pdo, $idCajero, $idSucursalGerente, $estado);
@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $check->execute([$idSucursalGerente, $numeroCaja, $id]);
             if ($check->fetch() !== false) {
-                throw new RuntimeException('Ya existe otra caja con ese número en tu sucursal.');
+                throw new RuntimeException(t('error.caja_duplicada'));
             }
 
             // Desasignar de otra caja + actualizar esta: todo o nada
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$idCajero, $idSucursalGerente, $id]);
                 if ($stmt->rowCount() > 0) {
-                    $mensajeExtra = ' Su caja anterior quedó sin cajero e inactiva.';
+                    $mensajeExtra = ' ' . t('cajas.anterior_inactiva');
                 }
             }
 
@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
 
-            $_SESSION['flash'] = ['msg' => 'Caja actualizada correctamente.' . $mensajeExtra];
+            $_SESSION['flash'] = ['msg' => t('cajas.actualizada') . $mensajeExtra];
             header('Location: cajas.php');
             exit;
 
@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_caja'] ?? 0);
             if ($id <= 0) {
-                throw new RuntimeException('Caja inválida.');
+                throw new RuntimeException(t('error.caja_invalida'));
             }
 
             $check = $pdo->prepare("
@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$id, $idSucursalGerente]);
             $caja = $check->fetch();
             if ($caja === false) {
-                throw new RuntimeException('Caja inválida.');
+                throw new RuntimeException(t('error.caja_invalida'));
             }
 
             $nuevo = $caja['estado'] === 'Activa' ? 'Inactiva' : 'Activa';
@@ -207,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE Cajas SET estado = ? WHERE id_caja = ?");
             $stmt->execute([$nuevo, $id]);
 
-            $_SESSION['flash'] = ['msg' => $nuevo === 'Activa' ? 'Caja activada.' : 'Caja desactivada.'];
+            $_SESSION['flash'] = ['msg' => $nuevo === 'Activa' ? t('cajas.activada') : t('cajas.desactivada')];
             header('Location: cajas.php');
             exit;
 
@@ -215,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'eliminar') {
             $id = (int) ($_POST['id_caja'] ?? 0);
             if ($id <= 0) {
-                throw new RuntimeException('Caja inválida.');
+                throw new RuntimeException(t('error.caja_invalida'));
             }
 
             $check = $pdo->prepare("
@@ -223,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $check->execute([$id, $idSucursalGerente]);
             if ($check->fetch() === false) {
-                throw new RuntimeException('Caja inválida.');
+                throw new RuntimeException(t('error.caja_invalida'));
             }
 
             // Una caja con ventas no se borra: perdería el historial (y la FK lo impide).
@@ -231,16 +231,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$id]);
             $numVentas = (int) $check->fetchColumn();
             if ($numVentas > 0) {
-                throw new RuntimeException(
-                    "Esta caja tiene {$numVentas} venta" . ($numVentas === 1 ? '' : 's')
-                    . " registrada" . ($numVentas === 1 ? '' : 's') . ". No se puede eliminar; desactívala."
-                );
+                throw new RuntimeException(tn('error.caja_con_ventas', $numVentas));
             }
 
             $stmt = $pdo->prepare("DELETE FROM Cajas WHERE id_caja = ?");
             $stmt->execute([$id]);
 
-            $_SESSION['flash'] = ['msg' => 'Caja eliminada.'];
+            $_SESSION['flash'] = ['msg' => t('cajas.eliminada')];
             header('Location: cajas.php');
             exit;
         }
@@ -250,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = $e->getMessage();
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        $errores[] = 'Error al guardar en la base de datos.';
+        $errores[] = t('error.base_datos');
     }
 }
 
@@ -319,20 +316,19 @@ function inicialesCorta(string $nombre): string
     return $ini !== '' ? $ini : '?';
 }
 
-$pageTitle    = 'Cajas';
+$pageTitle    = t('cajas.titulo');
 $showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 
 <div class="page-header">
     <div>
-        <h1>Cajas</h1>
+        <h1><?= e(t('cajas.titulo')) ?></h1>
         <p>
-            <?= $totalActivas ?> activa<?= $totalActivas === 1 ? '' : 's' ?>
-            de <?= count($cajas) ?> registrada<?= count($cajas) === 1 ? '' : 's' ?>
+            <?= e(t('cajas.resumen', ['activas' => numero($totalActivas), 'total' => numero(count($cajas))])) ?>
         </p>
     </div>
-    <button type="button" class="btn btn-primary" onclick="abrirModalNuevaCaja()">+ Nueva caja</button>
+    <button type="button" class="btn btn-primary" onclick="abrirModalNuevaCaja()">+ <?= e(t('cajas.nueva')) ?></button>
 </div>
 
 <?php if ($exito): ?>
@@ -368,15 +364,15 @@ require __DIR__ . '/header.php';
                 <?php if (!empty($c['nombre'])): ?>
                     <div class="caja-nombre"><?= htmlspecialchars($c['nombre']) ?></div>
                 <?php else: ?>
-                    <div class="caja-nombre caja-nombre--muted">Sin nombre</div>
+                    <div class="caja-nombre caja-nombre--muted"><?= e(t('cajas.sin_nombre')) ?></div>
                 <?php endif; ?>
 
                 <div style="margin-bottom: 0.5rem;">
-                    <span class="badge <?= $estadoBadge ?>"><?= htmlspecialchars($c['estado']) ?></span>
+                    <span class="badge <?= $estadoBadge ?>"><?= e(t('estado_caja.' . $c['estado'])) ?></span>
                     <?php if ($esActiva && !$tieneCajero): ?>
-                        <span class="badge badge-danger" title="Asígnale un cajero o desactívala">Sin cajero</span>
+                        <span class="badge badge-danger" title="<?= e(t('cajas.sin_cajero_ayuda')) ?>"><?= e(t('cajas.sin_cajero')) ?></span>
                     <?php elseif ($esActiva && $c['cajero_estado'] !== 'Activo'): ?>
-                        <span class="badge badge-warning" title="El cajero asignado no está activo">Cajero en <?= htmlspecialchars($c['cajero_estado']) ?></span>
+                        <span class="badge badge-warning" title="<?= e(t('cajas.cajero_inactivo_ayuda')) ?>"><?= e(t('cajas.cajero_en', ['estado' => t('estado_usuario.' . $c['cajero_estado'])])) ?></span>
                     <?php endif; ?>
                 </div>
 
@@ -386,21 +382,21 @@ require __DIR__ . '/header.php';
                             <?= htmlspecialchars(inicialesCorta($c['cajero_nombre'])) ?>
                         </div>
                         <div class="caja-cajero-info">
-                            <span class="caja-cajero-label">Cajero</span>
+                            <span class="caja-cajero-label"><?= e(t('cajas.cajero')) ?></span>
                             <span class="caja-cajero-nombre"><?= htmlspecialchars($c['cajero_nombre']) ?></span>
                         </div>
                     <?php else: ?>
                         <div class="caja-cajero-info">
-                            <span class="caja-cajero-label">Cajero</span>
-                            <span class="caja-cajero-nombre">Sin asignar</span>
+                            <span class="caja-cajero-label"><?= e(t('cajas.cajero')) ?></span>
+                            <span class="caja-cajero-nombre"><?= e(t('cajas.sin_asignar')) ?></span>
                         </div>
                     <?php endif; ?>
                 </div>
 
                 <div class="caja-ventas">
-                    <span><strong>$<?= number_format((float) $c['monto_hoy'], 2) ?></strong> hoy</span>
-                    <span>&middot;</span>
-                    <span><?= (int) $c['num_ventas'] ?> venta<?= (int) $c['num_ventas'] === 1 ? '' : 's' ?> en total</span>
+                    <span><?= e(t('cajas.ventas_hoy')) ?>: <strong><?= dinero($c['monto_hoy']) ?></strong></span>
+                    <span>·</span>
+                    <span><?= e(tn('cajas.ventas_total', (int) $c['num_ventas'])) ?></span>
                 </div>
 
                 <div class="caja-actions">
@@ -411,33 +407,31 @@ require __DIR__ . '/header.php';
                         data-nombre="<?= htmlspecialchars($c['nombre'] ?? '', ENT_QUOTES) ?>"
                         data-estado="<?= htmlspecialchars($c['estado'], ENT_QUOTES) ?>"
                         data-cajero="<?= (int) ($c['id_cajero_asignado'] ?? 0) ?>"
-                    >Editar</button>
+                    ><?= e(t('comun.editar')) ?></button>
 
                     <form method="POST" style="display:contents"
-                          data-confirm="<?= $esActiva
-                              ? '¿Desactivar la caja ' . htmlspecialchars($c['numero_caja'], ENT_QUOTES) . '?'
-                              : '¿Activar la caja ' . htmlspecialchars($c['numero_caja'], ENT_QUOTES) . '?' ?>"
-                          data-confirm-titulo="<?= $esActiva ? 'Desactivar caja' : 'Activar caja' ?>"
-                          data-confirm-aceptar="<?= $esActiva ? 'Desactivar' : 'Activar' ?>"
+                          data-confirm="<?= e(t($esActiva ? 'cajas.confirmar_desactivar' : 'cajas.confirmar_activar', ['caja' => $c['numero_caja']])) ?>"
+                          data-confirm-titulo="<?= e(t($esActiva ? 'cajas.desactivar_titulo' : 'cajas.activar_titulo')) ?>"
+                          data-confirm-aceptar="<?= e(t($esActiva ? 'comun.desactivar' : 'comun.activar')) ?>"
                           <?= $esActiva ? 'data-confirm-peligroso="1"' : '' ?>>
                         <input type="hidden" name="action" value="cambiar_estado">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                         <input type="hidden" name="id_caja" value="<?= (int) $c['id_caja'] ?>">
                         <button type="submit" class="btn btn-sm <?= $esActiva ? 'btn-danger' : 'btn-success' ?>">
-                            <?= $esActiva ? 'Desactivar' : 'Activar' ?>
+                            <?= e(t($esActiva ? 'comun.desactivar' : 'comun.activar')) ?>
                         </button>
                     </form>
 
                     <?php if ((int) $c['num_ventas'] === 0): ?>
                     <form method="POST" style="display:contents"
-                          data-confirm="Se eliminará la caja '<?= htmlspecialchars($c['numero_caja'], ENT_QUOTES) ?>' permanentemente. Esta acción no se puede deshacer."
-                          data-confirm-titulo="Eliminar caja"
-                          data-confirm-aceptar="Eliminar"
+                          data-confirm="<?= e(t('cajas.confirmar_eliminar', ['caja' => $c['numero_caja']])) ?>"
+                          data-confirm-titulo="<?= e(t('cajas.eliminar_titulo')) ?>"
+                          data-confirm-aceptar="<?= e(t('comun.eliminar')) ?>"
                           data-confirm-peligroso="1">
                         <input type="hidden" name="action" value="eliminar">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                         <input type="hidden" name="id_caja" value="<?= (int) $c['id_caja'] ?>">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Eliminar caja">
+                        <button type="submit" class="btn btn-danger btn-sm" title="<?= e(t('cajas.eliminar_titulo')) ?>" aria-label="<?= e(t('cajas.eliminar_titulo')) ?>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                                 <polyline points="3 6 5 6 21 6"/>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -454,7 +448,7 @@ require __DIR__ . '/header.php';
 <!-- Modal: Nueva / Editar caja -->
 <div class="modal-overlay" id="modalCaja">
     <div class="modal-box">
-        <h2 id="tituloModalCaja">Nueva caja</h2>
+        <h2 id="tituloModalCaja"><?= e(t('cajas.nueva')) ?></h2>
         <form id="formCaja" method="POST">
             <input type="hidden" name="action" value="crear">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
@@ -462,47 +456,47 @@ require __DIR__ . '/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Número de caja</label>
-                    <input type="text" name="numero_caja" placeholder="01, 02, TAQUILLA-A…" maxlength="20" required>
+                    <label><?= e(t('cajas.campo_numero')) ?></label>
+                    <input type="text" name="numero_caja" placeholder="<?= e(t('cajas.campo_numero_ej')) ?>" maxlength="20" required>
                 </div>
                 <div class="form-group">
-                    <label>Estado</label>
+                    <label><?= e(t('cat.col_estado')) ?></label>
                     <select name="estado" required>
-                        <option value="Activa">Activa</option>
-                        <option value="Inactiva">Inactiva</option>
-                        <option value="Mantenimiento">Mantenimiento</option>
+                        <?php foreach ($ESTADOS_VALIDOS as $est): ?>
+                            <option value="<?= $est ?>"><?= e(t('estado_caja.' . $est)) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Nombre (opcional)</label>
-                <input type="text" name="nombre" placeholder="Ej. Caja principal, Caja express" maxlength="50">
+                <label><?= e(t('cajas.campo_nombre')) ?></label>
+                <input type="text" name="nombre" placeholder="<?= e(t('cajas.campo_nombre_ej')) ?>" maxlength="50">
             </div>
 
             <div class="form-group">
-                <label>Cajero asignado (opcional)</label>
+                <label><?= e(t('cajas.campo_cajero')) ?></label>
                 <select name="id_cajero_asignado">
-                    <option value="0">Sin asignar</option>
+                    <option value="0"><?= e(t('cajas.sin_asignar')) ?></option>
                     <?php foreach ($cajerosDisponibles as $cj):
                         $info = $cajerosConCaja[(int) $cj['id_usuario']] ?? null;
                     ?>
                         <option value="<?= (int) $cj['id_usuario'] ?>"
                                 data-caja-actual="<?= $info ? htmlspecialchars($info['numero_caja'], ENT_QUOTES) : '' ?>"
                                 data-caja-id="<?= $info ? (int) $info['id_caja'] : 0 ?>">
-                            <?= htmlspecialchars($cj['nombre']) ?><?= $cj['estado'] !== 'Activo' ? ' (' . htmlspecialchars($cj['estado']) . ')' : '' ?>
+                            <?= e($cj['nombre']) ?><?= $cj['estado'] !== 'Activo' ? ' (' . e(t('estado_usuario.' . $cj['estado'])) . ')' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
                 <div id="avisoReasignacion" class="aviso-reasignacion" aria-live="polite"></div>
                 <small style="display:block; color: #64748b; font-size:0.75rem; margin-top:0.3rem;">
-                    Cajeros activos de tu sucursal (y el que ya tenga asignado, aunque no esté activo).
+                    <?= e(t('cajas.campo_cajero_ayuda')) ?>
                 </small>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCaja')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCaja')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn-primary"><?= e(t('comun.guardar')) ?></button>
             </div>
         </form>
     </div>

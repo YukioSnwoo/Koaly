@@ -13,9 +13,9 @@ const STOCK_UMBRAL_CRITICO = 5;
 function badgeStock(int $stock): array
 {
     if ($stock === 0) {
-        return ['badge-danger', 'Agotado'];
+        return ['badge-danger', t('stock.agotado')];
     }
-    $texto = $stock . ' ' . ($stock === 1 ? 'unidad' : 'unidades');
+    $texto = tn('stock.unidades', $stock);
     if ($stock < STOCK_UMBRAL_CRITICO) {
         return ['badge-danger', $texto];
     }
@@ -26,16 +26,17 @@ function badgeStock(int $stock): array
 }
 
 /**
- * Motivos de ajuste manual → tipo_movimiento del kardex.
+ * Motivos de ajuste manual: código → tipo_movimiento del kardex.
+ * La etiqueta es t('motivo.<código>'); en la base se guarda tEs('motivo.<código>').
  * Los que no tienen tipo propio en el ENUM quedan como AJUSTE_MANUAL.
  */
 const MOTIVOS_AJUSTE = [
-    'Conteo físico'         => 'AJUSTE_MANUAL',
-    'Merma'                 => 'AJUSTE_MERMA',
-    'Robo'                  => 'AJUSTE_ROBO',
-    'Devolución de cliente' => 'DEVOLUCION_CLIENTE',
-    'Error de captura'      => 'AJUSTE_MANUAL',
-    'Otro'                  => 'AJUSTE_MANUAL',
+    'conteo'     => 'AJUSTE_MANUAL',
+    'merma'      => 'AJUSTE_MERMA',
+    'robo'       => 'AJUSTE_ROBO',
+    'devolucion' => 'DEVOLUCION_CLIENTE',
+    'error'      => 'AJUSTE_MANUAL',
+    'otro'       => 'AJUSTE_MANUAL',
 ];
 
 /**
@@ -44,16 +45,29 @@ const MOTIVOS_AJUSTE = [
  */
 const PREFIJO_CAMBIO_PRECIO = 'Cambio de precio:';
 
-/** Etiquetas legibles de Movimientos_Inventario.tipo_movimiento. */
+/** Valores de Movimientos_Inventario.tipo_movimiento → clase del badge. */
 const TIPOS_MOVIMIENTO = [
-    'VENTA'              => 'Venta',
-    'COMPRA_PROVEEDOR'   => 'Recepción',
-    'AJUSTE_MERMA'       => 'Merma',
-    'AJUSTE_ROBO'        => 'Robo',
-    'DEVOLUCION_CLIENTE' => 'Devolución',
-    'TRASLADO'           => 'Traslado',
-    'AJUSTE_MANUAL'      => 'Ajuste',
+    'VENTA'              => 'badge-metodo',
+    'COMPRA_PROVEEDOR'   => 'badge-activo',
+    'DEVOLUCION_CLIENTE' => 'badge-activo',
+    'AJUSTE_MERMA'       => 'badge-warning',
+    'AJUSTE_ROBO'        => 'badge-danger',
+    'TRASLADO'           => 'badge-inactivo',
+    'AJUSTE_MANUAL'      => 'badge-inactivo',
 ];
+
+/** Etiqueta traducida de un tipo de movimiento. */
+function etiquetaTipo(string $tipo): string
+{
+    return isset(TIPOS_MOVIMIENTO[$tipo]) ? t('tipo.' . $tipo) : $tipo;
+}
+
+/** ¿El movimiento es un cambio de precio? (cantidad 0 + prefijo) */
+function esCambioPrecio(array $mov): bool
+{
+    return (int) $mov['cantidad'] === 0
+        && str_starts_with((string) ($mov['motivo_detalle'] ?? ''), PREFIJO_CAMBIO_PRECIO);
+}
 
 /**
  * Registra una fila en el kardex (Movimientos_Inventario).
@@ -156,7 +170,7 @@ function generarCodigoUnico(PDO $pdo): string
 function agregarProductoAInventario(PDO $pdo, int $idSucursal, int $idProducto, int $cantidad, float $precio, int $idUsuario): void
 {
     if ($idProducto <= 0 || $precio < 0) {
-        throw new RuntimeException('Datos inválidos.');
+        throw new RuntimeException(t('error.datos_invalidos'));
     }
 
     // Verificar que el producto existe y está activo
@@ -170,7 +184,7 @@ function agregarProductoAInventario(PDO $pdo, int $idSucursal, int $idProducto, 
     $stmt->execute([$idProducto]);
     $categoriaNombre = $stmt->fetchColumn();
     if ($categoriaNombre === false) {
-        throw new RuntimeException('Producto no encontrado o no está activo.');
+        throw new RuntimeException(t('error.producto_no_activo'));
     }
 
     // Verificar que no esté ya en esta sucursal
@@ -180,7 +194,7 @@ function agregarProductoAInventario(PDO $pdo, int $idSucursal, int $idProducto, 
     ");
     $stmt->execute([$idSucursal, $idProducto]);
     if ($stmt->fetch() !== false) {
-        throw new RuntimeException('Ese producto ya está en el inventario de tu sucursal.');
+        throw new RuntimeException(t('error.producto_ya_en_inventario'));
     }
 
     $pdo->beginTransaction();
@@ -192,7 +206,7 @@ function agregarProductoAInventario(PDO $pdo, int $idSucursal, int $idProducto, 
     ");
     $stmt->execute([$idSucursal, $idProducto, (string) $categoriaNombre, $cantidad, $precio]);
 
-    registrarMovimiento($pdo, $idSucursal, $idProducto, 'AJUSTE_MANUAL', $cantidad, $cantidad, 'Alta en inventario', $idUsuario);
+    registrarMovimiento($pdo, $idSucursal, $idProducto, 'AJUSTE_MANUAL', $cantidad, $cantidad, tEs('kardex.alta'), $idUsuario);
 
     $pdo->commit();
 }
