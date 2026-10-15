@@ -2,109 +2,205 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 body {
-    background: #f4f7fa;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
     padding: 20px;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #dbeafe 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+/* bolitas decorativas de fondo */
+body::before,
+body::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    z-index: 0;
+}
+
+body::before {
+    width: 320px;
+    height: 320px;
+    background: #93c5fd;
+    top: -80px;
+    left: -80px;
+}
+
+body::after {
+    width: 280px;
+    height: 280px;
+    background: #60a5fa;
+    bottom: -60px;
+    right: -40px;
 }
 
 .container {
+    position: relative;
+    z-index: 1;
     width: 100%;
-    max-width: 420px;
-    padding: 2rem;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+    padding: 2.4rem 2rem;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.12),
+                0 8px 20px rgba(0, 0, 0, 0.06);
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.logo {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1.2rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+}
+
+.logo svg {
+    width: 28px;
+    height: 28px;
+    fill: white;
 }
 
 h2 {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.4rem;
     color: #1e293b;
     text-align: center;
+    font-size: 1.55rem;
+    font-weight: 700;
 }
 
 .subtitle {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.5rem;
     color: #64748b;
     text-align: center;
     font-size: 0.9rem;
+    line-height: 1.4;
 }
 
 .form-group {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.15rem;
 }
 
 label {
     display: block;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.35rem;
     color: #334155;
     font-weight: 600;
+    font-size: 0.9rem;
 }
 
 input[type="email"],
-input[type="password"] {
+input[type="password"],
+input[type="text"] {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: all 0.2s ease;
+}
+
+input::placeholder {
+    color: #94a3b8;
 }
 
 input:focus {
     border-color: #2563eb;
+    background: #fff;
     outline: none;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
 button {
     width: 100%;
-    margin-top: 0.5rem;
-    padding: 0.8rem;
+    margin-top: 0.6rem;
+    padding: 0.9rem;
     border: none;
-    border-radius: 8px;
-    background: #2563eb;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
     color: #ffffff;
     cursor: pointer;
     font-size: 1rem;
     font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+    transition: all 0.2s ease;
 }
 
 button:hover {
-    background: #1d4ed8;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 .message {
     display: none;
     margin-bottom: 1rem;
-    padding: 0.7rem;
-    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
     text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .message.error {
     display: block;
     border: 1px solid #fecaca;
-    background: #fee2e2;
-    color: #991b1b;
+    background: #fef2f2;
+    color: #b91c1c;
 }
 
 .message.success {
     display: block;
     border: 1px solid #bbf7d0;
-    background: #dcfce7;
-    color: #166534;
+    background: #f0fdf4;
+    color: #15803d;
 }
 
 .strength-warning {
     display: none;
     margin-top: 0.4rem;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
 }
 
@@ -113,17 +209,98 @@ button:hover {
 }
 
 .strength-warning.weak {
-    color: #991b1b;
+    color: #b91c1c;
 }
 
 .strength-warning.medium {
-    color: #92400e;
+    color: #b45309;
 }
 
 .strength-warning.strong {
-    color: #166534;
+    color: #15803d;
 }
 
 .hidden {
-    display: none;
+    display: none !important;
+}
+
+.footer-note {
+    margin-top: 1.6rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* ===== Olvidé la contraseña ===== */
+.forgot-link {
+    display: block;
+    margin-top: 1.1rem;
+    text-align: center;
+    color: #2563eb;
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.forgot-link:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+/* ===== Volver ===== */
+.back-link {
+    display: inline-block;
+    margin-bottom: 1.2rem;
+    color: #64748b;
+    font-size: 0.88rem;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.back-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+/* ===== Steps ===== */
+.steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 1.4rem;
+}
+
+.step {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #94a3b8;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step.active {
+    background: #22c55e;
+    color: #fff;
+}
+
+.step.done {
+    background: #22c55e;
+    color: #fff;
+}
+
+.step-line {
+    width: 48px;
+    height: 3px;
+    background: #e2e8f0;
+}
+
+.step-line.done {
+    background: #22c55e;
 }
