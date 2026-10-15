@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/guardia.php';
+require_once __DIR__ . '/includes/aviso_privacidad.php';
 
 /**
  * Calcula las iniciales de un nombre (máx. 2 letras).
@@ -34,6 +35,7 @@ $ESTADOS_VALIDOS = ['Activo', 'Vacaciones', 'Incapacidad', 'Licencia', 'Baja'];
 $errores = [];
 $exito   = '';
 $passwordTemporal = null;
+$avisoPrivacidad  = null; // ['ok' => bool, 'email' => string] tras dar de alta
 
 /* ------------------------------------------------------------
    Flash (PRG)
@@ -42,6 +44,7 @@ if (!empty($_SESSION['flash'])) {
     $exito = $_SESSION['flash']['msg'] ?? '';
     // La contraseña temporal se muestra una sola vez
     $passwordTemporal = $_SESSION['flash']['password'] ?? null;
+    $avisoPrivacidad  = $_SESSION['flash']['aviso'] ?? null;
     unset($_SESSION['flash']);
 }
 
@@ -49,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $mensajeExito = '';
     $flashPassword = null;
+    $flashAviso = null;
 
     try {
         if (!csrfValido()) {
@@ -98,6 +102,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
             $mensajeExito = t('cajeros.creado');
+
+            // Aviso de privacidad por correo. Si no sale, el alta se conserva y se avisa al gerente.
+            $stmt = $pdo->prepare("
+                SELECT s.nombre, s.direccion, s.email_contacto, g.nombre AS gerente_nombre, g.email AS gerente_email
+                FROM Sucursales s INNER JOIN Usuarios g ON g.id_usuario = ?
+                WHERE s.id_sucursal = ?
+            ");
+            $stmt->execute([(int) $gerente['id_usuario'], $idSucursalGerente]);
+            $datos = $stmt->fetch();
+            $flashAviso = [
+                'email' => $email,
+                'ok'    => enviarAvisoPrivacidad(
+                    ['nombre' => $nombre, 'email' => $email],
+                    ['nombre' => $datos['gerente_nombre'], 'email' => $datos['gerente_email']],
+                    $datos
+                ),
+            ];
 
         } elseif ($action === 'editar') {
             $id     = (int) ($_POST['id_usuario'] ?? 0);
@@ -234,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // PRG: tras guardar, redirigir para que F5 no reenvíe el formulario
         if ($mensajeExito !== '') {
-            $_SESSION['flash'] = ['msg' => $mensajeExito, 'password' => $flashPassword];
+            $_SESSION['flash'] = ['msg' => $mensajeExito, 'password' => $flashPassword, 'aviso' => $flashAviso];
             header('Location: cajeros.php');
             exit;
         }
@@ -248,15 +269,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = $pdo->prepare("
-    SELECT u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion,
+    SELECT u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
            COUNT(v.id_venta) AS total_ventas,
-           COALESCE(SUM(v.total), 0) AS monto_total
+           COALESCE(SUM(v.total), 0) AS monto_total,
+           (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) ORDER BY c.numero_caja SEPARATOR ', ')
+            FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal) AS cajas
     FROM Usuarios u
     LEFT JOIN Ventas v
            ON v.id_cajero = u.id_usuario AND v.id_sucursal = ?
           AND v.fecha_hora >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
     WHERE u.id_rol = 3 AND u.id_sucursal = ?
-    GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion
+    GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado
     ORDER BY u.nombre
 ");
 $stmt->execute([$idSucursalGerente, $idSucursalGerente]);
@@ -291,6 +314,13 @@ require __DIR__ . '/header.php';
         · <?= e(t('cajeros.password_temporal_aviso')) ?>
     </div>
 <?php endif; ?>
+<?php if ($avisoPrivacidad): ?>
+    <?php if ($avisoPrivacidad['ok']): ?>
+        <div class="alert alert-success"><?= e(t('cajeros.aviso_enviado', ['email' => $avisoPrivacidad['email']])) ?></div>
+    <?php else: ?>
+        <div class="alert alert-warning"><?= e(t('cajeros.aviso_fallo', ['email' => $avisoPrivacidad['email']])) ?></div>
+    <?php endif; ?>
+<?php endif; ?>
 <?php foreach ($errores as $error): ?>
     <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
 <?php endforeach; ?>
@@ -305,7 +335,8 @@ require __DIR__ . '/header.php';
     <div class="cajeros-grid">
         <?php foreach ($cajeros as $c): ?>
             <?php
-                $esActivo   = $c['estado'] === 'Activo';
+                $id          = (int) $c['id_usuario'];
+                $esActivo    = $c['estado'] === 'Activo';
                 $estadoBadge = [
                     'Activo'       => 'badge-activo',
                     'Vacaciones'   => 'badge-warning',
@@ -314,110 +345,148 @@ require __DIR__ . '/header.php';
                     'Baja'         => 'badge-danger',
                 ][$c['estado']] ?? 'badge-inactivo';
             ?>
-            <div class="cajero-card <?= $esActivo ? '' : 'is-inactivo' ?>">
-                <div class="cajero-avatar" aria-hidden="true">
-                    <?= htmlspecialchars(iniciales($c['nombre'])) ?>
-                </div>
-                <div class="cajero-name"><?= htmlspecialchars($c['nombre']) ?></div>
-                <div class="cajero-email"><?= htmlspecialchars($c['email']) ?></div>
-                <div style="margin-bottom: 0.85rem;">
+            <article class="cajero-card <?= $esActivo ? '' : 'is-inactivo' ?>">
+                <header class="cajero-cabecera">
+                    <div class="cajero-avatar" aria-hidden="true"><?= e(iniciales($c['nombre'])) ?></div>
+                    <div class="cajero-identidad">
+                        <h2 class="cajero-name"><?= e($c['nombre']) ?></h2>
+                        <span class="cajero-email"><?= e($c['email']) ?></span>
+                    </div>
                     <span class="badge <?= $estadoBadge ?>"><?= e(t('estado_usuario.' . $c['estado'])) ?></span>
-                </div>
+                </header>
 
-                <div class="cajero-stats">
-                    <div class="cajero-stat">
-                        <span class="cajero-stat-value"><?= (int) $c['total_ventas'] ?></span>
-                        <span class="cajero-stat-label"><?= e(t('cajeros.ventas_mes')) ?></span>
+                <dl class="cajero-datos">
+                    <div>
+                        <dt><?= e(t('cajeros.caja')) ?></dt>
+                        <dd class="<?= $c['cajas'] ? '' : 'texto-tenue' ?>"><?= e($c['cajas'] ?: t('cajeros.sin_caja')) ?></dd>
                     </div>
-                    <div class="cajero-stat">
-                        <span class="cajero-stat-value"><?= dinero($c['monto_total']) ?></span>
-                        <span class="cajero-stat-label"><?= e(t('cajeros.monto_mes')) ?></span>
+                    <div>
+                        <dt><?= e(t('cajeros.contratado')) ?></dt>
+                        <dd><?= e(fecha($c['fecha_contratacion'], false)) ?></dd>
                     </div>
-                </div>
+                    <?php if (!$esActivo): ?>
+                        <div>
+                            <dt><?= e(t('cajeros.estado_desde')) ?></dt>
+                            <dd><?= e(fecha($c['fecha_inicio_estado'], false)) ?></dd>
+                        </div>
+                    <?php endif; ?>
+                </dl>
 
-                <a class="cajero-ver-ventas" href="ventas_sucursal.php?periodo=mes&amp;id_cajero=<?= (int) $c['id_usuario'] ?>"><?= e(t('cajeros.ver_ventas')) ?></a>
+                <a class="cajero-stats" href="ventas_sucursal.php?periodo=mes&amp;id_cajero=<?= $id ?>">
+                    <span class="cajero-stats-titulo">
+                        <span><?= e(t('cajeros.este_mes')) ?></span>
+                        <span class="cajero-stats-ir"><?= e(t('cajeros.ver_ventas')) ?> ›</span>
+                    </span>
+                    <span class="cajero-stats-valores">
+                        <span><strong><?= numero((int) $c['total_ventas']) ?></strong> <?= e(tn('cajeros.n_ventas', (int) $c['total_ventas'])) ?></span>
+                        <span><strong><?= dinero($c['monto_total']) ?></strong> <?= e(t('cajeros.vendido')) ?></span>
+                    </span>
+                </a>
 
                 <div class="cajero-actions">
-                    <button type="button" class="btn btn-ghost btn-sm"
+                    <button type="button" class="btn btn-ghost btn-sm cajero-editar"
                         onclick="abrirModalEditarCajero(this)"
-                        data-id="<?= (int) $c['id_usuario'] ?>"
-                        data-nombre="<?= htmlspecialchars($c['nombre'], ENT_QUOTES) ?>"
-                        data-email="<?= htmlspecialchars($c['email'], ENT_QUOTES) ?>"
-                        data-estado="<?= htmlspecialchars($c['estado'], ENT_QUOTES) ?>"
+                        data-id="<?= $id ?>"
+                        data-nombre="<?= e($c['nombre']) ?>"
+                        data-email="<?= e($c['email']) ?>"
+                        data-estado="<?= e($c['estado']) ?>"
                     ><?= e(t('comun.editar')) ?></button>
 
                     <?php if ($c['estado'] !== 'Baja'): ?>
-                    <form method="POST" style="display:contents"
+                    <form method="POST" class="cajero-accion"
                           data-confirm="<?= e(t('cajeros.confirmar_password', ['nombre' => $c['nombre']])) ?>"
                           data-confirm-titulo="<?= e(t('cajeros.restablecer_titulo')) ?>"
                           data-confirm-aceptar="<?= e(t('cajeros.restablecer')) ?>">
                         <input type="hidden" name="action" value="restablecer_password">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                        <input type="hidden" name="id_usuario" value="<?= (int) $c['id_usuario'] ?>">
-                        <button type="submit" class="btn btn-ghost btn-sm"><?= e(t('cajeros.boton_password')) ?></button>
+                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                        <input type="hidden" name="id_usuario" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-ghost btn-sm btn-icono"
+                                title="<?= e(t('cajeros.restablecer_titulo')) ?>"
+                                aria-label="<?= e(t('cajeros.restablecer_titulo') . ' · ' . $c['nombre']) ?>">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>
+                        </button>
                     </form>
                     <?php endif; ?>
 
-                    <form method="POST" style="display:contents"
+                    <form method="POST" class="cajero-accion"
                           data-confirm="<?= e(t($esActivo ? 'cajeros.confirmar_baja' : 'cajeros.confirmar_reactivar', ['nombre' => $c['nombre']])) ?>"
                           data-confirm-titulo="<?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>"
                           data-confirm-aceptar="<?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>"
                           <?= $esActivo ? 'data-confirm-peligroso="1"' : '' ?>>
                         <input type="hidden" name="action" value="cambiar_estado">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                        <input type="hidden" name="id_usuario" value="<?= (int) $c['id_usuario'] ?>">
-                        <button type="submit" class="btn btn-sm <?= $esActivo ? 'btn-danger' : 'btn-success' ?>">
-                            <?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>
-                        </button>
+                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                        <input type="hidden" name="id_usuario" value="<?= $id ?>">
+                        <?php if ($esActivo): ?>
+                            <button type="submit" class="btn btn-danger btn-sm btn-icono"
+                                    title="<?= e(t('cajeros.baja_titulo')) ?>"
+                                    aria-label="<?= e(t('cajeros.baja_titulo') . ' · ' . $c['nombre']) ?>">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                            </button>
+                        <?php else: ?>
+                            <button type="submit" class="btn btn-success btn-sm"><?= e(t('cajeros.reactivar_titulo')) ?></button>
+                        <?php endif; ?>
                     </form>
                 </div>
-            </div>
+            </article>
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
 
 <!-- Modal: Nuevo / Editar cajero -->
 <div class="modal-overlay" id="modalCajero">
-    <div class="modal-box">
+    <div class="modal-box modal-cajero" role="dialog" aria-modal="true" aria-labelledby="tituloModalCajero">
         <h2 id="tituloModalCajero"><?= e(t('cajeros.nuevo')) ?></h2>
-        <form id="formCajero" method="POST">
+        <form id="formCajero" method="POST" onsubmit="this.querySelector('[type=submit]').disabled = true;">
             <input type="hidden" name="action" value="crear">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="hidden" name="id_usuario" value="">
 
-            <div class="form-group">
-                <label><?= e(t('cajeros.campo_nombre')) ?></label>
-                <input type="text" name="nombre" placeholder="<?= e(t('cajeros.campo_nombre_ej')) ?>" maxlength="100" required>
-            </div>
-
-            <div class="form-group">
-                <label><?= e(t('cajeros.campo_email')) ?></label>
-                <input type="email" name="email" placeholder="<?= e(t('cajeros.campo_email_ej')) ?>" maxlength="100" required>
-            </div>
-
-            <div class="form-group" id="grupoPassword">
-                <label><?= e(t('cajeros.password_temporal')) ?></label>
-                <input type="text" name="password" placeholder="<?= e(t('cajeros.campo_password_ej')) ?>" minlength="8">
-                <small class="texto-tenue" style="display:block; font-size:0.75rem; margin-top:0.3rem;">
-                    <?= e(t('cajeros.campo_password_ayuda')) ?>
-                </small>
-            </div>
-
-            <div class="form-row">
+            <fieldset class="modal-seccion">
+                <legend><?= e(t('cajeros.seccion_datos')) ?></legend>
                 <div class="form-group">
-                    <label><?= e(t('cat.col_estado')) ?></label>
-                    <select name="estado" required>
-                        <?php foreach ($ESTADOS_VALIDOS as $est): ?>
-                            <option value="<?= $est ?>"><?= e(t('estado_usuario.' . $est)) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label for="cajeroNombre"><?= e(t('cajeros.campo_nombre')) ?></label>
+                    <input type="text" id="cajeroNombre" name="nombre" placeholder="<?= e(t('cajeros.campo_nombre_ej')) ?>"
+                           maxlength="100" autocomplete="off" required>
                 </div>
+                <div class="form-group">
+                    <label for="cajeroEmail"><?= e(t('cajeros.campo_email')) ?></label>
+                    <input type="email" id="cajeroEmail" name="email" placeholder="<?= e(t('cajeros.campo_email_ej')) ?>"
+                           maxlength="100" autocomplete="off" required>
+                    <small class="form-ayuda" id="ayudaAviso"><?= e(t('cajeros.email_aviso_ayuda')) ?></small>
+                </div>
+            </fieldset>
 
-                <div class="form-group" id="grupoFechaContratacion">
-                    <label><?= e(t('cajeros.campo_fecha')) ?></label>
-                    <input type="date" name="fecha_contratacion" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
+            <fieldset class="modal-seccion" id="grupoPassword">
+                <legend><?= e(t('cajeros.seccion_acceso')) ?></legend>
+                <div class="form-group">
+                    <label for="cajeroPassword"><?= e(t('cajeros.password_temporal')) ?></label>
+                    <div class="campo-con-boton">
+                        <input type="text" id="cajeroPassword" name="password" placeholder="<?= e(t('cajeros.campo_password_ej')) ?>"
+                               minlength="8" autocomplete="off" spellcheck="false">
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="generarPasswordCajero()"><?= e(t('cajeros.generar')) ?></button>
+                    </div>
+                    <small class="form-ayuda"><?= e(t('cajeros.campo_password_ayuda')) ?></small>
                 </div>
-            </div>
+            </fieldset>
+
+            <fieldset class="modal-seccion">
+                <legend><?= e(t('cajeros.seccion_laboral')) ?></legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cajeroEstado"><?= e(t('cat.col_estado')) ?></label>
+                        <select id="cajeroEstado" name="estado" required>
+                            <?php foreach ($ESTADOS_VALIDOS as $est): ?>
+                                <option value="<?= $est ?>"><?= e(t('estado_usuario.' . $est)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group" id="grupoFechaContratacion">
+                        <label for="cajeroFecha"><?= e(t('cajeros.campo_fecha')) ?></label>
+                        <input type="date" id="cajeroFecha" name="fecha_contratacion" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
+                    </div>
+                </div>
+                <small class="form-ayuda" id="ayudaEstado" hidden></small>
+            </fieldset>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCajero')"><?= e(t('comun.cancelar')) ?></button>
