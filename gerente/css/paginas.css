@@ -602,6 +602,14 @@
  *  ============================================================ */
 .texto-tenue    { color: var(--texto-3); }
 .texto-ok       { color: var(--ok-texto); }
+.texto-pendiente { color: var(--aviso-texto); font-weight: 600; }
+/* Botón con aspecto de enlace (acciones secundarias dentro de un texto) */
+.enlace-boton {
+    padding: 0; border: 0; background: none; font: inherit; cursor: pointer;
+    color: var(--acento-texto); font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
+}
+.enlace-boton:hover { color: var(--acento-texto-fuerte); }
+.cajero-aviso-pendiente { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .texto-peligro  { color: var(--peligro-texto); }
 .modal-ayuda    { color: var(--texto-3); font-size: 0.9rem; margin-bottom: 1rem; }
 

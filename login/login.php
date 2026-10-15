@@ -5,7 +5,8 @@
  *   change_password      cambio obligatorio del primer ingreso (requiere sesión)
  *   send_recover_code    envía un código de 6 dígitos al correo
  *   reset_password       correo + código + contraseña nueva
- * Responde {success, message, ...}. Las tablas están en sql/004_login.sql.
+ * Responde {success, message, ...}. Las tablas están en sql/004_login.sql
+ * y sql/005_aviso_privacidad.sql.
  */
 session_start();
 header('Content-Type: application/json');
@@ -47,6 +48,7 @@ try {
     error(500, 'Error de conexión a la base de datos');
 }
 require_once __DIR__ . '/correo.php';
+require_once __DIR__ . '/../privacidad/aviso.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 if (!is_array($data)) {
@@ -346,6 +348,26 @@ if ($destino === null) {
 }
 
 $pdo->prepare('DELETE FROM login_intentos WHERE email = :email')->execute([':email' => $email]);
+
+// Un cajero no entra hasta aceptar la versión vigente del aviso de privacidad.
+// No se crea la sesión: se le manda a privacidad/ con un enlace nuevo y, al
+// aceptarlo, vuelve a iniciar sesión.
+if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
+    try {
+        $aceptado = avisoAceptado($pdo, (int) $usuario['id_usuario']);
+    } catch (PDOException $e) {
+        error_log('login.php: falta la tabla avisos_privacidad (sql/005_aviso_privacidad.sql)');
+        error(500, 'El sistema no está listo para cajeros. Avisa al administrador.');
+    }
+    if (!$aceptado) {
+        responder(403, [
+            'success'        => false,
+            'requiere_aviso' => true,
+            'enlace'         => crearEnlaceAviso($pdo, (int) $usuario['id_usuario'], AVISO_ENLACE_LOGIN_HORAS),
+            'message'        => 'Antes de entrar debes leer y aceptar el aviso de privacidad. Te llevamos a él…',
+        ]);
+    }
+}
 
 // Nuevo id de sesión al autenticar (evita la fijación de sesión)
 session_regenerate_id(true);

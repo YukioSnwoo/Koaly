@@ -175,7 +175,11 @@ async function logoutConfirmado() {
             peligroso: true
         }
     );
-    if (ok && typeof logout === 'function') logout();
+    if (!ok) return;
+    // Antes dependía de logout() de ../auth.js; si ese archivo faltaba en el
+    // servidor (pasó: daba 404), el botón no hacía nada y sin ningún error.
+    try { sessionStorage.removeItem('usuario'); } catch (e) {}
+    window.location.href = '../logout.php';
 }
 
 

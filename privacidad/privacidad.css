@@ -1,0 +1,124 @@
+/* Aviso de privacidad: hoja de lectura, con los colores del inicio de sesión */
+:root {
+    --fondo: #eef4fb;
+    --hoja: #ffffff;
+    --texto: #1e293b;
+    --texto-2: #475569;
+    --borde: #e2e8f0;
+    --acento: #2563eb;
+    --acento-hover: #1d4ed8;
+    --ok: #15803d;
+    --ok-suave: #f0fdf4;
+    --error: #b91c1c;
+    --error-suave: #fef2f2;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #dbeafe 100%) fixed;
+    color: var(--texto);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+}
+
+.hoja {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2.5rem clamp(1.25rem, 5vw, 3rem);
+    background: var(--hoja);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.10), 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+
+.hoja-cabecera { margin-bottom: 1.75rem; }
+.marca {
+    display: inline-block;
+    margin-bottom: 0.6rem;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: var(--acento-hover);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+h1 { font-size: clamp(1.5rem, 4vw, 1.9rem); line-height: 1.25; }
+.version { color: var(--texto-2); font-size: 0.9rem; margin-top: 0.25rem; }
+
+/* Mensajes */
+.aviso {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    border: 1px solid;
+}
+.aviso h2 { font-size: 1.1rem; margin-bottom: 0.3rem; }
+.aviso p + .boton { margin-top: 0.9rem; }
+.aviso--ok    { background: var(--ok-suave); border-color: #bbf7d0; color: var(--ok); }
+.aviso--error { background: var(--error-suave); border-color: #fecaca; color: var(--error); }
+.aviso--ok p, .aviso--error p { color: var(--texto); }
+
+/* Datos del empleado */
+.ficha {
+    margin-bottom: 2rem;
+    padding: 1.25rem 1.4rem;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid var(--borde);
+}
+.ficha h2 { font-size: 1.05rem; }
+.ficha-ayuda { color: var(--texto-2); font-size: 0.88rem; margin-bottom: 0.9rem; }
+.ficha dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.6rem 1.5rem; }
+.ficha dt { color: var(--texto-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+.ficha dd { font-weight: 600; overflow-wrap: anywhere; }
+
+/* Texto del aviso */
+.texto-aviso section { margin-bottom: 1.4rem; }
+.texto-aviso h2 { font-size: 1.05rem; margin-bottom: 0.35rem; }
+.texto-aviso p { color: var(--texto-2); }
+.texto-aviso p + p { margin-top: 0.4rem; }
+
+/* Aceptación: al final del aviso (primero se lee, luego se acepta) */
+.aceptar {
+    margin-top: 2rem;
+    padding: 1.25rem 1.4rem;
+    border-radius: 14px;
+    background: var(--hoja);
+    border: 2px solid #bfdbfe;
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.12);
+}
+.aceptar .aviso { margin-bottom: 1rem; }
+.casilla { display: flex; gap: 0.75rem; align-items: flex-start; cursor: pointer; font-weight: 600; }
+.casilla input { width: 1.25rem; height: 1.25rem; margin-top: 0.2rem; flex-shrink: 0; accent-color: var(--acento); }
+.nota { margin-top: 0.8rem; color: var(--texto-2); font-size: 0.82rem; }
+
+.boton {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.8rem 1.6rem;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6, var(--acento));
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.boton:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4); }
+.boton:focus-visible, .casilla input:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.45); outline-offset: 2px; }
+.boton--secundario { background: #fff; color: var(--acento); border: 1px solid #bfdbfe; box-shadow: none; }
+
+@media (max-width: 480px) {
+    body { padding: 0.75rem; }
+    .hoja { border-radius: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boton { transition: none; }
+}
