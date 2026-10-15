@@ -178,7 +178,7 @@ require __DIR__ . '/header.php';
     </div>
     <div class="acciones">
         <a href="<?= e($url(['exportar' => 'csv'])) ?>" class="btn btn-ghost"><?= e(t('comun.exportar_csv')) ?></a>
-        <a href="existencias.php" class="btn btn-ghost"><?= e(t('exist.titulo')) ?></a>
+        <a href="productos.php" class="btn btn-ghost"><?= e(t('prods.titulo')) ?></a>
     </div>
 </div>
 

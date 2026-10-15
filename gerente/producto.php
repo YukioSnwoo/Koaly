@@ -175,7 +175,7 @@ $producto = $stmt->fetch();
 
 if (!$producto) {
     $_SESSION['flash'] = ['msg' => t('error.no_en_inventario'), 'tipo' => 'error'];
-    header('Location: existencias.php');
+    header('Location: productos.php');
     exit;
 }
 
@@ -221,7 +221,7 @@ require __DIR__ . '/header.php';
 <nav class="migas" aria-label="<?= e(t('comun.ubicacion')) ?>">
     <a href="index.php"><?= e(t('inicio.titulo')) ?></a>
     <span aria-hidden="true">›</span>
-    <a href="existencias.php"><?= e(t('exist.titulo')) ?></a>
+    <a href="productos.php"><?= e(t('prods.titulo')) ?></a>
     <span aria-hidden="true">›</span>
     <span aria-current="page"><?= e($producto['nombre']) ?></span>
 </nav>

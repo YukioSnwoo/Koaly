@@ -186,48 +186,6 @@ function _actualizarAvisoReasignacion() {
 
 
 /* ============================================================
- * ██ EXISTENCIAS — Filtros de la cuadrícula
- *    (ajustar, recibir y precio están en producto.php; el alta, en el catálogo)
- * ============================================================ */
-
-function initFiltrosExistencias() {
-    const buscador = document.getElementById('buscarExistencia');
-    const filtro   = document.getElementById('filtroStock');
-
-    if (!buscador && !filtro) return;
-
-    const umbral = (filtro && parseInt(filtro.dataset.umbral, 10)) || 10;
-
-    const aplicar = () => {
-        const q    = buscador ? buscador.value.trim().toLowerCase() : '';
-        const tipo = filtro   ? filtro.value : 'todos';
-
-        let visibles = 0;
-        document.querySelectorAll('#gridExistencias [data-nombre]').forEach(row => {
-            const coincideNombre = row.dataset.nombre.includes(q);
-            const stock = parseInt(row.dataset.stock, 10);
-
-            let coincideTipo = true;
-            if (tipo === 'agotado') coincideTipo = stock === 0;
-            else if (tipo === 'bajo') coincideTipo = stock > 0 && stock < umbral;
-            else if (tipo === 'normal') coincideTipo = stock >= umbral;
-            else if (tipo === 'alerta') coincideTipo = stock < umbral;
-
-            const visible = coincideNombre && coincideTipo;
-            row.hidden = !visible;
-            if (visible) visibles++;
-        });
-        const vacio = document.getElementById('sinResultados');
-        if (vacio) vacio.hidden = visibles > 0;
-    };
-
-    if (buscador) buscador.addEventListener('input', aplicar);
-    if (filtro)   filtro.addEventListener('change', aplicar);
-    aplicar(); // el filtro puede venir preseleccionado (?stock=alerta)
-}
-
-
-/* ============================================================
  * ██ ARRANQUE
  * Se ejecuta en TODAS las páginas. Cada init detecta si su DOM
  * existe antes de hacer algo.
@@ -240,11 +198,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Componentes
     initCustomSelects();
 
-    // Productos — filtro
-    initFiltrosCatalogo();
+    // Productos — filtros
+    initFiltrosProductos();
 
-    // Existencias
-    initFiltrosExistencias();
+    // Ventas y Movimientos
     initScrollInfinito();
 });
 
@@ -329,27 +286,45 @@ function initScrollInfinito() {
 
 
 /* ============================================================
- * ██ CATÁLOGO — Pestañas (grupo), búsqueda y categoría
+ * ██ PRODUCTOS — Pestañas (grupo), búsqueda, categoría y stock
+ * El filtro de stock solo aplica a "En mi sucursal": en las demás
+ * pestañas se oculta, porque esos productos no tienen stock.
  * ============================================================ */
-function initFiltrosCatalogo() {
-    const grid = document.getElementById('gridCatalogo');
+function initFiltrosProductos() {
+    const grid = document.getElementById('gridProductos');
     if (!grid) return;
 
-    const pestanas  = document.querySelectorAll('#pestanasCatalogo [data-grupo]');
-    const buscador  = document.getElementById('buscarCatalogo');
+    const pestanas  = document.querySelectorAll('#pestanasProductos [data-grupo]');
+    const buscador  = document.getElementById('buscarProducto');
     const categoria = document.getElementById('filtroCategoria');
-    const vacio     = document.getElementById('catalogoSinResultados');
-    const marcada   = document.querySelector('#pestanasCatalogo .is-activo');
-    let grupo = marcada ? marcada.dataset.grupo : 'todos';
+    const filtro    = document.getElementById('filtroStock');
+    const vacio     = document.getElementById('productosSinResultados');
+    const marcada   = document.querySelector('#pestanasProductos .is-activo');
+    const umbral    = (filtro && parseInt(filtro.dataset.umbral, 10)) || 10;
+    // El select de stock puede estar envuelto por el select personalizado
+    const cajaStock = filtro ? (filtro.closest('.select-custom') || filtro) : null;
+    let grupo = marcada ? marcada.dataset.grupo : 'con';
+
+    const cumpleStock = (stock, tipo) => {
+        if (tipo === 'agotado') return stock === 0;
+        if (tipo === 'bajo')    return stock > 0 && stock < umbral;
+        if (tipo === 'normal')  return stock >= umbral;
+        if (tipo === 'alerta')  return stock < umbral;
+        return true;
+    };
 
     const aplicar = () => {
-        const q = buscador ? buscador.value.trim().toLowerCase() : '';
-        const cat = categoria ? categoria.value : '';
+        const q    = buscador ? buscador.value.trim().toLowerCase() : '';
+        const cat  = categoria ? categoria.value : '';
+        const tipo = filtro && grupo === 'con' ? filtro.value : 'todos';
+        if (cajaStock) cajaStock.hidden = grupo !== 'con';
+
         let visibles = 0;
-        grid.querySelectorAll('.catalogo-card').forEach(card => {
+        grid.querySelectorAll('[data-grupo]').forEach(card => {
             const visible = (grupo === 'todos' || card.dataset.grupo === grupo)
                 && (!cat || card.dataset.categoria === cat)
-                && card.dataset.nombre.includes(q);
+                && card.dataset.nombre.includes(q)
+                && (tipo === 'todos' || cumpleStock(parseInt(card.dataset.stock, 10), tipo));
             card.hidden = !visible;
             if (visible) visibles++;
         });
@@ -366,5 +341,6 @@ function initFiltrosCatalogo() {
     }));
     if (buscador)  buscador.addEventListener('input', aplicar);
     if (categoria) categoria.addEventListener('change', aplicar);
-    aplicar();
+    if (filtro)    filtro.addEventListener('change', aplicar);
+    aplicar(); // pestaña, búsqueda y stock pueden venir de la URL (?stock=alerta)
 }

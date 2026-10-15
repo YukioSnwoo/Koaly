@@ -716,6 +716,9 @@
 .segmentado button.is-activo .segmentado-conteo { background: rgba(255,255,255,0.22); color: #fff; }
 
 .catalogo-card { cursor: default; }
+/* Fuera de la sucursal: borde punteado y sin elevarse, para distinguirlos de los que sí hay */
+.producto-card.is-fuera { border-style: dashed; background: var(--superficie-2); box-shadow: none; }
+.producto-card.is-fuera:hover { transform: none; box-shadow: none; }
 .catalogo-card .producto-card-nombre { font-size: 0.98rem; }
 .catalogo-card .producto-card-nombre a { color: inherit; text-decoration: none; }
 .catalogo-card .producto-card-nombre a:hover { color: var(--acento-texto); text-decoration: underline; }

@@ -74,7 +74,7 @@ require __DIR__ . '/header.php';
             · <?= e(t('inicio.kpi_ventas_ayer', ['monto' => dinero($ventasHoy['monto_ayer'])])) ?>
         </span>
     </a>
-    <a href="existencias.php?stock=alerta" class="kpi <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi--danger' : '' ?> kpi--link">
+    <a href="productos.php?stock=alerta" class="kpi <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi--danger' : '' ?> kpi--link">
         <span class="kpi-label"><?= e(t('inicio.kpi_alerta')) ?></span>
         <span class="kpi-value <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi-value--danger' : '' ?>"><?= (int) $stockAlerta['en_alerta'] ?></span>
         <span class="kpi-sub">
@@ -82,7 +82,7 @@ require __DIR__ . '/header.php';
             · <?= e(t('exist.kpi_bajo_sub', ['n' => STOCK_UMBRAL_BAJO])) ?>
         </span>
     </a>
-    <a href="productos.php" class="kpi <?= $solicitudesPendientes > 0 ? 'kpi--warn' : '' ?> kpi--link">
+    <a href="productos.php#solicitudes" class="kpi <?= $solicitudesPendientes > 0 ? 'kpi--warn' : '' ?> kpi--link">
         <span class="kpi-label"><?= e(t('inicio.kpi_solicitudes')) ?></span>
         <span class="kpi-value <?= $solicitudesPendientes > 0 ? 'kpi-value--warn' : '' ?>"><?= $solicitudesPendientes ?></span>
         <span class="kpi-sub"><?= e(t('inicio.kpi_solicitudes_sub')) ?></span>
@@ -106,12 +106,12 @@ require __DIR__ . '/header.php';
                         <line x1="12" y1="22.08" x2="12" y2="12"/>
                     </svg>
                 </span>
-                <h3><?= e(t('cat.titulo')) ?></h3>
+                <h3><?= e(t('prods.titulo')) ?></h3>
             </div>
-            <p><?= e(t('inicio.card_catalogo')) ?></p>
+            <p><?= e(t('inicio.card_productos')) ?></p>
         </a>
 
-        <a href="existencias.php" class="card">
+        <a href="movimientos.php" class="card">
             <div class="card-head">
                 <span class="card-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -120,9 +120,9 @@ require __DIR__ . '/header.php';
                         <polyline points="2 12 12 17 22 12"/>
                     </svg>
                 </span>
-                <h3><?= e(t('exist.titulo')) ?></h3>
+                <h3><?= e(t('mov.titulo')) ?></h3>
             </div>
-            <p><?= e(t('inicio.card_existencias')) ?></p>
+            <p><?= e(t('inicio.card_movimientos')) ?></p>
         </a>
     </div>
 </section>
