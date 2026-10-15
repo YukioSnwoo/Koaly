@@ -227,7 +227,8 @@ document.addEventListener('keydown', (e) => {
  * <html data-tema="claro|oscuro"> si el usuario eligió; si no, sigue
  * al sistema (prefers-color-scheme). La elección se guarda por navegador.
  * ============================================================ */
-const CLAVE_TEMA = 'koalicius-gerente-tema';
+// Común con el cajero: el tema elegido se mantiene al pasar de un módulo a otro
+const CLAVE_TEMA = 'koaly-tema';
 
 function temaActual() {
     const elegido = document.documentElement.getAttribute('data-tema');
