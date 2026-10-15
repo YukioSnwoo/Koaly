@@ -69,9 +69,12 @@ $stmt = $pdo->prepare("SELECT id_usuario, nombre FROM Usuarios WHERE id_sucursal
 $stmt->execute([$idSucursalGerente]);
 $cajeros = array_column($stmt->fetchAll(), 'nombre', 'id_usuario');
 
-$metodos = array_column(
-    $pdo->query("SELECT id_metodo_pago, nombre_metodo FROM Metodos_Pago ORDER BY nombre_metodo")->fetchAll(),
-    'nombre_metodo', 'id_metodo_pago'
+$metodos = array_map(
+    fn($nombre) => tValor('metodo_pago', $nombre),
+    array_column(
+        $pdo->query("SELECT id_metodo_pago, nombre_metodo FROM Metodos_Pago ORDER BY nombre_metodo")->fetchAll(),
+        'nombre_metodo', 'id_metodo_pago'
+    )
 );
 
 $stmt = $pdo->prepare("SELECT id_caja, numero_caja, nombre FROM Cajas WHERE id_sucursal = ? ORDER BY numero_caja");
@@ -180,7 +183,7 @@ if (($_GET['exportar'] ?? '') === 'csv') {
                 fecha($v['fecha_hora']),
                 $v['cajero_nombre'],
                 $nombreCaja($v),
-                $v['nombre_metodo'],
+                tValor('metodo_pago', $v['nombre_metodo']),
                 (int) $v['articulos'],
                 number_format((float) $v['subtotal'], 2, '.', ''),
                 number_format((float) $v['total'] - (float) $v['subtotal'], 2, '.', ''),
@@ -248,7 +251,7 @@ $pintarFilas = static function (array $ventas, array $articulosPorVenta, ?string
                 $grupoActual = $claveGrupo;
                 $titulo = match ($agrupar) {
                     'cajero' => $v['cajero_nombre'],
-                    'metodo' => $v['nombre_metodo'],
+                    'metodo' => tValor('metodo_pago', $v['nombre_metodo']),
                     'caja'   => $nombreCaja($v),
                 };
                 $tg = $totalesGrupo[$claveGrupo] ?? ['num' => 0, 'monto' => 0];
@@ -271,7 +274,7 @@ $pintarFilas = static function (array $ventas, array $articulosPorVenta, ?string
                     <?= e(t('cajas.caja_n', ['n' => $v['numero_caja']])) ?>
                 <?php endif; ?>
             </td>
-            <td><span class="badge badge-metodo"><?= e($v['nombre_metodo']) ?></span></td>
+            <td><span class="badge badge-metodo"><?= e(tValor('metodo_pago', $v['nombre_metodo'])) ?></span></td>
             <td>
                 <?php if ($articulos): ?>
                     <details class="venta-articulos">
@@ -346,7 +349,7 @@ $stmt = $pdo->prepare("
     ORDER BY monto DESC
 ");
 $stmt->execute($paramsPeriodo);
-$porMetodo = $stmt->fetchAll();
+$porMetodo = array_map(fn($f) => ['etiqueta' => tValor('metodo_pago', $f['etiqueta'])] + $f, $stmt->fetchAll());
 
 $stmt = $pdo->prepare("
     SELECT u.nombre AS etiqueta, COUNT(*) AS num, SUM(v.total) AS monto

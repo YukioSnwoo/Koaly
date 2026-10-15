@@ -54,6 +54,21 @@ function tEs(string $clave, array $vars = []): string
     return i18nReemplazar((string) ($GLOBALS['I18N_ES'][$clave] ?? $clave), $vars);
 }
 
+/**
+ * Valor de un catálogo de la base de datos (método de pago, categoría) en el
+ * idioma actual. Busca la clave "{grupo}.{valor}" (p. ej. metodo_pago.Efectivo);
+ * si el admin agregó un valor que aún no tiene traducción, lo muestra tal cual.
+ */
+function tValor(string $grupo, ?string $valor, string $siVacio = ''): string
+{
+    if ($valor === null || $valor === '') {
+        return $siVacio;
+    }
+    $clave = $grupo . '.' . $valor;
+    $texto = $GLOBALS['I18N'][$clave] ?? $GLOBALS['I18N_ES'][$clave] ?? $valor;
+    return is_string($texto) ? $texto : $valor;
+}
+
 function idiomaActual(): string
 {
     return $GLOBALS['I18N_IDIOMA'];

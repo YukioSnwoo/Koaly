@@ -111,7 +111,6 @@ $categorias = $pdo->query("SELECT id_categoria, nombre_categoria FROM Categorias
 
 $stmt = $pdo->prepare("
     SELECT p.*, c.nombre_categoria,
-           COALESCE(inv.cantidad_disponible, 0) AS stock_sucursal,
            (inv.id_producto IS NOT NULL) AS en_inventario
     FROM Productos p
     LEFT JOIN Categorias c ON c.id_categoria = p.id_categoria
@@ -157,6 +156,8 @@ $pestanas = [
     'agregar' => t('cat.tab_por_agregar'),
     'no'      => t('cat.tab_no_disponibles'),
 ];
+// Pestaña inicial, p. ej. productos.php?grupo=agregar desde Inventario
+$grupoInicial = isset($pestanas[$_GET['grupo'] ?? '']) ? $_GET['grupo'] : 'todos';
 
 $iniciales = static function (string $nombre): string {
     $ini = '';
@@ -194,8 +195,8 @@ require __DIR__ . '/header.php';
     <div class="catalogo-barra">
         <div class="segmentado" role="group" aria-label="<?= e(t('cat.filtro_aria')) ?>" id="pestanasCatalogo">
             <?php foreach ($pestanas as $clave => $texto): ?>
-                <button type="button" data-grupo="<?= $clave ?>" class="<?= $clave === 'todos' ? 'is-activo' : '' ?>"
-                        aria-pressed="<?= $clave === 'todos' ? 'true' : 'false' ?>">
+                <button type="button" data-grupo="<?= $clave ?>" class="<?= $clave === $grupoInicial ? 'is-activo' : '' ?>"
+                        aria-pressed="<?= $clave === $grupoInicial ? 'true' : 'false' ?>">
                     <?= e($texto) ?> <span class="segmentado-conteo"><?= numero($conteos[$clave]) ?></span>
                 </button>
             <?php endforeach; ?>
@@ -205,7 +206,7 @@ require __DIR__ . '/header.php';
             <select id="filtroCategoria" aria-label="<?= e(t('cat.col_categoria')) ?>">
                 <option value=""><?= e(t('cat.filtro_categorias')) ?></option>
                 <?php foreach ($categorias as $c): ?>
-                    <option value="<?= (int) $c['id_categoria'] ?>"><?= e($c['nombre_categoria']) ?></option>
+                    <option value="<?= (int) $c['id_categoria'] ?>"><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -217,7 +218,7 @@ require __DIR__ . '/header.php';
                 $estado = (string) $p['estado'];
                 $id     = (int) $p['id_producto'];
                 if ($p['grupo'] === 'con') {
-                    [$etiquetaClase, $etiquetaTexto] = badgeStock((int) $p['stock_sucursal']);
+                    [$etiquetaClase, $etiquetaTexto] = ['badge-activo', t('cat.en_tu_sucursal')];
                 } elseif ($p['grupo'] === 'agregar') {
                     [$etiquetaClase, $etiquetaTexto] = ['badge-metodo', t('cat.disponible')];
                 } else {
@@ -247,7 +248,7 @@ require __DIR__ . '/header.php';
                             <?= e($p['nombre']) ?>
                         <?php endif; ?>
                     </h3>
-                    <span class="producto-card-meta"><?= e($p['codigo']) ?> · <?= e($p['nombre_categoria'] ?? t('comun.sin_categoria')) ?></span>
+                    <span class="producto-card-meta"><?= e($p['codigo']) ?> · <?= e(tValor('categoria', $p['nombre_categoria'], t('comun.sin_categoria'))) ?></span>
                     <?php if (!empty($p['descripcion'])): ?>
                         <p class="catalogo-card-desc"><?= e($p['descripcion']) ?></p>
                     <?php endif; ?>
@@ -257,14 +258,14 @@ require __DIR__ . '/header.php';
                             <strong><?= dinero($p['precio']) ?></strong>
                         </span>
                         <?php if ($p['grupo'] === 'con'): ?>
-                            <a class="btn btn-ghost btn-sm" href="producto.php?id=<?= $id ?>"><?= e(t('cat.ver_ficha')) ?></a>
+                            <a class="btn btn-ghost btn-sm" href="producto.php?id=<?= $id ?>"><?= e(t('cat.ver_inventario')) ?></a>
                         <?php elseif ($p['grupo'] === 'agregar'): ?>
                             <button type="button" class="btn btn-primary btn-sm"
                                     onclick="abrirModalAgregarInventario(this)"
                                     data-id="<?= $id ?>"
                                     data-nombre="<?= e($p['nombre']) ?>"
                                     data-codigo="<?= e($p['codigo']) ?>"
-                                    data-categoria="<?= e($p['nombre_categoria'] ?? t('comun.sin_categoria')) ?>"
+                                    data-categoria="<?= e(tValor('categoria', $p['nombre_categoria'], t('comun.sin_categoria'))) ?>"
                                     data-precio="<?= e((string) $p['precio']) ?>">
                                 + <?= e(t('comun.agregar')) ?>
                             </button>
@@ -311,7 +312,7 @@ require __DIR__ . '/header.php';
                         <div>
                             <strong><?= e($s['nombre_producto']) ?></strong>
                             <span class="texto-tenue">
-                                · <?= e($s['nombre_categoria'] ?? t('comun.sin_categoria')) ?>
+                                · <?= e(tValor('categoria', $s['nombre_categoria'], t('comun.sin_categoria'))) ?>
                                 · <?= e(t('cat.col_precio_sugerido')) ?>: <?= dinero($s['precio_sugerido']) ?>
                                 <?php if (!empty($s['proveedor_sugerido'])): ?>
                                     · <?= e($s['proveedor_sugerido']) ?>
@@ -401,7 +402,7 @@ require __DIR__ . '/header.php';
                     <select name="id_categoria" required>
                         <option value=""><?= e(t('cat.elegir_categoria')) ?></option>
                         <?php foreach ($categorias as $c): ?>
-                            <option value="<?= (int) $c['id_categoria'] ?>"><?= e($c['nombre_categoria']) ?></option>
+                            <option value="<?= (int) $c['id_categoria'] ?>"><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

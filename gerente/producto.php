@@ -244,7 +244,7 @@ require __DIR__ . '/header.php';
     <div class="ficha-info">
         <h1><?= e($producto['nombre']) ?></h1>
         <p class="ficha-meta">
-            <?= e($producto['codigo']) ?> · <?= e($producto['nombre_categoria'] ?? t('comun.sin_categoria')) ?>
+            <?= e($producto['codigo']) ?> · <?= e(tValor('categoria', $producto['nombre_categoria'], t('comun.sin_categoria'))) ?>
             <?php if ($producto['estado_producto'] !== 'Activo'): ?>
                 <span class="badge badge-danger" title="<?= e(t('exist.no_se_vende_ayuda')) ?>"><?= e(t('exist.no_se_vende')) ?></span>
             <?php endif; ?>
