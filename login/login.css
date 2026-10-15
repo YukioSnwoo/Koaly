@@ -7,24 +7,26 @@
 
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 20px;
     background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #dbeafe 100%);
-    position: relative;
-    overflow: hidden;
+    /* Solo se recorta en horizontal: en pantallas bajas el formulario debe poder desplazarse */
+    overflow-x: hidden;
 }
 
-/* bolitas decorativas de fondo */
+/* Bolitas decorativas de fondo (fijas, no agrandan la página) */
 body::before,
 body::after {
     content: '';
-    position: absolute;
+    position: fixed;
     border-radius: 50%;
     filter: blur(60px);
     opacity: 0.5;
     z-index: 0;
+    pointer-events: none;
 }
 
 body::before {
@@ -48,6 +50,7 @@ body::after {
     z-index: 1;
     width: 100%;
     max-width: 400px;
+    margin: auto; /* centra sin cortar arriba cuando es más alto que la pantalla */
     padding: 2.4rem 2rem;
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
@@ -88,7 +91,7 @@ body::after {
     fill: white;
 }
 
-h2 {
+h1 {
     margin-bottom: 0.4rem;
     color: #1e293b;
     text-align: center;
@@ -102,6 +105,11 @@ h2 {
     text-align: center;
     font-size: 0.9rem;
     line-height: 1.4;
+    overflow-wrap: anywhere; /* correos largos en el paso 2 */
+}
+
+.subtitle strong {
+    color: #334155;
 }
 
 .form-group {
@@ -123,10 +131,10 @@ input[type="text"] {
     padding: 0.85rem 1rem;
     border: 1.5px solid #e2e8f0;
     border-radius: 12px;
-    font-size: 0.95rem;
+    font-size: 1rem; /* 16px: evita que iPhone haga zoom al escribir */
     background: #f8fafc;
     color: #1e293b;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 input::placeholder {
@@ -140,7 +148,49 @@ input:focus {
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
-button {
+/* Código de 6 dígitos */
+.code-input {
+    text-align: center;
+    font-size: 1.4rem !important;
+    font-weight: 700;
+    letter-spacing: 0.5em;
+    font-variant-numeric: tabular-nums;
+}
+
+.code-input::placeholder {
+    letter-spacing: 0.5em;
+}
+
+/* Campo de contraseña con botón Ver/Ocultar */
+.password-field {
+    position: relative;
+}
+
+.password-field input {
+    padding-right: 5rem;
+}
+
+.toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    padding: 0.35rem 0.6rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #2563eb;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.toggle-password:hover {
+    background: #eff6ff;
+}
+
+/* Botón principal */
+.btn-primary {
     width: 100%;
     margin-top: 0.6rem;
     padding: 0.9rem;
@@ -153,24 +203,53 @@ button {
     font-weight: 600;
     letter-spacing: 0.3px;
     box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-button:hover {
+.btn-primary:hover:not(:disabled) {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     transform: translateY(-1px);
     box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4);
 }
 
-button:active {
+.btn-primary:active {
     transform: translateY(0);
 }
 
-button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    transform: none;
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: wait;
     box-shadow: none;
+}
+
+/* Botones con aspecto de enlace */
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: #2563eb;
+    font: inherit;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.link-button:hover:not(:disabled) {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.link-button:disabled {
+    color: #94a3b8;
+    cursor: default;
+}
+
+/* Foco visible al navegar con teclado */
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.45);
+    outline-offset: 2px;
 }
 
 .message {
@@ -228,48 +307,54 @@ button:disabled {
     margin-top: 1.6rem;
     text-align: center;
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: #64748b;
 }
 
-/* ===== Olvidé la contraseña ===== */
+/* ===== Olvidé mi contraseña ===== */
 .forgot-link {
     display: block;
-    margin-top: 1.1rem;
-    text-align: center;
-    color: #2563eb;
+    margin: 1.1rem auto 0;
     font-size: 0.92rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: color 0.2s;
 }
 
-.forgot-link:hover {
-    color: #1d4ed8;
-    text-decoration: underline;
+/* ===== Reenviar código ===== */
+.resend {
+    margin-top: 1.2rem;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.86rem;
+    line-height: 1.5;
 }
 
-/* ===== Volver ===== */
+.resend .link-button {
+    font-size: inherit;
+}
+
+/* ===== Volver / Salir ===== */
 .back-link {
     display: inline-block;
     margin-bottom: 1.2rem;
     color: #64748b;
     font-size: 0.88rem;
-    text-decoration: none;
-    transition: color 0.2s;
 }
 
-.back-link:hover {
+.back-link:hover:not(:disabled) {
     color: #2563eb;
-    text-decoration: underline;
 }
 
-/* ===== Steps ===== */
+.logout-link {
+    display: block;
+    margin: 1.2rem 0 0;
+    text-align: center;
+}
+
+/* ===== Pasos ===== */
 .steps {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0;
     margin-bottom: 1.4rem;
+    list-style: none;
 }
 
 .step {
@@ -277,7 +362,7 @@ button:disabled {
     height: 32px;
     border-radius: 50%;
     background: #e2e8f0;
-    color: #94a3b8;
+    color: #64748b;
     font-weight: 700;
     font-size: 0.9rem;
     display: flex;
@@ -285,13 +370,10 @@ button:disabled {
     justify-content: center;
 }
 
-.step.active {
-    background: #22c55e;
-    color: #fff;
-}
-
+/* Verde oscuro: el blanco sobre #22c55e no se lee (2.3:1); sobre #15803d da 5:1 */
+.step.active,
 .step.done {
-    background: #22c55e;
+    background: #15803d;
     color: #fff;
 }
 
@@ -302,5 +384,26 @@ button:disabled {
 }
 
 .step-line.done {
-    background: #22c55e;
+    background: #15803d;
+}
+
+/* ===== Pantallas chicas ===== */
+@media (max-width: 420px) {
+    body {
+        padding: 12px;
+    }
+
+    .container {
+        padding: 1.8rem 1.25rem;
+        border-radius: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
 }

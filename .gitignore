@@ -1,6 +1,7 @@
     # Credenciales — NUNCA subir
 admin/database.php
 admin/config.php
+login/config_correo.php
 .env
 *.env.local
 
