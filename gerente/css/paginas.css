@@ -699,10 +699,20 @@
 .producto-card-imagen {
     position: relative;
     aspect-ratio: 4 / 3;
-    background: #f5f6f8;
+    background: #fff;
+    border-bottom: 1px solid #f1f5f9;
     display: grid; place-items: center;
+    overflow: hidden;
 }
-.producto-card-imagen img { width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; }
+/* La imagen ocupa SIEMPRE el mismo marco, sea grande o pequeña: va en absoluto
+   sobre la caja (si no, su altura natural estiraba la tarjeta) y se escala sin
+   deformarse dentro de él. */
+.producto-card-imagen img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 0.85rem;
+}
 .producto-card-imagen > span[aria-hidden] {
     font-size: 1.6rem; font-weight: 700; color: #a78bfa;
 }
@@ -735,10 +745,17 @@
     margin-bottom: 1.25rem;
 }
 .ficha-imagen {
-    aspect-ratio: 1; border-radius: 10px; background: #f5f6f8;
+    position: relative;
+    aspect-ratio: 1; border-radius: 10px; background: #fff; border: 1px solid #f1f5f9;
     display: grid; place-items: center; overflow: hidden; color: #64748b; font-size: 0.85rem;
+    align-self: start;
 }
-.ficha-imagen img { width: 100%; height: 100%; object-fit: contain; padding: 0.75rem; }
+.ficha-imagen img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 0.85rem;
+}
 .ficha-info h1 { font-size: 1.4rem; color: #1e293b; line-height: 1.25; }
 .ficha-meta { color: #64748b; font-size: 0.9rem; margin: 0.25rem 0 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .ficha-descripcion { color: #475569; font-size: 0.9rem; margin-bottom: 0.75rem; }

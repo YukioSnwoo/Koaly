@@ -4,7 +4,7 @@
  *
  * El idioma vive en $_SESSION['idioma'], la misma clave que usa el panel del
  * admin, así la preferencia es una sola en todo el sitio.
- * Los textos están en gerente/lang/{es,en,fr}.php. Para agregar un idioma:
+ * Los textos están en gerente/lang/{es,en}.php. Para agregar un idioma:
  * crear lang/xx.php con las mismas claves y añadirlo a IDIOMAS.
  *
  * Los textos que se GUARDAN en la base de datos (motivos del kardex) se
@@ -14,7 +14,6 @@
 const IDIOMAS = [
     'es' => 'Español',
     'en' => 'English',
-    'fr' => 'Français',
 ];
 
 $idioma = (string) ($_SESSION['idioma'] ?? 'es');
@@ -42,15 +41,11 @@ function t(string $clave, array $vars = []): string
     return i18nReemplazar(is_array($texto) ? $texto[1] : $texto, $vars);
 }
 
-/**
- * Texto con plural. La traducción es [singular, plural]; {n} es la cantidad.
- * En francés 0 y 1 son singular; en español e inglés solo 1.
- */
+/** Texto con plural. La traducción es [singular, plural]; {n} es la cantidad. */
 function tn(string $clave, int $n, array $vars = []): string
 {
     $formas = $GLOBALS['I18N'][$clave] ?? $GLOBALS['I18N_ES'][$clave] ?? [$clave, $clave];
-    $singular = $GLOBALS['I18N_IDIOMA'] === 'fr' ? abs($n) <= 1 : abs($n) === 1;
-    return i18nReemplazar($singular ? $formas[0] : $formas[1], ['n' => numero($n)] + $vars);
+    return i18nReemplazar(abs($n) === 1 ? $formas[0] : $formas[1], ['n' => numero($n)] + $vars);
 }
 
 /** Texto en español, para lo que se guarda en la base de datos. */
@@ -64,19 +59,17 @@ function idiomaActual(): string
     return $GLOBALS['I18N_IDIOMA'];
 }
 
-/** Número con separadores del idioma (fr: 1 234,5). */
+/** Número con separador de miles (1,234.5). */
 function numero(float|int $n, int $decimales = 0): string
 {
-    return idiomaActual() === 'fr'
-        ? number_format($n, $decimales, ',', "\u{202F}")
-        : number_format($n, $decimales, '.', ',');
+    return number_format($n, $decimales, '.', ',');
 }
 
 /** Importe en pesos. */
 function dinero(float|int|string|null $n): string
 {
     $n = (float) $n;
-    return idiomaActual() === 'fr' ? numero($n, 2) . "\u{00A0}\$" : '$' . numero($n, 2);
+    return '$' . numero($n, 2);
 }
 
 /** Fecha (y hora) de un valor de la base de datos o DateTimeInterface. */

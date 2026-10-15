@@ -1,6 +1,6 @@
 <?php
 // Textos del panel del gerente — English.
-// es.php, en.php y fr.php deben tener exactamente las mismas claves.
+// es.php y en.php deben tener exactamente las mismas claves.
 // Plurales: [singular, plural]. Variables: {nombre}.
 return [
 
