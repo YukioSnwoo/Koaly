@@ -74,6 +74,7 @@ function _prepararModalCajero(modo) {
 
 function abrirModalNuevoCajero() {
     const form = _prepararModalCajero('crear');
+    form.dataset.estadoOriginal = '';
     form.querySelector('[name="id_usuario"]').value = '';
     form.querySelector('[name="fecha_contratacion"]').value = new Date().toISOString().slice(0, 10);
     _actualizarAyudaEstado();
@@ -87,19 +88,48 @@ function abrirModalEditarCajero(btn) {
     form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
     form.querySelector('[name="email"]').value = btn.dataset.email;
     form.querySelector('[name="estado"]').value = btn.dataset.estado;
+    form.dataset.estadoOriginal = btn.dataset.estado;
     _actualizarAyudaEstado();
     abrirModal('modalCajero');
 }
 
-/** Explica qué pasa con su caja al elegir un estado distinto de "Activo". */
+/**
+ * Explica qué pasa con su caja al elegir un estado distinto de "Activo" y, al
+ * dar de baja a alguien que no lo estaba, pide el motivo (va en su correo).
+ */
 function _actualizarAyudaEstado() {
-    const select = document.querySelector('#formCajero [name="estado"]');
+    const form   = document.getElementById('formCajero');
+    const select = form && form.querySelector('[name="estado"]');
     const ayuda  = document.getElementById('ayudaEstado');
     if (!select || !ayuda) return;
     const texto = select.value === 'Baja' ? tj('estado_ayuda_baja')
         : select.value !== 'Activo' ? tj('estado_ayuda_temporal') : '';
     ayuda.textContent = texto;
     ayuda.hidden = texto === '';
+
+    const grupoMotivo = document.getElementById('grupoMotivoBaja');
+    if (grupoMotivo) {
+        const pedir = select.value === 'Baja' && form.dataset.estadoOriginal !== 'Baja'
+            && form.querySelector('[name="action"]').value === 'editar';
+        grupoMotivo.hidden = !pedir;
+        const motivo = grupoMotivo.querySelector('select');
+        motivo.required = pedir;
+        if (!pedir) motivo.value = '';
+        motivo.dispatchEvent(new Event('select-custom:sincronizar'));
+    }
+}
+
+/** Baja desde la tarjeta: pide el motivo, que se incluye en el correo al empleado. */
+function abrirModalBaja(btn) {
+    const form = document.getElementById('formBaja');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
+    const texto = document.getElementById('textoModalBaja');
+    if (texto) texto.textContent = tj('baja_confirmar', { nombre: btn.dataset.nombre });
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
+    abrirModal('modalBaja');
 }
 
 /** Contraseña temporal de 10 caracteres, sin letras ni números que se confundan (0/O, 1/l/I). */
