@@ -416,6 +416,9 @@ button { font: inherit; }
     margin-bottom: 0.35rem; font-weight: 600;
 }
 .form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="date"],
 .form-group input[type="number"],
 .form-group input[type="file"],
 .form-group select,

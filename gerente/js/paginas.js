@@ -50,51 +50,72 @@ function abrirModalSolicitarProducto() {
  * ██ CAJEROS — Modales
  * ============================================================ */
 
-function abrirModalNuevoCajero() {
+function _prepararModalCajero(modo) {
     const form = document.getElementById('formCajero');
-    if (!form) return;
     form.reset();
-    form.querySelector('[name="action"]').value = 'crear';
+    form.querySelector('[name="action"]').value = modo;
+
+    const nuevo = modo === 'crear';
+    const titulo = document.getElementById('tituloModalCajero');
+    if (titulo) titulo.textContent = tj(nuevo ? 'nuevo_cajero' : 'editar_cajero');
+
+    // Contraseña, fecha de contratación y aviso de privacidad solo al dar de alta
+    ['grupoPassword', 'grupoFechaContratacion', 'ayudaAviso'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = !nuevo;
+    });
+    const inputPassword = form.querySelector('[name="password"]');
+    if (inputPassword) inputPassword.required = nuevo;
+
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
+    return form;
+}
+
+function abrirModalNuevoCajero() {
+    const form = _prepararModalCajero('crear');
     form.querySelector('[name="id_usuario"]').value = '';
     form.querySelector('[name="fecha_contratacion"]').value = new Date().toISOString().slice(0, 10);
-
-    const titulo = document.getElementById('tituloModalCajero');
-    if (titulo) titulo.textContent = tj('nuevo_cajero');
-
-    const grupoPassword = document.getElementById('grupoPassword');
-    if (grupoPassword) grupoPassword.style.display = '';
-    const grupoFecha = document.getElementById('grupoFechaContratacion');
-    if (grupoFecha) grupoFecha.style.display = '';
-
-    const inputPassword = form.querySelector('[name="password"]');
-    if (inputPassword) inputPassword.required = true;
-
+    _actualizarAyudaEstado();
     abrirModal('modalCajero');
+    form.querySelector('[name="nombre"]').focus();
 }
 
 function abrirModalEditarCajero(btn) {
-    const form = document.getElementById('formCajero');
-    if (!form) return;
-    form.reset();
-    form.querySelector('[name="action"]').value = 'editar';
+    const form = _prepararModalCajero('editar');
     form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
     form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
     form.querySelector('[name="email"]').value = btn.dataset.email;
     form.querySelector('[name="estado"]').value = btn.dataset.estado;
-
-    const titulo = document.getElementById('tituloModalCajero');
-    if (titulo) titulo.textContent = tj('editar_cajero');
-
-    const grupoPassword = document.getElementById('grupoPassword');
-    if (grupoPassword) grupoPassword.style.display = 'none';
-    const grupoFecha = document.getElementById('grupoFechaContratacion');
-    if (grupoFecha) grupoFecha.style.display = 'none';
-
-    const inputPassword = form.querySelector('[name="password"]');
-    if (inputPassword) inputPassword.required = false;
-
+    _actualizarAyudaEstado();
     abrirModal('modalCajero');
 }
+
+/** Explica qué pasa con su caja al elegir un estado distinto de "Activo". */
+function _actualizarAyudaEstado() {
+    const select = document.querySelector('#formCajero [name="estado"]');
+    const ayuda  = document.getElementById('ayudaEstado');
+    if (!select || !ayuda) return;
+    const texto = select.value === 'Baja' ? tj('estado_ayuda_baja')
+        : select.value !== 'Activo' ? tj('estado_ayuda_temporal') : '';
+    ayuda.textContent = texto;
+    ayuda.hidden = texto === '';
+}
+
+/** Contraseña temporal de 10 caracteres, sin letras ni números que se confundan (0/O, 1/l/I). */
+function generarPasswordCajero() {
+    const alfabeto = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const azar = new Uint32Array(10);
+    crypto.getRandomValues(azar);
+    const input = document.querySelector('#formCajero [name="password"]');
+    input.value = Array.from(azar, n => alfabeto[n % alfabeto.length]).join('');
+    input.focus();
+    input.select();
+}
+
+document.addEventListener('change', (e) => {
+    if (e.target.matches('#formCajero [name="estado"]')) _actualizarAyudaEstado();
+});
 
 
 /* ============================================================

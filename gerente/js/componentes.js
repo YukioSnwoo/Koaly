@@ -185,6 +185,8 @@ function initCustomSelect(select) {
                 pintarTrigger();
                 pintarPanel();
             });
+            // Valor asignado por código (abrirModal lo pide): solo redibujar, sin "change"
+            select.addEventListener('select-custom:sincronizar', pintarTrigger);
 
             // Reposicionar si el layout cambia mientras está abierto
             window.addEventListener('resize', () => {

@@ -20,7 +20,12 @@ function tj(clave, vars = {}) {
  * ============================================================ */
 function abrirModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.classList.add('open');
+    if (!modal) return;
+    // Los formularios se llenan con select.value = ..., que no dispara "change":
+    // sin esto el select personalizado seguía mostrando el valor anterior
+    // (p. ej. "Activo" en un cajero que está de vacaciones).
+    modal.querySelectorAll('select').forEach(s => s.dispatchEvent(new Event('select-custom:sincronizar')));
+    modal.classList.add('open');
 }
 
 function cerrarModal(id) {
