@@ -1,0 +1,773 @@
+/* ============================================================
+ *  paginas.css — Estilos específicos de cada página del gerente.
+ *  Depende de: base.css y componentes.css
+ *  ============================================================ */
+
+
+/* ============================================================
+ *  ██ INDEX — Hero
+ *  ============================================================ */
+.hero {
+    background: linear-gradient(135deg, var(--superficie) 0%, var(--acento-suave) 100%);
+    border: 1px solid var(--acento-suave-2);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.35s ease-out both;
+}
+.hero-eyebrow {
+    font-size: 0.8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--acento-texto); margin-bottom: 0.35rem;
+}
+.hero h2 { color: var(--texto); font-size: 1.6rem; font-weight: 700; margin-bottom: 0.75rem; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.hero-chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--acento-suave); color: var(--acento-texto);
+    border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+}
+
+
+/* ============================================================
+ *  ██ INDEX — Section titles
+ *  ============================================================ */
+.section-title {
+    font-size: 0.95rem; font-weight: 600; color: var(--texto-2);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+
+/* ============================================================
+ *  ██ CAJEROS — Tarjetas verticales (player card)
+ *  ============================================================ */
+.cajeros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1.25rem;
+}
+
+.cajero-card {
+    background: var(--superficie);
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem 1.25rem;
+    border-top: 4px solid var(--acento);
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    animation: fadeInUp 0.3s ease-out both;
+}
+.cajero-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+}
+.cajero-card.is-inactivo {
+    opacity: 0.72;
+}
+.cajero-card.is-inactivo .cajero-avatar {
+    filter: grayscale(0.75);
+}
+
+.cajero-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 6px 16px rgba(124,58,237,0.25);
+    flex-shrink: 0;
+}
+
+.cajero-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--texto);
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+    word-break: break-word;
+}
+
+.cajero-email {
+    font-size: 0.78rem;
+    color: var(--texto-3);
+    word-break: break-all;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+}
+
+.cajero-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--superficie-3);
+    border-bottom: 1px solid var(--superficie-3);
+    margin-bottom: 1rem;
+}
+
+.cajero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.cajero-stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--acento-texto);
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.cajero-stat-label {
+    font-size: 0.68rem;
+    color: var(--texto-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.cajero-actions {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: auto;
+}
+.cajero-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+.cajero-empty {
+    grid-column: 1 / -1;
+}
+
+
+/* ============================================================
+ *  ██ CAJAS — Tarjetas verticales (player card, variante)
+ *  ============================================================ */
+.cajas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+
+.caja-card {
+    background: var(--superficie);
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem 1.25rem;
+    border-top: 4px solid var(--acento);
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    animation: fadeInUp 0.3s ease-out both;
+}
+.caja-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+}
+.caja-card.is-inactiva {
+    opacity: 0.72;
+}
+.caja-card.is-inactiva .caja-numero {
+    filter: grayscale(0.75);
+}
+
+.caja-numero {
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--acento-hover) 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 6px 16px rgba(109,40,217,0.25);
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+
+.caja-nombre {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--texto);
+    line-height: 1.3;
+    margin-bottom: 0.35rem;
+    word-break: break-word;
+}
+.caja-nombre--muted {
+    color: var(--texto-3);
+    font-style: italic;
+    font-weight: 500;
+}
+
+.caja-cajero {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    background: var(--superficie-2);
+    border-radius: 10px;
+    width: 100%;
+    margin-bottom: 1rem;
+    margin-top: 0.75rem;
+    min-width: 0;
+}
+.caja-cajero-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+.caja-cajero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+}
+.caja-cajero-label {
+    font-size: 0.62rem;
+    color: var(--texto-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+.caja-cajero-nombre {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--texto);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.caja-cajero--vacio .caja-cajero-info {
+    justify-content: center;
+}
+.caja-cajero--vacio .caja-cajero-nombre {
+    color: var(--texto-3);
+    font-style: italic;
+    font-weight: 500;
+}
+
+.caja-actions {
+    display: flex;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: auto;
+    flex-wrap: wrap;
+}
+.caja-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.75rem;
+}
+.caja-actions .btn-danger {
+    flex: 0 0 auto;
+    padding: 0.5rem 0.65rem;
+}
+
+
+/* ============================================================
+ *  ██ CAJAS — Aviso de reasignación de cajero
+ *  ============================================================ */
+.aviso-reasignacion {
+    display: none;
+    margin-top: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--aviso-suave);
+    color: var(--aviso-texto);
+    border: 1px solid var(--aviso-borde);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+.aviso-reasignacion.visible {
+    display: block;
+}
+.aviso-reasignacion strong {
+    color: var(--aviso-texto);
+}
+
+
+/* ============================================================
+ *  ██ CATÁLOGO — Resumen del producto en el modal de alta
+ *  ============================================================ */
+.producto-resumen {
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 1.1rem;
+    background: var(--acento-suave);
+    border: 1px solid var(--acento-suave-2);
+    border-radius: 10px;
+}
+.producto-resumen-nombre {
+    font-weight: 700;
+    color: var(--texto);
+    font-size: 0.95rem;
+}
+.producto-resumen-meta {
+    margin-top: 2px;
+    font-size: 0.8rem;
+    color: var(--texto-3);
+}
+
+
+/* ============================================================
+ *  Ventas de mi sucursal — desgloses y artículos por venta
+ *  ============================================================ */
+.ventas-periodo {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1.25rem;
+}
+.ventas-rango { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.ventas-rango label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--texto-3); }
+.ventas-rango input[type="date"] {
+    padding: 0.4rem 0.6rem; border: 1px solid var(--borde); border-radius: 8px;
+    font: inherit; font-size: 0.85rem; color: var(--texto); background: var(--superficie);
+}
+
+/* Desgloses: cuadrícula fija de 2×2 (método · cajero / caja · más vendidos).
+   Con auto-fit cabían 3 por fila y la cuarta bajaba sola a todo el ancho.
+   Las tarjetas de una misma fila miden lo mismo de alto (stretch). */
+.ventas-desgloses {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: stretch;
+}
+@media (max-width: 820px) {
+    .ventas-desgloses { grid-template-columns: minmax(0, 1fr); }
+}
+.desglose {
+    background: var(--superficie);
+    border-radius: 12px;
+    border: 2px solid transparent;
+    padding: 1.1rem 1.25rem 1.2rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+}
+.desglose.is-activo { border-color: var(--acento); }
+.desglose-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin-bottom: 0.6rem;
+}
+.desglose-head h2 { font-size: 1rem; font-weight: 700; color: var(--texto); }
+.desglose-lista { list-style: none; margin: 0; padding: 0; }
+.desglose-lista li { padding: 0.55rem 0; border-top: 1px solid var(--superficie-3); }
+.desglose-lista li:first-child { border-top: 0; }
+.desglose-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto 2.75rem;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+.desglose-lista--top .desglose-fila { grid-template-columns: minmax(0, 1fr) auto; }
+.desglose-lista--top { counter-reset: top; }
+.desglose-lista--top li { counter-increment: top; }
+.desglose-lista--top .desglose-nombre::before {
+    content: counter(top) ". "; color: var(--texto-3); font-weight: 600;
+}
+.desglose-nombre {
+    font-weight: 600; color: var(--texto);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.desglose-nombre small { color: var(--texto-3); font-weight: 500; margin-left: 0.35rem; }
+.desglose-num { font-size: 0.82rem; color: var(--texto-3); white-space: nowrap; }
+.desglose-monto { text-align: right; color: var(--texto); white-space: nowrap; }
+.desglose-pct { text-align: right; font-size: 0.82rem; color: var(--texto-3); }
+.desglose-barra { height: 4px; background: var(--superficie-3); border-radius: 4px; margin-top: 0.4rem; overflow: hidden; }
+.desglose-barra span { display: block; height: 100%; background: var(--acento-medio); border-radius: 4px; }
+.desglose-vacio { color: var(--texto-3); font-size: 0.9rem; }
+
+/* Tabla de ventas: encabezado, agrupación y filtros justo encima */
+.ventas-tabla-head {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.1rem 1.25rem 0.75rem;
+}
+.ventas-tabla-head .section-title { margin-bottom: 0.15rem; }
+.ventas-tabla-head p { font-size: 0.85rem; color: var(--texto-3); }
+.ventas-tabla-head p a { color: var(--acento-texto); font-weight: 600; }
+
+.segmentado {
+    display: inline-flex; flex-wrap: wrap;
+    border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; background: var(--superficie);
+}
+.segmentado a {
+    padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 600;
+    color: var(--texto-2); text-decoration: none;
+    border-left: 1px solid var(--borde);
+}
+.segmentado a:first-child { border-left: 0; }
+.segmentado a:hover { background: var(--acento-suave); color: var(--acento-texto); }
+.segmentado a.is-activo { background: var(--acento); color: #fff; }
+
+.ventas-filtros { padding: 0 1.25rem; margin-bottom: 1rem; }
+
+.tabla-productos .num { text-align: right; white-space: nowrap; }
+.fila-grupo td {
+    background: var(--acento-suave);
+    color: var(--acento-texto-fuerte);
+    border-top: 2px solid var(--acento-suave-2);
+}
+.fila-grupo span { float: right; font-size: 0.85rem; font-weight: 600; }
+
+.ventas-paginacion {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem; color: var(--texto-3);
+}
+
+.venta-articulos summary {
+    cursor: pointer;
+    color: var(--acento-texto);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.venta-articulos ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1rem;
+    font-size: 0.85rem;
+    color: var(--texto-2);
+}
+
+.caja-ventas {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--texto-3);
+    margin-bottom: 0.75rem;
+}
+.caja-ventas strong { color: var(--ok-texto); }
+
+
+/* ============================================================
+ *  Cajeros — contraseña temporal y enlace a ventas
+ *  ============================================================ */
+.alert-warning { background: var(--aviso-suave); color: var(--aviso-texto); border-color: var(--aviso-borde); }
+.password-temporal {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: var(--superficie);
+    padding: 0.1rem 0.45rem;
+    border-radius: 6px;
+    user-select: all;
+}
+.cajero-ver-ventas {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--acento-texto);
+    text-decoration: none;
+    margin: -0.25rem 0 0.75rem;
+}
+.cajero-ver-ventas:hover { text-decoration: underline; }
+
+
+/* ============================================================
+ *  Inicio — resumen del día
+ *  ============================================================ */
+.hero-chip--muted { opacity: 0.75; font-weight: 500; }
+.kpi--link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kpi--link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15,23,42,0.08);
+}
+
+
+/* ============================================================
+ *  Utilidades de texto (contraste AA, ver guía en base.css)
+ *  ============================================================ */
+.texto-tenue    { color: var(--texto-3); }
+.texto-ok       { color: var(--ok-texto); }
+.texto-peligro  { color: var(--peligro-texto); }
+.modal-ayuda    { color: var(--texto-3); font-size: 0.9rem; margin-bottom: 1rem; }
+
+
+/* ============================================================
+ *  Barra superior — selector de idioma
+ *  ============================================================ */
+.header-sub { font-weight: 500; color: var(--texto-3); font-size: 0.95rem; }
+.idioma { position: relative; }
+.idioma > summary {
+    list-style: none;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie);
+    color: var(--texto-2); font-weight: 600; font-size: 0.85rem;
+    cursor: pointer; user-select: none;
+}
+.idioma > summary::-webkit-details-marker { display: none; }
+.idioma > summary:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
+.idioma[open] .idioma-flecha { transform: rotate(180deg); }
+.idioma-flecha { transition: transform 0.15s; }
+.idioma-menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+    min-width: 11rem;
+    background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(15,23,42,0.12);
+    padding: 0.35rem;
+    display: flex; flex-direction: column;
+}
+.idioma-menu button {
+    display: flex; align-items: center; gap: 0.6rem;
+    width: 100%; text-align: left;
+    padding: 0.55rem 0.7rem; border: 0; border-radius: 7px;
+    background: transparent; color: var(--texto); font-size: 0.9rem; cursor: pointer;
+}
+.idioma-menu button:hover { background: var(--acento-suave); }
+.idioma-menu button.is-activo { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); font-weight: 600; }
+.idioma-codigo {
+    font-size: 0.7rem; font-weight: 700; color: var(--acento-texto);
+    background: var(--acento-suave); border-radius: 4px; padding: 0.1rem 0.3rem;
+}
+
+
+/* ============================================================
+ *  Existencias — cuadrícula de productos
+ *  ============================================================ */
+.producto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+    gap: 1rem;
+}
+.producto-card {
+    display: flex; flex-direction: column;
+    background: var(--superficie); border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--borde);
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.producto-card[hidden] { display: none; }
+.producto-card:hover, .producto-card:focus-visible {
+    border-color: var(--acento-borde);
+    box-shadow: 0 8px 20px rgba(15,23,42,0.08);
+    transform: translateY(-2px);
+}
+.producto-card.is-inactivo .producto-card-imagen { filter: grayscale(0.7); opacity: 0.8; }
+.producto-card-imagen {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: var(--marco-imagen);
+    border-bottom: 1px solid var(--superficie-3);
+    display: grid; place-items: center;
+    overflow: hidden;
+}
+/* La imagen ocupa SIEMPRE el mismo marco, sea grande o pequeña: va en absoluto
+   sobre la caja (si no, su altura natural estiraba la tarjeta) y se escala sin
+   deformarse dentro de él. */
+.producto-card-imagen img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 0.85rem;
+}
+.producto-card-imagen > span[aria-hidden] {
+    font-size: 1.6rem; font-weight: 700; color: var(--acento-medio);
+}
+.producto-card-stock { position: absolute; left: 0.6rem; top: 0.6rem; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
+.producto-card-cuerpo { padding: 0.8rem 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
+.producto-card-nombre { font-weight: 600; color: var(--texto); line-height: 1.3; }
+.producto-card-meta { font-size: 0.78rem; color: var(--texto-3); }
+.producto-card-pie {
+    margin-top: auto; padding-top: 0.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;
+}
+.producto-card-pie strong { font-size: 1.05rem; color: var(--texto); font-variant-numeric: tabular-nums; }
+
+
+/* ============================================================
+ *  Ficha de producto
+ *  ============================================================ */
+.migas {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+    font-size: 0.85rem; color: var(--texto-3); margin-bottom: 1rem;
+}
+.migas a { color: var(--acento-texto); text-decoration: none; font-weight: 600; }
+.migas a:hover { text-decoration: underline; }
+.migas [aria-current] { color: var(--texto); font-weight: 600; }
+
+.ficha {
+    display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 1.5rem;
+    background: var(--superficie); border-radius: 12px; padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    margin-bottom: 1.25rem;
+}
+.ficha-imagen {
+    position: relative;
+    aspect-ratio: 1; border-radius: 10px; background: var(--marco-imagen); border: 1px solid var(--superficie-3);
+    display: grid; place-items: center; overflow: hidden; color: var(--texto-3); font-size: 0.85rem;
+    align-self: start;
+}
+.ficha-imagen img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 0.85rem;
+}
+.ficha-info h1 { font-size: 1.4rem; color: var(--texto); line-height: 1.25; }
+.ficha-meta { color: var(--texto-3); font-size: 0.9rem; margin: 0.25rem 0 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.ficha-descripcion { color: var(--texto-2); font-size: 0.9rem; margin-bottom: 0.75rem; }
+.ficha-datos {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.75rem 1.25rem; margin-top: 0.75rem;
+}
+.ficha-datos dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-3); font-weight: 700; }
+.ficha-datos dd { font-size: 1rem; color: var(--texto); font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 0.15rem; }
+
+.ficha-acciones {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 1rem; margin-bottom: 1.25rem; align-items: start;
+}
+.ficha-accion {
+    background: var(--superficie); border-radius: 12px; padding: 1.1rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+}
+.ficha-accion h2 { font-size: 1rem; color: var(--texto); margin-bottom: 0.25rem; }
+.ficha-accion-ayuda { font-size: 0.82rem; color: var(--texto-3); margin-bottom: 0.85rem; }
+.ficha-accion .btn { width: 100%; justify-content: center; }
+.campo-con-boton { display: flex; gap: 0.5rem; }
+.campo-con-boton input { flex: 1; min-width: 0; }
+.campo-con-boton .btn { width: auto; white-space: nowrap; }
+
+.panel-encabezado {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 1.1rem 1.25rem 0.5rem;
+}
+.enlace-producto { text-decoration: none; color: inherit; display: block; }
+.enlace-producto:hover .producto-nombre { color: var(--acento-texto); text-decoration: underline; }
+
+@media (max-width: 640px) {
+    .ficha { grid-template-columns: 1fr; }
+    .ficha-imagen { max-width: 220px; }
+}
+
+
+/* ============================================================
+ *  Tablas con carga progresiva
+ *  ============================================================ */
+.carga-progresiva {
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+    padding: 1.1rem 1rem 1.25rem; font-size: 0.85rem;
+}
+
+
+/* ============================================================
+ *  Catálogo — pestañas, tarjetas y solicitudes
+ *  ============================================================ */
+.catalogo-barra {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1.25rem;
+}
+.catalogo-filtros { margin-bottom: 0; flex: 1 1 320px; justify-content: flex-end; }
+.catalogo-filtros input { max-width: 320px; }
+
+/* .segmentado también acepta <button> (antes solo <a>) */
+.segmentado button {
+    padding: 0.45rem 0.85rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: var(--texto-2); background: transparent; border: 0; border-left: 1px solid var(--borde);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
+}
+.segmentado button:first-child { border-left: 0; }
+.segmentado button:hover { background: var(--acento-suave); color: var(--acento-texto); }
+.segmentado button.is-activo { background: var(--acento); color: #fff; }
+.segmentado-conteo {
+    font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    background: var(--superficie-3); color: var(--texto-2); border-radius: 999px; padding: 0.05rem 0.45rem;
+}
+.segmentado button.is-activo .segmentado-conteo { background: rgba(255,255,255,0.22); color: #fff; }
+
+.catalogo-card { cursor: default; }
+/* Fuera de la sucursal: borde punteado y sin elevarse, para distinguirlos de los que sí hay */
+.producto-card.is-fuera { border-style: dashed; background: var(--superficie-2); box-shadow: none; }
+.producto-card.is-fuera:hover { transform: none; box-shadow: none; }
+.catalogo-card .producto-card-nombre { font-size: 0.98rem; }
+.catalogo-card .producto-card-nombre a { color: inherit; text-decoration: none; }
+.catalogo-card .producto-card-nombre a:hover { color: var(--acento-texto); text-decoration: underline; }
+.catalogo-card-desc {
+    font-size: 0.8rem; color: var(--texto-3); margin-top: 0.15rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.catalogo-precio { display: flex; flex-direction: column; line-height: 1.2; }
+.catalogo-precio small { font-size: 0.68rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+.catalogo-precio strong { font-size: 1.05rem; color: var(--texto); font-variant-numeric: tabular-nums; }
+.catalogo-no-disponible { font-size: 0.8rem; }
+
+.catalogo-solicitudes { margin-top: 2rem; }
+.catalogo-solicitudes .section-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0; }
+.solicitudes-lista { list-style: none; margin: 0; padding: 0 1.25rem 0.5rem; }
+.solicitud {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem;
+    padding: 0.85rem 0; border-top: 1px solid var(--superficie-3);
+}
+.solicitud:first-child { border-top: 0; }
+.solicitud-principal { display: flex; gap: 0.75rem; align-items: flex-start; min-width: 0; flex: 1 1 320px; }
+.solicitud-principal strong { color: var(--texto); }
+.solicitud-desc { font-size: 0.82rem; color: var(--texto-3); margin-top: 0.15rem; }
+.solicitud-estado {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem;
+    font-size: 0.82rem; text-align: right;
+}
+@media (max-width: 640px) {
+    .solicitud-estado { align-items: flex-start; text-align: left; }
+    .catalogo-filtros { justify-content: stretch; }
+    .catalogo-filtros input { max-width: none; }
+}
+
+
+/* ============================================================
+ *  Barra superior — botón de tema (luna en claro, sol en oscuro)
+ *  ============================================================ */
+.tema-boton {
+    display: inline-grid; place-items: center;
+    width: 34px; height: 34px; padding: 0;
+    border: 1px solid var(--borde); border-radius: 8px;
+    background: var(--superficie); color: var(--texto-2);
+    cursor: pointer;
+}
+.tema-boton:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
+.tema-sol { display: none; }
+:root[data-tema="oscuro"] .tema-sol { display: block; }
+:root[data-tema="oscuro"] .tema-luna { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) .tema-sol { display: block; }
+    :root:not([data-tema="claro"]) .tema-luna { display: none; }
+}
