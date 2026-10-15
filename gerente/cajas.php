@@ -3,6 +3,34 @@ require_once __DIR__ . '/guardia.php';
 
 $ESTADOS_VALIDOS = ['Activa', 'Inactiva', 'Mantenimiento'];
 
+/**
+ * Valida el cajero elegido para una caja y devuelve su id (o null).
+ * Regla: una caja Activa necesita un cajero asignado y en estado Activo.
+ */
+function validarCajeroDeCaja(PDO $pdo, int $idCajero, int $idSucursal, string $estadoCaja): ?int
+{
+    if ($idCajero <= 0) {
+        if ($estadoCaja === 'Activa') {
+            throw new RuntimeException('Una caja activa necesita un cajero asignado. Asígnale uno o márcala como Inactiva o Mantenimiento.');
+        }
+        return null;
+    }
+
+    $check = $pdo->prepare("
+        SELECT estado FROM Usuarios
+        WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
+    ");
+    $check->execute([$idCajero, $idSucursal]);
+    $estadoCajero = $check->fetchColumn();
+    if ($estadoCajero === false) {
+        throw new RuntimeException('El cajero seleccionado no es válido para tu sucursal.');
+    }
+    if ($estadoCaja === 'Activa' && $estadoCajero !== 'Activo') {
+        throw new RuntimeException("El cajero está en estado \"{$estadoCajero}\". Una caja activa necesita un cajero activo.");
+    }
+    return $idCajero;
+}
+
 $errores = [];
 $exito   = '';
 
@@ -39,17 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException('Estado inválido.');
             }
-            if ($idCajero > 0) {
-                $check = $pdo->prepare("
-                    SELECT 1 FROM Usuarios
-                    WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
-                ");
+            $idCajero = validarCajeroDeCaja($pdo, $idCajero, $idSucursalGerente, $estado);
+
+            if ($idCajero !== null) {
+                $check = $pdo->prepare("SELECT numero_caja FROM Cajas WHERE id_cajero_asignado = ? AND id_sucursal = ?");
                 $check->execute([$idCajero, $idSucursalGerente]);
-                if ($check->fetch() === false) {
-                    throw new RuntimeException('El cajero seleccionado no es válido para tu sucursal.');
+                $otraCaja = $check->fetchColumn();
+                if ($otraCaja !== false) {
+                    throw new RuntimeException("Ese cajero ya está asignado a la caja {$otraCaja}. Reasígnalo editando esa caja o elige otro.");
                 }
-            } else {
-                $idCajero = null;
             }
 
             $check = $pdo->prepare("
@@ -107,18 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Caja inválida.');
             }
 
-            if ($idCajero > 0) {
-                $check = $pdo->prepare("
-                    SELECT 1 FROM Usuarios
-                    WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
-                ");
-                $check->execute([$idCajero, $idSucursalGerente]);
-                if ($check->fetch() === false) {
-                    throw new RuntimeException('El cajero seleccionado no es válido para tu sucursal.');
-                }
-            } else {
-                $idCajero = null;
-            }
+            $idCajero = validarCajeroDeCaja($pdo, $idCajero, $idSucursalGerente, $estado);
 
             $check = $pdo->prepare("
                 SELECT 1 FROM Cajas
@@ -132,14 +147,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Desasignar de otra caja + actualizar esta: todo o nada
             $pdo->beginTransaction();
 
-            // Si el cajero ya estaba en OTRA caja, desasignarlo de la anterior
-            if ($idCajero > 0) {
+            // Si el cajero ya estaba en OTRA caja, esa caja se queda sin cajero:
+            // se desasigna y pasa a Inactiva (una caja activa necesita cajero).
+            $mensajeExtra = '';
+            if ($idCajero !== null) {
                 $stmt = $pdo->prepare("
                     UPDATE Cajas
-                    SET id_cajero_asignado = NULL
+                    SET id_cajero_asignado = NULL,
+                        estado = IF(estado = 'Activa', 'Inactiva', estado)
                     WHERE id_cajero_asignado = ? AND id_sucursal = ? AND id_caja <> ?
                 ");
                 $stmt->execute([$idCajero, $idSucursalGerente, $id]);
+                if ($stmt->rowCount() > 0) {
+                    $mensajeExtra = ' Su caja anterior quedó sin cajero e inactiva.';
+                }
             }
 
             $stmt = $pdo->prepare("
@@ -157,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
 
-            $_SESSION['flash'] = ['msg' => 'Caja actualizada correctamente.'];
+            $_SESSION['flash'] = ['msg' => 'Caja actualizada correctamente.' . $mensajeExtra];
             header('Location: cajas.php');
             exit;
 
@@ -169,16 +190,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $check = $pdo->prepare("
-                SELECT estado FROM Cajas
-                WHERE id_caja = ? AND id_sucursal = ?
+                SELECT c.estado, c.id_cajero_asignado
+                FROM Cajas c
+                WHERE c.id_caja = ? AND c.id_sucursal = ?
             ");
             $check->execute([$id, $idSucursalGerente]);
-            $actual = $check->fetchColumn();
-            if ($actual === false) {
+            $caja = $check->fetch();
+            if ($caja === false) {
                 throw new RuntimeException('Caja inválida.');
             }
 
-            $nuevo = $actual === 'Activa' ? 'Inactiva' : 'Activa';
+            $nuevo = $caja['estado'] === 'Activa' ? 'Inactiva' : 'Activa';
+            if ($nuevo === 'Activa') {
+                validarCajeroDeCaja($pdo, (int) $caja['id_cajero_asignado'], $idSucursalGerente, 'Activa');
+            }
             $stmt = $pdo->prepare("UPDATE Cajas SET estado = ? WHERE id_caja = ?");
             $stmt->execute([$nuevo, $id]);
 
@@ -236,6 +261,7 @@ $stmt = $pdo->prepare("
     SELECT c.id_caja, c.numero_caja, c.nombre, c.estado,
            c.id_cajero_asignado,
            u.nombre AS cajero_nombre,
+           u.estado AS cajero_estado,
            c.creado_en,
            (SELECT COUNT(*) FROM Ventas v WHERE v.id_caja = c.id_caja) AS num_ventas,
            (SELECT COALESCE(SUM(v.total), 0) FROM Ventas v
@@ -347,6 +373,11 @@ require __DIR__ . '/header.php';
 
                 <div style="margin-bottom: 0.5rem;">
                     <span class="badge <?= $estadoBadge ?>"><?= htmlspecialchars($c['estado']) ?></span>
+                    <?php if ($esActiva && !$tieneCajero): ?>
+                        <span class="badge badge-danger" title="Asígnale un cajero o desactívala">Sin cajero</span>
+                    <?php elseif ($esActiva && $c['cajero_estado'] !== 'Activo'): ?>
+                        <span class="badge badge-warning" title="El cajero asignado no está activo">Cajero en <?= htmlspecialchars($c['cajero_estado']) ?></span>
+                    <?php endif; ?>
                 </div>
 
                 <div class="caja-cajero <?= $tieneCajero ? '' : 'caja-cajero--vacio' ?>">

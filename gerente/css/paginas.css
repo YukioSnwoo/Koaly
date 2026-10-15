@@ -463,14 +463,105 @@
 /* ============================================================
  *  Ventas de mi sucursal — desgloses y artículos por venta
  *  ============================================================ */
+.ventas-periodo {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1.25rem;
+}
+.ventas-rango { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.ventas-rango label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: #64748b; }
+.ventas-rango input[type="date"] {
+    padding: 0.4rem 0.6rem; border: 1px solid #e2e8f0; border-radius: 8px;
+    font: inherit; font-size: 0.85rem; color: #1e293b; background: #fff;
+}
+
+/* Desgloses: tarjetas con padding propio (el .panel no tiene) en 2 columnas */
 .ventas-desgloses {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
+    align-items: start;
 }
-.ventas-desgloses .panel { margin-bottom: 0; }
-.ventas-desgloses .section-title { font-size: 1rem; margin-bottom: 0.5rem; }
+.desglose {
+    background: #fff;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    padding: 1.1rem 1.25rem 1.2rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+}
+.desglose.is-activo { border-color: #7c3aed; }
+.desglose-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin-bottom: 0.6rem;
+}
+.desglose-head h2 { font-size: 1rem; font-weight: 700; color: #1e293b; }
+.desglose-lista { list-style: none; margin: 0; padding: 0; }
+.desglose-lista li { padding: 0.55rem 0; border-top: 1px solid #f1f5f9; }
+.desglose-lista li:first-child { border-top: 0; }
+.desglose-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto 2.75rem;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+.desglose-lista--top .desglose-fila { grid-template-columns: minmax(0, 1fr) auto; }
+.desglose-lista--top { counter-reset: top; }
+.desglose-lista--top li { counter-increment: top; }
+.desglose-lista--top .desglose-nombre::before {
+    content: counter(top) ". "; color: #94a3b8; font-weight: 600;
+}
+.desglose-nombre {
+    font-weight: 600; color: #334155;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.desglose-nombre small { color: #94a3b8; font-weight: 500; margin-left: 0.35rem; }
+.desglose-num { font-size: 0.82rem; color: #64748b; white-space: nowrap; }
+.desglose-monto { text-align: right; color: #1e293b; white-space: nowrap; }
+.desglose-pct { text-align: right; font-size: 0.82rem; color: #94a3b8; }
+.desglose-barra { height: 4px; background: #f1f5f9; border-radius: 4px; margin-top: 0.4rem; overflow: hidden; }
+.desglose-barra span { display: block; height: 100%; background: #a78bfa; border-radius: 4px; }
+.desglose-vacio { color: #94a3b8; font-size: 0.9rem; }
+
+/* Tabla de ventas: encabezado, agrupación y filtros justo encima */
+.ventas-tabla-head {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.1rem 1.25rem 0.75rem;
+}
+.ventas-tabla-head .section-title { margin-bottom: 0.15rem; }
+.ventas-tabla-head p { font-size: 0.85rem; color: #64748b; }
+.ventas-tabla-head p a { color: #7c3aed; font-weight: 600; }
+
+.segmentado {
+    display: inline-flex; flex-wrap: wrap;
+    border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff;
+}
+.segmentado a {
+    padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 600;
+    color: #475569; text-decoration: none;
+    border-left: 1px solid #e2e8f0;
+}
+.segmentado a:first-child { border-left: 0; }
+.segmentado a:hover { background: #f5f3ff; color: #6d28d9; }
+.segmentado a.is-activo { background: #7c3aed; color: #fff; }
+
+.ventas-filtros { padding: 0 1.25rem; margin-bottom: 1rem; }
+.ventas-filtros select { flex: 1 1 180px; min-width: 0; }
+
+.tabla-productos .num { text-align: right; white-space: nowrap; }
+.fila-grupo td {
+    background: #f5f3ff;
+    color: #5b21b6;
+    border-top: 2px solid #ddd6fe;
+}
+.fila-grupo span { float: right; font-size: 0.85rem; font-weight: 600; }
+
+.ventas-paginacion {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem; color: #64748b;
+}
 
 .venta-articulos summary {
     cursor: pointer;

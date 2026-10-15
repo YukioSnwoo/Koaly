@@ -152,6 +152,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($estado === 'Baja' && $estadoAnterior !== 'Baja'
                 && liberarCajasDeCajero($pdo, $id, $idSucursalGerente) > 0) {
                 $mensajeExito .= ' Sus cajas quedaron inactivas.';
+            } elseif ($estado !== 'Activo' && $estado !== 'Baja') {
+                // Vacaciones, incapacidad o licencia: su caja no puede seguir activa,
+                // pero conserva la asignación para cuando regrese.
+                $stmt = $pdo->prepare("
+                    UPDATE Cajas SET estado = 'Inactiva'
+                    WHERE id_cajero_asignado = ? AND id_sucursal = ? AND estado = 'Activa'
+                ");
+                $stmt->execute([$id, $idSucursalGerente]);
+                if ($stmt->rowCount() > 0) {
+                    $mensajeExito .= ' Su caja quedó inactiva mientras no esté activo.';
+                }
             }
 
             $pdo->commit();
