@@ -1,20 +1,21 @@
 <?php
 /**
  * Correos que recibe el empleado por los movimientos de su cuenta:
- *   - alta: bienvenida con el aviso de privacidad
+ *   - alta: bienvenida con el enlace para leer y aceptar el aviso de privacidad
  *   - cambio de estado: baja (con motivo: renuncia, jubilación...), vacaciones,
  *     incapacidad, licencia o regreso a activo
  *   - contraseña restablecida por el gerente
  *   - cambio del correo de acceso (se avisa a la dirección anterior)
  *
- * El aviso de privacidad sigue la estructura de la Ley Federal de Protección
- * de Datos Personales en Posesión de los Particulares. Los correos van siempre
- * en español: son documentos para el empleado, no textos de la interfaz.
+ * El texto del aviso y su aceptación están en privacidad/ (raíz del sitio).
+ * Los correos van siempre en español: son documentos para el empleado, no
+ * textos de la interfaz.
  *
  * Salen con la cuenta de login/config_correo.php (ver login/correo.php). Si un
  * correo no sale, la acción ya guardada no se deshace: quien llama avisa al gerente.
  */
 require_once __DIR__ . '/../../login/correo.php';
+require_once __DIR__ . '/../../privacidad/aviso.php';
 
 /** Motivos de baja: código => texto del correo. En pantalla se traducen con motivo_baja.<código>. */
 const MOTIVOS_BAJA = [
@@ -50,92 +51,49 @@ function _correoContacto(array $datos): string
     return trim((string) ($datos['sucursal']['email_contacto'] ?? '')) ?: $datos['gerente']['email'];
 }
 
-/** Dirección del inicio de sesión: la raíz del sitio, un nivel arriba de gerente/. */
-function _urlSitio(): string
-{
-    $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off';
-    return ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
-        . rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/', 2)), '/') . '/';
-}
-
 function _firma(array $datos): string
 {
-    return "Atentamente,\n{$datos['gerente']['nombre']}\nGerente de {$datos['sucursal']['nombre']} · Koaly";
+    return "Atentamente,\n{$datos['gerente']['nombre']}\nGerente de {$datos['sucursal']['nombre']} · Koaly\n\n"
+        . 'Aviso de privacidad: ' . urlSitio() . 'privacidad/';
 }
 
 /**
- * Bienvenida con el aviso de privacidad (alta de un empleado).
+ * Bienvenida con el enlace personal para leer y aceptar el aviso de privacidad.
+ * Hasta que lo acepte, el cajero no puede iniciar sesión.
  * @param array $empleado ['nombre', 'email']
  */
-function enviarAvisoPrivacidad(array $empleado, array $datos): bool
+function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos): bool
 {
-    $sucursal  = $datos['sucursal'];
-    $contacto  = _correoContacto($datos);
-    $domicilio = trim((string) ($sucursal['direccion'] ?? ''));
-    $responsable = 'Koaly, a través de ' . $sucursal['nombre'] . ($domicilio !== '' ? " ({$domicilio})" : '');
-    $fecha    = date('d/m/Y');
-    $urlSitio = _urlSitio();
+    $enlace = crearEnlaceAviso($pdo, $idUsuario, AVISO_ENLACE_DIAS * 24);
+    $dias   = AVISO_ENLACE_DIAS;
+    $sitio  = urlSitio();
 
     $texto = <<<TXT
     Hola {$empleado['nombre']}:
 
-    Te damos la bienvenida al equipo de {$sucursal['nombre']}. Ya tienes una cuenta
-    de cajero en el sistema Koaly:
+    Te damos la bienvenida al equipo de {$datos['sucursal']['nombre']}. Ya tienes una
+    cuenta de cajero en el sistema Koaly.
 
-        Dirección: {$urlSitio}
+    Antes de empezar, lee y acepta nuestro aviso de privacidad. Ahí también
+    puedes revisar tus datos en el sistema:
+
+        {$enlace}
+
+    El enlace es personal y vale {$dias} días. Hasta que aceptes el aviso no
+    podrás iniciar sesión en la caja. Si el enlace vence, al iniciar sesión el
+    sistema te dará uno nuevo.
+
+    Para entrar al sistema:
+
+        Dirección: {$sitio}
         Usuario:   {$empleado['email']}
 
-    Tu gerente, {$datos['gerente']['nombre']}, te entregará la contraseña temporal. El
-    sistema te pedirá cambiarla la primera vez que entres.
+    Tu gerente te entregará la contraseña temporal; el sistema te pedirá
+    cambiarla la primera vez que entres.
 
-    Como parte de tu alta, te compartimos nuestro aviso de privacidad.
-
-    ------------------------------------------------------------
-    AVISO DE PRIVACIDAD PARA EMPLEADOS
-    ------------------------------------------------------------
-
-    1. Responsable
-    {$responsable} es responsable del tratamiento de tus datos personales,
-    conforme a la Ley Federal de Protección de Datos Personales en Posesión
-    de los Particulares.
-
-    2. Datos que tratamos
-    Nombre completo, correo electrónico, fecha de contratación, sucursal y
-    caja asignadas, situación laboral (activo, vacaciones, incapacidad,
-    licencia o baja) y el registro de las ventas y movimientos de inventario
-    que realices en el sistema. No tratamos datos personales sensibles.
-
-    3. Para qué los usamos
-    a) Darte acceso al sistema de punto de venta e inventario.
-    b) Asignarte una caja y administrar tu situación laboral (altas, bajas,
-       vacaciones, incapacidades y licencias).
-    c) Registrar y supervisar las ventas, para la operación de la tienda y el
-       control interno.
-    d) Avisarte por correo de los cambios en tu cuenta.
-
-    4. Con quién los compartimos
-    No vendemos ni compartimos tus datos con terceros. Solo los conocen el
-    personal autorizado de la empresa, los proveedores de correo y
-    alojamiento que trabajan por nuestra cuenta y, cuando la ley lo exija,
-    las autoridades competentes.
-
-    5. Cuánto tiempo los conservamos
-    Mientras dure la relación laboral y después, solo el tiempo que exijan
-    las obligaciones legales y fiscales.
-
-    6. Tus derechos (ARCO)
-    Puedes acceder a tus datos, rectificarlos, cancelarlos u oponerte a su
-    uso, así como revocar tu consentimiento. Escribe a {$contacto} con tu
-    nombre, el derecho que quieres ejercer y una copia de tu identificación.
-    Te responderemos en un máximo de 20 días hábiles.
-
-    7. Cambios a este aviso
-    Si este aviso cambia, te lo haremos saber por este mismo medio.
-
-    Fecha del aviso: {$fecha}
     TXT;
 
-    return enviarCorreo($empleado['email'], 'Bienvenida a Koaly y aviso de privacidad', $texto);
+    return enviarCorreo($empleado['email'], 'Bienvenida a Koaly: acepta tu aviso de privacidad', $texto . _firma($datos));
 }
 
 /**
@@ -167,7 +125,7 @@ function enviarAvisoCambioEstado(array $empleado, array $datos, string $estado, 
         $asunto = 'Tu cuenta en Koaly está activa de nuevo';
         $cuerpo = "Te informamos que, a partir del {$fecha}, tu cuenta en el sistema Koaly\n"
             . "está activa de nuevo. Ya puedes iniciar sesión en:\n\n"
-            . "    " . _urlSitio() . "\n\n"
+            . "    " . urlSitio() . "\n\n"
             . "Te damos la bienvenida de regreso.";
     } else {
         // Vacaciones, Incapacidad o Licencia

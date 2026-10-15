@@ -105,11 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, 3, ?, ?, CURDATE(), ?, 1)
             ");
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
+            $idNuevo = (int) $pdo->lastInsertId();
             $mensajeExito = t('cajeros.creado');
 
-            // Bienvenida con el aviso de privacidad
+            // Bienvenida con el enlace para aceptar el aviso de privacidad (sin aceptarlo no entra a la caja)
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            $avisar(enviarAvisoPrivacidad(['nombre' => $nombre, 'email' => $email], $datosCorreo), $email, 'cajeros.aviso_enviado');
+            $avisar(enviarAvisoPrivacidad($pdo, $idNuevo, ['nombre' => $nombre, 'email' => $email], $datosCorreo),
+                $email, 'cajeros.aviso_enviado');
 
         } elseif ($action === 'editar') {
             $id     = (int) ($_POST['id_usuario'] ?? 0);
@@ -239,6 +241,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
             $avisar(enviarAvisoCambioEstado($empleado, $datosCorreo, $nuevo, $nuevo === 'Baja' ? $motivoBaja : null), $empleado['email']);
 
+        } elseif ($action === 'reenviar_aviso') {
+            $id = (int) ($_POST['id_usuario'] ?? 0);
+            $check = $pdo->prepare("
+                SELECT nombre, email, estado FROM Usuarios
+                WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
+            ");
+            $check->execute([$id, $idSucursalGerente]);
+            $empleado = $check->fetch();
+            if ($empleado === false || $empleado['estado'] === 'Baja') {
+                throw new RuntimeException(t('error.cajero_invalido'));
+            }
+            $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
+            if (!enviarAvisoPrivacidad($pdo, $id, $empleado, $datosCorreo)) {
+                throw new RuntimeException(t('cajeros.notificacion_fallo', ['email' => $empleado['email']]));
+            }
+            $mensajeExito = t('cajeros.aviso_enviado', ['email' => $empleado['email']]);
+
         } elseif ($action === 'restablecer_password') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
 
@@ -292,7 +311,9 @@ $stmt = $pdo->prepare("
            COUNT(v.id_venta) AS total_ventas,
            COALESCE(SUM(v.total), 0) AS monto_total,
            (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) ORDER BY c.numero_caja SEPARATOR ', ')
-            FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal) AS cajas
+            FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal) AS cajas,
+           (SELECT MAX(a.aceptado_en) FROM avisos_privacidad a
+            WHERE a.id_usuario = u.id_usuario AND a.version = ? AND a.aceptado_en IS NOT NULL) AS aviso_aceptado
     FROM Usuarios u
     LEFT JOIN Ventas v
            ON v.id_cajero = u.id_usuario AND v.id_sucursal = ?
@@ -301,12 +322,14 @@ $stmt = $pdo->prepare("
     GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado
     ORDER BY u.nombre
 ");
-$stmt->execute([$idSucursalGerente, $idSucursalGerente]);
+$stmt->execute([AVISO_PRIVACIDAD_VERSION, $idSucursalGerente, $idSucursalGerente]);
 $cajeros = $stmt->fetchAll();
 
 $totalActivos = 0;
+$totalSinAviso = 0; // cajeros que no pueden entrar a la caja hasta aceptar el aviso
 foreach ($cajeros as $c) {
     if ($c['estado'] === 'Activo') $totalActivos++;
+    if ($c['estado'] !== 'Baja' && !$c['aviso_aceptado']) $totalSinAviso++;
 }
 
 $pageTitle    = t('cajeros.titulo');
@@ -319,6 +342,9 @@ require __DIR__ . '/header.php';
         <h1><?= e(t('cajeros.titulo')) ?></h1>
         <p>
             <?= e(t('cajeros.resumen', ['activos' => numero($totalActivos), 'total' => numero(count($cajeros))])) ?>
+            <?php if ($totalSinAviso > 0): ?>
+                · <span class="texto-pendiente"><?= e(tn('cajeros.n_sin_aviso', $totalSinAviso)) ?></span>
+            <?php endif; ?>
         </p>
     </div>
     <button type="button" class="btn btn-primary" onclick="abrirModalNuevoCajero()">+ <?= e(t('cajeros.nuevo')) ?></button>
@@ -379,6 +405,24 @@ require __DIR__ . '/header.php';
                         <dt><?= e(t('cajeros.contratado')) ?></dt>
                         <dd><?= e(fecha($c['fecha_contratacion'], false)) ?></dd>
                     </div>
+                    <?php if ($c['estado'] !== 'Baja'): ?>
+                        <div>
+                            <dt><?= e(t('cajeros.aviso')) ?></dt>
+                            <?php if ($c['aviso_aceptado']): ?>
+                                <dd class="texto-ok"><?= e(t('cajeros.aviso_aceptado', ['fecha' => fecha($c['aviso_aceptado'], false)])) ?></dd>
+                            <?php else: ?>
+                                <dd>
+                                    <form method="POST" class="cajero-aviso-pendiente">
+                                        <input type="hidden" name="action" value="reenviar_aviso">
+                                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                                        <input type="hidden" name="id_usuario" value="<?= $id ?>">
+                                        <span class="badge badge-warning" title="<?= e(t('cajeros.aviso_pendiente_ayuda')) ?>"><?= e(t('cajeros.aviso_pendiente')) ?></span>
+                                        <button type="submit" class="enlace-boton"><?= e(t('cajeros.reenviar_aviso')) ?></button>
+                                    </form>
+                                </dd>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!$esActivo): ?>
                         <div>
                             <dt><?= e(t('cajeros.estado_desde')) ?></dt>

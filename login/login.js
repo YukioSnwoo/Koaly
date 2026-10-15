@@ -171,6 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ocupado(boton, true, 'Ingresando…');
         const resultado = await api({ action: 'login', email, password });
 
+        // Cajero que aún no acepta el aviso de privacidad: primero lo lee y lo acepta
+        if (resultado.requiere_aviso && resultado.enlace) {
+            mostrarMensaje(caja, 'success', resultado.message);
+            setTimeout(() => { window.location.href = resultado.enlace; }, 1200);
+            return;
+        }
+
         if (!resultado.success) {
             ocupado(boton, false);
             $('loginPassword').value = '';
