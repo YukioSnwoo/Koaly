@@ -1,6 +1,6 @@
 <?php
 // Textos del panel del gerente — Español.
-// es.php y en.php deben tener exactamente las mismas claves.
+// es.php, en.php y fr.php deben tener exactamente las mismas claves.
 // Plurales: [singular, plural]. Variables: {nombre}.
 return [
 
@@ -225,23 +225,21 @@ return [
     'mov.csv_archivo' => 'movimientos',
 
     // cat
+    'cat.tab_todos' => 'Todos',
+    'cat.tab_en_sucursal' => 'En la sucursal',
+    'cat.tab_por_agregar' => 'Por agregar',
+    'cat.tab_no_disponibles' => 'No disponibles',
+    'cat.filtro_categorias' => 'Todas las categorías',
+    'cat.disponible' => 'Disponible',
+    'cat.sin_resultados' => 'No hay productos que coincidan con los filtros.',
     'cat.titulo' => 'Catálogo',
     'cat.subtitulo' => 'Productos de la cadena. Los productos nuevos se solicitan al administrador.',
     'cat.solicitar' => 'Solicitar producto',
-    'cat.filtro_aria' => 'Filtrar por inventario',
-    'cat.filtro_todos' => 'Todos los productos',
-    'cat.filtro_con' => 'En el inventario de la sucursal',
-    'cat.filtro_sin' => 'Fuera del inventario de la sucursal',
-    'cat.col_imagen' => 'Imagen',
+    'cat.filtro_aria' => 'Filtrar productos',
     'cat.col_categoria' => 'Categoría',
-    'cat.col_precio' => 'Precio de catálogo (IVA incl.)',
-    'cat.col_inventario' => 'Inventario',
     'cat.col_estado' => 'Estado',
-    'cat.col_acciones' => 'Acciones',
     'cat.col_precio_sugerido' => 'Precio sugerido',
-    'cat.col_proveedor' => 'Proveedor',
     'cat.vacio' => 'No hay productos registrados.',
-    'cat.no_en_inventario' => 'Fuera del inventario',
     'cat.sin_estado' => 'Sin estado',
     'cat.ver_ficha' => 'Ver ficha',
     'cat.agregar_inventario' => 'Agregar al inventario',

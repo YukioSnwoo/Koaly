@@ -143,6 +143,29 @@ $badgeEstadoProducto = [
     'Proximamente'  => 'badge-warning',
 ];
 
+// Cada producto cae en un grupo para las pestañas: en la sucursal, por agregar o no disponible
+$conteos = ['todos' => count($productos), 'con' => 0, 'agregar' => 0, 'no' => 0];
+foreach ($productos as &$p) {
+    $p['grupo'] = $p['en_inventario'] ? 'con' : ($p['estado'] === 'Activo' ? 'agregar' : 'no');
+    $conteos[$p['grupo']]++;
+}
+unset($p);
+
+$pestanas = [
+    'todos'   => t('cat.tab_todos'),
+    'con'     => t('cat.tab_en_sucursal'),
+    'agregar' => t('cat.tab_por_agregar'),
+    'no'      => t('cat.tab_no_disponibles'),
+];
+
+$iniciales = static function (string $nombre): string {
+    $ini = '';
+    foreach (array_slice(preg_split('/\s+/', trim($nombre)), 0, 2) as $palabra) {
+        $ini .= mb_strtoupper(mb_substr($palabra, 0, 1));
+    }
+    return $ini ?: '?';
+};
+
 $pageTitle    = t('cat.titulo');
 $showBackLink = true;
 require __DIR__ . '/header.php';
@@ -165,168 +188,153 @@ require __DIR__ . '/header.php';
     <div class="alert alert-error"><?= e($error) ?></div>
 <?php endforeach; ?>
 
-<div class="toolbar">
-    <input type="search" id="buscarProducto" placeholder="<?= e(t('exist.buscar')) ?>" aria-label="<?= e(t('exist.buscar')) ?>">
-    <select id="filtroInventario" aria-label="<?= e(t('cat.filtro_aria')) ?>">
-        <option value="todos"><?= e(t('cat.filtro_todos')) ?></option>
-        <option value="con"><?= e(t('cat.filtro_con')) ?></option>
-        <option value="sin"><?= e(t('cat.filtro_sin')) ?></option>
-    </select>
-</div>
-
-<div class="panel">
-    <div class="tabla-scroll">
-        <table class="tabla-productos" id="tablaProductos">
-            <thead>
-                <tr>
-                    <th><?= e(t('cat.col_imagen')) ?></th>
-                    <th><?= e(t('mov.codigo')) ?></th>
-                    <th><?= e(t('comun.producto')) ?></th>
-                    <th><?= e(t('cat.col_categoria')) ?></th>
-                    <th class="num"><?= e(t('cat.col_precio')) ?></th>
-                    <th><?= e(t('cat.col_inventario')) ?></th>
-                    <th><?= e(t('cat.col_estado')) ?></th>
-                    <th><?= e(t('cat.col_acciones')) ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($productos)): ?>
-                    <tr>
-                        <td colspan="8" class="empty-state"><?= e(t('cat.vacio')) ?></td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($productos as $p): ?>
-                        <?php
-                            $stock = (int) $p['stock_sucursal'];
-                            $enInventario = (bool) $p['en_inventario'];
-                            if (!$enInventario) {
-                                [$stockBadge, $stockTexto] = ['badge-inactivo', t('cat.no_en_inventario')];
-                            } else {
-                                [$stockBadge, $stockTexto] = badgeStock($stock);
-                            }
-                            $estado = (string) $p['estado'];
-                        ?>
-                        <tr data-nombre="<?= e(mb_strtolower($p['nombre'] . ' ' . $p['codigo'])) ?>"
-                            data-en-inventario="<?= $enInventario ? '1' : '0' ?>">
-                            <td>
-                                <?php if (!empty($p['imagen'])): ?>
-                                    <img class="producto-thumb" src="../<?= e($p['imagen']) ?>" alt="" loading="lazy">
-                                <?php else: ?>
-                                    <div class="producto-thumb producto-thumb--placeholder"><?= e(t('comun.sin_imagen')) ?></div>
-                                <?php endif; ?>
-                            </td>
-                            <td><?= e($p['codigo']) ?></td>
-                            <td>
-                                <div class="producto-nombre"><?= e($p['nombre']) ?></div>
-                                <?php if (!empty($p['descripcion'])): ?>
-                                    <div class="producto-desc"><?= e($p['descripcion']) ?></div>
-                                <?php endif; ?>
-                            </td>
-                            <td><?= e($p['nombre_categoria'] ?? t('comun.sin_categoria')) ?></td>
-                            <td class="num"><?= dinero($p['precio']) ?></td>
-                            <td><span class="badge <?= $stockBadge ?>"><?= e($stockTexto) ?></span></td>
-                            <td>
-                                <span class="badge <?= $badgeEstadoProducto[$estado] ?? 'badge-inactivo' ?>">
-                                    <?= e(isset($badgeEstadoProducto[$estado]) ? t('estado_producto.' . $estado) : t('cat.sin_estado')) ?>
-                                </span>
-                            </td>
-                            <td>
-                                <div class="acciones">
-                                    <?php if ($enInventario): ?>
-                                        <a class="btn btn-ghost btn-sm" href="producto.php?id=<?= (int) $p['id_producto'] ?>"><?= e(t('cat.ver_ficha')) ?></a>
-                                    <?php elseif ($estado === 'Activo'): ?>
-                                        <button type="button" class="btn btn-success btn-sm"
-                                                onclick="abrirModalAgregarInventario(this)"
-                                                data-id="<?= (int) $p['id_producto'] ?>"
-                                                data-nombre="<?= e($p['nombre']) ?>"
-                                                data-codigo="<?= e($p['codigo']) ?>"
-                                                data-categoria="<?= e($p['nombre_categoria'] ?? t('comun.sin_categoria')) ?>"
-                                                data-precio="<?= e((string) $p['precio']) ?>">
-                                            + <?= e(t('cat.agregar_inventario')) ?>
-                                        </button>
-                                    <?php else: ?>
-                                        <span class="texto-tenue" style="font-size:0.85rem;"><?= e(t('cat.no_disponible')) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+<?php if (empty($productos)): ?>
+    <div class="panel"><div class="empty-state"><?= e(t('cat.vacio')) ?></div></div>
+<?php else: ?>
+    <div class="catalogo-barra">
+        <div class="segmentado" role="group" aria-label="<?= e(t('cat.filtro_aria')) ?>" id="pestanasCatalogo">
+            <?php foreach ($pestanas as $clave => $texto): ?>
+                <button type="button" data-grupo="<?= $clave ?>" class="<?= $clave === 'todos' ? 'is-activo' : '' ?>"
+                        aria-pressed="<?= $clave === 'todos' ? 'true' : 'false' ?>">
+                    <?= e($texto) ?> <span class="segmentado-conteo"><?= numero($conteos[$clave]) ?></span>
+                </button>
+            <?php endforeach; ?>
+        </div>
+        <div class="toolbar catalogo-filtros">
+            <input type="search" id="buscarCatalogo" placeholder="<?= e(t('exist.buscar')) ?>" aria-label="<?= e(t('exist.buscar')) ?>">
+            <select id="filtroCategoria" aria-label="<?= e(t('cat.col_categoria')) ?>">
+                <option value=""><?= e(t('cat.filtro_categorias')) ?></option>
+                <?php foreach ($categorias as $c): ?>
+                    <option value="<?= (int) $c['id_categoria'] ?>"><?= e($c['nombre_categoria']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
     </div>
-</div>
+
+    <div class="producto-grid" id="gridCatalogo">
+        <?php foreach ($productos as $p): ?>
+            <?php
+                $estado = (string) $p['estado'];
+                $id     = (int) $p['id_producto'];
+                if ($p['grupo'] === 'con') {
+                    [$etiquetaClase, $etiquetaTexto] = badgeStock((int) $p['stock_sucursal']);
+                } elseif ($p['grupo'] === 'agregar') {
+                    [$etiquetaClase, $etiquetaTexto] = ['badge-metodo', t('cat.disponible')];
+                } else {
+                    [$etiquetaClase, $etiquetaTexto] = [
+                        $badgeEstadoProducto[$estado] ?? 'badge-inactivo',
+                        isset($badgeEstadoProducto[$estado]) ? t('estado_producto.' . $estado) : t('cat.sin_estado'),
+                    ];
+                }
+            ?>
+            <article class="producto-card catalogo-card <?= $p['grupo'] === 'no' ? 'is-inactivo' : '' ?>"
+                     data-grupo="<?= $p['grupo'] ?>"
+                     data-categoria="<?= (int) $p['id_categoria'] ?>"
+                     data-nombre="<?= e(mb_strtolower($p['nombre'] . ' ' . $p['codigo'] . ' ' . ($p['descripcion'] ?? ''))) ?>">
+                <div class="producto-card-imagen">
+                    <?php if (!empty($p['imagen'])): ?>
+                        <img src="../<?= e($p['imagen']) ?>" alt="" loading="lazy">
+                    <?php else: ?>
+                        <span aria-hidden="true"><?= e($iniciales($p['nombre'])) ?></span>
+                    <?php endif; ?>
+                    <span class="badge <?= $etiquetaClase ?> producto-card-stock"><?= e($etiquetaTexto) ?></span>
+                </div>
+                <div class="producto-card-cuerpo">
+                    <h3 class="producto-card-nombre">
+                        <?php if ($p['grupo'] === 'con'): ?>
+                            <a href="producto.php?id=<?= $id ?>"><?= e($p['nombre']) ?></a>
+                        <?php else: ?>
+                            <?= e($p['nombre']) ?>
+                        <?php endif; ?>
+                    </h3>
+                    <span class="producto-card-meta"><?= e($p['codigo']) ?> · <?= e($p['nombre_categoria'] ?? t('comun.sin_categoria')) ?></span>
+                    <?php if (!empty($p['descripcion'])): ?>
+                        <p class="catalogo-card-desc"><?= e($p['descripcion']) ?></p>
+                    <?php endif; ?>
+                    <div class="producto-card-pie">
+                        <span class="catalogo-precio">
+                            <small><?= e(t('prod.precio_catalogo')) ?></small>
+                            <strong><?= dinero($p['precio']) ?></strong>
+                        </span>
+                        <?php if ($p['grupo'] === 'con'): ?>
+                            <a class="btn btn-ghost btn-sm" href="producto.php?id=<?= $id ?>"><?= e(t('cat.ver_ficha')) ?></a>
+                        <?php elseif ($p['grupo'] === 'agregar'): ?>
+                            <button type="button" class="btn btn-primary btn-sm"
+                                    onclick="abrirModalAgregarInventario(this)"
+                                    data-id="<?= $id ?>"
+                                    data-nombre="<?= e($p['nombre']) ?>"
+                                    data-codigo="<?= e($p['codigo']) ?>"
+                                    data-categoria="<?= e($p['nombre_categoria'] ?? t('comun.sin_categoria')) ?>"
+                                    data-precio="<?= e((string) $p['precio']) ?>">
+                                + <?= e(t('comun.agregar')) ?>
+                            </button>
+                        <?php else: ?>
+                            <span class="texto-tenue catalogo-no-disponible"><?= e(t('cat.no_disponible')) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+    <div class="panel" id="catalogoSinResultados" hidden>
+        <div class="empty-state"><?= e(t('cat.sin_resultados')) ?></div>
+    </div>
+<?php endif; ?>
 
 
 <!-- ============================================================
      Solicitudes de producto de la sucursal
      ============================================================ -->
-<section style="margin-top: 2rem;">
-    <h2 class="section-title">
-        <?= e(t('cat.solicitudes')) ?>
-        <?php if ($totalSolicitudesPendientes > 0): ?>
-            <span class="badge badge-warning" style="margin-left: 0.5rem;">
-                <?= e(tn('cat.n_pendientes', $totalSolicitudesPendientes)) ?>
-            </span>
-        <?php endif; ?>
-    </h2>
+<section class="panel catalogo-solicitudes">
+    <div class="panel-encabezado">
+        <h2 class="section-title">
+            <?= e(t('cat.solicitudes')) ?>
+            <?php if ($totalSolicitudesPendientes > 0): ?>
+                <span class="badge badge-warning"><?= e(tn('cat.n_pendientes', $totalSolicitudesPendientes)) ?></span>
+            <?php endif; ?>
+        </h2>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="abrirModalSolicitarProducto()">+ <?= e(t('cat.solicitar')) ?></button>
+    </div>
 
     <?php if (empty($solicitudes)): ?>
-        <div class="panel">
-            <div class="empty-state"><?= e(t('cat.solicitudes_vacio')) ?></div>
-        </div>
+        <div class="empty-state"><?= e(t('cat.solicitudes_vacio')) ?></div>
     <?php else: ?>
-        <div class="panel">
-            <div class="tabla-scroll">
-                <table class="tabla-productos">
-                    <thead>
-                        <tr>
-                            <th><?= e(t('comun.fecha')) ?></th>
-                            <th><?= e(t('comun.producto')) ?></th>
-                            <th><?= e(t('cat.col_categoria')) ?></th>
-                            <th class="num"><?= e(t('cat.col_precio_sugerido')) ?></th>
-                            <th><?= e(t('cat.col_proveedor')) ?></th>
-                            <th><?= e(t('cat.col_estado')) ?></th>
-                            <th><?= e(t('mov.detalle')) ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($solicitudes as $s): ?>
-                            <tr>
-                                <td><?= e(fecha($s['creado_en'])) ?></td>
-                                <td>
-                                    <div class="producto-nombre"><?= e($s['nombre_producto']) ?></div>
-                                    <?php if (!empty($s['descripcion'])): ?>
-                                        <div class="producto-desc"><?= e($s['descripcion']) ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= e($s['nombre_categoria'] ?? t('comun.sin_categoria')) ?></td>
-                                <td class="num"><?= dinero($s['precio_sugerido']) ?></td>
-                                <td><?= !empty($s['proveedor_sugerido']) ? e($s['proveedor_sugerido']) : '<span class="texto-tenue">—</span>' ?></td>
-                                <td>
-                                    <?php if ($s['estado'] === 'Aprobada'): ?>
-                                        <span class="badge badge-activo"><?= e(t('solicitud.Aprobada')) ?></span>
-                                    <?php elseif ($s['estado'] === 'Rechazada'): ?>
-                                        <span class="badge badge-danger"><?= e(t('solicitud.Rechazada')) ?></span>
-                                    <?php else: ?>
-                                        <span class="badge badge-inactivo"><?= e(t('solicitud.Pendiente')) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="font-size:0.85rem;">
-                                    <?php if ($s['estado'] === 'Rechazada' && !empty($s['motivo_rechazo'])): ?>
-                                        <span class="texto-peligro"><?= e($s['motivo_rechazo']) ?></span>
-                                    <?php elseif ($s['estado'] === 'Aprobada'): ?>
-                                        <span class="texto-ok"><?= e(t('cat.solicitud_creada', ['id' => (int) $s['id_producto_creado']])) ?></span>
-                                    <?php else: ?>
-                                        <span class="texto-tenue"><?= e(t('cat.en_revision')) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <ul class="solicitudes-lista">
+            <?php foreach ($solicitudes as $s): ?>
+                <?php
+                    $estadoSol = in_array($s['estado'], ['Aprobada', 'Rechazada'], true) ? $s['estado'] : 'Pendiente';
+                    $claseSol = ['Aprobada' => 'badge-activo', 'Rechazada' => 'badge-danger', 'Pendiente' => 'badge-warning'][$estadoSol];
+                ?>
+                <li class="solicitud">
+                    <div class="solicitud-principal">
+                        <span class="badge <?= $claseSol ?>"><?= e(t('solicitud.' . $estadoSol)) ?></span>
+                        <div>
+                            <strong><?= e($s['nombre_producto']) ?></strong>
+                            <span class="texto-tenue">
+                                · <?= e($s['nombre_categoria'] ?? t('comun.sin_categoria')) ?>
+                                · <?= e(t('cat.col_precio_sugerido')) ?>: <?= dinero($s['precio_sugerido']) ?>
+                                <?php if (!empty($s['proveedor_sugerido'])): ?>
+                                    · <?= e($s['proveedor_sugerido']) ?>
+                                <?php endif; ?>
+                            </span>
+                            <?php if (!empty($s['descripcion'])): ?>
+                                <p class="solicitud-desc"><?= e($s['descripcion']) ?></p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="solicitud-estado">
+                        <span class="texto-tenue"><?= e(fecha($s['creado_en'])) ?></span>
+                        <?php if ($estadoSol === 'Rechazada' && !empty($s['motivo_rechazo'])): ?>
+                            <span class="texto-peligro"><?= e($s['motivo_rechazo']) ?></span>
+                        <?php elseif ($estadoSol === 'Aprobada'): ?>
+                            <span class="texto-ok"><?= e(t('cat.solicitud_creada', ['id' => (int) $s['id_producto_creado']])) ?></span>
+                        <?php else: ?>
+                            <span class="texto-tenue"><?= e(t('cat.en_revision')) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
     <?php endif; ?>
 </section>
 

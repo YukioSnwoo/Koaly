@@ -1,6 +1,6 @@
 <?php
 // Textos del panel del gerente — English.
-// es.php y en.php deben tener exactamente las mismas claves.
+// es.php, en.php y fr.php deben tener exactamente las mismas claves.
 // Plurales: [singular, plural]. Variables: {nombre}.
 return [
 
@@ -225,23 +225,21 @@ return [
     'mov.csv_archivo' => 'movements',
 
     // cat
+    'cat.tab_todos' => 'All',
+    'cat.tab_en_sucursal' => 'In this branch',
+    'cat.tab_por_agregar' => 'Available to add',
+    'cat.tab_no_disponibles' => 'Unavailable',
+    'cat.filtro_categorias' => 'All categories',
+    'cat.disponible' => 'Available',
+    'cat.sin_resultados' => 'No products match the filters.',
     'cat.titulo' => 'Catalog',
     'cat.subtitulo' => 'Chain-wide products. New products are requested from the administrator.',
     'cat.solicitar' => 'Request product',
-    'cat.filtro_aria' => 'Filter by inventory',
-    'cat.filtro_todos' => 'All products',
-    'cat.filtro_con' => 'In branch inventory',
-    'cat.filtro_sin' => 'Not in branch inventory',
-    'cat.col_imagen' => 'Image',
+    'cat.filtro_aria' => 'Filter products',
     'cat.col_categoria' => 'Category',
-    'cat.col_precio' => 'Catalog price (VAT incl.)',
-    'cat.col_inventario' => 'Inventory',
     'cat.col_estado' => 'Status',
-    'cat.col_acciones' => 'Actions',
     'cat.col_precio_sugerido' => 'Suggested price',
-    'cat.col_proveedor' => 'Supplier',
     'cat.vacio' => 'No products registered.',
-    'cat.no_en_inventario' => 'Not in inventory',
     'cat.sin_estado' => 'No status',
     'cat.ver_ficha' => 'View details',
     'cat.agregar_inventario' => 'Add to inventory',

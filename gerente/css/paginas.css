@@ -801,3 +801,63 @@
     display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
     padding: 1.1rem 1rem 1.25rem; font-size: 0.85rem;
 }
+
+
+/* ============================================================
+ *  Catálogo — pestañas, tarjetas y solicitudes
+ *  ============================================================ */
+.catalogo-barra {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1.25rem;
+}
+.catalogo-filtros { margin-bottom: 0; flex: 1 1 320px; justify-content: flex-end; }
+.catalogo-filtros input { max-width: 320px; }
+
+/* .segmentado también acepta <button> (antes solo <a>) */
+.segmentado button {
+    padding: 0.45rem 0.85rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: #475569; background: transparent; border: 0; border-left: 1px solid #e2e8f0;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
+}
+.segmentado button:first-child { border-left: 0; }
+.segmentado button:hover { background: #f5f3ff; color: #6d28d9; }
+.segmentado button.is-activo { background: #7c3aed; color: #fff; }
+.segmentado-conteo {
+    font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    background: #f1f5f9; color: #475569; border-radius: 999px; padding: 0.05rem 0.45rem;
+}
+.segmentado button.is-activo .segmentado-conteo { background: rgba(255,255,255,0.22); color: #fff; }
+
+.catalogo-card { cursor: default; }
+.catalogo-card .producto-card-nombre { font-size: 0.98rem; }
+.catalogo-card .producto-card-nombre a { color: inherit; text-decoration: none; }
+.catalogo-card .producto-card-nombre a:hover { color: #6d28d9; text-decoration: underline; }
+.catalogo-card-desc {
+    font-size: 0.8rem; color: #64748b; margin-top: 0.15rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.catalogo-precio { display: flex; flex-direction: column; line-height: 1.2; }
+.catalogo-precio small { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+.catalogo-precio strong { font-size: 1.05rem; color: #1e293b; font-variant-numeric: tabular-nums; }
+.catalogo-no-disponible { font-size: 0.8rem; }
+
+.catalogo-solicitudes { margin-top: 2rem; }
+.catalogo-solicitudes .section-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0; }
+.solicitudes-lista { list-style: none; margin: 0; padding: 0 1.25rem 0.5rem; }
+.solicitud {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem;
+    padding: 0.85rem 0; border-top: 1px solid #f1f5f9;
+}
+.solicitud:first-child { border-top: 0; }
+.solicitud-principal { display: flex; gap: 0.75rem; align-items: flex-start; min-width: 0; flex: 1 1 320px; }
+.solicitud-principal strong { color: #1e293b; }
+.solicitud-desc { font-size: 0.82rem; color: #64748b; margin-top: 0.15rem; }
+.solicitud-estado {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem;
+    font-size: 0.82rem; text-align: right;
+}
+@media (max-width: 640px) {
+    .solicitud-estado { align-items: flex-start; text-align: left; }
+    .catalogo-filtros { justify-content: stretch; }
+    .catalogo-filtros input { max-width: none; }
+}

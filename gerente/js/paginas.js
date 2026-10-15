@@ -496,26 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCustomSelects();
 
     // Productos — filtro
-    const buscador = document.getElementById('buscarProducto');
-    const filtroInv = document.getElementById('filtroInventario');
-    if (buscador || filtroInv) {
-        const aplicarFiltroProductos = () => {
-            const q = buscador ? buscador.value.trim().toLowerCase() : '';
-            const tipo = filtroInv ? filtroInv.value : 'todos';
-
-            document.querySelectorAll('#tablaProductos tbody tr[data-nombre]').forEach(row => {
-                const coincideNombre = row.dataset.nombre.includes(q);
-                const enInv = row.dataset.enInventario === '1';
-                let coincideTipo = true;
-                if (tipo === 'con') coincideTipo = enInv;
-                else if (tipo === 'sin') coincideTipo = !enInv;
-
-                row.style.display = (coincideNombre && coincideTipo) ? '' : 'none';
-            });
-        };
-        if (buscador) buscador.addEventListener('input', aplicarFiltroProductos);
-        if (filtroInv) filtroInv.addEventListener('change', aplicarFiltroProductos);
-    }
+    initFiltrosCatalogo();
 
     // Existencias
     initFiltrosExistencias();
@@ -600,4 +581,44 @@ function initScrollInfinito() {
             observador.observe(zona);
         }
     });
+}
+
+
+/* ============================================================
+ * ██ CATÁLOGO — Pestañas (grupo), búsqueda y categoría
+ * ============================================================ */
+function initFiltrosCatalogo() {
+    const grid = document.getElementById('gridCatalogo');
+    if (!grid) return;
+
+    const pestanas  = document.querySelectorAll('#pestanasCatalogo [data-grupo]');
+    const buscador  = document.getElementById('buscarCatalogo');
+    const categoria = document.getElementById('filtroCategoria');
+    const vacio     = document.getElementById('catalogoSinResultados');
+    let grupo = 'todos';
+
+    const aplicar = () => {
+        const q = buscador ? buscador.value.trim().toLowerCase() : '';
+        const cat = categoria ? categoria.value : '';
+        let visibles = 0;
+        grid.querySelectorAll('.catalogo-card').forEach(card => {
+            const visible = (grupo === 'todos' || card.dataset.grupo === grupo)
+                && (!cat || card.dataset.categoria === cat)
+                && card.dataset.nombre.includes(q);
+            card.hidden = !visible;
+            if (visible) visibles++;
+        });
+        if (vacio) vacio.hidden = visibles > 0;
+    };
+
+    pestanas.forEach(btn => btn.addEventListener('click', () => {
+        grupo = btn.dataset.grupo;
+        pestanas.forEach(b => {
+            b.classList.toggle('is-activo', b === btn);
+            b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+        });
+        aplicar();
+    }));
+    if (buscador)  buscador.addEventListener('input', aplicar);
+    if (categoria) categoria.addEventListener('change', aplicar);
 }
