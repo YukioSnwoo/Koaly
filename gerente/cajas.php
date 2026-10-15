@@ -489,7 +489,7 @@ require __DIR__ . '/header.php';
                     <?php endforeach; ?>
                 </select>
                 <div id="avisoReasignacion" class="aviso-reasignacion" aria-live="polite"></div>
-                <small style="display:block; color: #64748b; font-size:0.75rem; margin-top:0.3rem;">
+                <small class="texto-tenue" style="display:block; font-size:0.75rem; margin-top:0.3rem;">
                     <?= e(t('cajas.campo_cajero_ayuda')) ?>
                 </small>
             </div>

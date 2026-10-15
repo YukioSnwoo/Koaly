@@ -398,7 +398,7 @@ require __DIR__ . '/header.php';
             <div class="form-group" id="grupoPassword">
                 <label><?= e(t('cajeros.password_temporal')) ?></label>
                 <input type="text" name="password" placeholder="<?= e(t('cajeros.campo_password_ej')) ?>" minlength="8">
-                <small style="display:block; color: #64748b; font-size:0.75rem; margin-top:0.3rem;">
+                <small class="texto-tenue" style="display:block; font-size:0.75rem; margin-top:0.3rem;">
                     <?= e(t('cajeros.campo_password_ayuda')) ?>
                 </small>
             </div>

@@ -11,6 +11,9 @@ return [
     // sesion
     'sesion.cerrar' => 'Log out',
 
+    // tema
+    'tema.cambiar' => 'Change theme',
+
     // idioma
     'idioma.cambiar' => 'Change language',
 
@@ -397,6 +400,8 @@ return [
     'cajeros.campo_fecha' => 'Hire date',
 
     // js
+    'js.tema_a_oscuro' => 'Switch to dark mode',
+    'js.tema_a_claro' => 'Switch to light mode',
     'js.aceptar' => 'OK',
     'js.cancelar' => 'Cancel',
     'js.confirmar_titulo' => 'Confirm action',

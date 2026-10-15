@@ -211,3 +211,36 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
 });
+
+
+/* ============================================================
+ * Tema claro / oscuro
+ * <html data-tema="claro|oscuro"> si el usuario eligió; si no, sigue
+ * al sistema (prefers-color-scheme). La elección se guarda por navegador.
+ * ============================================================ */
+const CLAVE_TEMA = 'koalicius-gerente-tema';
+
+function temaActual() {
+    const elegido = document.documentElement.getAttribute('data-tema');
+    if (elegido) return elegido;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+}
+
+function actualizarBotonTema() {
+    const boton = document.getElementById('botonTema');
+    if (!boton) return;
+    const etiqueta = temaActual() === 'oscuro' ? tj('tema_a_claro') : tj('tema_a_oscuro');
+    boton.setAttribute('aria-label', etiqueta);
+    boton.title = etiqueta;
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#botonTema')) return;
+    const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
+    document.documentElement.setAttribute('data-tema', nuevo);
+    try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
+    actualizarBotonTema();
+});
+
+document.addEventListener('DOMContentLoaded', actualizarBotonTema);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);

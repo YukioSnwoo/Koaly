@@ -11,6 +11,9 @@ return [
     // sesion
     'sesion.cerrar' => 'Cerrar sesión',
 
+    // tema
+    'tema.cambiar' => 'Cambiar tema',
+
     // idioma
     'idioma.cambiar' => 'Cambiar idioma',
 
@@ -397,6 +400,8 @@ return [
     'cajeros.campo_fecha' => 'Fecha de contratación',
 
     // js
+    'js.tema_a_oscuro' => 'Cambiar a modo oscuro',
+    'js.tema_a_claro' => 'Cambiar a modo claro',
     'js.aceptar' => 'Aceptar',
     'js.cancelar' => 'Cancelar',
     'js.confirmar_titulo' => 'Confirmar acción',
