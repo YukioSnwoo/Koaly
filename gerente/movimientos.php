@@ -6,7 +6,9 @@ require_once __DIR__ . '/includes/csv.php';
 const MOVIMIENTOS_POR_PAGINA = 50;
 
 /* ============================================================
- * Filtros: producto, tipo y rango de fechas (por defecto 30 días)
+ * Filtros: categoría del producto, producto, tipo de movimiento y fechas
+ * (por defecto 30 días). La categoría es la misma de Productos; el tipo
+ * de movimiento (venta, compra, merma...) es otra cosa y se llama así.
  * ============================================================ */
 $hoy = new DateTimeImmutable('today');
 
@@ -21,14 +23,22 @@ if ($desde > $hasta) {
     [$desde, $hasta] = [$hasta, $desde];
 }
 
+$categorias = array_column(
+    $pdo->query("SELECT id_categoria, nombre_categoria FROM Categorias ORDER BY nombre_categoria")->fetchAll(),
+    'nombre_categoria', 'id_categoria'
+);
+$idCategoria = (int) ($_GET['categoria'] ?? 0);
+if (!isset($categorias[$idCategoria])) $idCategoria = 0;
+
+// Productos de la sucursal; con una categoría elegida, solo los de esa categoría
 $stmt = $pdo->prepare("
     SELECT p.id_producto, p.nombre
     FROM Inventario_Sucursal i
     INNER JOIN Productos p ON p.id_producto = i.id_producto
-    WHERE i.id_sucursal = ?
+    WHERE i.id_sucursal = ? AND (? = 0 OR p.id_categoria = ?)
     ORDER BY p.nombre
 ");
-$stmt->execute([$idSucursalGerente]);
+$stmt->execute([$idSucursalGerente, $idCategoria, $idCategoria]);
 $productos = array_column($stmt->fetchAll(), 'nombre', 'id_producto');
 
 $idProducto = (int) ($_GET['producto'] ?? 0);
@@ -42,6 +52,9 @@ $params = [$idSucursalGerente, $desde->format('Y-m-d 00:00:00'), $hasta->modify(
 if ($idProducto > 0) {
     $where .= " AND m.id_producto = ?";
     $params[] = $idProducto;
+} elseif ($idCategoria > 0) {
+    $where .= " AND m.id_producto IN (SELECT id_producto FROM Productos WHERE id_categoria = ?)";
+    $params[] = $idCategoria;
 }
 if ($tipo !== '') {
     $where .= " AND m.tipo_movimiento = ?";
@@ -51,11 +64,12 @@ if ($tipo !== '') {
 $selectMovimientos = "
     SELECT m.fecha_hora, m.tipo_movimiento, m.cantidad, m.existencia_posterior,
            m.motivo_detalle, m.id_producto,
-           p.nombre AS producto, p.codigo,
+           p.nombre AS producto, p.codigo, c.nombre_categoria,
            u.nombre AS usuario
     FROM Movimientos_Inventario m
-    INNER JOIN Productos p ON p.id_producto = m.id_producto
-    LEFT JOIN Usuarios u   ON u.id_usuario = m.realizado_por
+    INNER JOIN Productos p  ON p.id_producto = m.id_producto
+    LEFT JOIN Categorias c  ON c.id_categoria = p.id_categoria
+    LEFT JOIN Usuarios u    ON u.id_usuario = m.realizado_por
     WHERE $where
 ";
 
@@ -72,6 +86,7 @@ if (($_GET['exportar'] ?? '') === 'csv') {
                 fecha($m['fecha_hora']),
                 $m['codigo'],
                 $m['producto'],
+                tValor('categoria', $m['nombre_categoria'], t('comun.sin_categoria')),
                 esCambioPrecio($m) ? t('tipo.PRECIO') : etiquetaTipo($m['tipo_movimiento']),
                 (int) $m['cantidad'],
                 (int) $m['existencia_posterior'],
@@ -83,7 +98,7 @@ if (($_GET['exportar'] ?? '') === 'csv') {
 
     enviarCsv(
         t('mov.csv_archivo') . '_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
-        [t('comun.fecha'), t('mov.codigo'), t('comun.producto'), t('mov.tipo'), t('mov.cantidad'),
+        [t('comun.fecha'), t('mov.codigo'), t('comun.producto'), t('cat.col_categoria'), t('mov.tipo'), t('mov.cantidad'),
          t('mov.quedaron'), t('mov.detalle'), t('mov.realizo')],
         $filas
     );
@@ -103,7 +118,7 @@ $pintarFilas = static function (array $movimientos): string {
             <td>
                 <a class="enlace-producto" href="producto.php?id=<?= (int) $m['id_producto'] ?>">
                     <span class="producto-nombre"><?= e($m['producto']) ?></span>
-                    <span class="producto-desc"><?= e($m['codigo']) ?></span>
+                    <span class="producto-desc"><?= e($m['codigo']) ?> · <?= e(tValor('categoria', $m['nombre_categoria'], t('comun.sin_categoria'))) ?></span>
                 </a>
             </td>
             <td>
@@ -154,6 +169,7 @@ if (($_GET['parcial'] ?? '') === '1') {
 }
 
 $filtros = array_filter([
+    'categoria' => $idCategoria ?: null,
     'producto' => $idProducto ?: null,
     'tipo'     => $tipo ?: null,
     'desde'    => $desde->format('Y-m-d'),
@@ -183,6 +199,12 @@ require __DIR__ . '/header.php';
 </div>
 
 <form method="GET" action="movimientos.php" class="toolbar" onchange="if (event.target.tagName === 'SELECT') this.submit()">
+    <select name="categoria" aria-label="<?= e(t('cat.col_categoria')) ?>">
+        <option value="0"><?= e(t('cat.filtro_categorias')) ?></option>
+        <?php foreach ($categorias as $id => $nombre): ?>
+            <option value="<?= (int) $id ?>"<?= (int) $id === $idCategoria ? ' selected' : '' ?>><?= e(tValor('categoria', $nombre)) ?></option>
+        <?php endforeach; ?>
+    </select>
     <select name="producto" aria-label="<?= e(t('comun.producto')) ?>">
         <option value="0"><?= e(t('mov.filtro_productos')) ?></option>
         <?php foreach ($productos as $id => $nombre): ?>

@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/guardia.php';
-require_once __DIR__ . '/includes/aviso_privacidad.php';
+require_once __DIR__ . '/includes/correos_empleado.php';
 
 /**
  * Calcula las iniciales de un nombre (máx. 2 letras).
@@ -35,7 +35,7 @@ $ESTADOS_VALIDOS = ['Activo', 'Vacaciones', 'Incapacidad', 'Licencia', 'Baja'];
 $errores = [];
 $exito   = '';
 $passwordTemporal = null;
-$avisoPrivacidad  = null; // ['ok' => bool, 'email' => string] tras dar de alta
+$avisosCorreo     = [];   // [['ok' => bool, 'msg' => string]]: correos enviados al empleado
 
 /* ------------------------------------------------------------
    Flash (PRG)
@@ -44,7 +44,7 @@ if (!empty($_SESSION['flash'])) {
     $exito = $_SESSION['flash']['msg'] ?? '';
     // La contraseña temporal se muestra una sola vez
     $passwordTemporal = $_SESSION['flash']['password'] ?? null;
-    $avisoPrivacidad  = $_SESSION['flash']['aviso'] ?? null;
+    $avisosCorreo     = $_SESSION['flash']['avisos'] ?? [];
     unset($_SESSION['flash']);
 }
 
@@ -52,7 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $mensajeExito = '';
     $flashPassword = null;
-    $flashAviso = null;
+    $flashAvisos = [];
+    // Resultado de cada correo al empleado: la acción ya quedó guardada aunque el correo falle
+    $avisar = static function (bool $ok, string $email, string $claveOk = 'cajeros.notificado') use (&$flashAvisos): void {
+        $flashAvisos[] = ['ok' => $ok, 'msg' => t($ok ? $claveOk : 'cajeros.notificacion_fallo', ['email' => $email])];
+    };
 
     try {
         if (!csrfValido()) {
@@ -103,28 +107,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
             $mensajeExito = t('cajeros.creado');
 
-            // Aviso de privacidad por correo. Si no sale, el alta se conserva y se avisa al gerente.
-            $stmt = $pdo->prepare("
-                SELECT s.nombre, s.direccion, s.email_contacto, g.nombre AS gerente_nombre, g.email AS gerente_email
-                FROM Sucursales s INNER JOIN Usuarios g ON g.id_usuario = ?
-                WHERE s.id_sucursal = ?
-            ");
-            $stmt->execute([(int) $gerente['id_usuario'], $idSucursalGerente]);
-            $datos = $stmt->fetch();
-            $flashAviso = [
-                'email' => $email,
-                'ok'    => enviarAvisoPrivacidad(
-                    ['nombre' => $nombre, 'email' => $email],
-                    ['nombre' => $datos['gerente_nombre'], 'email' => $datos['gerente_email']],
-                    $datos
-                ),
-            ];
+            // Bienvenida con el aviso de privacidad
+            $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
+            $avisar(enviarAvisoPrivacidad(['nombre' => $nombre, 'email' => $email], $datosCorreo), $email, 'cajeros.aviso_enviado');
 
         } elseif ($action === 'editar') {
             $id     = (int) ($_POST['id_usuario'] ?? 0);
             $nombre = trim($_POST['nombre'] ?? '');
             $email  = trim($_POST['email'] ?? '');
             $estado = $_POST['estado'] ?? 'Activo';
+            $motivoBaja = (string) ($_POST['motivo_baja'] ?? '');
 
             if ($id <= 0) {
                 throw new RuntimeException(t('error.cajero_invalido'));
@@ -141,13 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Verificar que el cajero pertenece a esta sucursal y es rol 3 (evita IDOR)
             $check = $pdo->prepare("
-                SELECT estado FROM Usuarios
+                SELECT estado, email FROM Usuarios
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
-            $estadoAnterior = $check->fetchColumn();
-            if ($estadoAnterior === false) {
+            $anterior = $check->fetch();
+            if ($anterior === false) {
                 throw new RuntimeException(t('error.cajero_invalido'));
+            }
+            $estadoAnterior = $anterior['estado'];
+            if ($estado === 'Baja' && $estadoAnterior !== 'Baja' && !isset(MOTIVOS_BAJA[$motivoBaja])) {
+                throw new RuntimeException(t('error.motivo_baja'));
             }
 
             $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ? AND id_usuario <> ?");
@@ -188,6 +184,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
 
+            // Correos al empleado: cambio de estado y, si cambió su correo, aviso a la dirección anterior
+            $empleado = ['nombre' => $nombre, 'email' => $email];
+            if ($estado !== $estadoAnterior || strcasecmp($email, $anterior['email']) !== 0) {
+                $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
+            }
+            if ($estado !== $estadoAnterior) {
+                $avisar(enviarAvisoCambioEstado($empleado, $datosCorreo, $estado, $motivoBaja ?: null), $email);
+            }
+            if (strcasecmp($email, $anterior['email']) !== 0) {
+                $avisar(enviarAvisoCambioCorreo($anterior['email'], $empleado, $datosCorreo), $anterior['email']);
+            }
+
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
             if ($id <= 0) {
@@ -195,16 +203,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $check = $pdo->prepare("
-                SELECT estado FROM Usuarios
+                SELECT estado, nombre, email FROM Usuarios
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
-            $actual = $check->fetchColumn();
-            if ($actual === false) {
+            $empleado = $check->fetch();
+            if ($empleado === false) {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
 
-            $nuevo = $actual === 'Activo' ? 'Baja' : 'Activo';
+            $nuevo = $empleado['estado'] === 'Activo' ? 'Baja' : 'Activo';
+            $motivoBaja = (string) ($_POST['motivo_baja'] ?? '');
+            if ($nuevo === 'Baja' && !isset(MOTIVOS_BAJA[$motivoBaja])) {
+                throw new RuntimeException(t('error.motivo_baja'));
+            }
 
             $pdo->beginTransaction();
 
@@ -224,18 +236,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mensajeExito = t($nuevo === 'Activo' ? 'cajeros.reactivado' : 'cajeros.baja') . $mensajeExtra;
 
+            $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
+            $avisar(enviarAvisoCambioEstado($empleado, $datosCorreo, $nuevo, $nuevo === 'Baja' ? $motivoBaja : null), $empleado['email']);
+
         } elseif ($action === 'restablecer_password') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
 
             $check = $pdo->prepare("
-                SELECT nombre FROM Usuarios
+                SELECT nombre, email FROM Usuarios
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
-            $nombreCajero = $check->fetchColumn();
-            if ($nombreCajero === false) {
+            $empleado = $check->fetch();
+            if ($empleado === false) {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
+            $nombreCajero = $empleado['nombre'];
 
             // Sin caracteres ambiguos (0/O, 1/l/I) para dictarla sin errores
             $alfabeto = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -251,11 +267,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mensajeExito  = t('cajeros.password_restablecida', ['nombre' => $nombreCajero]);
             $flashPassword = $temporal;
+
+            $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
+            $avisar(enviarAvisoPasswordRestablecida($empleado, $datosCorreo), $empleado['email']);
         }
 
         // PRG: tras guardar, redirigir para que F5 no reenvíe el formulario
         if ($mensajeExito !== '') {
-            $_SESSION['flash'] = ['msg' => $mensajeExito, 'password' => $flashPassword, 'aviso' => $flashAviso];
+            $_SESSION['flash'] = ['msg' => $mensajeExito, 'password' => $flashPassword, 'avisos' => $flashAvisos];
             header('Location: cajeros.php');
             exit;
         }
@@ -314,13 +333,9 @@ require __DIR__ . '/header.php';
         · <?= e(t('cajeros.password_temporal_aviso')) ?>
     </div>
 <?php endif; ?>
-<?php if ($avisoPrivacidad): ?>
-    <?php if ($avisoPrivacidad['ok']): ?>
-        <div class="alert alert-success"><?= e(t('cajeros.aviso_enviado', ['email' => $avisoPrivacidad['email']])) ?></div>
-    <?php else: ?>
-        <div class="alert alert-warning"><?= e(t('cajeros.aviso_fallo', ['email' => $avisoPrivacidad['email']])) ?></div>
-    <?php endif; ?>
-<?php endif; ?>
+<?php foreach ($avisosCorreo as $aviso): ?>
+    <div class="alert <?= $aviso['ok'] ? 'alert-success' : 'alert-warning' ?>"><?= e($aviso['msg']) ?></div>
+<?php endforeach; ?>
 <?php foreach ($errores as $error): ?>
     <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
 <?php endforeach; ?>
@@ -408,24 +423,24 @@ require __DIR__ . '/header.php';
                     </form>
                     <?php endif; ?>
 
-                    <form method="POST" class="cajero-accion"
-                          data-confirm="<?= e(t($esActivo ? 'cajeros.confirmar_baja' : 'cajeros.confirmar_reactivar', ['nombre' => $c['nombre']])) ?>"
-                          data-confirm-titulo="<?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>"
-                          data-confirm-aceptar="<?= e(t($esActivo ? 'cajeros.baja_titulo' : 'cajeros.reactivar_titulo')) ?>"
-                          <?= $esActivo ? 'data-confirm-peligroso="1"' : '' ?>>
-                        <input type="hidden" name="action" value="cambiar_estado">
-                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-                        <input type="hidden" name="id_usuario" value="<?= $id ?>">
-                        <?php if ($esActivo): ?>
-                            <button type="submit" class="btn btn-danger btn-sm btn-icono"
-                                    title="<?= e(t('cajeros.baja_titulo')) ?>"
-                                    aria-label="<?= e(t('cajeros.baja_titulo') . ' · ' . $c['nombre']) ?>">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-                            </button>
-                        <?php else: ?>
+                    <?php if ($esActivo): ?>
+                        <button type="button" class="btn btn-danger btn-sm btn-icono"
+                                onclick="abrirModalBaja(this)" data-id="<?= $id ?>" data-nombre="<?= e($c['nombre']) ?>"
+                                title="<?= e(t('cajeros.baja_titulo')) ?>"
+                                aria-label="<?= e(t('cajeros.baja_titulo') . ' · ' . $c['nombre']) ?>">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                        </button>
+                    <?php else: ?>
+                        <form method="POST" class="cajero-accion"
+                              data-confirm="<?= e(t('cajeros.confirmar_reactivar', ['nombre' => $c['nombre']])) ?>"
+                              data-confirm-titulo="<?= e(t('cajeros.reactivar_titulo')) ?>"
+                              data-confirm-aceptar="<?= e(t('cajeros.reactivar_titulo')) ?>">
+                            <input type="hidden" name="action" value="cambiar_estado">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                            <input type="hidden" name="id_usuario" value="<?= $id ?>">
                             <button type="submit" class="btn btn-success btn-sm"><?= e(t('cajeros.reactivar_titulo')) ?></button>
-                        <?php endif; ?>
-                    </form>
+                        </form>
+                    <?php endif; ?>
                 </div>
             </article>
         <?php endforeach; ?>
@@ -485,12 +500,48 @@ require __DIR__ . '/header.php';
                         <input type="date" id="cajeroFecha" name="fecha_contratacion" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
                     </div>
                 </div>
+                <div class="form-group" id="grupoMotivoBaja" hidden>
+                    <label for="cajeroMotivoBaja"><?= e(t('cajeros.motivo_baja')) ?></label>
+                    <select id="cajeroMotivoBaja" name="motivo_baja">
+                        <option value=""><?= e(t('cajeros.elegir_motivo')) ?></option>
+                        <?php foreach (array_keys(MOTIVOS_BAJA) as $motivo): ?>
+                            <option value="<?= $motivo ?>"><?= e(t('motivo_baja.' . $motivo)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <small class="form-ayuda" id="ayudaEstado" hidden></small>
             </fieldset>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCajero')"><?= e(t('comun.cancelar')) ?></button>
                 <button type="submit" class="btn btn-primary"><?= e(t('comun.guardar')) ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: dar de baja (con motivo, que va en el correo al empleado) -->
+<div class="modal-overlay" id="modalBaja">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="tituloModalBaja">
+        <h2 id="tituloModalBaja"><?= e(t('cajeros.baja_titulo')) ?></h2>
+        <p class="modal-ayuda" id="textoModalBaja"></p>
+        <form id="formBaja" method="POST" onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <input type="hidden" name="action" value="cambiar_estado">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_usuario" value="">
+            <div class="form-group">
+                <label for="bajaMotivo"><?= e(t('cajeros.motivo_baja')) ?></label>
+                <select id="bajaMotivo" name="motivo_baja" required>
+                    <option value=""><?= e(t('cajeros.elegir_motivo')) ?></option>
+                    <?php foreach (array_keys(MOTIVOS_BAJA) as $motivo): ?>
+                        <option value="<?= $motivo ?>"><?= e(t('motivo_baja.' . $motivo)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="form-ayuda"><?= e(t('cajeros.baja_ayuda')) ?></small>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalBaja')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn-danger-solid"><?= e(t('cajeros.baja_titulo')) ?></button>
             </div>
         </form>
     </div>
