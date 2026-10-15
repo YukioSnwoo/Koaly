@@ -362,7 +362,7 @@ No se vende: <?= htmlspecialchars($p['estado_producto'] === 'Proximamente' ? 'Pr
 <?php if ($precio > 0): ?>
 $<?= number_format($precio, 2) ?>
 <?php else: ?>
-<span style="color:#94a3b8;">Sin precio</span>
+<span style="color: #64748b;">Sin precio</span>
 <?php endif; ?>
 </td>
 <td><span class="badge <?= $stockBadge ?>"><?= $stockTexto ?></span></td>

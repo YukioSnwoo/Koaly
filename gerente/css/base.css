@@ -9,10 +9,24 @@
  *  ============================================================ */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+/* Guía de color (contraste medido contra blanco, mínimo WCAG AA = 4.5:1):
+ *   texto principal  #1e293b  14.6:1
+ *   texto secundario #475569   7.6:1
+ *   texto tenue      #64748b   4.8:1  ← lo más claro permitido para TEXTO
+ *   #94a3b8 (2.6:1) solo para bordes, iconos decorativos y placeholders.
+ *   Verde de texto #15803d (5.0:1); #16a34a solo para fondos/bordes.
+ *   El morado es acento: botones principales, selección y marca. */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f4f7fa; color: #1e293b;
-    line-height: 1.5; -webkit-font-smoothing: antialiased;
+    /* Fuente del sistema: Segoe UI en Windows, San Francisco en Mac/iOS,
+       Roboto en Android, Cantarell/Ubuntu en Linux. */
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif;
+    background: #f5f6f8; color: #1e293b;
+    line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+
+/* Cifras de ancho fijo: los montos y cantidades se alinean en columna */
+table, .kpi-value, .desglose-monto, .desglose-num, .cajero-stat-value, .password-temporal {
+    font-variant-numeric: tabular-nums;
 }
 img { max-width: 100%; display: block; }
 a { color: inherit; }
@@ -29,27 +43,39 @@ button { font: inherit; }
  *  Layout
  *  ============================================================ */
 .header {
-    background: #7c3aed; color: #fff;
-    padding: 1rem 2rem;
+    /* Barra clara: el morado sólido era la mayor superficie saturada de la
+       pantalla y siempre estaba a la vista. Ahora solo la marca es morada. */
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: saturate(1.4) blur(8px);
+    color: #1e293b;
+    padding: 0.8rem 2rem;
     display: flex; justify-content: space-between; align-items: center; gap: 1rem;
     position: sticky; top: 0; z-index: 50;
-    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.12);
+    border-bottom: 1px solid #e5e7eb;
 }
-.header h1 { font-size: 1.25rem; font-weight: 700; }
+.header h1 {
+    font-size: 1.1rem; font-weight: 700; color: #1e293b;
+    display: flex; align-items: center; gap: 0.55rem;
+}
+.header h1::before {
+    content: ''; width: 10px; height: 10px; border-radius: 3px;
+    background: #7c3aed; box-shadow: 0 0 0 4px #ede9fe;
+}
 .header .user-info { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-.header .user-info span { font-size: 0.9rem; color: #ddd6fe; }
+.header .user-info span { font-size: 0.9rem; color: #475569; font-weight: 500; }
 .header .user-info button {
-    padding: 0.5rem 1rem;
-    border: 1px solid rgba(255,255,255,0.25);
+    padding: 0.45rem 0.9rem;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    background: rgba(255,255,255,0.1);
-    color: #fff; cursor: pointer;
+    background: #fff;
+    color: #475569; cursor: pointer;
     font-weight: 600; font-size: 0.85rem;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .header .user-info button:hover {
-    background: rgba(220, 38, 38, 0.85);
-    border-color: rgba(220, 38, 38, 0.85);
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
 }
 
 .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
@@ -133,7 +159,7 @@ button { font: inherit; }
 .btn-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 .btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
 
-.btn-success { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.btn-success { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
 .btn-success:hover { background: #dcfce7; border-color: #86efac; }
 
 .btn-danger-solid {
@@ -178,10 +204,10 @@ button { font: inherit; }
     font-size: 0.75rem; font-weight: 600;
     white-space: nowrap;
 }
-.badge-activo   { background: #f0fdf4; color: #16a34a; }
-.badge-inactivo { background: #f1f5f9; color: #64748b; }
+.badge-activo   { background: #f0fdf4; color: #15803d; }
+.badge-inactivo { background: #f1f5f9; color: #475569; }
 .badge-warning  { background: #fffbeb; color: #b45309; }
-.badge-danger   { background: #fef2f2; color: #dc2626; }
+.badge-danger   { background: #fef2f2; color: #b91c1c; }
 .badge-metodo   { background: #eef2ff; color: #4338ca; }
 
 
@@ -266,7 +292,17 @@ button { font: inherit; }
  *  Animaciones
  *  ============================================================ */
 @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Respeta "reducir movimiento" del sistema operativo */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
 @keyframes pulse    { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
 @media (prefers-reduced-motion: reduce) {

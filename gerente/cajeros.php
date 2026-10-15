@@ -401,7 +401,7 @@ require __DIR__ . '/header.php';
             <div class="form-group" id="grupoPassword">
                 <label>Contraseña temporal</label>
                 <input type="text" name="password" placeholder="Mínimo 8 caracteres" minlength="8">
-                <small style="display:block; color:#94a3b8; font-size:0.75rem; margin-top:0.3rem;">
+                <small style="display:block; color: #64748b; font-size:0.75rem; margin-top:0.3rem;">
                     El cajero deberá cambiarla al iniciar sesión por primera vez.
                 </small>
             </div>

@@ -48,8 +48,11 @@ function initCustomSelect(select) {
     const pintarTrigger = () => {
         const opt = select.options[select.selectedIndex];
         const texto = opt ? opt.text : 'Selecciona…';
-        trigger.innerHTML = `<span>${texto}</span>
+        // El texto va con textContent: opt.text ya viene decodificado y puede traer "<"
+        trigger.innerHTML = `<span></span>
         <svg class="select-custom-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+        trigger.querySelector('span').textContent = texto;
+        trigger.title = texto;
         trigger.classList.toggle('is-placeholder', !opt || opt.value === '' || opt.disabled);
     };
 
@@ -84,7 +87,9 @@ function initCustomSelect(select) {
             if (opt.disabled) {
                 item.classList.add('is-disabled');
             }
-            item.innerHTML = `<span>${opt.text}</span>`;
+            const etiqueta = document.createElement('span');
+            etiqueta.textContent = opt.text;
+            item.appendChild(etiqueta);
 
             if (!opt.disabled) {
                 item.addEventListener('click', () => {
@@ -134,8 +139,9 @@ function initCustomSelect(select) {
         const espacioAbajo = window.innerHeight - r.bottom;
         const abrirArriba = espacioAbajo < alturaPanel + 12 && r.top > alturaPanel + 12;
 
-        panel.style.width = r.width + 'px';
-        panel.style.left  = r.left + 'px';
+        panel.style.minWidth = r.width + 'px';
+        const ancho = panel.offsetWidth || r.width;
+        panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8)) + 'px';
         panel.style.top   = abrirArriba
         ? (r.top - alturaPanel - 6) + 'px'
         : (r.bottom + 6) + 'px';
@@ -184,6 +190,16 @@ function initCustomSelect(select) {
             window.addEventListener('resize', () => {
                 if (wrapper.classList.contains('is-open')) posicionarPanel();
             });
+
+            // La lista es position: fixed; sin esto se quedaba quieta en pantalla
+            // mientras la página hacía scroll. Captura también el scroll de modales.
+            window.addEventListener('scroll', (e) => {
+                if (!wrapper.classList.contains('is-open')) return;
+                if (e.target instanceof Node && panel.contains(e.target)) return; // scroll dentro de la lista
+                const r = trigger.getBoundingClientRect();
+                if (r.bottom < 0 || r.top > window.innerHeight) cerrar();     // el botón salió de la vista
+                else posicionarPanel();
+            }, { capture: true, passive: true });
 
                 pintarTrigger();
                 _selectCustomActivos.add({ wrapper, close: cerrar });

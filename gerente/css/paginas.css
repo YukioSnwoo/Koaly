@@ -134,7 +134,7 @@
 
 .cajero-stat-label {
     font-size: 0.68rem;
-    color: #94a3b8;
+    color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 600;
@@ -217,7 +217,7 @@
     word-break: break-word;
 }
 .caja-nombre--muted {
-    color: #94a3b8;
+    color: #64748b;
     font-style: italic;
     font-weight: 500;
 }
@@ -257,7 +257,7 @@
 }
 .caja-cajero-label {
     font-size: 0.62rem;
-    color: #94a3b8;
+    color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 700;
@@ -274,7 +274,7 @@
     justify-content: center;
 }
 .caja-cajero--vacio .caja-cajero-nombre {
-    color: #94a3b8;
+    color: #64748b;
     font-style: italic;
     font-weight: 500;
 }
@@ -334,7 +334,7 @@
     transform: translateY(-50%);
     width: 16px;
     height: 16px;
-    color: #94a3b8;
+    color: #64748b;
     pointer-events: none;
 }
 
@@ -356,7 +356,7 @@
     border: 0;
     border-radius: 6px;
     background: transparent;
-    color: #94a3b8;
+    color: #64748b;
     font-size: 1.15rem;
     line-height: 1;
     cursor: pointer;
@@ -431,7 +431,7 @@
 .picker-vacio {
     padding: 0.85rem 0.75rem;
     text-align: center;
-    color: #94a3b8;
+    color: #64748b;
     font-size: 0.85rem;
     font-style: italic;
 }
@@ -508,19 +508,19 @@
 .desglose-lista--top { counter-reset: top; }
 .desglose-lista--top li { counter-increment: top; }
 .desglose-lista--top .desglose-nombre::before {
-    content: counter(top) ". "; color: #94a3b8; font-weight: 600;
+    content: counter(top) ". "; color: #64748b; font-weight: 600;
 }
 .desglose-nombre {
     font-weight: 600; color: #334155;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.desglose-nombre small { color: #94a3b8; font-weight: 500; margin-left: 0.35rem; }
+.desglose-nombre small { color: #64748b; font-weight: 500; margin-left: 0.35rem; }
 .desglose-num { font-size: 0.82rem; color: #64748b; white-space: nowrap; }
 .desglose-monto { text-align: right; color: #1e293b; white-space: nowrap; }
-.desglose-pct { text-align: right; font-size: 0.82rem; color: #94a3b8; }
+.desglose-pct { text-align: right; font-size: 0.82rem; color: #64748b; }
 .desglose-barra { height: 4px; background: #f1f5f9; border-radius: 4px; margin-top: 0.4rem; overflow: hidden; }
 .desglose-barra span { display: block; height: 100%; background: #a78bfa; border-radius: 4px; }
-.desglose-vacio { color: #94a3b8; font-size: 0.9rem; }
+.desglose-vacio { color: #64748b; font-size: 0.9rem; }
 
 /* Tabla de ventas: encabezado, agrupación y filtros justo encima */
 .ventas-tabla-head {
@@ -546,7 +546,6 @@
 .segmentado a.is-activo { background: #7c3aed; color: #fff; }
 
 .ventas-filtros { padding: 0 1.25rem; margin-bottom: 1rem; }
-.ventas-filtros select { flex: 1 1 180px; min-width: 0; }
 
 .tabla-productos .num { text-align: right; white-space: nowrap; }
 .fila-grupo td {
@@ -584,7 +583,7 @@
     color: #64748b;
     margin-bottom: 0.75rem;
 }
-.caja-ventas strong { color: #16a34a; }
+.caja-ventas strong { color: #15803d; }
 
 
 /* ============================================================

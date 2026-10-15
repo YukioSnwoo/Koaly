@@ -59,7 +59,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    color: #94a3b8;
+    color: #64748b;
     font-size: 0.95rem;
 }
 
@@ -139,7 +139,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 }
 .producto-thumb--placeholder {
     display: flex; align-items: center; justify-content: center;
-    color: #94a3b8; font-size: 0.7rem; text-align: center; line-height: 1.1;
+    color: #64748b; font-size: 0.7rem; text-align: center; line-height: 1.1;
 }
 .producto-nombre { font-weight: 600; }
 .producto-desc { color: #64748b; font-size: 0.8rem; margin-top: 2px; }
@@ -177,7 +177,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
     word-break: break-word;
 }
 .info-field .info-value--muted {
-    color: #94a3b8;
+    color: #64748b;
     font-style: italic;
 }
 .info-field .info-value--strong {
@@ -221,10 +221,10 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 }
 .kpi-value--warn   { color: #b45309; }
 .kpi-value--danger { color: #dc2626; }
-.kpi-value--ok     { color: #16a34a; }
+.kpi-value--ok     { color: #15803d; }
 .kpi-sub {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: #64748b;
 }
 
 .kpi.kpi--warn   { border-left-color: #f59e0b; }
@@ -285,7 +285,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 
 .toolbar select option[value=""],
 .form-group select option[value=""] {
-    color: #94a3b8;
+    color: #64748b;
     font-style: italic;
 }
 
@@ -365,7 +365,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
 }
 
 .select-custom-trigger.is-placeholder > span {
-    color: #94a3b8;
+    color: #64748b;
     font-style: italic;
 }
 
@@ -389,6 +389,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
     box-shadow: 0 12px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.08);
     padding: 0.4rem;
     max-height: 280px;
+    max-width: min(360px, calc(100vw - 16px));
     overflow-y: auto;
     opacity: 0;
     visibility: hidden;
@@ -476,7 +477,7 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
     transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
 }
 .select-custom-search-input::placeholder {
-    color: #94a3b8;
+    color: #64748b;
 }
 .select-custom-search-input:focus {
     outline: none;
@@ -484,3 +485,20 @@ table.tabla-productos tbody tr:hover { background: #f8fafc; }
     background: #ffffff;
     box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
 }
+
+
+/* En barras de filtros el select ocupa lo que dice su texto, no la fila
+   completa (antes cada filtro medía lo mismo que la tabla). En modales sigue
+   al 100 %. */
+.toolbar .select-custom {
+    display: inline-block;
+    width: auto;
+    flex: 0 1 auto;
+    min-width: 0;
+}
+.toolbar .select-custom-trigger {
+    width: auto;
+    min-width: 9.5rem;
+    max-width: 17rem;
+}
+.select-custom-trigger > span { overflow: hidden; text-overflow: ellipsis; }

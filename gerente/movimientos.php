@@ -245,9 +245,9 @@ require __DIR__ . '/header.php';
                                 <?php endif; ?>
                             </td>
                             <?php if ($esPrecio): ?>
-                                <td style="color:#94a3b8;">—</td>
+                                <td style="color: #64748b;">—</td>
                             <?php else: ?>
-                                <td style="font-weight:700; color: <?= $cant >= 0 ? '#16a34a' : '#dc2626' ?>;">
+                                <td style="font-weight:700; color: <?= $cant >= 0 ? '#15803d' : '#dc2626' ?>;">
                                     <?= $cant > 0 ? '+' : '' ?><?= $cant ?>
                                 </td>
                             <?php endif; ?>

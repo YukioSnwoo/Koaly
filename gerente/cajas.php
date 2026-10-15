@@ -495,7 +495,7 @@ require __DIR__ . '/header.php';
                     <?php endforeach; ?>
                 </select>
                 <div id="avisoReasignacion" class="aviso-reasignacion" aria-live="polite"></div>
-                <small style="display:block; color:#94a3b8; font-size:0.75rem; margin-top:0.3rem;">
+                <small style="display:block; color: #64748b; font-size:0.75rem; margin-top:0.3rem;">
                     Cajeros activos de tu sucursal (y el que ya tenga asignado, aunque no esté activo).
                 </small>
             </div>

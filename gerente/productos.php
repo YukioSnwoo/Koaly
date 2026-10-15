@@ -249,7 +249,7 @@ data-categoria="<?= htmlspecialchars($p['nombre_categoria'] ?? 'Sin categoría',
 data-precio="<?= htmlspecialchars((string) $p['precio'], ENT_QUOTES) ?>"
 >+ Agregar a inventario</button>
 <?php else: ?>
-<span style="color:#94a3b8; font-size:0.85rem;">No disponible</span>
+<span style="color: #64748b; font-size:0.85rem;">No disponible</span>
 <?php endif; ?>
 </div>
 </td>
@@ -312,7 +312,7 @@ Aún no has enviado solicitudes de producto. Usa "+ Solicitar producto" para ped
 <?php if (!empty($s['proveedor_sugerido'])): ?>
 <?= htmlspecialchars($s['proveedor_sugerido']) ?>
 <?php else: ?>
-<span style="color:#94a3b8;">—</span>
+<span style="color: #64748b;">—</span>
 <?php endif; ?>
 </td>
 <td>
@@ -330,11 +330,11 @@ Aún no has enviado solicitudes de producto. Usa "+ Solicitar producto" para ped
 <?= htmlspecialchars($s['motivo_rechazo']) ?>
 </span>
 <?php elseif ($s['estado'] === 'Aprobada'): ?>
-<span style="color:#16a34a; font-size:0.85rem;">
+<span style="color: #15803d; font-size:0.85rem;">
 Producto creado (ID <?= (int) $s['id_producto_creado'] ?>)
 </span>
 <?php else: ?>
-<span style="color:#94a3b8; font-size:0.85rem;">En revisión</span>
+<span style="color: #64748b; font-size:0.85rem;">En revisión</span>
 <?php endif; ?>
 </td>
 </tr>

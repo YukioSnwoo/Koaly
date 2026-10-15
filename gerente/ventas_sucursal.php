@@ -370,7 +370,7 @@ require __DIR__ . '/header.php';
             <?php if ($variacion === null): ?>
                 sin ventas en el periodo anterior
             <?php else: ?>
-                <span style="color: <?= $variacion >= 0 ? '#16a34a' : '#dc2626' ?>; font-weight: 600;">
+                <span style="color: <?= $variacion >= 0 ? '#15803d' : '#dc2626' ?>; font-weight: 600;">
                     <?= $variacion >= 0 ? '▲' : '▼' ?> <?= number_format(abs($variacion), 1) ?>%
                 </span>
                 vs. <?= $dias === 1 ? 'día anterior' : "{$dias} días anteriores" ?>
@@ -590,7 +590,7 @@ require __DIR__ . '/header.php';
                                             </ul>
                                         </details>
                                     <?php else: ?>
-                                        <span style="color:#94a3b8;">—</span>
+                                        <span style="color: #64748b;">—</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="num"><?= $dinero($v['subtotal']) ?></td>
