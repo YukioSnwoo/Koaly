@@ -7,6 +7,7 @@ $showBackLink = $showBackLink ?? false;
 $verBase        = filemtime(__DIR__ . '/css/base.css');
 $verComponentes = filemtime(__DIR__ . '/css/componentes.css');
 $verPaginas     = filemtime(__DIR__ . '/css/paginas.css');
+$verKoaly       = filemtime(__DIR__ . '/../estilos/koaly.css');
 
 // Página actual con su query string, para volver a ella al cambiar de idioma
 $paginaActual = basename($_SERVER['PHP_SELF']) . (($_SERVER['QUERY_STRING'] ?? '') !== '' ? '?' . $_SERVER['QUERY_STRING'] : '');
@@ -19,7 +20,8 @@ $paginaActual = basename($_SERVER['PHP_SELF']) . (($_SERVER['QUERY_STRING'] ?? '
 <title><?= e($pageTitle) ?> - Koaly</title>
 <script>
 // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
-try { var tema = localStorage.getItem('koalicius-gerente-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+// La clave es común con el cajero (koaly-tema); la anterior del gerente queda como respaldo.
+try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koalicius-gerente-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
 </script>
 <?php if ($pageDesc !== ''): ?>
 <meta name="description" content="<?= e($pageDesc) ?>">
@@ -27,6 +29,8 @@ try { var tema = localStorage.getItem('koalicius-gerente-tema'); if (tema === 'c
 <link rel="stylesheet" href="css/base.css?v=<?= $verBase ?>">
 <link rel="stylesheet" href="css/componentes.css?v=<?= $verComponentes ?>">
 <link rel="stylesheet" href="css/paginas.css?v=<?= $verPaginas ?>">
+<!-- Estilo común de Koaly (colores, fuentes y piel táctil); va al final para que gane -->
+<link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body>
 <header class="header">
