@@ -271,6 +271,16 @@ return [
     'cat.campo_justificacion' => 'Justification',
     'cat.campo_justificacion_ej' => 'Customer demand, season, etc.',
     'cat.enviar_solicitud' => 'Send request',
+    'cat.tipo_Agregar' => 'Add',
+    'cat.tipo_Eliminar' => 'Remove',
+    'cat.eliminar_titulo' => 'Request removal from the catalog',
+    'cat.eliminar_ayuda' => 'If this product no longer exists, the administrator will review the request and, if approved, remove it from the catalog.',
+    'cat.eliminar_justificacion_ej' => 'Discontinued by the supplier, no longer sold, etc.',
+    'cat.enviar_eliminar' => 'Request removal',
+    'cat.eliminar_enviada' => 'Removal request sent. The administrator will review it.',
+    'cat.eliminar_pendiente' => 'There is already a pending removal request for this product.',
+    'cat.eliminar_producto' => 'Remove product',
+    'cat.eliminar_ya_descontinuado' => 'This product is already discontinued in the catalog.',
 
     // ventas
     'ventas.titulo' => 'Branch sales',

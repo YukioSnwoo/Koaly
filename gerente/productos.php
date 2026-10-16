@@ -400,7 +400,12 @@ require __DIR__ . '/header.php';
                     <div class="solicitud-principal">
                         <span class="badge <?= $claseSol ?>"><?= e(t('solicitud.' . $estadoSol)) ?></span>
                         <div>
+                            <?php $esEliminar = ($s['tipo'] ?? 'Agregar') === 'Eliminar'; ?>
+                            <span class="badge badge-inactivo"><?= e(t($esEliminar ? 'cat.tipo_Eliminar' : 'cat.tipo_Agregar')) ?></span>
                             <strong><?= e($s['nombre_producto']) ?></strong>
+                            <?php if ($esEliminar): ?>
+                                <p class="solicitud-desc"><?= e($s['justificacion']) ?></p>
+                            <?php else: ?>
                             <span class="texto-tenue">
                                 · <?= e(tValor('categoria', $s['nombre_categoria'], t('comun.sin_categoria'))) ?>
                                 · <?= e(t('cat.col_precio_sugerido')) ?>: <?= dinero($s['precio_sugerido']) ?>
@@ -408,7 +413,8 @@ require __DIR__ . '/header.php';
                                     · <?= e($s['proveedor_sugerido']) ?>
                                 <?php endif; ?>
                             </span>
-                            <?php if (!empty($s['descripcion'])): ?>
+                            <?php endif; ?>
+                            <?php if (!$esEliminar && !empty($s['descripcion'])): ?>
                                 <p class="solicitud-desc"><?= e($s['descripcion']) ?></p>
                             <?php endif; ?>
                         </div>
@@ -417,6 +423,8 @@ require __DIR__ . '/header.php';
                         <span class="texto-tenue"><?= e(fecha($s['creado_en'])) ?></span>
                         <?php if ($estadoSol === 'Rechazada' && !empty($s['motivo_rechazo'])): ?>
                             <span class="texto-peligro"><?= e($s['motivo_rechazo']) ?></span>
+                        <?php elseif ($estadoSol === 'Aprobada' && $esEliminar): ?>
+                            <span class="texto-ok"><?= e(t('solicitud.Aprobada')) ?></span>
                         <?php elseif ($estadoSol === 'Aprobada'): ?>
                             <span class="texto-ok"><?= e(t('cat.solicitud_creada', ['id' => (int) $s['id_producto_creado']])) ?></span>
                         <?php else: ?>
