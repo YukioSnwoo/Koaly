@@ -9,6 +9,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 require_once __DIR__ . '/../admin/csrf.php';
 
 $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
+$verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -17,7 +18,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAJA</title>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
+    <script>
+    // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
+    // La clave es común con el gerente (koaly-tema).
+    try { var tema = localStorage.getItem('koaly-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+    </script>
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
+    <!-- Estilo común de Koaly (colores claro/oscuro, fuentes y piel táctil); va al final para que gane -->
+    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoalyCss ?>">
 </head>
 <body>
 
@@ -29,6 +37,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <span class="user-nombre" id="userName">Cajero</span>
                 <span class="user-sucursal">Sucursal: <span id="sucursalName">-</span></span>
             </div>
+            <button type="button" class="tema-boton" id="botonTema" aria-label="Cambiar tema" title="Cambiar tema">
+                <svg class="tema-luna" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="tema-sol" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            </button>
             <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" title="Cerrar sesión" aria-label="Cerrar sesión">
                 <img src="../Imagenes/puertaSalida.jpeg" alt="">
             </button>
@@ -217,6 +229,27 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <!-- Notificaciones breves (existencias bajas, ajustes) -->
     <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
+    <script>
+    // Tema claro / oscuro: misma clave que el gerente, así se conserva al cambiar de módulo
+    (function () {
+        const boton = document.getElementById('botonTema');
+        const actual = () => document.documentElement.getAttribute('data-tema')
+            || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+        const etiquetar = () => {
+            const texto = actual() === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+            boton.setAttribute('aria-label', texto);
+            boton.title = texto;
+        };
+        boton.addEventListener('click', () => {
+            const nuevo = actual() === 'oscuro' ? 'claro' : 'oscuro';
+            document.documentElement.setAttribute('data-tema', nuevo);
+            try { localStorage.setItem('koaly-tema', nuevo); } catch (e) { /* modo privado: solo esta página */ }
+            etiquetar();
+        });
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', etiquetar);
+        etiquetar();
+    })();
+    </script>
     <script src="../auth.js"></script>
     <script>
         const usuario = requireRol(3);

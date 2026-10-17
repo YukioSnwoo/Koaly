@@ -28,53 +28,60 @@
  *  ============================================================ */
 :root {
     color-scheme: light;
-    --fondo:        #f5f6f8;
+    /* "Lavanda papel": espejo del modo oscuro. Los neutros llevan el mismo
+       tinte morado y la tinta es morado oscuro, no casi negro. */
+    --fondo:        #f4f1fa;
     --superficie:   #ffffff;
-    --superficie-2: #f8fafc;
-    --superficie-3: #f1f5f9;
-    --borde:        #e2e8f0;
-    --borde-fuerte: #cbd5e1;
-    --barra:        rgba(255, 255, 255, 0.92);
+    --superficie-2: #faf8fd;
+    --superficie-3: #efeaf7;
+    --borde:        #e2dbef;
+    --borde-fuerte: #cbc1e0;
+    --barra:        rgba(244, 241, 250, 0.92);
     --marco-imagen: #ffffff;
     --filtro-imagen: none;
 
-    --texto:   #1e293b;
-    --texto-2: #475569;
-    --texto-3: #64748b;
-    --texto-4: #94a3b8;
+    --texto:   #221c33;
+    --texto-2: #4b4362;
+    --texto-3: #645c7d;
+    --texto-4: #9a92b0;
 
     --acento:              #7c3aed;
     --acento-hover:        #6d28d9;
     --acento-texto:        #6d28d9;
     --acento-texto-fuerte: #5b21b6;
-    --acento-suave:        #f5f3ff;
-    --acento-suave-2:      #ede9fe;
+    --acento-suave:        #efe9fd;
+    --acento-suave-2:      #e2d8fb;
     --acento-borde:        #c4b5fd;
     --acento-medio:        #a78bfa;
     --indigo-texto:        #4338ca;
-    --indigo-suave:        #eef2ff;
+    --indigo-suave:        #eceafd;
+    --foco:                #a78bfa;
 
+    /* Fondos de estado un poco más tintados para que se lean como en oscuro.
+       Los textos de estado se oscurecieron para seguir en AA (4.5:1). */
     --ok:            #16a34a;
-    --ok-texto:      #15803d;
-    --ok-suave:      #f0fdf4;
-    --ok-borde:      #bbf7d0;
+    --ok-texto:      #166534;
+    --ok-suave:      #e3f4e9;
+    --ok-borde:      #a9dcbb;
     --peligro:       #dc2626;
     --peligro-texto: #b91c1c;
-    --peligro-suave: #fef2f2;
-    --peligro-borde: #fecaca;
+    --peligro-suave: #fce7e7;
+    --peligro-borde: #f3b9b9;
     --peligro-hover:       #b91c1c;
-    --peligro-suave-hover: #fee2e2;
-    --peligro-borde-hover: #fca5a5;
-    --ok-suave-hover:      #dcfce7;
-    --ok-borde-hover:      #86efac;
+    --peligro-suave-hover: #f9d8d8;
+    --peligro-borde-hover: #ec9a9a;
+    --ok-suave-hover:      #d2ecdc;
+    --ok-borde-hover:      #86cfa0;
     --aviso:         #f59e0b;
-    --aviso-texto:   #b45309;
-    --aviso-suave:   #fffbeb;
-    --aviso-borde:   #fde68a;
+    --aviso-texto:   #9a4a07;
+    --aviso-suave:   #fcf0d4;
+    --aviso-borde:   #f1d083;
 
-    /* Estilo táctil: bordes y sombras sólidas. En oscuro son un morado
-       grisáceo más claro que el fondo, para que el relieve no se pierda. */
-    --tinta:              #1e1b2e;
+    /* Estilo táctil: bordes y sombras sólidas. En claro es un morado oscuro;
+       en oscuro, un morado grisáceo más claro que el fondo, para que el
+       relieve no se pierda. */
+    --tinta:              #3b3156;
+    --sombra-suave:       0 1px 3px rgba(59, 49, 86, 0.10);
     --sombra-tactil:      3px 3px 0 var(--tinta);
     --sombra-tactil-alta: 5px 5px 0 var(--tinta);
     --sombra-tactil-max:  7px 7px 0 var(--tinta);
@@ -113,6 +120,7 @@
     --acento-medio:        #8f7ae8;
     --indigo-texto:        #b7bfff;
     --indigo-suave:        #1f2340;
+    --foco:                #7c3aed;
 
     --ok:            #22c55e;
     --ok-texto:      #4ade80;
@@ -132,6 +140,7 @@
     --aviso-suave:   #271f0d;
     --aviso-borde:   #5a4413;
     --tinta:         #4d4566;
+    --sombra-suave:  0 1px 3px rgba(0, 0, 0, 0.40);
 }
 @media (prefers-color-scheme: dark) {
     :root:not([data-tema="claro"]) {
@@ -161,6 +170,7 @@
         --acento-medio:        #8f7ae8;
         --indigo-texto:        #b7bfff;
         --indigo-suave:        #1f2340;
+        --foco:                #7c3aed;
 
         --ok:            #22c55e;
         --ok-texto:      #4ade80;
@@ -170,16 +180,17 @@
         --peligro-texto: #f87171;
         --peligro-suave: #2a1416;
         --peligro-borde: #5c2227;
-    --peligro-hover:       #b91c1c;
-    --peligro-suave-hover: #3a1a1d;
-    --peligro-borde-hover: #7a2e33;
-    --ok-suave-hover:      #143322;
-    --ok-borde-hover:      #2a6342;
+        --peligro-hover:       #b91c1c;
+        --peligro-suave-hover: #3a1a1d;
+        --peligro-borde-hover: #7a2e33;
+        --ok-suave-hover:      #143322;
+        --ok-borde-hover:      #2a6342;
         --aviso:         #f59e0b;
         --aviso-texto:   #fbbf24;
         --aviso-suave:   #271f0d;
         --aviso-borde:   #5a4413;
         --tinta:         #4d4566;
+        --sombra-suave:  0 1px 3px rgba(0, 0, 0, 0.40);
     }
 }
 
@@ -317,7 +328,7 @@ a.producto-card:active, .card:not(.card--static):active, .kpi--link:active {
 .select-custom-trigger:focus-visible,
 .input-buscar input:focus {
     border-color: var(--tinta);
-    box-shadow: 3px 3px 0 var(--acento);
+    box-shadow: 3px 3px 0 var(--foco);
     outline: none;
 }
 

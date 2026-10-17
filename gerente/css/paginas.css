@@ -696,7 +696,7 @@
 .producto-card-imagen > span[aria-hidden] {
     font-size: 1.6rem; font-weight: 700; color: var(--acento-medio);
 }
-.producto-card-stock { position: absolute; left: 0.6rem; top: 0.6rem; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
+.producto-card-stock { position: absolute; left: 0.6rem; top: 0.6rem; box-shadow: var(--sombra-suave); }
 .producto-card-cuerpo { padding: 0.8rem 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
 .producto-card-nombre { font-weight: 600; color: var(--texto); line-height: 1.3; }
 .producto-card-meta { font-size: 0.78rem; color: var(--texto-3); }
@@ -752,7 +752,7 @@
 }
 .ficha-accion {
     background: var(--superficie); border-radius: 12px; padding: 1.1rem 1.25rem;
-    box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    box-shadow: var(--sombra-suave);
 }
 .ficha-accion h2 { font-size: 1rem; color: var(--texto); margin-bottom: 0.25rem; }
 .ficha-accion-ayuda { font-size: 0.82rem; color: var(--texto-3); margin-bottom: 0.85rem; }
