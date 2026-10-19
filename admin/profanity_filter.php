@@ -13,7 +13,7 @@ const APIVERVE_PROFANITY_URL = 'https://api.apiverve.com/v1/profanityfilter';
 // para no tumbar páginas que no están creando nada si falta la key.
 function obtenerApiVerveKey(): ?string
 {
-    $ruta = __DIR__ . '/../../private/private-API-frofanity.php';
+    $ruta = __DIR__ . '/../../private/private-API-profanity.php';
     if (!is_file($ruta)) {
         error_log('profanity_filter.php: no se encontró el archivo de credenciales ' . $ruta);
         return null;
