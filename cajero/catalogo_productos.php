@@ -16,10 +16,14 @@ $stmt = $pdo->prepare("SELECT id_sucursal FROM Usuarios WHERE id_usuario = ? LIM
 $stmt->execute([$_SESSION['id_usuario']]);
 $idSucursal = (int) $stmt->fetchColumn();
 
-// Mismos campos que buscar_producto.php, para que el catálogo y el buscador
-// agreguen al carrito el mismo objeto
+// Todas las categorías, aunque no tengan productos: el cajero las muestra igual
+$categorias = $pdo->query("SELECT id_categoria, nombre_categoria FROM Categorias ORDER BY nombre_categoria")->fetchAll();
+
+// Mismos campos que buscar_producto.php (más la categoría), para que el catálogo
+// y el buscador agreguen al carrito el mismo objeto
 $stmt = $pdo->prepare("
-    SELECT p.id_producto, p.codigo, p.nombre, p.precio, p.imagen, COALESCE(ip.cantidad_disponible, 0) AS stock
+    SELECT p.id_producto, p.codigo, p.nombre, p.precio, p.imagen, p.id_categoria,
+           COALESCE(ip.cantidad_disponible, 0) AS stock
     FROM Productos p
     LEFT JOIN Inventario_Sucursal ip ON ip.id_producto = p.id_producto AND ip.id_sucursal = ?
     WHERE p.estado = 'Activo'
@@ -27,4 +31,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$idSucursal]);
 
-echo json_encode($stmt->fetchAll());
+echo json_encode([
+    'categorias' => $categorias,
+    'productos'  => $stmt->fetchAll(),
+]);
