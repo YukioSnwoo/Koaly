@@ -3,6 +3,9 @@ session_start();
 
 header('Content-Type: application/json');
 
+// Mensajes en el idioma de la sesión (cajero/lang). Lo que se guarda en la BD sigue en español.
+require_once __DIR__ . '/includes/i18n.php';
+
 function responder(int $codigo, array $datos): void
 {
     http_response_code($codigo);
@@ -11,18 +14,18 @@ function responder(int $codigo, array $datos): void
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    responder(405, ['success' => false, 'message' => 'Método no permitido']);
+    responder(405, ['success' => false, 'message' => t('servidor.metodo_no_permitido')]);
 }
 
 if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
-    responder(401, ['success' => false, 'message' => 'Tu sesión expiró. Vuelve a iniciar sesión.']);
+    responder(401, ['success' => false, 'message' => t('servidor.sesion_expirada')]);
 }
 
 require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
 
 if (!csrfValido()) {
-    responder(403, ['success' => false, 'message' => 'Token de seguridad inválido. Recarga la página.']);
+    responder(403, ['success' => false, 'message' => t('servidor.token_invalido')]);
 }
 
 /* ------------------------------------------------------------
@@ -44,7 +47,7 @@ if (
     || $cajero['id_sucursal'] === null
     || $cajero['sucursal_estado'] !== 'Activa'
 ) {
-    responder(403, ['success' => false, 'message' => 'Tu cuenta o sucursal no está activa.']);
+    responder(403, ['success' => false, 'message' => t('servidor.cuenta_inactiva')]);
 }
 
 $idCajero   = (int) $cajero['id_usuario'];
@@ -55,12 +58,12 @@ $idSucursal = (int) $cajero['id_sucursal'];
    ------------------------------------------------------------ */
 $metodo = $_POST['metodo'] ?? '';
 if (!in_array($metodo, ['Efectivo', 'Tarjeta'], true)) {
-    responder(400, ['success' => false, 'message' => 'Método de pago inválido.']);
+    responder(400, ['success' => false, 'message' => t('servidor.metodo_invalido')]);
 }
 
 $items = json_decode($_POST['items'] ?? '', true);
 if (!is_array($items) || count($items) === 0) {
-    responder(400, ['success' => false, 'message' => 'La venta no tiene productos.']);
+    responder(400, ['success' => false, 'message' => t('servidor.venta_vacia')]);
 }
 
 // Agrupa por producto por si el cliente manda uno repetido
@@ -69,7 +72,7 @@ foreach ($items as $item) {
     $idProducto = (int) ($item['id_producto'] ?? 0);
     $cantidad   = (int) ($item['cantidad'] ?? 0);
     if ($idProducto <= 0 || $cantidad <= 0) {
-        responder(400, ['success' => false, 'message' => 'Hay productos con cantidad inválida.']);
+        responder(400, ['success' => false, 'message' => t('servidor.cantidad_invalida')]);
     }
     $cantidades[$idProducto] = ($cantidades[$idProducto] ?? 0) + $cantidad;
 }
@@ -150,11 +153,11 @@ try {
     foreach ($cantidades as $idProducto => $cantidad) {
         $p = $productos[$idProducto] ?? null;
         if (!$p) {
-            throw new DomainException('Uno de los productos ya no está disponible. Quítalo de la venta.');
+            throw new DomainException(t('servidor.producto_no_disponible'));
         }
         $disponible = (int) ($p['cantidad_disponible'] ?? 0);
         if ($disponible < $cantidad) {
-            throw new DomainException("Existencias insuficientes de \"{$p['nombre']}\" en esta sucursal (quedan $disponible).");
+            throw new DomainException(t('servidor.existencias_insuficientes', ['p' => $p['nombre'], 'n' => $disponible]));
         }
 
         $precioCentavos  = (int) round((float) $p['precio'] * 100);
@@ -183,7 +186,7 @@ try {
     if ($metodo === 'Efectivo') {
         $recibidoCentavos = (int) round((float) ($_POST['efectivo_recibido'] ?? 0) * 100);
         if ($recibidoCentavos < $totalCentavos) {
-            throw new DomainException('El efectivo recibido no cubre el total de $' . $centavosADinero($totalCentavos) . '.');
+            throw new DomainException(t('servidor.efectivo_insuficiente', ['total' => dinero($totalCentavos / 100)]));
         }
         $cambioCentavos = $recibidoCentavos - $totalCentavos;
     }
@@ -266,7 +269,7 @@ try {
 
         $descontar->execute([$l['cantidad'], $idSucursal, $l['id_producto'], $l['cantidad']]);
         if ($descontar->rowCount() !== 1) {
-            throw new DomainException('Las existencias cambiaron mientras se cobraba. Intenta de nuevo.');
+            throw new DomainException(t('servidor.existencias_cambiaron'));
         }
 
         $registrarMovimiento->execute([
@@ -294,7 +297,7 @@ try {
     // (método de pago o columna faltante); los de PDO no se exponen.
     $mensaje = ($e instanceof RuntimeException && !($e instanceof PDOException))
         ? $e->getMessage()
-        : 'No se pudo guardar la venta en la base de datos.';
+        : t('servidor.error_bd');
     responder(500, ['success' => false, 'message' => $mensaje]);
 }
 
@@ -302,9 +305,11 @@ try {
    Datos del ticket (después del commit: si algo falla aquí la venta
    ya quedó guardada, así que solo se omite lo que no se pudo leer)
    ------------------------------------------------------------ */
+// Fecha del ticket en el formato del idioma: 16/10/2026 (es) o 10/16/2026 (en)
+$formatoFecha = idiomaActual() === 'en' ? 'm/d/Y' : 'd/m/Y';
 $ticket = [
     'folio'     => $idVenta,
-    'fecha'     => date('d/m/Y'),
+    'fecha'     => date($formatoFecha),
     'hora'      => date('H:i:s'),
     'sucursal'  => null,
     'direccion' => null,
@@ -332,7 +337,7 @@ try {
     $stmt->execute([$idVenta]);
     if ($fechaHora = $stmt->fetchColumn()) {
         $fecha = new DateTime($fechaHora);
-        $ticket['fecha'] = $fecha->format('d/m/Y');
+        $ticket['fecha'] = $fecha->format($formatoFecha);
         $ticket['hora']  = $fecha->format('H:i:s');
     }
 
@@ -358,7 +363,7 @@ try {
     ");
     $stmt->execute([$idCajero, $idSucursal]);
     if ($caja = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $ticket['caja'] = 'Caja ' . $caja['numero_caja'] . ($caja['nombre'] ? ' · ' . $caja['nombre'] : '');
+        $ticket['caja'] = t('ticket.caja_n', ['n' => $caja['numero_caja']]) . ($caja['nombre'] ? ' · ' . $caja['nombre'] : '');
     }
 } catch (Throwable $e) {
     error_log('registrar_venta (ticket): ' . $e->getMessage());
