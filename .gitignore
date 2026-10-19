@@ -1,5 +1,35 @@
+    # Credenciales — NUNCA subir
+admin/database.php
+admin/config.php
+login/config_correo.php
 .env
-.env.*
-!.env.example
-actualizar_passwords.php
+*.env.local
+
+# Imágenes subidas por usuarios
+Imagenes/*.png
+Imagenes/*.jpg
+Imagenes/*.jpeg
+Imagenes/*.webp
+Imagenes/*.avif
+!Imagenes/.gitkeep
+# Iconos de la interfaz (no son subidas de usuarios)
+!Imagenes/puertaSalida.jpeg
+
+# Sistema
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.log
+
+# OneDrive / temporales
+~$*
+desktop.ini
+.directory
+*.kate-swp
+*.swp
+
+# Privado
+private/

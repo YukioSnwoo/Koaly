@@ -5,488 +5,531 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
     header('Location: ../index.php');
     exit;
 }
+
+require_once __DIR__ . '/../admin/csrf.php';
+
+$verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Punto de Venta - Koaly</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-
-        body {
-            background-color: #d1d5db;
-            padding: 15px;
-            color: #333;
-        }
-
-        /* --- ENCABEZADO SUPERIOR --- */
-        .top-bar {
-            display: grid;
-            grid-template-columns: 200px 1fr 280px;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .header-box {
-            background-color: #527d53;
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-
-        .header-logo { font-size: 1.5rem; font-weight: bold; }
-        .header-user { justify-content: space-between; padding: 8px 15px; }
-        .user-avatar {
-            width: 38px;
-            height: 38px;
-            background: #2d4d2e;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-        }
-
-        /* --- CONTENEDOR PRINCIPAL --- */
-        .main-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr 300px;
-            gap: 15px;
-            height: calc(100vh - 100px);
-        }
-
-        /* --- PANEL IZQUIERDO (BOTONES) --- */
-        .sidebar {
-            background-color: #527d53;
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .btn-group-top, .btn-group-bottom {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .search-box {
-            position: relative;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid #7cb07d;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
-
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-            z-index: 10;
-            max-height: 260px;
-            overflow-y: auto;
-        }
-
-        .search-results .result-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            color: #333;
-        }
-
-        .search-results .result-item:last-child { border-bottom: none; }
-        .search-results .result-item:hover { background: #e5f0e5; }
-        .search-results .result-item small { display: block; color: #6b7280; }
-        .search-results .no-results { padding: 10px 12px; color: #6b7280; font-size: 0.85rem; }
-
-        .btn-green {
-            background-color: #639264;
-            color: white;
-            border: 1px solid #7cb07d;
-            padding: 12px 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: background 0.2s;
-            text-align: center;
-            width: 100%;
-        }
-
-        .btn-green:hover { background-color: #436944; }
-
-        .btn-danger {
-            background-color: #8a252a;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .btn-warning {
-            background-color: #f56e11;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        /* --- PANEL CENTRAL (TABLA DE PRODUCTOS) --- */
-        .table-container {
-            background-color: white;
-            border-radius: 12px;
-            padding: 10px;
-            border: 2px solid #8b71d0;
-            overflow-y: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            background-color: #527d53;
-            color: white;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 0.95rem;
-        }
-
-        td {
-            padding: 10px;
-            text-align: center;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 0.9rem;
-        }
-
-        td.producto-nombre { text-align: left; font-weight: 600; }
-
-        td input {
-            width: 70px;
-            padding: 6px;
-            text-align: center;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 0.9rem;
-        }
-
-        tr.selected {
-            background-color: #639264 !important;
-            color: white;
-        }
-
-        tr.empty-row td {
-            color: #9ca3af;
-            padding: 30px 10px;
-        }
-
-        /* --- PANEL DERECHO (RESUMEN Y COBRO) --- */
-        .summary-panel {
-            background-color: #f3f4f6;
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .summary-header {
-            background-color: #527d53;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            border-radius: 12px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .pill-field {
-            background-color: #e5e0e0;
-            border-radius: 10px;
-            padding: 8px 15px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
-
-        .btn-pay {
-            background-color: #527d53;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .btn-pay:hover { background-color: #436944; }
-
-        /* --- MODAL DE PAGO --- */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-
-        .modal-overlay.open { display: flex; }
-
-        .modal-box {
-            background: white;
-            border-radius: 14px;
-            padding: 25px;
-            width: 320px;
-            text-align: center;
-        }
-
-        .modal-box h2 { margin-bottom: 5px; color: #1f2937; }
-        .modal-box .modal-total { font-size: 1.4rem; font-weight: bold; color: #527d53; margin-bottom: 20px; }
-
-        .modal-payment-options {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .modal-payment-options button {
-            flex: 1;
-            padding: 18px 10px;
-            border-radius: 12px;
-            border: 2px solid #527d53;
-            background: white;
-            color: #527d53;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.95rem;
-        }
-
-        .modal-payment-options button:hover {
-            background: #527d53;
-            color: white;
-        }
-
-        .modal-cancel {
-            background: none;
-            border: none;
-            color: #6b7280;
-            cursor: pointer;
-            font-size: 0.85rem;
-            text-decoration: underline;
-        }
-    </style>
+    <title>CAJA</title>
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
+    <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
 </head>
 <body>
 
     <!-- Encabezado -->
-    <div class="top-bar">
-        <div class="header-box header-logo">Koaly</div>
-        <div class="header-box">Tel. Oficina 00 0000 0000</div>
-        <div class="header-box header-user">
-            <div>
-                <div id="userName" style="font-size: 0.85rem;">Cajero</div>
-                <div style="font-size: 0.7rem; opacity: 0.8;">Sucursal: <span id="sucursalName">-</span></div>
+    <header class="header">
+        <h1>Koaly</h1>
+        <div class="user-info">
+            <div class="user-datos">
+                <span class="user-nombre" id="userName">Cajero</span>
+                <span class="user-sucursal">Sucursal: <span id="sucursalName">-</span></span>
             </div>
-            <div class="user-avatar" onclick="logout()" style="cursor:pointer;" title="Cerrar sesión">IMG</div>
+            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" title="Cerrar sesión" aria-label="Cerrar sesión">
+                <img src="../Imagenes/puertaSalida.jpeg" alt="">
+            </button>
         </div>
-    </div>
+    </header>
 
     <!-- Panel Principal -->
-    <div class="main-layout">
+    <main class="pos-layout">
 
         <!-- Lateral Izquierdo -->
-        <div class="sidebar">
-            <div class="btn-group-top">
+        <aside class="panel sidebar">
+            <div class="sidebar-group">
                 <div class="search-box">
-                    <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave...">
-                    <button class="btn-green" onclick="buscarProducto()">Buscar producto</button>
-                    <div id="resultadosBusqueda" class="search-results" style="display:none;"></div>
+                    <div class="input-buscar">
+                        <svg class="icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                        <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave..." autocomplete="off"
+                               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="resultadosBusqueda">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <div id="resultadosBusqueda" class="search-results" role="listbox" style="display:none;"></div>
+                    </div>
                 </div>
             </div>
-            <div class="btn-group-bottom">
-                <button class="btn-danger" onclick="eliminarFila()">Eliminar</button>
-                <button class="btn-warning" onclick="limpiarTabla()">Limpiar</button>
+            <div class="sidebar-group">
+                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()">Limpiar</button>
             </div>
-        </div>
+        </aside>
 
-        <!-- Tabla Central -->
-        <div class="table-container">
-            <table id="tablaVenta">
-                <thead>
-                    <tr>
-                        <th>Clave</th>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                        <th>Precio</th>
-                        <th>Importe</th>
-                    </tr>
-                </thead>
-                <tbody id="listaProductos">
-                    <!-- Filas dinámicas -->
-                </tbody>
-            </table>
-        </div>
+        <!-- Catálogo Central -->
+        <section class="panel catalogo-panel">
+            <h2 class="catalogo-titulo">Productos</h2>
+            <div class="catalogo-grid" id="catalogo">
+                <!-- Tarjetas dinámicas -->
+            </div>
+            <div class="catalogo-pie">
+                <button type="button" class="btn btn-ghost btn-lista" onclick="abrirLista()">
+                    Lista de venta <span class="contador-lista" id="contadorLista">0</span>
+                </button>
+            </div>
+        </section>
 
         <!-- Lateral Derecho (Totales) -->
-        <div class="summary-panel">
+        <aside class="panel resumen">
+            <!-- Escaneo: historial en tiempo real, los escaneos seguidos del mismo producto se juntan (p1 ×3, p2, p1) -->
+            <div class="panel-title">Escaneo</div>
+            <ul class="resumen-lista" id="escaneoLista"></ul>
+
+            <!-- Resumen: todo agrupado por producto (p1 ×4, p2) -->
+            <div class="resumen-agrupado" id="resumenAgrupado" hidden>
+                <div class="panel-title">Resumen</div>
+                <ul class="resumen-lista" id="resumenLista"></ul>
+            </div>
+
             <div>
-                <div class="summary-header">Resumen</div>
-                <div id="desglosePrecios">
-                    <div class="pill-field">Artículos: <span id="totalArticulos">0</span></div>
-                </div>
+                <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
+                <div class="resumen-total"><span>Total</span><span id="lblTotal">$0.00</span></div>
+                <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()">Pagar</button>
             </div>
+        </aside>
 
-            <div class="summary-totals">
-                <div class="pill-field">Subtotal: <span id="lblSubtotal">$0.00</span></div>
-                <div class="pill-field">Impuestos (IVA): <span id="lblImpuestos">$0.00</span></div>
-                <div class="pill-field" style="background-color: #d1d5db; font-size: 1rem; color: #111;">
-                    Total: <span id="lblTotal">$0.00</span>
-                </div>
-                <button class="btn-pay" onclick="abrirModalPago()">Pagar</button>
-            </div>
-        </div>
+    </main>
 
-    </div>
-
-    <!-- Modal de método de pago -->
-    <div class="modal-overlay" id="modalPago">
+    <!-- Modal: cerrar sesión -->
+    <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
         <div class="modal-box">
-            <h2>Método de pago</h2>
-            <div class="modal-total" id="modalTotal">$0.00</div>
-            <div class="modal-payment-options">
-                <button onclick="procesarPago('Efectivo')">💵 Efectivo</button>
-                <button onclick="procesarPago('Tarjeta')">💳 Tarjeta</button>
+            <h2 id="tituloSalir">Cerrar sesión</h2>
+            <p class="modal-mensaje">¿Deseas cerrar sesión?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')">No, me quedo</button>
+                <button type="button" class="btn btn-danger-solid" onclick="logout()">Sí, cerrar sesión</button>
             </div>
-            <button class="modal-cancel" onclick="cerrarModalPago()">Cancelar</button>
         </div>
     </div>
+
+    <!-- Modal: lista de venta (historial: una fila por cada vez que se agregó un producto).
+         Va antes de los demás modales para que la confirmación y los avisos queden encima. -->
+    <div class="modal-overlay" id="modalLista" role="dialog" aria-modal="true" aria-labelledby="tituloLista">
+        <div class="modal-box modal-lista">
+            <h2 id="tituloLista">Lista de venta</h2>
+            <p class="atajo-hint">Selecciona un producto y presiona <kbd>Supr</kbd> o <kbd>⌫</kbd> para quitarlo.</p>
+            <div class="tabla-scroll">
+                <table class="tabla-venta">
+                    <thead>
+                        <tr>
+                            <th>Clave</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th class="col-num">Precio</th>
+                            <th class="col-num">Importe</th>
+                            <th class="col-acciones"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaProductos">
+                        <!-- Filas dinámicas -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <span class="lista-total">Total <strong id="listaTotal">$0.00</strong></span>
+                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: confirmar eliminación (un producto o toda la lista) -->
+    <div class="modal-overlay" id="modalEliminar" role="dialog" aria-modal="true" aria-labelledby="tituloEliminar">
+        <div class="modal-box modal-confirmar">
+            <div class="icono-peligro" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </div>
+            <h2 id="tituloEliminar">¿Eliminar producto?</h2>
+            <div id="eliminarContenido"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+                <button type="button" class="btn btn-danger-solid" id="btnConfirmarEliminar" onclick="confirmarEliminar()">Sí, eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: método de pago -->
+    <div class="modal-overlay" id="modalPago" role="dialog" aria-modal="true" aria-labelledby="tituloPago">
+        <div class="modal-box">
+            <h2 id="tituloPago">Método de pago</h2>
+            <div class="modal-total-label">Total a cobrar</div>
+            <div class="modal-total" id="modalTotal">$0.00</div>
+            <div class="metodos-pago">
+                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span>💵</span>Efectivo</button>
+                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span>💳</span>Tarjeta</button>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: pago en efectivo -->
+    <div class="modal-overlay" id="modalEfectivo" role="dialog" aria-modal="true" aria-labelledby="tituloEfectivo">
+        <div class="modal-box">
+            <h2 id="tituloEfectivo">Pago en efectivo</h2>
+            <div class="modal-total-label">Total a cobrar</div>
+            <div class="modal-total" id="efectivoTotal">$0.00</div>
+            <div class="form-group">
+                <label for="inputRecibido">Efectivo recibido</label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputRecibido" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+            <div class="cambio-preview" id="cambioPreview"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()">Atrás</button>
+                <button type="button" class="btn btn-primary" id="btnCobrarEfectivo" onclick="cobrarEfectivo()" disabled>Cobrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: venta completada -->
+    <div class="modal-overlay" id="modalVenta" role="dialog" aria-modal="true" aria-labelledby="tituloVenta">
+        <div class="modal-box">
+            <h2 id="tituloVenta">Venta completada</h2>
+            <p class="modal-mensaje" id="ventaMensaje"></p>
+            <div id="ventaCambio" style="display:none;">
+                <div class="cambio-resultado">
+                    <div class="cambio-label">Cambio</div>
+                    <div class="cambio-monto" id="ventaCambioMonto">$0.00</div>
+                </div>
+                <div class="cambio-detalle" id="ventaCambioDetalle"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 Imprimir ticket</button>
+                <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: avisos (existencias, errores al cobrar) -->
+    <div class="modal-overlay" id="modalAviso" role="alertdialog" aria-modal="true" aria-labelledby="tituloAviso" aria-describedby="avisoMensaje">
+        <div class="modal-box modal-confirmar">
+            <div class="icono-aviso" id="avisoIcono" aria-hidden="true"></div>
+            <h2 id="tituloAviso"></h2>
+            <p class="modal-mensaje" id="avisoMensaje"></p>
+            <div id="avisoContenido"></div>
+            <div class="modal-actions" id="avisoAcciones"></div>
+        </div>
+    </div>
+
+    <!-- Notificaciones breves (existencias bajas, ajustes) -->
+    <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
     <script src="../auth.js"></script>
     <script>
         const usuario = requireRol(3);
         if (usuario) {
             document.getElementById('userName').textContent = usuario.nombre || 'Cajero';
-            document.getElementById('sucursalName').textContent = usuario.id_sucursal || 'Sin asignar';
+            document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || 'Sin asignar';
         }
 
         let carrito = [];
-        let filaSeleccionada = null;
+        let indiceSeleccionado = null;
+        let accionEliminar = null;
+        let totalActual = 0;
+        let cobrando = false;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
         const inputBuscar = document.getElementById('inputBuscar');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
+        const inputRecibido = document.getElementById('inputRecibido');
 
-        inputBuscar.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') buscarProducto();
+        const formatoDinero = (n) => `$${n.toFixed(2)}`;
+        const aCentavos = (n) => Math.round(n * 100);
+
+        /* ---------- Modales ---------- */
+        function abrirModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        // Clic fuera de la caja o Escape cierra el modal, excepto el de venta
+        // completada: la venta solo se cierra con "Aceptar".
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay && overlay.id !== 'modalVenta') cerrarModal(overlay.id);
+            });
         });
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-box')) {
-                resultadosBusqueda.style.display = 'none';
+        // El modal de encima es el último abierto en el documento
+        function modalSuperior() {
+            return [...document.querySelectorAll('.modal-overlay.open')].pop() || null;
+        }
+
+        // Escape cierra solo el de encima: la lista puede tener una confirmación abierta
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const abierto = modalSuperior();
+            if (abierto && abierto.id !== 'modalVenta') cerrarModal(abierto.id);
+        });
+
+        /* ---------- Búsqueda ---------- */
+        // Sugerencias en vivo mientras se escribe; Enter (o un lector de código de
+        // barras) agrega el producto resaltado o la coincidencia exacta de clave.
+        const MIN_CARACTERES = 2;
+        const ESPERA_MS = 250;
+        let temporizadorBusqueda = null;
+        let numeroBusqueda = 0;        // descarta respuestas que llegan fuera de orden
+        let resultadosActuales = [];
+        let consultaMostrada = null;   // consulta a la que pertenecen los resultados visibles
+        let indiceActivo = -1;
+
+        async function consultarProductos(q) {
+            const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(q)}`);
+            const productos = await res.json();
+            return Array.isArray(productos) ? productos : [];
+        }
+
+        inputBuscar.addEventListener('input', () => {
+            clearTimeout(temporizadorBusqueda);
+            const q = inputBuscar.value.trim();
+            if (q.length < MIN_CARACTERES) {
+                numeroBusqueda++;
+                ocultarResultados();
+                return;
+            }
+            temporizadorBusqueda = setTimeout(() => sugerir(q), ESPERA_MS);
+        });
+
+        inputBuscar.addEventListener('focus', () => {
+            const q = inputBuscar.value.trim();
+            if (q.length >= MIN_CARACTERES && q === consultaMostrada) mostrarResultados();
+        });
+
+        inputBuscar.addEventListener('keydown', (e) => {
+            const abiertos = resultadosBusqueda.style.display !== 'none' && resultadosActuales.length > 0;
+            if (e.key === 'ArrowDown' && abiertos) {
+                e.preventDefault();
+                activarResultado((indiceActivo + 1) % resultadosActuales.length);
+            } else if (e.key === 'ArrowUp' && abiertos) {
+                e.preventDefault();
+                activarResultado((indiceActivo - 1 + resultadosActuales.length) % resultadosActuales.length);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarProducto();
+            } else if (e.key === 'Escape') {
+                ocultarResultados();
             }
         });
 
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) ocultarResultados();
+        });
+
+        async function sugerir(q) {
+            const numero = ++numeroBusqueda;
+            buscando(true);
+            let productos;
+            try {
+                productos = await consultarProductos(q);
+            } catch (error) {
+                if (numero !== numeroBusqueda) return;
+                buscando(false);
+                pintarMensaje('No se pudo conectar con el servidor.');
+                return;
+            }
+            if (numero !== numeroBusqueda) return;
+            buscando(false);
+            pintarResultados(q, productos);
+        }
+
+        // Enter en el buscador
         async function buscarProducto() {
+            clearTimeout(temporizadorBusqueda);
             const q = inputBuscar.value.trim();
             if (!q) {
                 inputBuscar.focus();
                 return;
             }
 
-            let productos = [];
+            // Si la lista visible corresponde a lo escrito, se agrega el resaltado
+            if (q === consultaMostrada && resultadosActuales[indiceActivo]) {
+                seleccionarResultado(resultadosActuales[indiceActivo]);
+                return;
+            }
+
+            const numero = ++numeroBusqueda;
+            buscando(true);
+            let productos;
             try {
-                const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(q)}`);
-                productos = await res.json();
+                productos = await consultarProductos(q);
             } catch (error) {
+                buscando(false);
                 alert('No se pudo conectar con el servidor para buscar el producto.');
                 return;
             }
+            if (numero !== numeroBusqueda) return;
+            buscando(false);
 
-            if (!Array.isArray(productos) || productos.length === 0) {
-                resultadosBusqueda.innerHTML = '<div class="no-results">No se encontraron productos.</div>';
-                resultadosBusqueda.style.display = 'block';
+            const exacto = productos.find(p => String(p.codigo).toLowerCase() === q.toLowerCase());
+            if (productos.length === 1 || exacto) {
+                seleccionarResultado(exacto || productos[0]);
                 return;
             }
+            pintarResultados(q, productos);
+        }
 
-            if (productos.length === 1) {
-                agregarAlCarrito(productos[0]);
-                cerrarResultados();
+        function pintarResultados(q, productos) {
+            resultadosActuales = productos;
+            consultaMostrada = q;
+
+            if (productos.length === 0) {
+                pintarMensaje(`Sin resultados para "${q}".`);
                 return;
             }
 
             resultadosBusqueda.innerHTML = '';
-            productos.forEach(p => {
+            productos.forEach((p, i) => {
                 const item = document.createElement('div');
                 item.className = 'result-item';
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.gap = '10px';
+                item.id = `resultado-${i}`;
+                item.setAttribute('role', 'option');
 
                 const thumb = document.createElement('img');
-                thumb.src = p.imagen ? `../${p.imagen}` : '';
+                thumb.className = 'result-thumb';
                 thumb.alt = '';
-                thumb.style.cssText = 'width:36px;height:36px;border-radius:6px;object-fit:cover;background:#eee;flex-shrink:0;';
-                if (!p.imagen) thumb.style.visibility = 'hidden';
+                if (p.imagen) thumb.src = `../${p.imagen}`;
+                else thumb.style.visibility = 'hidden';
 
                 const info = document.createElement('div');
+                info.className = 'result-info';
                 const nombre = document.createElement('div');
-                nombre.textContent = p.nombre;
+                nombre.className = 'result-nombre';
+                nombre.appendChild(resaltarCoincidencia(p.nombre, q));
                 const detalle = document.createElement('small');
-                detalle.textContent = `Clave: ${p.codigo} · Existencias: ${p.stock} · $${Number(p.precio).toFixed(2)}`;
-                info.appendChild(nombre);
-                info.appendChild(detalle);
+                detalle.append('Clave: ', resaltarCoincidencia(String(p.codigo), q), ' · ');
+                const stock = document.createElement('span');
+                if (Number(p.stock) > 0) {
+                    stock.textContent = `Existencias: ${p.stock}`;
+                } else {
+                    stock.className = 'agotado';
+                    stock.textContent = 'Agotado';
+                }
+                detalle.appendChild(stock);
+                info.append(nombre, detalle);
 
-                item.appendChild(thumb);
-                item.appendChild(info);
-                item.onclick = () => {
-                    agregarAlCarrito(p);
-                    cerrarResultados();
-                };
+                const precio = document.createElement('div');
+                precio.className = 'result-precio';
+                precio.textContent = formatoDinero(Number(p.precio) || 0);
+
+                item.append(thumb, info, precio);
+                item.addEventListener('mousedown', (e) => e.preventDefault()); // no quitar el foco del input
+                item.addEventListener('mouseenter', () => activarResultado(i, false));
+                item.addEventListener('click', () => seleccionarResultado(p));
                 resultadosBusqueda.appendChild(item);
             });
+
+            // Resalta la clave exacta si la hay; si no, el primero
+            const exacto = productos.findIndex(p => String(p.codigo).toLowerCase() === q.toLowerCase());
+            activarResultado(exacto >= 0 ? exacto : 0);
+            mostrarResultados();
+        }
+
+        function pintarMensaje(texto) {
+            resultadosActuales = [];
+            indiceActivo = -1;
+            const div = document.createElement('div');
+            div.className = 'no-results';
+            div.textContent = texto;
+            resultadosBusqueda.replaceChildren(div);
+            mostrarResultados();
+        }
+
+        // Devuelve el texto con la parte que coincide envuelta en <mark>
+        function resaltarCoincidencia(texto, q) {
+            const fragmento = document.createDocumentFragment();
+            const pos = texto.toLowerCase().indexOf(q.toLowerCase());
+            if (pos === -1) {
+                fragmento.append(texto);
+                return fragmento;
+            }
+            const mark = document.createElement('mark');
+            mark.textContent = texto.slice(pos, pos + q.length);
+            fragmento.append(texto.slice(0, pos), mark, texto.slice(pos + q.length));
+            return fragmento;
+        }
+
+        function activarResultado(i, desplazar = true) {
+            indiceActivo = i;
+            resultadosBusqueda.querySelectorAll('.result-item').forEach((el, j) => {
+                el.classList.toggle('active', j === i);
+                el.setAttribute('aria-selected', j === i ? 'true' : 'false');
+            });
+            const activo = document.getElementById(`resultado-${i}`);
+            if (activo) {
+                inputBuscar.setAttribute('aria-activedescendant', activo.id);
+                if (desplazar) activo.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function seleccionarResultado(producto) {
+            agregarAlCarrito(producto);
+            cerrarResultados();
+        }
+
+        function buscando(activo) {
+            document.querySelector('.search-box').classList.toggle('cargando', activo);
+        }
+
+        function mostrarResultados() {
             resultadosBusqueda.style.display = 'block';
+            inputBuscar.setAttribute('aria-expanded', 'true');
+        }
+
+        function ocultarResultados() {
+            resultadosBusqueda.style.display = 'none';
+            inputBuscar.setAttribute('aria-expanded', 'false');
         }
 
         function cerrarResultados() {
-            resultadosBusqueda.style.display = 'none';
+            numeroBusqueda++;
+            buscando(false);
+            ocultarResultados();
             resultadosBusqueda.innerHTML = '';
+            resultadosActuales = [];
+            consultaMostrada = null;
+            indiceActivo = -1;
+            inputBuscar.removeAttribute('aria-activedescendant');
             inputBuscar.value = '';
-            inputBuscar.focus();
+            // Si se abrió un aviso (p. ej. producto agotado), el foco se queda en él
+            if (!document.querySelector('.modal-overlay.open')) inputBuscar.focus();
         }
 
+        /* ---------- Carrito ---------- */
+        const ICONO_BASURA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+        let indiceResaltado = null;
+
+        const STOCK_BAJO = 5;
+
+        // El carrito es el historial de escaneo: si el producto es el mismo que el
+        // de la última fila se suma ahí; si no, se crea una fila nueva (p1 ×3, p2, p1).
+        // El resumen y el ticket las agrupan por producto, y las existencias se
+        // validan contra la suma de todas sus filas.
         function agregarAlCarrito(producto) {
-            const existente = carrito.find(item => item.id_producto === producto.id_producto);
-            if (existente) {
-                existente.cantidad += 1;
+            const stock = Number(producto.stock) || 0;
+            actualizarStockProducto(producto.id_producto, stock);
+
+            if (stock <= 0) {
+                avisoAgotado(producto.nombre);
+                renderCarrito();
+                return;
+            }
+
+            const enLista = cantidadDeProducto(producto.id_producto);
+            if (enLista + 1 > stock) {
+                avisoInsuficiente(producto.nombre, stock, enLista + 1);
+                renderCarrito();
+                return;
+            }
+
+            const ultima = carrito[carrito.length - 1];
+            if (ultima && ultima.id_producto === producto.id_producto) {
+                ultima.cantidad++;
             } else {
                 carrito.push({
                     id_producto: producto.id_producto,
@@ -494,10 +537,342 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
                     nombre: producto.nombre,
                     imagen: producto.imagen || null,
                     cantidad: 1,
-                    precio: Number(producto.precio) || 0
+                    precio: Number(producto.precio) || 0,
+                    stock: stock
                 });
             }
+            indiceResaltado = carrito.length - 1;
             renderCarrito();
+
+            // La fila nueva queda abajo: se desplaza la tabla para que se vea
+            const filaNueva = document.querySelector('#listaProductos tr:last-child');
+            if (filaNueva) filaNueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+            if (stock < STOCK_BAJO) {
+                mostrarToast(`Quedan solo ${stock} ${stock === 1 ? 'unidad' : 'unidades'} de ${producto.nombre}.`, 'aviso');
+            }
+        }
+
+        // Unidades de un producto sumando todas sus filas (opcionalmente sin contar una)
+        function cantidadDeProducto(idProducto, exceptoIndex = -1) {
+            return carrito.reduce((n, item, i) =>
+                (i !== exceptoIndex && item.id_producto === idProducto) ? n + item.cantidad : n, 0);
+        }
+
+        function actualizarStockProducto(idProducto, stock) {
+            carrito.forEach(item => {
+                if (item.id_producto === idProducto) item.stock = stock;
+            });
+            const enCatalogo = catalogo.find(p => p.id_producto === idProducto);
+            if (enCatalogo) enCatalogo.stock = stock;
+        }
+
+        // Cantidad de una fila entre 1 y lo que queda disponible para ella (existencias
+        // menos lo que ya piden las otras filas del mismo producto). Si se pide de más,
+        // avisa y la deja en el máximo (el servidor vuelve a validar al cobrar).
+        function cambiarCantidad(index, nuevaCantidad) {
+            const item = carrito[index];
+            let valor = Math.floor(nuevaCantidad);
+            if (isNaN(valor) || valor < 1) valor = 1;
+            const otras = cantidadDeProducto(item.id_producto, index);
+            if (otras + valor > item.stock) {
+                avisoInsuficiente(item.nombre, item.stock, otras + valor);
+                valor = Math.max(1, item.stock - otras);
+            }
+            item.cantidad = valor;
+            indiceResaltado = index;
+            renderCarrito();
+        }
+
+        // Quita una fila; si las de antes y después son del mismo producto se
+        // juntan, para que el escaneo siga sin líneas seguidas repetidas
+        function quitarFila(index) {
+            carrito.splice(index, 1);
+            if (indiceSeleccionado === index) indiceSeleccionado = null;
+            else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+
+            const antes = carrito[index - 1];
+            const despues = carrito[index];
+            if (antes && despues && antes.id_producto === despues.id_producto) {
+                antes.cantidad += despues.cantidad;
+                carrito.splice(index, 1);
+                if (indiceSeleccionado === index) indiceSeleccionado = index - 1;
+                else if (indiceSeleccionado !== null && indiceSeleccionado > index) indiceSeleccionado--;
+            }
+        }
+
+        // Productos agrupados en el orden en que se agregaron por primera vez
+        function agruparCarrito() {
+            const grupos = new Map();
+            carrito.forEach(item => {
+                let g = grupos.get(item.id_producto);
+                if (!g) {
+                    g = { id_producto: item.id_producto, nombre: item.nombre, precio: item.precio, stock: item.stock, cantidad: 0, importe: 0 };
+                    grupos.set(item.id_producto, g);
+                }
+                g.cantidad += item.cantidad;
+                g.importe += item.cantidad * item.precio;
+            });
+            return [...grupos.values()];
+        }
+
+        /* ---------- Catálogo ---------- */
+        // Tarjetas de todos los productos activos; un clic agrega uno a la venta.
+        // Las tarjetas se crean una vez y solo se actualizan sus etiquetas.
+        const ICONO_PRODUCTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>';
+        let catalogo = [];
+        const tarjetasCatalogo = new Map();   // id_producto -> elementos de su tarjeta
+
+        async function cargarCatalogo() {
+            const grid = document.getElementById('catalogo');
+            if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo('Cargando productos...'));
+            let productos;
+            try {
+                const res = await fetch('catalogo_productos.php');
+                productos = await res.json();
+                if (!Array.isArray(productos)) throw new Error('Respuesta inválida');
+            } catch (error) {
+                // Si falla una recarga se conserva el catálogo que ya se ve
+                if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo('No se pudo cargar el catálogo. Puedes usar el buscador.'));
+                return;
+            }
+            catalogo = productos;
+            renderCatalogo();
+        }
+
+        function mensajeCatalogo(texto) {
+            const div = document.createElement('div');
+            div.className = 'catalogo-mensaje';
+            div.textContent = texto;
+            return div;
+        }
+
+        function renderCatalogo() {
+            const grid = document.getElementById('catalogo');
+            tarjetasCatalogo.clear();
+
+            if (catalogo.length === 0) {
+                grid.replaceChildren(mensajeCatalogo('No hay productos activos.'));
+                return;
+            }
+
+            grid.replaceChildren(...catalogo.map(p => {
+                // La tarjeta lleva dos botones: toda el área agrega uno y el círculo
+                // rojo de la esquina resta uno (para corregir un clic de más)
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'producto-card';
+
+                const agregar = document.createElement('button');
+                agregar.type = 'button';
+                agregar.className = 'producto-card-agregar';
+
+                const marco = document.createElement('div');
+                marco.className = 'producto-card-img';
+                if (p.imagen) {
+                    const img = document.createElement('img');
+                    img.src = `../${p.imagen}`;
+                    img.alt = '';
+                    img.loading = 'lazy';
+                    marco.appendChild(img);
+                } else {
+                    marco.innerHTML = ICONO_PRODUCTO;
+                }
+
+                const enVenta = document.createElement('span');
+                enVenta.className = 'producto-card-cantidad';
+
+                const nombre = document.createElement('span');
+                nombre.className = 'producto-card-nombre';
+                nombre.textContent = p.nombre;
+
+                const pie = document.createElement('span');
+                pie.className = 'producto-card-pie';
+                const precio = document.createElement('span');
+                precio.className = 'producto-card-precio';
+                precio.textContent = formatoDinero(Number(p.precio) || 0);
+                const existencias = document.createElement('span');
+                pie.append(precio, existencias);
+
+                agregar.append(marco, enVenta, nombre, pie);
+                agregar.addEventListener('click', () => {
+                    const antes = cantidadDeProducto(p.id_producto);
+                    agregarAlCarrito(p);
+                    if (cantidadDeProducto(p.id_producto) > antes) animarTarjeta(tarjeta);
+                });
+
+                const restar = document.createElement('button');
+                restar.type = 'button';
+                restar.className = 'producto-card-restar';
+                restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+                restar.title = 'Quitar uno';
+                restar.setAttribute('aria-label', `Quitar uno de ${p.nombre}`);
+                restar.addEventListener('click', () => {
+                    restarUno(p.id_producto);
+                    animarTarjeta(tarjeta);
+                });
+
+                tarjeta.append(agregar, restar);
+                tarjetasCatalogo.set(p.id_producto, { producto: p, tarjeta, agregar, enVenta, existencias });
+                return tarjeta;
+            }));
+
+            actualizarCatalogo();
+        }
+
+        function animarTarjeta(tarjeta) {
+            tarjeta.classList.remove('bump');
+            void tarjeta.offsetWidth;   // reinicia la animación
+            tarjeta.classList.add('bump');
+        }
+
+        // Resta una unidad de la fila más reciente del producto; si esa fila
+        // queda en 0 se quita de la lista
+        function restarUno(idProducto) {
+            const index = carrito.findLastIndex(item => item.id_producto === idProducto);
+            if (index === -1) return;
+            if (carrito[index].cantidad > 1) {
+                carrito[index].cantidad--;
+                indiceResaltado = index;
+            } else {
+                quitarFila(index);
+            }
+            renderCarrito();
+        }
+
+        // Cantidad en la venta y existencias de cada tarjeta
+        function actualizarCatalogo() {
+            tarjetasCatalogo.forEach(({ producto, tarjeta, agregar, enVenta, existencias }) => {
+                const stock = Number(producto.stock) || 0;
+                const cantidad = cantidadDeProducto(producto.id_producto);
+
+                tarjeta.classList.toggle('en-venta', cantidad > 0);
+                tarjeta.classList.toggle('agotado', stock <= 0);
+                enVenta.textContent = cantidad > 0 ? `×${cantidad}` : '';
+
+                if (stock <= 0) {
+                    existencias.className = 'stock-badge stock-agotado';
+                    existencias.textContent = 'Agotado';
+                } else if (stock < STOCK_BAJO) {
+                    existencias.className = 'stock-badge stock-bajo';
+                    existencias.textContent = `Quedan ${stock}`;
+                } else {
+                    existencias.className = '';
+                    existencias.textContent = '';
+                }
+
+                agregar.setAttribute('aria-label', `Agregar ${producto.nombre}, ${formatoDinero(Number(producto.precio) || 0)}` +
+                    (cantidad > 0 ? `, ${cantidad} en la venta` : '') + (stock <= 0 ? ', agotado' : ''));
+            });
+        }
+
+        /* ---------- Avisos de existencias ---------- */
+        function avisoAgotado(nombre) {
+            mostrarAviso({
+                tipo: 'peligro',
+                titulo: 'Producto agotado',
+                mensaje: `"${nombre}" ya no tiene existencias en esta sucursal, no se puede agregar a la venta.`
+            });
+        }
+
+        function avisoInsuficiente(nombre, stock, pedida) {
+            mostrarAviso({
+                tipo: 'aviso',
+                titulo: 'Productos insuficientes',
+                mensaje: stock > 0
+                    ? `Pediste ${pedida} de "${nombre}" en total, pero solo hay ${stock} ${stock === 1 ? 'disponible' : 'disponibles'}.`
+                    : `"${nombre}" ya no tiene existencias en esta sucursal.`
+            });
+        }
+
+        // Texto de la etiqueta de existencias de una fila (null si no hace falta)
+        function etiquetaExistencias(item) {
+            if (item.stock <= 0) return { texto: 'Agotado', clase: 'stock-agotado' };
+            if (cantidadDeProducto(item.id_producto) > item.stock) return { texto: `Solo hay ${item.stock}`, clase: 'stock-agotado' };
+            if (item.stock < STOCK_BAJO) return { texto: `Quedan ${item.stock}`, clase: 'stock-bajo' };
+            return null;
+        }
+
+        // Pide al servidor las existencias actuales y las aplica al carrito.
+        // Devuelve los productos (agrupados) que piden más de lo disponible,
+        // o null si no hubo conexión.
+        async function actualizarExistencias() {
+            const ids = [...new Set(carrito.map(i => i.id_producto))].join(',');
+            let filas;
+            try {
+                const res = await fetch(`verificar_existencias.php?ids=${encodeURIComponent(ids)}`);
+                filas = await res.json();
+                if (!Array.isArray(filas)) return null;
+            } catch (error) {
+                return null;
+            }
+            const stockPorId = new Map(filas.map(f => [Number(f.id_producto), Number(f.stock)]));
+            carrito.forEach(item => {
+                item.stock = stockPorId.get(Number(item.id_producto)) ?? 0;
+            });
+            catalogo.forEach(p => {
+                const stock = stockPorId.get(Number(p.id_producto));
+                if (stock !== undefined) p.stock = stock;
+            });
+            renderCarrito();
+            return agruparCarrito().filter(g => g.cantidad > g.stock);
+        }
+
+        function avisoFaltantes(faltantes) {
+            const lista = document.createElement('ul');
+            lista.className = 'lista-faltantes';
+            faltantes.forEach(g => {
+                const li = document.createElement('li');
+                const nombre = document.createElement('strong');
+                nombre.textContent = g.nombre;
+                const detalle = document.createElement('span');
+                detalle.textContent = g.stock > 0
+                    ? `Pides ${g.cantidad}, hay ${g.stock} ${g.stock === 1 ? 'disponible' : 'disponibles'}`
+                    : 'Agotado';
+                if (g.stock <= 0) detalle.className = 'stock-agotado';
+                li.append(nombre, detalle);
+                lista.appendChild(li);
+            });
+
+            mostrarAviso({
+                tipo: 'aviso',
+                titulo: 'Productos insuficientes',
+                mensaje: 'No se puede completar la venta con estas cantidades:',
+                contenido: lista,
+                botones: [
+                    { texto: 'Revisar', clase: 'btn-ghost' },
+                    { texto: 'Ajustar a lo disponible', clase: 'btn-primary', accion: ajustarADisponible }
+                ]
+            });
+        }
+
+        // Deja cada producto en lo que hay: se descuenta de sus últimas filas
+        // (las más recientes) y se quitan las que quedan en 0 y los agotados.
+        function ajustarADisponible() {
+            const agotados = new Set(carrito.filter(i => i.stock <= 0).map(i => i.id_producto)).size;
+            const restante = new Map();
+            carrito.forEach(item => restante.set(item.id_producto, Math.max(0, item.stock)));
+            carrito.forEach(item => {
+                const queda = restante.get(item.id_producto);
+                item.cantidad = Math.min(item.cantidad, queda);
+                restante.set(item.id_producto, queda - item.cantidad);
+            });
+            carrito = carrito.filter(item => item.cantidad > 0);
+            indiceSeleccionado = null;
+            renderCarrito();
+            mostrarToast(agotados > 0
+                ? `Cantidades ajustadas. Se ${agotados === 1 ? 'quitó 1 producto agotado' : `quitaron ${agotados} productos agotados`}.`
+                : 'Cantidades ajustadas a lo disponible.', 'exito');
+        }
+
+        function crearBotonCantidad(texto, etiqueta, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'qty-btn';
+            btn.textContent = texto;
+            btn.title = etiqueta;
+            btn.setAttribute('aria-label', etiqueta);
+            btn.addEventListener('click', onClick);
+            return btn;
         }
 
         function renderCarrito() {
@@ -505,116 +880,599 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
             tbody.innerHTML = '';
 
             if (carrito.length === 0) {
-                tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Busca un producto para agregarlo a la venta</td></tr>';
-                filaSeleccionada = null;
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Agrega productos desde el catálogo o el buscador</td></tr>';
+                indiceSeleccionado = null;
+                indiceResaltado = null;
                 calcularTotales();
+                actualizarCatalogo();
                 return;
             }
 
             carrito.forEach((item, index) => {
                 const row = tbody.insertRow();
                 row.dataset.index = index;
+                if (index === indiceSeleccionado) row.classList.add('selected');
 
                 const importe = item.cantidad * item.precio;
 
-                const thumbHtml = item.imagen
-                    ? `<img src="../${item.imagen}" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;">`
-                    : '';
+                row.insertCell().textContent = item.codigo;
 
-                row.innerHTML = `
-                    <td>${item.codigo}</td>
-                    <td class="producto-nombre">${thumbHtml}${item.nombre}</td>
-                    <td><input type="number" min="1" step="1" value="${item.cantidad}" data-field="cantidad"></td>
-                    <td>$${item.precio.toFixed(2)}</td>
-                    <td>$${importe.toFixed(2)}</td>
-                `;
-
-                row.querySelectorAll('input').forEach(input => {
-                    input.addEventListener('click', (e) => e.stopPropagation());
-                    input.addEventListener('input', (e) => {
-                        const campo = e.target.dataset.field;
-                        let valor = parseFloat(e.target.value);
-                        if (isNaN(valor) || valor < 0) valor = 0;
-                        if (campo === 'cantidad' && valor < 1) valor = 1;
-                        carrito[index][campo] = valor;
-                        renderCarrito();
-                    });
-                });
-
-                row.addEventListener('click', function () {
-                    if (filaSeleccionada) filaSeleccionada.classList.remove('selected');
-                    this.classList.add('selected');
-                    filaSeleccionada = this;
-                });
-
-                if (filaSeleccionada && Number(filaSeleccionada.dataset.index) === index) {
-                    row.classList.add('selected');
-                    filaSeleccionada = row;
+                const celdaProducto = row.insertCell();
+                const producto = document.createElement('div');
+                producto.className = 'producto-celda';
+                if (item.imagen) {
+                    const img = document.createElement('img');
+                    img.className = 'producto-thumb';
+                    img.src = `../${item.imagen}`;
+                    img.alt = '';
+                    producto.appendChild(img);
                 }
+                const nombreProducto = document.createElement('div');
+                nombreProducto.textContent = item.nombre;
+                const etiqueta = etiquetaExistencias(item);
+                if (etiqueta) {
+                    const badge = document.createElement('span');
+                    badge.className = `stock-badge ${etiqueta.clase}`;
+                    badge.textContent = etiqueta.texto;
+                    nombreProducto.appendChild(badge);
+                    if (etiqueta.clase === 'stock-agotado') row.classList.add('fila-sin-stock');
+                }
+                producto.appendChild(nombreProducto);
+                celdaProducto.appendChild(producto);
+
+                // Selector de cantidad: [−] [n] [+]. Con 1 unidad, "−" ofrece quitar el producto.
+                const stepper = document.createElement('div');
+                stepper.className = 'qty-stepper';
+
+                const btnMenos = crearBotonCantidad('−',
+                    item.cantidad <= 1 ? 'Quitar producto' : 'Quitar uno',
+                    () => item.cantidad <= 1 ? pedirEliminarProducto(index) : cambiarCantidad(index, item.cantidad - 1));
+                if (item.cantidad <= 1) btnMenos.classList.add('qty-quitar');
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '1';
+                input.step = '1';
+                input.value = item.cantidad;
+                input.className = 'input-cantidad';
+                input.setAttribute('aria-label', `Cantidad de ${item.nombre}`);
+                input.addEventListener('click', (e) => e.stopPropagation());
+                input.addEventListener('change', (e) => cambiarCantidad(index, parseFloat(e.target.value)));
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') e.target.blur();
+                });
+
+                // "+" sigue activo en el máximo: al pulsarlo avisa cuántos hay disponibles
+                const btnMas = crearBotonCantidad('+', 'Agregar uno', () => cambiarCantidad(index, item.cantidad + 1));
+                if (cantidadDeProducto(item.id_producto) >= item.stock) {
+                    btnMas.classList.add('qty-tope');
+                    btnMas.title = `Solo hay ${item.stock} en existencia`;
+                }
+
+                stepper.append(btnMenos, input, btnMas);
+                row.insertCell().appendChild(stepper);
+
+                const celdaPrecio = row.insertCell();
+                celdaPrecio.className = 'col-num';
+                celdaPrecio.textContent = formatoDinero(item.precio);
+
+                const celdaImporte = row.insertCell();
+                celdaImporte.className = 'col-num col-importe';
+                celdaImporte.textContent = formatoDinero(importe);
+
+                const btnBorrar = document.createElement('button');
+                btnBorrar.type = 'button';
+                btnBorrar.className = 'btn-borrar';
+                btnBorrar.title = 'Eliminar producto';
+                btnBorrar.setAttribute('aria-label', `Eliminar ${item.nombre}`);
+                btnBorrar.innerHTML = ICONO_BASURA;
+                btnBorrar.addEventListener('click', () => pedirEliminarProducto(index));
+                const celdaAcciones = row.insertCell();
+                celdaAcciones.className = 'col-acciones';
+                celdaAcciones.appendChild(btnBorrar);
+
+                if (index === indiceResaltado) row.classList.add('bump');
+
+                row.addEventListener('click', () => seleccionarFila(index));
             });
 
-            calcularTotales();
+            calcularTotales();          // el resumen también resalta la línea nueva
+            indiceResaltado = null;
+            actualizarCatalogo();
         }
 
-        function eliminarFila() {
-            if (!filaSeleccionada) {
-                alert('Selecciona una fila primero haciendo clic sobre ella.');
-                return;
+        function abrirLista() {
+            abrirModal('modalLista');
+            const seleccionada = document.querySelector('#listaProductos tr.selected') ||
+                                 document.querySelector('#listaProductos tr:last-child');
+            if (seleccionada) seleccionada.scrollIntoView({ block: 'nearest' });
+        }
+
+        function seleccionarFila(index) {
+            indiceSeleccionado = index;
+            document.querySelectorAll('#listaProductos tr').forEach(tr => {
+                tr.classList.toggle('selected', Number(tr.dataset.index) === index);
+            });
+        }
+
+        /* ---------- Eliminar (con confirmación) ---------- */
+        function pedirEliminarProducto(index) {
+            const item = carrito[index];
+            if (!item) return;
+            seleccionarFila(index);
+
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'eliminar-producto';
+            if (item.imagen) {
+                const img = document.createElement('img');
+                img.src = `../${item.imagen}`;
+                img.alt = '';
+                tarjeta.appendChild(img);
             }
-            const index = Number(filaSeleccionada.dataset.index);
-            carrito.splice(index, 1);
-            filaSeleccionada = null;
-            renderCarrito();
+            const info = document.createElement('div');
+            const nombre = document.createElement('strong');
+            nombre.textContent = item.nombre;
+            const detalle = document.createElement('small');
+            detalle.textContent = `${item.cantidad} × ${formatoDinero(item.precio)} = ${formatoDinero(item.cantidad * item.precio)}`;
+            info.append(nombre, detalle);
+            tarjeta.appendChild(info);
+
+            abrirConfirmacion('¿Eliminar producto?', tarjeta, 'Sí, eliminar', () => quitarProducto(index));
         }
 
         function limpiarTabla() {
             if (carrito.length === 0) return;
-            if (!confirm('¿Vaciar toda la lista de productos?')) return;
-            carrito = [];
-            filaSeleccionada = null;
-            renderCarrito();
+            const articulos = carrito.reduce((n, i) => n + i.cantidad, 0);
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = `Se quitarán ${carrito.length} producto(s) (${articulos} artículo(s)) de la venta actual.`;
+
+            abrirConfirmacion('¿Vaciar la venta?', mensaje, 'Sí, vaciar', () => {
+                carrito = [];
+                indiceSeleccionado = null;
+                renderCarrito();
+                inputBuscar.focus();
+            });
         }
 
-        function calcularTotales() {
-            let subtotal = 0;
+        function abrirConfirmacion(titulo, contenido, textoBoton, accion) {
+            document.getElementById('tituloEliminar').textContent = titulo;
+            document.getElementById('eliminarContenido').replaceChildren(contenido);
+            document.getElementById('btnConfirmarEliminar').textContent = textoBoton;
+            accionEliminar = accion;
+            abrirModal('modalEliminar');
+            // Foco en "Sí, eliminar": Enter confirma, Escape cancela
+            document.getElementById('btnConfirmarEliminar').focus();
+        }
 
-            carrito.forEach(item => {
-                subtotal += item.cantidad * item.precio;
+        function confirmarEliminar() {
+            cerrarModal('modalEliminar');
+            const accion = accionEliminar;
+            accionEliminar = null;
+            if (accion) accion();
+        }
+
+        // Anima la salida de la fila y luego la quita del carrito
+        function quitarProducto(index) {
+            const fila = document.querySelector(`#listaProductos tr[data-index="${index}"]`);
+            const quitar = () => {
+                quitarFila(index);
+                renderCarrito();
+            };
+            if (!fila) return quitar();
+            fila.classList.add('removing');
+            setTimeout(quitar, 200);
+        }
+
+        // Supr / ⌫ elimina la fila seleccionada de la lista (si no se está escribiendo en un campo)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+            if (e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+            if (modalSuperior()?.id !== 'modalLista') return;
+            if (indiceSeleccionado === null || !carrito[indiceSeleccionado]) return;
+            e.preventDefault();
+            pedirEliminarProducto(indiceSeleccionado);
+        });
+
+        // Línea de las listas del panel derecho: [×n] nombre / precio c/u   importe
+        function lineaResumen({ nombre, precio, cantidad }, nueva) {
+            const li = document.createElement('li');
+            li.className = 'resumen-item';
+            if (nueva) li.classList.add('nuevo');
+
+            const etiquetaCantidad = document.createElement('span');
+            etiquetaCantidad.className = 'resumen-item-cantidad';
+            etiquetaCantidad.textContent = `×${cantidad}`;
+
+            const info = document.createElement('span');
+            info.className = 'resumen-item-info';
+            const etiquetaNombre = document.createElement('span');
+            etiquetaNombre.className = 'resumen-item-nombre';
+            etiquetaNombre.textContent = nombre;
+            etiquetaNombre.title = nombre;
+            const etiquetaPrecio = document.createElement('small');
+            etiquetaPrecio.textContent = `${formatoDinero(precio)} c/u`;
+            info.append(etiquetaNombre, etiquetaPrecio);
+
+            const importe = document.createElement('span');
+            importe.className = 'resumen-item-importe';
+            importe.textContent = formatoDinero(cantidad * precio);
+
+            li.append(etiquetaCantidad, info, importe);
+            return li;
+        }
+
+        function renderResumen() {
+            const escaneo = document.getElementById('escaneoLista');
+            const resumen = document.getElementById('resumenLista');
+            document.getElementById('resumenAgrupado').hidden = carrito.length === 0;
+
+            if (carrito.length === 0) {
+                const vacio = document.createElement('li');
+                vacio.className = 'resumen-vacio';
+                vacio.textContent = 'Sin productos';
+                escaneo.replaceChildren(vacio);
+                resumen.replaceChildren();
+                return;
+            }
+
+            // Escaneo: las filas del carrito tal cual, en el orden en que se registraron
+            const lineas = carrito.map((item, index) => lineaResumen(item, index === indiceResaltado));
+            escaneo.replaceChildren(...lineas);
+
+            // Resumen: agrupado por producto; se resalta el del último movimiento
+            const idResaltado = carrito[indiceResaltado]?.id_producto;
+            resumen.replaceChildren(...agruparCarrito().map(g => lineaResumen(g, g.id_producto === idResaltado)));
+
+            // Mantiene a la vista lo último que se registró
+            const nueva = lineas[indiceResaltado];
+            if (nueva) nueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            const grupoNuevo = resumen.querySelector('.nuevo');
+            if (grupoNuevo) grupoNuevo.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+
+        // Los precios exhibidos ya son el total a pagar (impuestos incluidos).
+        // Mismo cálculo en centavos que registrar_venta.php.
+        function calcularTotales() {
+            renderResumen();
+            const totalCentavos = carrito.reduce((n, i) => n + aCentavos(i.precio) * i.cantidad, 0);
+            const articulos = carrito.reduce((n, i) => n + i.cantidad, 0);
+            totalActual = totalCentavos / 100;
+
+            document.getElementById('totalArticulos').innerText = articulos;
+            document.getElementById('lblTotal').innerText = formatoDinero(totalActual);
+            document.getElementById('listaTotal').innerText = formatoDinero(totalActual);
+            document.getElementById('contadorLista').innerText = articulos;
+        }
+
+        /* ---------- Avisos y notificaciones ---------- */
+        const ICONOS_AVISO = {
+            aviso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+            peligro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>'
+        };
+
+        // botones: [{ texto, clase, accion }]. Todos cierran el aviso; luego corre la acción.
+        function mostrarAviso({ tipo = 'aviso', titulo, mensaje = '', contenido = null, botones = null }) {
+            const icono = document.getElementById('avisoIcono');
+            icono.className = `icono-aviso tipo-${tipo}`;
+            icono.innerHTML = ICONOS_AVISO[tipo] || ICONOS_AVISO.aviso;
+            document.getElementById('tituloAviso').textContent = titulo;
+            document.getElementById('avisoMensaje').textContent = mensaje;
+            document.getElementById('avisoContenido').replaceChildren(...(contenido ? [contenido] : []));
+
+            const acciones = document.getElementById('avisoAcciones');
+            acciones.replaceChildren();
+            (botones || [{ texto: 'Entendido', clase: 'btn-primary' }]).forEach(b => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `btn ${b.clase}`;
+                btn.textContent = b.texto;
+                btn.addEventListener('click', () => {
+                    cerrarModal('modalAviso');
+                    if (b.accion) b.accion();
+                    else inputBuscar.focus();
+                });
+                acciones.appendChild(btn);
             });
 
-            const impuestos = subtotal * 0.16;
-            const total = subtotal + impuestos;
-
-            document.getElementById('totalArticulos').innerText = carrito.reduce((n, i) => n + i.cantidad, 0);
-            document.getElementById('lblSubtotal').innerText = `$${subtotal.toFixed(2)}`;
-            document.getElementById('lblImpuestos').innerText = `$${impuestos.toFixed(2)}`;
-            document.getElementById('lblTotal').innerText = `$${total.toFixed(2)}`;
+            abrirModal('modalAviso');
+            // Enter acepta el botón principal (el último)
+            acciones.lastElementChild.focus();
         }
 
-        function abrirModalPago() {
-            const total = document.getElementById('lblTotal').innerText;
-            if (total === '$0.00') {
+        function mostrarToast(texto, tipo = 'aviso') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${tipo}`;
+            toast.textContent = texto;
+            document.getElementById('toasts').appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('saliendo');
+                setTimeout(() => toast.remove(), 250);
+            }, 4000);
+        }
+
+        /* ---------- Pago ---------- */
+        let verificandoPago = false;
+
+        // Antes de cobrar se confirman las existencias reales: las del carrito
+        // pueden haber cambiado desde que se agregó el producto.
+        async function abrirModalPago() {
+            if (carrito.length === 0 || totalActual <= 0) {
                 alert('No hay productos en la lista de cobro.');
                 return;
             }
-            document.getElementById('modalTotal').innerText = total;
-            document.getElementById('modalPago').classList.add('open');
+            if (verificandoPago) return;
+
+            const btnPagar = document.querySelector('.btn-pagar');
+            verificandoPago = true;
+            btnPagar.disabled = true;
+            btnPagar.textContent = 'Verificando existencias...';
+            const faltantes = await actualizarExistencias();
+            verificandoPago = false;
+            btnPagar.disabled = false;
+            btnPagar.textContent = 'Pagar';
+
+            // Sin conexión (null) se sigue: registrar_venta.php vuelve a validar
+            if (faltantes && faltantes.length > 0) {
+                avisoFaltantes(faltantes);
+                return;
+            }
+
+            document.getElementById('modalTotal').innerText = formatoDinero(totalActual);
+            abrirModal('modalPago');
         }
 
-        function cerrarModalPago() {
-            document.getElementById('modalPago').classList.remove('open');
+        function abrirModalEfectivo() {
+            cerrarModal('modalPago');
+            document.getElementById('efectivoTotal').innerText = formatoDinero(totalActual);
+            inputRecibido.value = '';
+            actualizarCambioPreview();
+            abrirModal('modalEfectivo');
+            inputRecibido.focus();
         }
 
-        function procesarPago(metodo) {
-            const total = document.getElementById('lblTotal').innerText;
-            alert(`Venta procesada por ${total} con ${metodo}.`);
-            cerrarModalPago();
+        function volverAMetodos() {
+            cerrarModal('modalEfectivo');
+            abrirModal('modalPago');
+        }
+
+        // Muestra en vivo cuánto falta o cuánto cambio hay que dar
+        function actualizarCambioPreview() {
+            const preview = document.getElementById('cambioPreview');
+            const btnCobrar = document.getElementById('btnCobrarEfectivo');
+            const recibido = parseFloat(inputRecibido.value);
+
+            preview.classList.remove('error');
+
+            if (isNaN(recibido)) {
+                preview.textContent = '';
+                btnCobrar.disabled = true;
+                return;
+            }
+
+            const diferencia = aCentavos(recibido) - aCentavos(totalActual);
+            if (diferencia < 0) {
+                preview.textContent = `Faltan ${formatoDinero(-diferencia / 100)}`;
+                preview.classList.add('error');
+                btnCobrar.disabled = true;
+            } else {
+                preview.innerHTML = `Cambio: <strong>${formatoDinero(diferencia / 100)}</strong>`;
+                btnCobrar.disabled = false;
+            }
+        }
+
+        inputRecibido.addEventListener('input', actualizarCambioPreview);
+        inputRecibido.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnCobrarEfectivo').disabled) cobrarEfectivo();
+        });
+
+        // Guarda la venta en la BD. Devuelve la respuesta del servidor o null si falló.
+        async function registrarVenta(metodo, efectivoRecibido = null) {
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('metodo', metodo);
+            datos.append('items', JSON.stringify(
+                carrito.map(i => ({ id_producto: i.id_producto, cantidad: i.cantidad }))
+            ));
+            if (efectivoRecibido !== null) datos.append('efectivo_recibido', efectivoRecibido.toFixed(2));
+
+            let res, json;
+            try {
+                res = await fetch('registrar_venta.php', { method: 'POST', body: datos });
+                json = await res.json();
+            } catch (error) {
+                mostrarAviso({
+                    tipo: 'peligro',
+                    titulo: 'Sin conexión',
+                    mensaje: 'No se pudo conectar con el servidor. La venta NO se registró.'
+                });
+                return null;
+            }
+            if (json.success) return json;
+
+            // 409: las existencias cambiaron entre la verificación y el cobro
+            cerrarModal('modalPago');
+            cerrarModal('modalEfectivo');
+            if (res.status === 409) {
+                const faltantes = await actualizarExistencias();
+                if (faltantes && faltantes.length > 0) {
+                    avisoFaltantes(faltantes);
+                    return null;
+                }
+            }
+            mostrarAviso({
+                tipo: 'peligro',
+                titulo: 'No se pudo registrar la venta',
+                mensaje: json.message || 'Ocurrió un error al guardar la venta.'
+            });
+            return null;
+        }
+
+        function bloquearCobro(bloquear) {
+            cobrando = bloquear;
+            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo').forEach(b => {
+                b.disabled = bloquear;
+            });
+            document.getElementById('btnCobrarEfectivo').textContent = bloquear ? 'Guardando...' : 'Cobrar';
+            if (!bloquear) actualizarCambioPreview();
+        }
+
+        async function cobrarEfectivo() {
+            if (cobrando) return;
+            const recibido = parseFloat(inputRecibido.value);
+            if (isNaN(recibido) || aCentavos(recibido) < aCentavos(totalActual)) return;
+
+            bloquearCobro(true);
+            const venta = await registrarVenta('Efectivo', recibido);
+            bloquearCobro(false);
+            if (!venta) return;
+
+            cerrarModal('modalEfectivo');
+            mostrarVentaCompletada('Efectivo', venta);
+        }
+
+        async function pagarConTarjeta() {
+            if (cobrando) return;
+
+            bloquearCobro(true);
+            const venta = await registrarVenta('Tarjeta');
+            bloquearCobro(false);
+            if (!venta) return;
+
+            cerrarModal('modalPago');
+            mostrarVentaCompletada('Tarjeta', venta);
+        }
+
+        /* ---------- Ticket ---------- */
+        // Se imprime desde un iframe oculto con su propia hoja de estilos (80 mm),
+        // así la impresión no depende del diseño de la caja.
+        let ultimoTicket = null;
+
+        const escaparHtml = (texto) => String(texto ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+
+        function htmlTicket(t) {
+            const fila = (izq, der, clase = '') =>
+                `<div class="fila ${clase}"><span>${izq}</span><span>${der}</span></div>`;
+            const articulos = t.lineas.reduce((n, l) => n + Number(l.cantidad), 0);
+
+            const lineas = t.lineas.map(l => `
+                <div class="producto">
+                    <div class="producto-nombre">${escaparHtml(l.nombre)}</div>
+                    ${fila(`${l.cantidad} x ${formatoDinero(Number(l.precio))}`, formatoDinero(Number(l.importe)))}
+                </div>`).join('');
+
+            const pago = t.metodo === 'Efectivo' && t.recibido !== null
+                ? fila('Efectivo recibido', formatoDinero(t.recibido)) +
+                  fila('Cambio', formatoDinero(t.cambio), 'destacado')
+                : '';
+
+            return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
+<style>
+    @page { size: 80mm auto; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        width: 80mm; padding: 5mm 4mm 8mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12px; line-height: 1.35; color: #000;
+    }
+    .centro { text-align: center; }
+    .marca { font-size: 20px; font-weight: 700; letter-spacing: 0.2em; }
+    .sucursal { font-weight: 700; margin-top: 2px; }
+    .chico { font-size: 11px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .fila { display: flex; justify-content: space-between; gap: 8px; }
+    .fila span:last-child { text-align: right; white-space: nowrap; }
+    .producto { margin-bottom: 4px; }
+    .producto-nombre { font-weight: 700; word-break: break-word; }
+    .producto .fila { padding-left: 8px; }
+    .total { font-size: 16px; font-weight: 700; margin: 2px 0; }
+    .destacado { font-weight: 700; }
+    .gracias { margin-top: 8px; font-weight: 700; }
+</style></head>
+<body>
+    <div class="centro">
+        <div class="marca">KOALY</div>
+        ${t.sucursal ? `<div class="sucursal">Sucursal ${escaparHtml(t.sucursal)}</div>` : ''}
+        ${t.direccion ? `<div class="chico">${escaparHtml(t.direccion)}</div>` : ''}
+        ${t.telefono ? `<div class="chico">Tel. ${escaparHtml(t.telefono)}</div>` : ''}
+    </div>
+    <hr>
+    ${fila('Folio', `#${escaparHtml(t.folio)}`, 'destacado')}
+    ${fila('Fecha', escaparHtml(t.fecha))}
+    ${fila('Hora', escaparHtml(t.hora))}
+    ${t.caja ? fila('Caja', escaparHtml(t.caja)) : ''}
+    ${t.cajero ? fila('Atendió', escaparHtml(t.cajero)) : ''}
+    <hr>
+    ${lineas}
+    <hr>
+    ${fila('Artículos', articulos)}
+    ${fila('Subtotal', formatoDinero(t.subtotal))}
+    ${fila('IVA 16%', formatoDinero(t.iva))}
+    ${fila('TOTAL', formatoDinero(t.total), 'total')}
+    <hr>
+    ${fila('Forma de pago', escaparHtml(t.metodo))}
+    ${pago}
+    <hr>
+    <div class="centro chico">Precios con IVA incluido</div>
+    <div class="centro gracias">¡Gracias por su compra!</div>
+</body></html>`;
+        }
+
+        function imprimirTicket(ticket) {
+            if (!ticket) return;
+            let marco = document.getElementById('marcoTicket');
+            if (!marco) {
+                marco = document.createElement('iframe');
+                marco.id = 'marcoTicket';
+                marco.className = 'marco-ticket';
+                marco.setAttribute('aria-hidden', 'true');
+                marco.tabIndex = -1;
+                document.body.appendChild(marco);
+            }
+            marco.onload = () => {
+                marco.contentWindow.focus();
+                marco.contentWindow.print();
+                document.getElementById('btnFinalizarVenta').focus();
+            };
+            marco.srcdoc = htmlTicket(ticket);
+        }
+
+        function mostrarVentaCompletada(metodo, venta) {
+            document.getElementById('ventaMensaje').textContent =
+                `Venta #${venta.id_venta} registrada por ${formatoDinero(venta.total)} con ${metodo}.`;
+
+            const bloqueCambio = document.getElementById('ventaCambio');
+            if (venta.cambio !== null) {
+                document.getElementById('ventaCambioMonto').textContent = formatoDinero(venta.cambio);
+                document.getElementById('ventaCambioDetalle').textContent =
+                    `Recibido: ${formatoDinero(venta.recibido)} · Total: ${formatoDinero(venta.total)}`;
+                bloqueCambio.style.display = 'block';
+            } else {
+                bloqueCambio.style.display = 'none';
+            }
+
+            ultimoTicket = venta.ticket || null;
+            document.getElementById('btnReimprimir').style.display = ultimoTicket ? '' : 'none';
+
+            abrirModal('modalVenta');
+            document.getElementById('btnFinalizarVenta').focus();
+            imprimirTicket(ultimoTicket);
+        }
+
+        function finalizarVenta() {
+            cerrarModal('modalVenta');
             carrito = [];
-            filaSeleccionada = null;
+            indiceSeleccionado = null;
             renderCarrito();
+            cargarCatalogo();   // existencias nuevas después de la venta
+            inputBuscar.focus();
         }
 
         renderCarrito();
+        cargarCatalogo();
     </script>
 </body>
 </html>
