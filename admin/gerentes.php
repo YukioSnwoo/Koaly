@@ -19,6 +19,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
         }
 
+        // Baja definitiva = 'Baja'; temporal = 'Licencia' (mismos estados que usa gerente/cajeros.php).
+        // En ambos casos el gerente pierde su sucursal y esta queda inactiva.
+        if ($action === 'baja') {
+            $idGerente = (int) ($_POST['id_usuario'] ?? 0);
+            $nuevoEstado = ($_POST['tipo_baja'] ?? '') === 'temporal' ? 'Licencia' : 'Baja';
+
+            $stmt = $pdo->prepare("SELECT estado, id_sucursal FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+            $stmt->execute([$idGerente]);
+            $gerente = $stmt->fetch();
+            if (!$gerente) {
+                throw new RuntimeException('El gerente no existe.');
+            }
+            if ($gerente['estado'] !== 'Activo') {
+                throw new RuntimeException('El gerente ya no está activo.');
+            }
+
+            $hoy = date('Y-m-d');
+            $pdo->beginTransaction();
+
+            $pdo->prepare("UPDATE Usuarios SET estado = ?, fecha_inicio_estado = ?, id_sucursal = NULL WHERE id_usuario = ? AND id_rol = 2")
+                ->execute([$nuevoEstado, $hoy, $idGerente]);
+
+            if ($gerente['id_sucursal'] !== null) {
+                $pdo->prepare("UPDATE Sucursales SET estado = ?, fecha_inicio_estado = ? WHERE id_sucursal = ? AND estado <> ?")
+                    ->execute([SUCURSAL_INACTIVA, $hoy, (int) $gerente['id_sucursal'], SUCURSAL_INACTIVA]);
+            }
+
+            $pdo->commit();
+            header('Location: gerentes.php');
+            exit;
+        }
+
+        if ($action === 'reactivar') {
+            $stmt = $pdo->prepare("UPDATE Usuarios SET estado = 'Activo', fecha_inicio_estado = ? WHERE id_usuario = ? AND id_rol = 2 AND estado <> 'Activo'");
+            $stmt->execute([date('Y-m-d'), (int) ($_POST['id_usuario'] ?? 0)]);
+            if ($stmt->rowCount() === 0) {
+                throw new RuntimeException('El gerente no existe o ya está activo.');
+            }
+
+            header('Location: gerentes.php');
+            exit;
+        }
+
         if ($action === 'crear') {
             $nombre = trim($_POST['nombre'] ?? '');
             $email = trim($_POST['email'] ?? '');
@@ -100,11 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'asignar') {
-            asignarSucursalAGerente(
-                $pdo,
-                (int) ($_POST['id_usuario'] ?? 0),
-                (int) ($_POST['id_sucursal'] ?? 0)
-            );
+            $idGerente = (int) ($_POST['id_usuario'] ?? 0);
+            $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
+
+            if ($idSucursal > 0) {
+                $stmt = $pdo->prepare("SELECT estado FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+                $stmt->execute([$idGerente]);
+                if ($stmt->fetchColumn() !== 'Activo') {
+                    throw new RuntimeException('Solo se puede asignar sucursal a un gerente activo.');
+                }
+            }
+
+            asignarSucursalAGerente($pdo, $idGerente, $idSucursal);
 
             header('Location: gerentes.php');
             exit;
@@ -190,8 +240,10 @@ $todasSucursales = $pdo->query("
                         <td>
                             <?php if ($g['estado'] === 'Activo'): ?>
                                 <span class="badge badge--success">Activo</span>
+                            <?php elseif ($g['estado'] === 'Baja'): ?>
+                                <span class="badge badge--danger">Baja</span>
                             <?php else: ?>
-                                <span class="badge badge--warning">Pendiente</span>
+                                <span class="badge badge--warning"><?= htmlspecialchars($g['estado']) ?></span>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -199,10 +251,22 @@ $todasSucursales = $pdo->query("
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                 data-email="<?= htmlspecialchars($g['email'], ENT_QUOTES) ?>"><i class="ti ti-edit"></i></button>
-                            <button class="icon-btn" title="Asignar sucursal" onclick="asignarSucursal(this)"
-                                data-id="<?= (int) $g['id_usuario'] ?>"
-                                data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
-                                data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
+                            <?php if ($g['estado'] === 'Activo'): ?>
+                                <button class="icon-btn" title="Asignar sucursal" onclick="asignarSucursal(this)"
+                                    data-id="<?= (int) $g['id_usuario'] ?>"
+                                    data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
+                                    data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
+                                <button class="btn-baja-wrapper" title="Dar de baja" onclick="abrirModalBaja(this)"
+                                    data-id="<?= (int) $g['id_usuario'] ?>"
+                                    data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"><span class="baja-rect-negro">Baja</span></button>
+                            <?php else: ?>
+                                <form method="POST" action="gerentes.php" style="display:inline">
+                                    <input type="hidden" name="action" value="reactivar">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                                    <input type="hidden" name="id_usuario" value="<?= (int) $g['id_usuario'] ?>">
+                                    <button type="submit" class="btn btn--ghost btn--sm" title="Reactivar"><i class="ti ti-user-check"></i>Reactivar</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -325,6 +389,45 @@ function asignarSucursal(btn) {
 
     openModal('modalAsignarSucursal');
 }
+
+function abrirModalBaja(btn) {
+    const form = document.getElementById('formBajaGerente');
+    form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
+    form.querySelector('[name="tipo_baja"]').value = 'definitiva';
+    document.getElementById('bajaNombreGerente').textContent = btn.dataset.nombre;
+    openModal('modalBajaGerente');
+}
 </script>
+
+<!-- Modal: Dar de Baja -->
+<div id="modalBajaGerente" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
+    <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
+        <h2 style="font-size:16px;font-weight:500;margin:0 0 .5rem;color:var(--text-danger)">Dar de baja a gerente</h2>
+        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 1rem">Gerente: <strong id="bajaNombreGerente"></strong></p>
+        
+        <form method="POST" action="gerentes.php" id="formBajaGerente">
+            <input type="hidden" name="action" value="baja">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="id_usuario" value="">
+
+            <div style="margin-bottom:1rem">
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Tipo de baja</label>
+                <select name="tipo_baja" class="select" style="width:100%">
+                    <option value="definitiva">Definitiva (Baja)</option>
+                    <option value="temporal">Temporal (Licencia)</option>
+                </select>
+            </div>
+
+            <span style="display:block;color:var(--text-muted);font-size:12px;margin-bottom:1rem;">
+                Al dar de baja a un gerente se libera su sucursal, que queda inactiva. Podrás reactivarlo después desde esta tabla.
+            </span>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalBajaGerente')">Cancelar</button>
+                <button type="submit" class="btn" style="background:var(--bg-danger);color:var(--text-danger);">Confirmar baja</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <?php require 'footer.php'; ?>
