@@ -205,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($action === 'cambiar_estado') {
             $id = (int) ($_POST['id_producto'] ?? 0);
-            $nuevoEstado = ($_POST['nuevo_estado'] ?? '') === 'Activo' ? 'Activo' : 'Inactivo';
+            $nuevoEstado = ($_POST['nuevo_estado'] ?? '') === 'Activo' ? 'Activo' : 'Descontinuado';
 
             if ($id <= 0) {
                 throw new RuntimeException('Producto inválido.');
@@ -381,7 +381,7 @@ require __DIR__ . '/header.php';
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                                             <input type="hidden" name="id_producto" value="<?= $p['id_producto'] ?>">
                                             <?php if ($p['estado'] === 'Activo'): ?>
-                                                <input type="hidden" name="nuevo_estado" value="Inactivo">
+                                                <input type="hidden" name="nuevo_estado" value="Descontinuado">
                                                 <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
                                             <?php else: ?>
                                                 <input type="hidden" name="nuevo_estado" value="Activo">
