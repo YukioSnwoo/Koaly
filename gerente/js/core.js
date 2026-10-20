@@ -1,13 +1,3 @@
-/* ============================================================
- * core.js — Funciones que TODA página del gerente necesita.
- * Depende de: nada (es la capa base).
- * ============================================================ */
-
-
-/* ============================================================
- * Traducciones: footer.php deja en window.I18N las claves "js.*"
- * de gerente/lang/{idioma}.php. tj('clave', {n: 3}) reemplaza {n}.
- * ============================================================ */
 function tj(clave, vars = {}) {
     let texto = (window.I18N && window.I18N[clave]) || clave;
     for (const [k, v] of Object.entries(vars)) texto = texto.split('{' + k + '}').join(String(v));
@@ -15,12 +5,14 @@ function tj(clave, vars = {}) {
 }
 
 
-/* ============================================================
- * Modal helpers — abrir, cerrar, click en overlay
- * ============================================================ */
 function abrirModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.classList.add('open');
+    if (!modal) return;
+    // Los formularios se llenan con select.value = ..., que no dispara "change":
+    // sin esto el select personalizado seguía mostrando el valor anterior
+    // (p. ej. "Activo" en un cajero que está de vacaciones).
+    modal.querySelectorAll('select').forEach(s => s.dispatchEvent(new Event('select-custom:sincronizar')));
+    modal.classList.add('open');
 }
 
 function cerrarModal(id) {
@@ -35,12 +27,6 @@ document.addEventListener('click', (e) => {
 });
 
 
-/* ============================================================
- * Cursor personalizado
- * Solo se activa en dispositivos con puntero fino (mouse).
- * Si JS falla, el cursor nativo queda visible porque la clase
- * .cursor-custom no se añade al body.
- * ============================================================ */
 function initCustomCursor() {
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
@@ -77,10 +63,6 @@ function initCustomCursor() {
 }
 
 
-/* ============================================================
- * Modal de confirmación (reemplaza window.confirm)
- * Se crea dinámicamente al cargar la página.
- * ============================================================ */
 function crearModalConfirmacion() {
     if (document.getElementById('modalConfirm')) return;
 
@@ -126,7 +108,7 @@ function pedirConfirmacion(mensaje, opciones = {}) {
     return new Promise((resolve) => {
         const overlay = document.getElementById('modalConfirm');
         if (!overlay) {
-            // Fallback si por alguna razón no se creó el modal
+
             resolve(window.confirm(mensaje));
             return;
         }
@@ -139,7 +121,6 @@ function pedirConfirmacion(mensaje, opciones = {}) {
         mensajeEl.textContent = mensaje;
         btnAceptar.textContent = opciones.textoAceptar || tj('aceptar');
 
-        // Estilo peligroso: botón rojo sólido
         btnAceptar.classList.remove('btn-primary', 'btn-danger-solid');
         btnAceptar.classList.add(opciones.peligroso ? 'btn-danger-solid' : 'btn-primary');
 
@@ -157,10 +138,6 @@ function pedirConfirmacion(mensaje, opciones = {}) {
 }
 
 
-/* ============================================================
- * Logout con confirmación
- * Uso en HTML: onclick="logoutConfirmado()"
- * ============================================================ */
 async function logoutConfirmado() {
     const ok = await pedirConfirmacion(
         tj('cerrar_sesion_mensaje'),
@@ -170,15 +147,13 @@ async function logoutConfirmado() {
             peligroso: true
         }
     );
-    if (ok && typeof logout === 'function') logout();
+    if (!ok) return;
+
+    try { sessionStorage.removeItem('usuario'); } catch (e) {}
+    window.location.href = '../logout.php';
 }
 
 
-/* ============================================================
- * Interceptor de formularios con data-confirm
- * Cualquier <form data-confirm="..."> pide confirmación antes
- * de enviarse.
- * ============================================================ */
 document.addEventListener('submit', async (e) => {
     const form = e.target;
     if (!form.matches('form[data-confirm]')) return;
@@ -199,48 +174,26 @@ document.addEventListener('submit', async (e) => {
 });
 
 
-/* ============================================================
- * Menú de idioma (<details class="idioma">): cerrar al hacer clic
- * fuera o con Escape.
- * ============================================================ */
-document.addEventListener('click', (e) => {
-    document.querySelectorAll('details.idioma[open]').forEach(d => {
-        if (!d.contains(e.target)) d.removeAttribute('open');
-    });
-});
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
-});
-
-
-/* ============================================================
- * Tema claro / oscuro
- * <html data-tema="claro|oscuro"> si el usuario eligió; si no, sigue
- * al sistema (prefers-color-scheme). La elección se guarda por navegador.
- * ============================================================ */
-const CLAVE_TEMA = 'koalicius-gerente-tema';
-
-function temaActual() {
-    const elegido = document.documentElement.getAttribute('data-tema');
-    if (elegido) return elegido;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
-}
-
-function actualizarBotonTema() {
-    const boton = document.getElementById('botonTema');
-    if (!boton) return;
-    const etiqueta = temaActual() === 'oscuro' ? tj('tema_a_claro') : tj('tema_a_oscuro');
-    boton.setAttribute('aria-label', etiqueta);
-    boton.title = etiqueta;
-}
 
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#botonTema')) return;
     const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
     document.documentElement.setAttribute('data-tema', nuevo);
-    try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
+    try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) {  }
+    actualizarBotonTema();
+}); 
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+    const layout = document.querySelector('.layout');
+
+    if (btnToggleSidebar && layout) {
+        btnToggleSidebar.addEventListener('click', () => {
+            layout.classList.toggle('sidebar-collapsed');
+        });
+    }
+
     actualizarBotonTema();
 });
 
-document.addEventListener('DOMContentLoaded', actualizarBotonTema);
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);

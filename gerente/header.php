@@ -9,7 +9,6 @@ $verComponentes = filemtime(__DIR__ . '/css/componentes.css');
 $verPaginas     = filemtime(__DIR__ . '/css/paginas.css');
 $verKoaly       = filemtime(__DIR__ . '/../estilos/koaly.css');
 
-// Página actual con su query string, para volver a ella al cambiar de idioma
 $paginaActual = basename($_SERVER['PHP_SELF']) . (($_SERVER['QUERY_STRING'] ?? '') !== '' ? '?' . $_SERVER['QUERY_STRING'] : '');
 ?>
 <!DOCTYPE html>
@@ -19,7 +18,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']) . (($_SERVER['QUERY_STRING'] ?? '
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($pageTitle) ?> - Koaly</title>
 <script>
-// Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
+
 try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koalicius-gerente-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
 </script>
 <?php if ($pageDesc !== ''): ?>
@@ -28,7 +27,7 @@ try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koa
 <link rel="stylesheet" href="css/base.css?v=<?= $verBase ?>">
 <link rel="stylesheet" href="css/componentes.css?v=<?= $verComponentes ?>">
 <link rel="stylesheet" href="css/paginas.css?v=<?= $verPaginas ?>">
-<!-- Estilo común de Koaly (colores, fuentes y piel táctil); va al final para que gane -->
+
 <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body>
@@ -45,29 +44,36 @@ try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koa
                 <img src="../Imagenes/iconos/icono-inicio.png" class="sidebar-icon" alt="Inicio"> <?= e(t('panel.titulo')) ?>
             </a>
             <a href="productos.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'productos.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-inventario.png" class="sidebar-icon" alt="Productos"> Productos
+                <img src="../Imagenes/iconos/icono-inventario.png" class="sidebar-icon" alt="Productos"> <?= e(t('prods.titulo')) ?>
             </a>
             <a href="movimientos.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'movimientos.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-movimientos.png" class="sidebar-icon" alt="Movimientos"> Movimientos
+                <img src="../Imagenes/iconos/icono-movimientos.png" class="sidebar-icon" alt="Movimientos"> <?= e(t('mov.titulo')) ?>
             </a>
             <a href="cajeros.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'cajeros.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-cajas.png" class="sidebar-icon" alt="Cajeros"> Cajeros
+                <img src="../Imagenes/iconos/icono-cajas.png" class="sidebar-icon" alt="Cajeros"> <?= e(t('cajeros.titulo')) ?>
             </a>
             <a href="cajas.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'cajas.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-caja.png" class="sidebar-icon" alt="Cajas"> Cajas
+                <img src="../Imagenes/iconos/icono-caja.png" class="sidebar-icon" alt="Cajas"> <?= e(t('cajas.titulo')) ?>
             </a>
             <a href="ventas_sucursal.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'ventas_sucursal.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-ventas.png" class="sidebar-icon" alt="Ventas"> Ventas
+                <img src="../Imagenes/iconos/icono-ventas.png" class="sidebar-icon" alt="Ventas"> <?= e(t('ventas.titulo')) ?>
             </a>
         </nav>
-     </aside> 
-    <!-- Barra Lateralllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll -->
+    </aside> 
 
-    <!-- CONTENIDO PRINCIPAL -->
+    <!-- PRINCIPALllllllllllllllllllllllllllllllllllllll -->
     <div class="main-wrapper">
         <header class="header">
+            
+            <!-- OCULTAR la Barraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
+            <button type="button" class="btn-toggle-sidebar" id="btnToggleSidebar" aria-label="Ocultar menú">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
             <h1>Koaly <span class="header-sub"><?= e(t('panel.titulo')) ?></span></h1>
+            
             <div class="user-info">
+                
                 <details class="idioma">
                     <summary aria-label="<?= e(t('idioma.cambiar')) ?>">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
