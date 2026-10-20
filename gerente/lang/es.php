@@ -66,6 +66,7 @@ return [
     'metodo_pago.Efectivo' => 'Efectivo',
     'metodo_pago.Tarjeta Credito' => 'Tarjeta',
     'metodo_pago.Transferencia' => 'Transferencia',
+    'metodo_pago.Varios' => 'Varios (efectivo y tarjeta)',
 
     // categoria (valores de la tabla Categorias)
     'categoria.Bebidas' => 'Bebidas',

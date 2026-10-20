@@ -22,7 +22,7 @@ const LOGIN_MINUTOS_BLOQUEO   = 15;
 const LOGIN_MAX_FALLOS_CORREO = 5;
 const LOGIN_MAX_FALLOS_IP     = 20;
 
-const RUTAS_POR_ROL = [1 => 'admin/', 2 => 'gerente/', 3 => 'cajero/'];
+const RUTAS_POR_ROL = [1 => 'admin/', 2 => 'gerente/', 3 => 'cajero/', 4 => 'recursos_humanos/'];
 
 function responder(int $estado, array $datos): never
 {

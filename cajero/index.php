@@ -9,8 +9,16 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 require_once __DIR__ . '/../admin/csrf.php';
 require_once __DIR__ . '/includes/i18n.php';
 
+// Textos de todos los idiomas (con respaldo en español): el idioma se cambia en
+// el navegador sin recargar, para no perder la venta que se está cobrando
+$textosPorIdioma = [];
+foreach (array_keys(IDIOMAS) as $codigo) {
+    $textosPorIdioma[$codigo] = $codigo === 'es'
+        ? $GLOBALS['CAJA_TEXTOS_ES']
+        : (require __DIR__ . "/lang/{$codigo}.php") + $GLOBALS['CAJA_TEXTOS_ES'];
+}
+
 $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
-$verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
 ?>
 <!DOCTYPE html>
 <html lang="<?= idiomaActual() ?>">
@@ -18,30 +26,28 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(t('caja.titulo')) ?> - Koaly</title>
-    <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
     <script>
     // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
-    // La clave es común con el gerente (koaly-tema).
-    try { var tema = localStorage.getItem('koaly-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+    try { var tema = localStorage.getItem('koalicius-cajero-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
     </script>
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
-    <!-- Estilo común de Koaly (colores claro/oscuro, fuentes y piel táctil); va al final para que gane -->
-    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoalyCss ?>">
 </head>
-<body>
+<body class="caja-bloqueada">
 
     <!-- Encabezado -->
     <header class="header">
-        <h1>Koaly</h1>
+        <h1>Koaly <span class="header-sub" data-i18n="caja.titulo"><?= e(t('caja.titulo')) ?></span></h1>
         <div class="user-info">
-            <div class="user-datos">
-                <span class="user-nombre" id="userName"><?= e(t('caja.cajero')) ?></span>
-                <span class="user-sucursal"><?= e(t('caja.sucursal')) ?>: <span id="sucursalName">-</span></span>
-            </div>
+            <button type="button" class="corte-boton" onclick="abrirCorte()" disabled>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+                <span data-i18n="corte.boton"><?= e(t('corte.boton')) ?></span>
+            </button>
             <details class="idioma">
-                <summary aria-label="<?= e(t('idioma.cambiar')) ?>" title="<?= e(t('idioma.cambiar')) ?>">
+                <summary aria-label="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-title="idioma.cambiar">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     <span><?= strtoupper(idiomaActual()) ?></span>
+                    <svg class="idioma-flecha" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                 </summary>
                 <form method="POST" action="idioma.php" class="idioma-menu">
                     <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
@@ -53,18 +59,20 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
                     <?php endforeach; ?>
                 </form>
             </details>
-            <button type="button" class="tema-boton" id="botonTema">
-                <svg class="tema-luna" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg class="tema-sol" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <button type="button" class="tema-boton" id="botonTema" aria-label="<?= e(t('tema.a_oscuro')) ?>" title="<?= e(t('tema.a_oscuro')) ?>">
+                <svg class="tema-luna" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="tema-sol" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
             </button>
-            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" title="<?= e(t('sesion.cerrar')) ?>" aria-label="<?= e(t('sesion.cerrar')) ?>">
-                <img src="../Imagenes/puertaSalida.jpeg" alt="">
-            </button>
+            <div class="user-datos">
+                <span class="user-nombre" id="userName"><?= e(t('caja.cajero')) ?></span>
+                <span class="user-sucursal"><span data-i18n="caja.sucursal"><?= e(t('caja.sucursal')) ?></span>: <span id="sucursalName">-</span></span>
+            </div>
+            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
         </div>
     </header>
 
     <!-- Panel Principal -->
-    <main class="pos-layout">
+    <main class="pos-layout" inert>
 
         <!-- Lateral Izquierdo -->
         <aside class="panel sidebar">
@@ -72,27 +80,33 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
                 <div class="search-box">
                     <div class="input-buscar">
                         <svg class="icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                        <input type="text" id="inputBuscar" placeholder="<?= e(t('buscar.placeholder')) ?>" autocomplete="off"
+                        <input type="text" id="inputBuscar" placeholder="<?= e(t('buscar.placeholder')) ?>" data-i18n-placeholder="buscar.placeholder" autocomplete="off"
                                role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="resultadosBusqueda">
                         <span class="spinner" aria-hidden="true"></span>
                         <div id="resultadosBusqueda" class="search-results" role="listbox" style="display:none;"></div>
                     </div>
                 </div>
             </div>
+            <nav class="sidebar-categorias" aria-labelledby="tituloCategorias">
+                <div class="panel-title" id="tituloCategorias" data-i18n="categorias.titulo"><?= e(t('categorias.titulo')) ?></div>
+                <div class="categorias-filtro" id="filtroCategorias" role="group" aria-labelledby="tituloCategorias">
+                    <!-- Categorías dinámicas -->
+                </div>
+            </nav>
             <div class="sidebar-group">
-                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()"><?= e(t('comun.limpiar')) ?></button>
+                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()" data-i18n="comun.limpiar"><?= e(t('comun.limpiar')) ?></button>
             </div>
         </aside>
 
         <!-- Catálogo Central -->
         <section class="panel catalogo-panel">
-            <h2 class="catalogo-titulo"><?= e(t('catalogo.titulo')) ?></h2>
-            <div class="catalogo-grid" id="catalogo">
-                <!-- Tarjetas dinámicas -->
+            <h2 class="catalogo-titulo" data-i18n="catalogo.titulo"><?= e(t('catalogo.titulo')) ?></h2>
+            <div class="catalogo-contenido" id="catalogo">
+                <!-- Secciones por categoría con sus tarjetas -->
             </div>
             <div class="catalogo-pie">
                 <button type="button" class="btn btn-ghost btn-lista" onclick="abrirLista()">
-                    <?= e(t('lista.titulo')) ?> <span class="contador-lista" id="contadorLista">0</span>
+                    <span data-i18n="lista.titulo"><?= e(t('lista.titulo')) ?></span> <span class="contador-lista" id="contadorLista">0</span>
                 </button>
             </div>
         </section>
@@ -100,32 +114,45 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
             <!-- Escaneo: historial en tiempo real, los escaneos seguidos del mismo producto se juntan (p1 ×3, p2, p1) -->
-            <div class="panel-title"><?= e(t('resumen.escaneo')) ?></div>
+            <div class="panel-title" data-i18n="resumen.escaneo"><?= e(t('resumen.escaneo')) ?></div>
             <ul class="resumen-lista" id="escaneoLista"></ul>
 
             <!-- Resumen: todo agrupado por producto (p1 ×4, p2) -->
             <div class="resumen-agrupado" id="resumenAgrupado" hidden>
-                <div class="panel-title"><?= e(t('resumen.resumen')) ?></div>
+                <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
                 <ul class="resumen-lista" id="resumenLista"></ul>
             </div>
 
             <div>
-                <div class="resumen-fila"><span><?= e(t('resumen.articulos')) ?></span><span id="totalArticulos">0</span></div>
-                <div class="resumen-total"><span><?= e(t('comun.total')) ?></span><span id="lblTotal">$0.00</span></div>
-                <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()"><?= e(t('resumen.pagar')) ?></button>
+                <div class="resumen-fila"><span data-i18n="resumen.articulos"><?= e(t('resumen.articulos')) ?></span><span id="totalArticulos">0</span></div>
+                <div class="resumen-total"><span data-i18n="comun.total"><?= e(t('comun.total')) ?></span><span id="lblTotal">$0.00</span></div>
+                <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()" data-i18n="resumen.pagar"><?= e(t('resumen.pagar')) ?></button>
             </div>
         </aside>
 
     </main>
 
+    <!-- Caja cerrada: todo en gris y solo el botón para abrirla (o por qué no se puede) -->
+    <div class="caja-cerrada" id="cajaCerrada">
+        <div class="caja-cerrada-card">
+            <div class="caja-cerrada-icono" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h2 id="cajaCerradaTitulo"><?= e(t('caja.revisando')) ?></h2>
+            <p id="cajaCerradaTexto"></p>
+            <button type="button" class="btn btn-primary btn-abrir-caja" id="btnAbrirCaja" onclick="abrirModalApertura()" data-i18n="caja.abrir" hidden><?= e(t('caja.abrir')) ?></button>
+            <button type="button" class="btn btn-ghost" id="btnReintentarCaja" onclick="cargarTurno()" data-i18n="caja.reintentar" hidden><?= e(t('caja.reintentar')) ?></button>
+        </div>
+    </div>
+
     <!-- Modal: cerrar sesión -->
     <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
         <div class="modal-box">
-            <h2 id="tituloSalir"><?= e(t('sesion.cerrar')) ?></h2>
-            <p class="modal-mensaje"><?= e(t('sesion.pregunta')) ?></p>
+            <h2 id="tituloSalir" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></h2>
+            <p class="modal-mensaje" data-i18n="sesion.pregunta"><?= e(t('sesion.pregunta')) ?></p>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')"><?= e(t('sesion.quedarme')) ?></button>
-                <button type="button" class="btn btn-danger-solid" onclick="logout()"><?= e(t('sesion.confirmar')) ?></button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')" data-i18n="sesion.quedarme"><?= e(t('sesion.quedarme')) ?></button>
+                <button type="button" class="btn btn-danger-solid" onclick="logout()" data-i18n="sesion.confirmar"><?= e(t('sesion.confirmar')) ?></button>
             </div>
         </div>
     </div>
@@ -134,18 +161,18 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
          Va antes de los demás modales para que la confirmación y los avisos queden encima. -->
     <div class="modal-overlay" id="modalLista" role="dialog" aria-modal="true" aria-labelledby="tituloLista">
         <div class="modal-box modal-lista">
-            <h2 id="tituloLista"><?= e(t('lista.titulo')) ?></h2>
-            <p class="atajo-hint"><?= i18nReemplazar(e(t('lista.ayuda')), ['supr' => '<kbd>' . e(t('lista.tecla_supr')) . '</kbd>', 'borrar' => '<kbd>⌫</kbd>']) ?></p>
+            <h2 id="tituloLista" data-i18n="lista.titulo"><?= e(t('lista.titulo')) ?></h2>
+            <p class="atajo-hint" id="ayudaLista"><?= i18nReemplazar(e(t('lista.ayuda')), ['supr' => '<kbd>' . e(t('lista.tecla_supr')) . '</kbd>', 'borrar' => '<kbd>⌫</kbd>']) ?></p>
             <div class="tabla-scroll">
                 <table class="tabla-venta">
                     <thead>
                         <tr>
-                            <th><?= e(t('lista.col_clave')) ?></th>
-                            <th><?= e(t('lista.col_producto')) ?></th>
-                            <th><?= e(t('lista.col_cantidad')) ?></th>
-                            <th class="col-num"><?= e(t('lista.col_precio')) ?></th>
-                            <th class="col-num"><?= e(t('lista.col_importe')) ?></th>
-                            <th class="col-acciones"><span class="sr-only"><?= e(t('lista.col_acciones')) ?></span></th>
+                            <th data-i18n="lista.col_clave"><?= e(t('lista.col_clave')) ?></th>
+                            <th data-i18n="lista.col_producto"><?= e(t('lista.col_producto')) ?></th>
+                            <th data-i18n="lista.col_cantidad"><?= e(t('lista.col_cantidad')) ?></th>
+                            <th class="col-num" data-i18n="lista.col_precio"><?= e(t('lista.col_precio')) ?></th>
+                            <th class="col-num" data-i18n="lista.col_importe"><?= e(t('lista.col_importe')) ?></th>
+                            <th class="col-acciones"><span class="sr-only" data-i18n="lista.col_acciones"><?= e(t('lista.col_acciones')) ?></span></th>
                         </tr>
                     </thead>
                     <tbody id="listaProductos">
@@ -154,8 +181,138 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
                 </table>
             </div>
             <div class="modal-actions">
-                <span class="lista-total"><?= e(t('comun.total')) ?> <strong id="listaTotal">$0.00</strong></span>
-                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')"><?= e(t('comun.cerrar')) ?></button>
+                <span class="lista-total"><span data-i18n="comun.total"><?= e(t('comun.total')) ?></span> <strong id="listaTotal">$0.00</strong></span>
+                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Turno de caja. Orden de apilamiento: apertura < conteo < cierre < resultado,
+         y todos antes de la confirmación y los avisos para que esos queden encima. -->
+
+    <!-- Modal: abrir caja (viene lleno con lo que dejó el turno anterior) -->
+    <div class="modal-overlay" id="modalApertura" role="dialog" aria-modal="true" aria-labelledby="tituloApertura">
+        <div class="modal-box">
+            <h2 id="tituloApertura"></h2>
+            <div class="apertura-anterior" id="aperturaAnterior"></div>
+            <div class="form-group">
+                <label for="inputApertura" data-i18n="apertura.cuanto_hay"><?= e(t('apertura.cuanto_hay')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputApertura" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="aperturaAviso">
+                </div>
+                <div class="apertura-aviso" id="aperturaAviso" aria-live="polite"></div>
+            </div>
+            <button type="button" class="btn-enlace" onclick="contarApertura()" data-i18n="apertura.contar"><?= e(t('apertura.contar')) ?></button>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalApertura')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarApertura" onclick="confirmarApertura()" data-i18n="caja.abrir"><?= e(t('caja.abrir')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: conteo de billetes y monedas. Sirve para abrir caja y para el corte (cierre). -->
+    <div class="modal-overlay" id="modalCorte" role="dialog" aria-modal="true" aria-labelledby="tituloCorte">
+        <div class="modal-box modal-corte">
+            <div class="corte-encabezado">
+                <h2 id="tituloCorte"></h2>
+                <!-- Carga el fondo regular ($1,000 en piezas chicas) en el conteo -->
+                <button type="button" class="corte-plantilla" onclick="pedirPlantillaFondo()" data-i18n-title="corte.plantilla_ayuda" title="<?= e(t('corte.plantilla_ayuda')) ?>">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
+                    <span data-i18n="corte.plantilla"><?= e(t('corte.plantilla')) ?></span>
+                    <small id="cortePlantillaTotal"></small>
+                </button>
+            </div>
+            <p class="atajo-hint" id="corteAyuda"></p>
+
+            <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
+            <div class="dinero-grid" id="corteBilletes">
+                <!-- Tarjetas de billetes (JS) -->
+            </div>
+
+            <h3 class="corte-seccion" data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></h3>
+            <div class="dinero-grid dinero-grid--monedas" id="corteMonedas">
+                <!-- Tarjetas de monedas (JS) -->
+            </div>
+
+            <!-- Solo en el corte: lo cobrado con tarjeta según los comprobantes de la terminal -->
+            <div class="corte-tarjeta" id="corteTarjeta">
+                <h3 class="corte-seccion" data-i18n="corte.tarjeta"><?= e(t('corte.tarjeta')) ?></h3>
+                <div class="form-group">
+                    <label for="inputVouchers" data-i18n="corte.vouchers"><?= e(t('corte.vouchers')) ?></label>
+                    <div class="input-dinero">
+                        <span>$</span>
+                        <input type="number" id="inputVouchers" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVouchers">
+                    </div>
+                    <div class="campo-error" id="errorVouchers"></div>
+                </div>
+            </div>
+
+            <!-- Resumen: billetes, monedas y total en efectivo -->
+            <div class="corte-resumen" aria-live="polite">
+                <div class="corte-fila">
+                    <span><span data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></span> <small id="cortePiezasBilletes"></small></span>
+                    <span id="corteTotalBilletes">$0.00</span>
+                </div>
+                <div class="corte-fila">
+                    <span><span data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></span> <small id="cortePiezasMonedas"></small></span>
+                    <span id="corteTotalMonedas">$0.00</span>
+                </div>
+                <div class="corte-fila corte-fila--total">
+                    <span data-i18n="corte.total_efectivo"><?= e(t('corte.total_efectivo')) ?></span>
+                    <strong id="corteTotal">$0.00</strong>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost corte-limpiar" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
+                <button type="button" class="btn btn-ghost" id="btnCorteCancelar" onclick="cerrarModal('modalCorte')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCorteUsar" onclick="usarConteoApertura()" data-i18n="corte.usar_total"><?= e(t('corte.usar_total')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCorteContinuar" onclick="continuarCierre()" data-i18n="corte.continuar"><?= e(t('corte.continuar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: cerrar caja — cuánto se deja y cuánto se entrega al gerente -->
+    <div class="modal-overlay" id="modalCierre" role="dialog" aria-modal="true" aria-labelledby="tituloCierre">
+        <div class="modal-box">
+            <h2 id="tituloCierre" data-i18n="cierre.titulo"><?= e(t('cierre.titulo')) ?></h2>
+            <div class="varios-resumen">
+                <div class="varios-fila"><span data-i18n="cierre.contado"><?= e(t('cierre.contado')) ?></span><span id="cierreContado">$0.00</span></div>
+                <div class="varios-fila"><span data-i18n="cierre.vouchers"><?= e(t('cierre.vouchers')) ?></span><span id="cierreVouchers">$0.00</span></div>
+            </div>
+            <div class="form-group cierre-dejar">
+                <label for="inputDejado" data-i18n="cierre.dejar"><?= e(t('cierre.dejar')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputDejado" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorDejado cierreFondo">
+                </div>
+                <div class="campo-error" id="errorDejado"></div>
+                <small class="cierre-fondo" id="cierreFondo"></small>
+            </div>
+            <div class="corte-resumen">
+                <div class="corte-fila corte-fila--total">
+                    <span data-i18n="cierre.entregas"><?= e(t('cierre.entregas')) ?></span>
+                    <strong id="cierreEntrega">$0.00</strong>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCierre')" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCierre" onclick="confirmarCierre()" data-i18n="cierre.titulo"><?= e(t('cierre.titulo')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: resultado del corte (solo se cierra con "Aceptar") -->
+    <div class="modal-overlay" id="modalCorteResultado" role="dialog" aria-modal="true" aria-labelledby="tituloCorteResultado">
+        <div class="modal-box modal-confirmar">
+            <div class="corte-sello" id="corteSello"></div>
+            <h2 id="tituloCorteResultado" data-i18n="resultado.titulo"><?= e(t('resultado.titulo')) ?></h2>
+            <div class="varios-resumen corte-detalle" id="corteDetalle"></div>
+            <p class="modal-mensaje corte-revision" id="corteRevision" data-i18n="resultado.revision" hidden><?= e(t('resultado.revision')) ?></p>
+            <p class="modal-mensaje" data-i18n="resultado.enviado"><?= e(t('resultado.enviado')) ?></p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="imprimirCorte()">🧾 <span data-i18n="resultado.imprimir"><?= e(t('resultado.imprimir')) ?></span></button>
+                <button type="button" class="btn btn-primary" id="btnAceptarCorte" onclick="aceptarCorte()" data-i18n="comun.aceptar"><?= e(t('comun.aceptar')) ?></button>
             </div>
         </div>
     </div>
@@ -166,11 +323,11 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             <div class="icono-peligro" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </div>
-            <h2 id="tituloEliminar"><?= e(t('eliminar.titulo')) ?></h2>
+            <h2 id="tituloEliminar" data-i18n="eliminar.titulo"><?= e(t('eliminar.titulo')) ?></h2>
             <div id="eliminarContenido"></div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalEliminar')"><?= e(t('comun.cancelar')) ?></button>
-                <button type="button" class="btn btn-danger-solid" id="btnConfirmarEliminar" onclick="confirmarEliminar()"><?= e(t('eliminar.confirmar')) ?></button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalEliminar')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-danger-solid" id="btnConfirmarEliminar" onclick="confirmarEliminar()" data-i18n="eliminar.confirmar"><?= e(t('eliminar.confirmar')) ?></button>
             </div>
         </div>
     </div>
@@ -178,15 +335,16 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
     <!-- Modal: método de pago -->
     <div class="modal-overlay" id="modalPago" role="dialog" aria-modal="true" aria-labelledby="tituloPago">
         <div class="modal-box">
-            <h2 id="tituloPago"><?= e(t('pago.titulo')) ?></h2>
-            <div class="modal-total-label"><?= e(t('pago.total')) ?></div>
+            <h2 id="tituloPago" data-i18n="pago.titulo"><?= e(t('pago.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
             <div class="modal-total" id="modalTotal">$0.00</div>
             <div class="metodos-pago">
-                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span>💵</span><?= e(t('pago.efectivo')) ?></button>
-                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span>💳</span><?= e(t('pago.tarjeta')) ?></button>
+                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span class="metodo-icono" aria-hidden="true">💵</span><span data-i18n="pago.efectivo"><?= e(t('pago.efectivo')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span class="metodo-icono" aria-hidden="true">💳</span><span data-i18n="pago.tarjeta"><?= e(t('pago.tarjeta')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="abrirModalVarios()"><span class="metodo-icono" aria-hidden="true">💵💳</span><span data-i18n="pago.varios"><?= e(t('pago.varios')) ?></span></button>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
             </div>
         </div>
     </div>
@@ -194,11 +352,11 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
     <!-- Modal: pago en efectivo -->
     <div class="modal-overlay" id="modalEfectivo" role="dialog" aria-modal="true" aria-labelledby="tituloEfectivo">
         <div class="modal-box">
-            <h2 id="tituloEfectivo"><?= e(t('efectivo.titulo')) ?></h2>
-            <div class="modal-total-label"><?= e(t('pago.total')) ?></div>
+            <h2 id="tituloEfectivo" data-i18n="efectivo.titulo"><?= e(t('efectivo.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
             <div class="modal-total" id="efectivoTotal">$0.00</div>
             <div class="form-group">
-                <label for="inputRecibido"><?= e(t('efectivo.recibido')) ?></label>
+                <label for="inputRecibido" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
                 <div class="input-dinero">
                     <span>$</span>
                     <input type="number" id="inputRecibido" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
@@ -206,8 +364,43 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             </div>
             <div class="cambio-preview" id="cambioPreview"></div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()"><?= e(t('comun.atras')) ?></button>
-                <button type="button" class="btn btn-primary" id="btnCobrarEfectivo" onclick="cobrarEfectivo()" disabled><?= e(t('efectivo.cobrar')) ?></button>
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCobrarEfectivo" onclick="cobrarEfectivo()" disabled data-i18n="efectivo.cobrar"><?= e(t('efectivo.cobrar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: pago combinado (una parte con tarjeta y el resto en efectivo, con cambio) -->
+    <div class="modal-overlay" id="modalVarios" role="dialog" aria-modal="true" aria-labelledby="tituloVarios">
+        <div class="modal-box">
+            <h2 id="tituloVarios" data-i18n="varios.titulo"><?= e(t('varios.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
+            <div class="modal-total" id="variosTotal">$0.00</div>
+            <div class="form-group">
+                <label for="inputVariosEfectivo" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputVariosEfectivo" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+            <!-- Se llena sola con lo que falta después del efectivo, hasta que el cajero la escriba -->
+            <div class="form-group">
+                <label for="inputVariosTarjeta" data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputVariosTarjeta" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVariosTarjeta">
+                </div>
+                <div class="campo-error" id="errorVariosTarjeta"></div>
+            </div>
+            <!-- Desglose: lo capturado y, al final, lo que falta o el cambio -->
+            <div class="varios-resumen" aria-live="polite">
+                <div class="varios-fila"><span data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></span><span id="variosResEfectivo">$0.00</span></div>
+                <div class="varios-fila"><span data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></span><span id="variosResTarjeta">$0.00</span></div>
+                <div class="varios-fila varios-estado" id="variosEstado"><span id="variosEstadoEtiqueta"></span><span id="variosEstadoMonto"></span></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCobrarVarios" onclick="cobrarVarios()" disabled data-i18n="efectivo.cobrar"><?= e(t('efectivo.cobrar')) ?></button>
             </div>
         </div>
     </div>
@@ -215,18 +408,18 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
     <!-- Modal: venta completada -->
     <div class="modal-overlay" id="modalVenta" role="dialog" aria-modal="true" aria-labelledby="tituloVenta">
         <div class="modal-box">
-            <h2 id="tituloVenta"><?= e(t('venta.titulo')) ?></h2>
+            <h2 id="tituloVenta" data-i18n="venta.titulo"><?= e(t('venta.titulo')) ?></h2>
             <p class="modal-mensaje" id="ventaMensaje"></p>
             <div id="ventaCambio" style="display:none;">
                 <div class="cambio-resultado">
-                    <div class="cambio-label"><?= e(t('efectivo.cambio')) ?></div>
+                    <div class="cambio-label" data-i18n="efectivo.cambio"><?= e(t('efectivo.cambio')) ?></div>
                     <div class="cambio-monto" id="ventaCambioMonto">$0.00</div>
                 </div>
                 <div class="cambio-detalle" id="ventaCambioDetalle"></div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 <?= e(t('venta.imprimir')) ?></button>
-                <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()"><?= e(t('comun.aceptar')) ?></button>
+                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 <span data-i18n="venta.imprimir"><?= e(t('venta.imprimir')) ?></span></button>
+                <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()" data-i18n="comun.aceptar"><?= e(t('comun.aceptar')) ?></button>
             </div>
         </div>
     </div>
@@ -247,8 +440,10 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
 
     <script>
     // Textos traducidos (cajero/lang/*.php). tr('clave', {var}) y trn('clave', n, {var}) para plurales.
-    window.TEXTOS = <?= textosCajaParaJs() ?>;
+    // Llegan los de todos los idiomas; cambiarIdioma() solo cambia cuál se usa.
+    window.TEXTOS_IDIOMAS = <?= json_encode($textosPorIdioma, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     window.IDIOMA = <?= json_encode(idiomaActual()) ?>;
+    window.TEXTOS = window.TEXTOS_IDIOMAS[window.IDIOMA];
     function trReemplazar(texto, vars) {
         return String(texto).replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars) ? vars[k] : m);
     }
@@ -261,34 +456,15 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         return trReemplazar(Math.abs(n) === 1 ? formas[0] : formas[1], { n, ...vars });
     }
     </script>
-    <script>
-    // Tema claro / oscuro: misma clave que el gerente, así se conserva al cambiar de módulo
-    (function () {
-        const boton = document.getElementById('botonTema');
-        const actual = () => document.documentElement.getAttribute('data-tema')
-            || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
-        const etiquetar = () => {
-            const texto = actual() === 'oscuro' ? tr('tema.a_claro') : tr('tema.a_oscuro');
-            boton.setAttribute('aria-label', texto);
-            boton.title = texto;
-        };
-        boton.addEventListener('click', () => {
-            const nuevo = actual() === 'oscuro' ? 'claro' : 'oscuro';
-            document.documentElement.setAttribute('data-tema', nuevo);
-            try { localStorage.setItem('koaly-tema', nuevo); } catch (e) { /* modo privado: solo esta página */ }
-            etiquetar();
-        });
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', etiquetar);
-        etiquetar();
-    })();
-    </script>
     <script src="../auth.js"></script>
     <script>
         const usuario = requireRol(3);
-        if (usuario) {
+        function pintarUsuario() {
+            if (!usuario) return;
             document.getElementById('userName').textContent = usuario.nombre || tr('caja.cajero');
             document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || tr('caja.sin_asignar');
         }
+        pintarUsuario();
 
         let carrito = [];
         let indiceSeleccionado = null;
@@ -315,11 +491,13 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             document.getElementById(id).classList.remove('open');
         }
 
+        const MODALES_SIN_ESCAPE = ['modalVenta', 'modalCorteResultado'];
+
         // Clic fuera de la caja o Escape cierra el modal, excepto el de venta
         // completada: la venta solo se cierra con "Aceptar".
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay && overlay.id !== 'modalVenta') cerrarModal(overlay.id);
+                if (e.target === overlay && !MODALES_SIN_ESCAPE.includes(overlay.id)) cerrarModal(overlay.id);
             });
         });
 
@@ -332,8 +510,157 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             const abierto = modalSuperior();
-            if (abierto && abierto.id !== 'modalVenta') cerrarModal(abierto.id);
+            if (abierto && !MODALES_SIN_ESCAPE.includes(abierto.id)) cerrarModal(abierto.id);
         });
+
+        /* ---------- Tema claro / oscuro ---------- */
+        // Igual que en el panel de gerente: <html data-tema="claro|oscuro"> si el
+        // cajero eligió; si no, sigue al sistema. La elección se guarda por navegador.
+        const CLAVE_TEMA = 'koalicius-cajero-tema';
+        const botonTema = document.getElementById('botonTema');
+
+        function temaActual() {
+            const elegido = document.documentElement.getAttribute('data-tema');
+            if (elegido) return elegido;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+        }
+
+        function actualizarBotonTema() {
+            const etiqueta = temaActual() === 'oscuro' ? tr('tema.a_claro') : tr('tema.a_oscuro');
+            botonTema.setAttribute('aria-label', etiqueta);
+            botonTema.title = etiqueta;
+        }
+
+        botonTema.addEventListener('click', () => {
+            const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
+            document.documentElement.setAttribute('data-tema', nuevo);
+            try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
+            actualizarBotonTema();
+        });
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
+        actualizarBotonTema();
+
+        /* ---------- Selector de idioma ---------- */
+        // El menú se cierra al hacer clic fuera o con Escape (igual que en el gerente)
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('details.idioma[open]').forEach(d => {
+                if (!d.contains(e.target)) d.removeAttribute('open');
+            });
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
+        });
+
+        // Igual que el tema, el idioma cambia aquí mismo sin recargar: si se está
+        // cobrando, la venta (carrito, búsqueda, categoría elegida) sigue intacta.
+        // En segundo plano se guarda en la sesión, para que los mensajes del
+        // servidor al cobrar y la fecha del ticket salgan en el mismo idioma.
+        const menuIdioma = document.querySelector('.idioma-menu');
+
+        menuIdioma.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const codigo = e.submitter?.value;
+            menuIdioma.closest('details').removeAttribute('open');
+            if (!codigo || codigo === window.IDIOMA) return;
+
+            aplicarIdioma(codigo);
+
+            const datos = new FormData(menuIdioma);
+            datos.set('idioma', codigo);
+            fetch(menuIdioma.action, { method: 'POST', body: datos, headers: { Accept: 'application/json' } })
+                .catch(() => { /* sin conexión: la caja ya cambió; la sesión se queda con el anterior */ });
+        });
+
+        function aplicarIdioma(codigo) {
+            if (!window.TEXTOS_IDIOMAS[codigo]) return;
+            window.IDIOMA = codigo;
+            window.TEXTOS = window.TEXTOS_IDIOMAS[codigo];
+            document.documentElement.lang = codigo;
+            document.title = `${tr('caja.titulo')} - Koaly`;
+
+            // Textos fijos de la página, marcados con su clave
+            document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+            ['placeholder', 'aria-label', 'title'].forEach(attr => {
+                document.querySelectorAll(`[data-i18n-${attr}]`).forEach(el => {
+                    el.setAttribute(attr, tr(el.getAttribute(`data-i18n-${attr}`)));
+                });
+            });
+            pintarAyudaLista();
+            pintarUsuario();
+            actualizarBotonTema();
+            pintarEstadoCaja();
+
+            // Botón y menú de idioma
+            document.querySelector('.idioma > summary > span').textContent = codigo.toUpperCase();
+            menuIdioma.querySelectorAll('button[name="idioma"]').forEach(boton => {
+                const activo = boton.value === codigo;
+                boton.classList.toggle('is-activo', activo);
+                if (activo) boton.setAttribute('aria-current', 'true');
+                else boton.removeAttribute('aria-current');
+            });
+
+            // Lo que dibuja el JS: catálogo (conserva la categoría elegida), lista de venta y panel derecho
+            if (catalogo.length || categorias.length) {
+                const contenedor = document.getElementById('catalogo');
+                const scroll = contenedor.scrollTop;   // sin esto regresaría hasta arriba
+                renderCatalogo();
+                contenedor.scrollTop = scroll;
+            }
+            renderCarrito();
+        }
+
+        // "Selecciona un producto y presiona [Supr] o [⌫]..." con las teclas en <kbd>
+        function pintarAyudaLista() {
+            const teclas = { supr: tr('lista.tecla_supr'), borrar: '⌫' };
+            const partes = tr('lista.ayuda').split(/(\{supr\}|\{borrar\})/);
+            document.getElementById('ayudaLista').replaceChildren(...partes.map(parte => {
+                const tecla = parte.match(/^\{(supr|borrar)\}$/);
+                if (!tecla) return document.createTextNode(parte);
+                const kbd = document.createElement('kbd');
+                kbd.textContent = teclas[tecla[1]];
+                return kbd;
+            }));
+        }
+
+        /* ---------- Cursor personalizado ---------- */
+        // Punto morado que sigue al mouse (como en el panel de gerente). Solo con
+        // mouse; en pantallas táctiles se queda el cursor normal.
+        function initCustomCursor() {
+            if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+            const dot = document.createElement('div');
+            dot.className = 'cursor-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(dot);
+            document.body.classList.add('cursor-custom');
+
+            let x = window.innerWidth / 2;
+            let y = window.innerHeight / 2;
+            let raf = null;
+
+            const render = () => {
+                dot.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+                raf = null;
+            };
+
+            document.addEventListener('mousemove', (e) => {
+                x = e.clientX;
+                y = e.clientY;
+                if (!raf) raf = requestAnimationFrame(render);
+            });
+
+            // Crece sobre lo que se puede pulsar
+            const interactivo = 'a, button, input, select, textarea, label, [role="button"], [role="option"], .result-item, table.tabla-venta tbody tr:not(.empty-row)';
+            document.addEventListener('mouseover', (e) => {
+                if (e.target.closest(interactivo)) dot.classList.add('is-hover');
+            });
+            document.addEventListener('mouseout', (e) => {
+                if (e.target.closest(interactivo)) dot.classList.remove('is-hover');
+            });
+
+            render();
+        }
+        initCustomCursor();
 
         /* ---------- Búsqueda ---------- */
         // Sugerencias en vivo mientras se escribe; Enter (o un lector de código de
@@ -688,23 +1015,47 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         // Las tarjetas se crean una vez y solo se actualizan sus etiquetas.
         const ICONO_PRODUCTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>';
         let catalogo = [];
+        let categorias = [];                  // { id, nombre } en el orden en que se muestran
+        let categoriaActiva = 'todas';        // 'todas' o el id de una categoría
+        const SIN_CATEGORIA = 0;              // productos sin categoría asignada
         const tarjetasCatalogo = new Map();   // id_producto -> elementos de su tarjeta
 
         async function cargarCatalogo() {
-            const grid = document.getElementById('catalogo');
-            if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo(tr('catalogo.cargando')));
-            let productos;
+            const contenedor = document.getElementById('catalogo');
+            if (catalogo.length === 0) contenedor.replaceChildren(mensajeCatalogo(tr('catalogo.cargando')));
+            let datos;
             try {
                 const res = await fetch('catalogo_productos.php');
-                productos = await res.json();
-                if (!Array.isArray(productos)) throw new Error('Respuesta inválida');
+                datos = await res.json();
+                if (!Array.isArray(datos?.productos) || !Array.isArray(datos?.categorias)) throw new Error('Respuesta inválida');
             } catch (error) {
                 // Si falla una recarga se conserva el catálogo que ya se ve
-                if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo(tr('catalogo.error')));
+                if (catalogo.length === 0) contenedor.replaceChildren(mensajeCatalogo(tr('catalogo.error')));
                 return;
             }
-            catalogo = productos;
+            catalogo = datos.productos;
+            categorias = datos.categorias.map(c => ({ id: Number(c.id_categoria), nombreBd: c.nombre_categoria }));
+
+            // Los productos sin categoría (o con una que ya no existe) van al final
+            const idsCategorias = new Set(categorias.map(c => c.id));
+            catalogo.forEach(p => {
+                p.id_categoria = Number(p.id_categoria) || SIN_CATEGORIA;
+                if (!idsCategorias.has(p.id_categoria)) p.id_categoria = SIN_CATEGORIA;
+            });
+            if (catalogo.some(p => p.id_categoria === SIN_CATEGORIA)) {
+                categorias.push({ id: SIN_CATEGORIA, nombreBd: null });
+            }
+            if (categoriaActiva !== 'todas' && !categorias.some(c => c.id === categoriaActiva)) {
+                categoriaActiva = 'todas';
+            }
+
             renderCatalogo();
+        }
+
+        // Nombre a mostrar en el idioma actual: categoria.<nombre en la BD> si existe, si no tal cual
+        function nombreCategoria(c) {
+            if (c.id === SIN_CATEGORIA) return tr('categorias.sin_categoria');
+            return window.TEXTOS['categoria.' + c.nombreBd] ?? c.nombreBd;
         }
 
         function mensajeCatalogo(texto) {
@@ -714,76 +1065,152 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             return div;
         }
 
+        // Una sección por categoría (las vacías también, con su aviso);
+        // el filtro solo muestra u oculta secciones
         function renderCatalogo() {
-            const grid = document.getElementById('catalogo');
+            const contenedor = document.getElementById('catalogo');
             tarjetasCatalogo.clear();
 
-            if (catalogo.length === 0) {
-                grid.replaceChildren(mensajeCatalogo(tr('catalogo.vacio')));
+            if (catalogo.length === 0 && categorias.length === 0) {
+                document.getElementById('filtroCategorias').replaceChildren();
+                contenedor.replaceChildren(mensajeCatalogo(tr('catalogo.vacio')));
                 return;
             }
 
-            grid.replaceChildren(...catalogo.map(p => {
-                // La tarjeta lleva dos botones: toda el área agrega uno y el círculo
-                // rojo de la esquina resta uno (para corregir un clic de más)
-                const tarjeta = document.createElement('div');
-                tarjeta.className = 'producto-card';
+            const secciones = categorias.map(c => {
+                const productos = catalogo.filter(p => p.id_categoria === c.id);
 
-                const agregar = document.createElement('button');
-                agregar.type = 'button';
-                agregar.className = 'producto-card-agregar';
+                const seccion = document.createElement('section');
+                seccion.className = 'catalogo-seccion';
+                seccion.dataset.categoria = c.id;
+                seccion.dataset.vacia = productos.length === 0 ? '1' : '';
 
-                const marco = document.createElement('div');
-                marco.className = 'producto-card-img';
-                if (p.imagen) {
-                    const img = document.createElement('img');
-                    img.src = `../${p.imagen}`;
-                    img.alt = '';
-                    img.loading = 'lazy';
-                    marco.appendChild(img);
+                const titulo = document.createElement('h3');
+                titulo.className = 'catalogo-seccion-titulo';
+                titulo.textContent = nombreCategoria(c);
+                const conteo = document.createElement('span');
+                conteo.className = 'catalogo-seccion-conteo';
+                conteo.textContent = productos.length;
+                titulo.appendChild(conteo);
+
+                const grid = document.createElement('div');
+                grid.className = 'catalogo-grid';
+                if (productos.length === 0) {
+                    grid.appendChild(mensajeCatalogo(tr('categorias.vacia')));
                 } else {
-                    marco.innerHTML = ICONO_PRODUCTO;
+                    grid.append(...productos.map(crearTarjeta));
                 }
 
-                const enVenta = document.createElement('span');
-                enVenta.className = 'producto-card-cantidad';
+                seccion.append(titulo, grid);
+                return seccion;
+            });
 
-                const nombre = document.createElement('span');
-                nombre.className = 'producto-card-nombre';
-                nombre.textContent = p.nombre;
-
-                const pie = document.createElement('span');
-                pie.className = 'producto-card-pie';
-                const precio = document.createElement('span');
-                precio.className = 'producto-card-precio';
-                precio.textContent = formatoDinero(Number(p.precio) || 0);
-                const existencias = document.createElement('span');
-                pie.append(precio, existencias);
-
-                agregar.append(marco, enVenta, nombre, pie);
-                agregar.addEventListener('click', () => {
-                    const antes = cantidadDeProducto(p.id_producto);
-                    agregarAlCarrito(p);
-                    if (cantidadDeProducto(p.id_producto) > antes) animarTarjeta(tarjeta);
-                });
-
-                const restar = document.createElement('button');
-                restar.type = 'button';
-                restar.className = 'producto-card-restar';
-                restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
-                restar.title = tr('catalogo.quitar_uno');
-                restar.setAttribute('aria-label', tr('catalogo.quitar_uno_de', { p: p.nombre }));
-                restar.addEventListener('click', () => {
-                    restarUno(p.id_producto);
-                    animarTarjeta(tarjeta);
-                });
-
-                tarjeta.append(agregar, restar);
-                tarjetasCatalogo.set(p.id_producto, { producto: p, tarjeta, agregar, enVenta, existencias });
-                return tarjeta;
-            }));
-
+            contenedor.replaceChildren(...secciones);
+            renderFiltroCategorias();
+            aplicarFiltroCategoria();
             actualizarCatalogo();
+        }
+
+        function renderFiltroCategorias() {
+            const filtro = document.getElementById('filtroCategorias');
+            const chip = (valor, nombre, cantidad) => {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'categoria-chip';
+                boton.dataset.valor = valor;
+                boton.classList.toggle('vacia', cantidad === 0);
+                boton.textContent = nombre;
+                const conteo = document.createElement('span');
+                conteo.className = 'categoria-chip-conteo';
+                conteo.textContent = cantidad;
+                boton.appendChild(conteo);
+                boton.addEventListener('click', () => {
+                    categoriaActiva = valor;
+                    aplicarFiltroCategoria();
+                    document.getElementById('catalogo').scrollTop = 0;
+                });
+                return boton;
+            };
+
+            filtro.replaceChildren(
+                chip('todas', tr('categorias.todas'), catalogo.length),
+                ...categorias.map(c => chip(c.id, nombreCategoria(c), catalogo.filter(p => p.id_categoria === c.id).length))
+            );
+        }
+
+        // "Todas" muestra solo las secciones con productos, para no llenar de avisos;
+        // al elegir una categoría vacía se ve su sección con el aviso
+        function aplicarFiltroCategoria() {
+            document.querySelectorAll('#filtroCategorias .categoria-chip').forEach(boton => {
+                const activo = String(boton.dataset.valor) === String(categoriaActiva);
+                boton.classList.toggle('activo', activo);
+                boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
+            });
+            document.querySelectorAll('#catalogo .catalogo-seccion').forEach(seccion => {
+                seccion.hidden = categoriaActiva === 'todas'
+                    ? seccion.dataset.vacia === '1'
+                    : Number(seccion.dataset.categoria) !== categoriaActiva;
+            });
+        }
+
+        function crearTarjeta(p) {
+            // La tarjeta lleva dos botones: toda el área agrega uno y el círculo
+            // rojo de la esquina resta uno (para corregir un clic de más)
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'producto-card';
+
+            const agregar = document.createElement('button');
+            agregar.type = 'button';
+            agregar.className = 'producto-card-agregar';
+
+            const marco = document.createElement('div');
+            marco.className = 'producto-card-img';
+            if (p.imagen) {
+                const img = document.createElement('img');
+                img.src = `../${p.imagen}`;
+                img.alt = '';
+                img.loading = 'lazy';
+                marco.appendChild(img);
+            } else {
+                marco.innerHTML = ICONO_PRODUCTO;
+            }
+
+            const enVenta = document.createElement('span');
+            enVenta.className = 'producto-card-cantidad';
+
+            const nombre = document.createElement('span');
+            nombre.className = 'producto-card-nombre';
+            nombre.textContent = p.nombre;
+
+            const pie = document.createElement('span');
+            pie.className = 'producto-card-pie';
+            const precio = document.createElement('span');
+            precio.className = 'producto-card-precio';
+            precio.textContent = formatoDinero(Number(p.precio) || 0);
+            const existencias = document.createElement('span');
+            pie.append(precio, existencias);
+
+            agregar.append(marco, enVenta, nombre, pie);
+            agregar.addEventListener('click', () => {
+                const antes = cantidadDeProducto(p.id_producto);
+                agregarAlCarrito(p);
+                if (cantidadDeProducto(p.id_producto) > antes) animarTarjeta(tarjeta);
+            });
+
+            const restar = document.createElement('button');
+            restar.type = 'button';
+            restar.className = 'producto-card-restar';
+            restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+            restar.title = tr('catalogo.quitar_uno');
+            restar.setAttribute('aria-label', tr('catalogo.quitar_uno_de', { p: p.nombre }));
+            restar.addEventListener('click', () => {
+                restarUno(p.id_producto);
+                animarTarjeta(tarjeta);
+            });
+
+            tarjeta.append(agregar, restar);
+            tarjetasCatalogo.set(p.id_producto, { producto: p, tarjeta, agregar, enVenta, existencias });
+            return tarjeta;
         }
 
         function animarTarjeta(tarjeta) {
@@ -1301,7 +1728,146 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
 
         function volverAMetodos() {
             cerrarModal('modalEfectivo');
+            cerrarModal('modalVarios');
             abrirModal('modalPago');
+        }
+
+        /* ---------- Pago combinado ---------- */
+        // Se captura lo de tarjeta y lo de efectivo, en cualquier orden, y se
+        // cobra en cuanto se cubre el total:
+        //  - tarjeta = total: todo con tarjeta (se ignora el efectivo)
+        //  - sin tarjeta y efectivo >= total: todo en efectivo, con cambio
+        //  - tarjeta parcial: el efectivo cubre el resto y el cambio sale de ahí
+        //    (cuenta $400, tarjeta $200, recibe $500 -> cambio $300)
+        // La tarjeta nunca pasa del total: no da cambio.
+        const inputVariosTarjeta = document.getElementById('inputVariosTarjeta');
+        const inputVariosEfectivo = document.getElementById('inputVariosEfectivo');
+
+        // Monto capturado en centavos; vacío o negativo cuenta como 0
+        const centavosDe = (input) => Math.max(0, aCentavos(parseFloat(input.value)) || 0);
+
+        function abrirModalVarios() {
+            cerrarModal('modalPago');
+            document.getElementById('variosTotal').innerText = formatoDinero(totalActual);
+            inputVariosTarjeta.value = '';
+            inputVariosEfectivo.value = '';
+            tarjetaManual = false;
+            actualizarVariosPreview();
+            abrirModal('modalVarios');
+            inputVariosEfectivo.focus();
+        }
+
+        // Lo de tarjeta se calcula solo con lo que falta después del efectivo
+        // (cuenta $257, efectivo $200 -> tarjeta $57) mientras el cajero no la
+        // escriba a mano; si la borra, vuelve a calcularse.
+        let tarjetaManual = false;
+
+        function autollenarTarjeta() {
+            if (tarjetaManual) return;
+            const total = aCentavos(totalActual);
+            const recibido = centavosDe(inputVariosEfectivo);
+            const sinEfectivo = inputVariosEfectivo.value.trim() === '';
+            inputVariosTarjeta.value = sinEfectivo || recibido >= total ? '' : ((total - recibido) / 100).toFixed(2);
+        }
+
+        // Cómo se cobra con lo capturado (montos en centavos), o null si no alcanza el total
+        function montosVarios() {
+            const total = aCentavos(totalActual);
+            const tarjeta = centavosDe(inputVariosTarjeta);
+            const recibido = centavosDe(inputVariosEfectivo);
+
+            if (tarjeta > total) return null;
+            if (tarjeta === total) return { metodo: 'Tarjeta' };
+            if (tarjeta === 0) {
+                return recibido >= total ? { metodo: 'Efectivo', recibido, cambio: recibido - total } : null;
+            }
+            const resto = total - tarjeta;
+            return recibido >= resto ? { metodo: 'Varios', tarjeta, recibido, cambio: recibido - resto } : null;
+        }
+
+        // Desglose en vivo: tarjeta, efectivo y, al final, "Restante" mientras no
+        // se cubra el total o "Cambio" cuando ya se cubrió
+        function actualizarVariosPreview() {
+            const total = aCentavos(totalActual);
+            const tarjeta = centavosDe(inputVariosTarjeta);
+            const recibido = centavosDe(inputVariosEfectivo);
+            const montos = montosVarios();
+            const excede = tarjeta > total;
+            const todoTarjeta = montos?.metodo === 'Tarjeta';
+
+            document.getElementById('btnCobrarVarios').disabled = montos === null;
+
+            // La tarjeta no puede pasar del total: el error va en su propio campo
+            inputVariosTarjeta.closest('.input-dinero').classList.toggle('con-error', excede);
+            document.getElementById('errorVariosTarjeta').textContent =
+                excede ? tr('varios.tarjeta_excede') : '';
+
+            document.getElementById('variosResTarjeta').textContent = formatoDinero(tarjeta / 100);
+            // Si la tarjeta cubre todo, el efectivo no se usa
+            document.getElementById('variosResEfectivo').textContent = formatoDinero((todoTarjeta ? 0 : recibido) / 100);
+
+            const estado = document.getElementById('variosEstado');
+            const etiqueta = document.getElementById('variosEstadoEtiqueta');
+            const monto = document.getElementById('variosEstadoMonto');
+            estado.hidden = excede;
+            estado.classList.toggle('is-restante', !montos && !excede);
+            estado.classList.toggle('is-cubierto', !!montos);
+
+            if (todoTarjeta) {
+                etiqueta.textContent = tr('varios.todo_tarjeta');
+                monto.textContent = '✓';
+            } else if (montos) {
+                etiqueta.textContent = tr('efectivo.cambio');
+                monto.textContent = formatoDinero(montos.cambio / 100);
+            } else {
+                etiqueta.textContent = tr('varios.restante');
+                monto.textContent = formatoDinero((total - tarjeta - recibido) / 100);
+            }
+        }
+
+        inputVariosEfectivo.addEventListener('input', () => {
+            autollenarTarjeta();
+            actualizarVariosPreview();
+        });
+        inputVariosTarjeta.addEventListener('input', () => {
+            tarjetaManual = inputVariosTarjeta.value.trim() !== '';
+            if (!tarjetaManual) autollenarTarjeta();
+            actualizarVariosPreview();
+        });
+
+        // Enter en el efectivo: si hay parte con tarjeta pasa a revisarla; si no, cobra.
+        // Enter en la tarjeta: cobra si ya se cubrió el total.
+        const puedeCobrarVarios = () => !document.getElementById('btnCobrarVarios').disabled;
+        inputVariosEfectivo.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (centavosDe(inputVariosTarjeta) > 0) {
+                inputVariosTarjeta.focus();
+                inputVariosTarjeta.select();
+            } else if (puedeCobrarVarios()) {
+                cobrarVarios();
+            }
+        });
+        inputVariosTarjeta.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (puedeCobrarVarios()) cobrarVarios();
+            else inputVariosEfectivo.focus();
+        });
+
+        async function cobrarVarios() {
+            if (cobrando) return;
+            const montos = montosVarios();
+            if (!montos) return;
+
+            bloquearCobro(true);
+            let venta;
+            if (montos.metodo === 'Tarjeta') venta = await registrarVenta('Tarjeta');
+            else if (montos.metodo === 'Efectivo') venta = await registrarVenta('Efectivo', montos.recibido / 100);
+            else venta = await registrarVenta('Varios', montos.recibido / 100, montos.tarjeta / 100);
+            bloquearCobro(false);
+            if (!venta) return;
+
+            cerrarModal('modalVarios');
+            mostrarVentaCompletada(montos.metodo, venta);
         }
 
         // Muestra en vivo cuánto falta o cuánto cambio hay que dar
@@ -1335,7 +1901,7 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         });
 
         // Guarda la venta en la BD. Devuelve la respuesta del servidor o null si falló.
-        async function registrarVenta(metodo, efectivoRecibido = null) {
+        async function registrarVenta(metodo, efectivoRecibido = null, montoTarjeta = null) {
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
             datos.append('metodo', metodo);
@@ -1343,6 +1909,7 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
                 carrito.map(i => ({ id_producto: i.id_producto, cantidad: i.cantidad }))
             ));
             if (efectivoRecibido !== null) datos.append('efectivo_recibido', efectivoRecibido.toFixed(2));
+            if (montoTarjeta !== null) datos.append('monto_tarjeta', montoTarjeta.toFixed(2));
 
             let res, json;
             try {
@@ -1358,9 +1925,21 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             }
             if (json.success) return json;
 
+            // Sin cambio en caja: la ventana de pago sigue abierta para cambiar el monto o el método
+            if (json.sin_cambio) {
+                mostrarAviso({ tipo: 'aviso', titulo: tr('aviso.sin_cambio_titulo'), mensaje: json.message });
+                return null;
+            }
+
             // 409: las existencias cambiaron entre la verificación y el cobro
             cerrarModal('modalPago');
             cerrarModal('modalEfectivo');
+            cerrarModal('modalVarios');
+            if (json.caja_cerrada) {
+                cargarTurno();
+                mostrarAviso({ tipo: 'aviso', titulo: tr('caja.cerrada_aviso'), mensaje: json.message });
+                return null;
+            }
             if (res.status === 409) {
                 const faltantes = await actualizarExistencias();
                 if (faltantes && faltantes.length > 0) {
@@ -1378,11 +1957,16 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
 
         function bloquearCobro(bloquear) {
             cobrando = bloquear;
-            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo').forEach(b => {
+            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo, #btnCobrarVarios').forEach(b => {
                 b.disabled = bloquear;
             });
-            document.getElementById('btnCobrarEfectivo').textContent = bloquear ? tr('pago.guardando') : tr('efectivo.cobrar');
-            if (!bloquear) actualizarCambioPreview();
+            ['btnCobrarEfectivo', 'btnCobrarVarios'].forEach(id => {
+                document.getElementById(id).textContent = bloquear ? tr('pago.guardando') : tr('efectivo.cobrar');
+            });
+            if (!bloquear) {
+                actualizarCambioPreview();
+                actualizarVariosPreview();
+            }
         }
 
         async function cobrarEfectivo() {
@@ -1411,6 +1995,526 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             mostrarVentaCompletada('Tarjeta', venta);
         }
 
+        /* ---------- Corte de caja: conteo de billetes y monedas ---------- */
+        // Tarjetas como las del catálogo: clic en la pieza suma uno, el círculo
+        // rojo resta uno y la cantidad también se puede escribir. El conteo se
+        // conserva aunque se cierre la ventana, hasta que se limpie.
+        // Montos en centavos; la llave es el id porque $20 es billete y moneda.
+        const DENOMINACIONES = [
+            { id: 'b20',   tipo: 'billete', centavos: 2000,   imagen: 'billete20.jpg' },
+            { id: 'b50',   tipo: 'billete', centavos: 5000,   imagen: 'billete50.jpg' },
+            { id: 'b100',  tipo: 'billete', centavos: 10000,  imagen: 'billete100.jpg' },
+            { id: 'b200',  tipo: 'billete', centavos: 20000,  imagen: 'billete200.jpg' },
+            { id: 'b500',  tipo: 'billete', centavos: 50000,  imagen: 'billete500.jpg' },
+            { id: 'b1000', tipo: 'billete', centavos: 100000, imagen: 'billete1000.jpg' },
+            { id: 'm050',  tipo: 'moneda',  centavos: 50,     imagen: 'moneda050.jpg' },
+            { id: 'm1',    tipo: 'moneda',  centavos: 100,    imagen: 'moneda1.jpg' },
+            { id: 'm2',    tipo: 'moneda',  centavos: 200,    imagen: 'moneda2.jpg' },
+            { id: 'm5',    tipo: 'moneda',  centavos: 500,    imagen: 'moneda5.jpg' },
+            { id: 'm10',   tipo: 'moneda',  centavos: 1000,   imagen: 'moneda10.jpg' },
+            { id: 'm20',   tipo: 'moneda',  centavos: 2000,   imagen: 'moneda20.jpg' },
+        ];
+        const conteoCorte = new Map(DENOMINACIONES.map(d => [d.id, 0]));
+
+        // "$20", "$1,000", "$0.50"
+        const denominacion = (centavos) => centavos % 100 === 0
+            ? '$' + (centavos / 100).toLocaleString('es-MX')
+            : formatoDinero(centavos / 100);
+
+        // El mismo conteo sirve para abrir caja ('apertura') y para el corte ('cierre');
+        // al cambiar de uso se empieza de cero
+        let modoCorte = 'cierre';
+        let modoConteo = null;      // para qué es el conteo guardado
+
+        function mostrarCorte(modo) {
+            if (modoConteo !== modo) limpiarConteo();
+            modoCorte = modoConteo = modo;
+            const cierre = modo === 'cierre';
+            document.getElementById('tituloCorte').textContent = tr(cierre ? 'corte.titulo' : 'corte.titulo_apertura');
+            document.getElementById('corteAyuda').textContent = tr(cierre ? 'corte.ayuda_cierre' : 'corte.ayuda');
+            document.getElementById('corteTarjeta').hidden = !cierre;
+            document.getElementById('btnCorteCancelar').hidden = !cierre;
+            document.getElementById('btnCorteContinuar').hidden = !cierre;
+            document.getElementById('btnCorteUsar').hidden = cierre;
+            document.getElementById('errorVouchers').textContent = '';
+            renderCorte();
+            abrirModal('modalCorte');
+            document.querySelector('#corteBilletes .dinero-piezas')?.focus();
+        }
+
+        // Botón "Corte" de la barra: cerrar caja. No con una venta a medias.
+        function abrirCorte() {
+            if (estadoCaja !== 'abierta') return;
+            if (carrito.length > 0) {
+                mostrarAviso({ tipo: 'aviso', titulo: tr('cierre.venta_en_curso_titulo'), mensaje: tr('cierre.venta_en_curso') });
+                return;
+            }
+            mostrarCorte('cierre');
+        }
+
+        function limpiarConteo() {
+            conteoCorte.forEach((_, id) => conteoCorte.set(id, 0));
+            document.getElementById('inputVouchers').value = '';
+        }
+
+        // Fondo regular: $1,000 en billetes chicos y monedas para dar cambio.
+        // Es lo que se deja normalmente al cerrar la caja.
+        const PLANTILLA_FONDO = { b100: 2, b50: 6, b20: 10, m10: 20, m5: 10, m2: 15, m1: 15, m050: 10 };
+        const totalPlantillaFondo = () => DENOMINACIONES.reduce((total, d) => total + (PLANTILLA_FONDO[d.id] ?? 0) * d.centavos, 0);
+        document.getElementById('cortePlantillaTotal').textContent = denominacion(totalPlantillaFondo());
+
+        function cargarPlantillaFondo(pintar = true) {
+            conteoCorte.forEach((_, id) => conteoCorte.set(id, PLANTILLA_FONDO[id] ?? 0));
+            if (pintar) renderCorte();
+        }
+
+        // Si ya hay piezas contadas, pregunta antes de reemplazarlas
+        function pedirPlantillaFondo() {
+            if (sumarCorte().piezas === 0) {
+                cargarPlantillaFondo();
+                return;
+            }
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = tr('corte.plantilla_mensaje');
+            abrirConfirmacion(tr('corte.plantilla_titulo'), mensaje, tr('corte.plantilla_confirmar'), () => cargarPlantillaFondo());
+        }
+
+        function renderCorte() {
+            const tarjetas = (tipo) => DENOMINACIONES.filter(d => d.tipo === tipo).map(crearTarjetaDinero);
+            document.getElementById('corteBilletes').replaceChildren(...tarjetas('billete'));
+            document.getElementById('corteMonedas').replaceChildren(...tarjetas('moneda'));
+            actualizarTotalCorte();
+        }
+
+        function crearTarjetaDinero(d) {
+            const valor = denominacion(d.centavos);
+            const tarjeta = document.createElement('div');
+            tarjeta.className = `dinero-card dinero-card--${d.tipo}`;
+
+            const agregar = document.createElement('button');
+            agregar.type = 'button';
+            agregar.className = 'dinero-agregar';
+            agregar.setAttribute('aria-label', tr(`corte.agregar_${d.tipo}`, { valor }));
+            const img = document.createElement('img');
+            img.src = `../Imagenes/dinero/${d.imagen}`;
+            img.alt = '';
+            const etiqueta = document.createElement('span');
+            etiqueta.className = 'dinero-valor';
+            etiqueta.textContent = valor;
+            agregar.append(img, etiqueta);
+
+            const restar = document.createElement('button');
+            restar.type = 'button';
+            restar.className = 'dinero-restar';
+            restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+            restar.title = tr('catalogo.quitar_uno');
+            restar.setAttribute('aria-label', tr(`corte.quitar_${d.tipo}`, { valor }));
+
+            const pie = document.createElement('div');
+            pie.className = 'dinero-pie';
+            const piezas = document.createElement('input');
+            piezas.type = 'number';
+            piezas.min = '0';
+            piezas.step = '1';
+            piezas.inputMode = 'numeric';
+            piezas.placeholder = '0';
+            piezas.className = 'dinero-piezas';
+            piezas.setAttribute('aria-label', tr(`corte.piezas_${d.tipo}`, { valor }));
+            const subtotal = document.createElement('span');
+            subtotal.className = 'dinero-subtotal';
+            pie.append(piezas, subtotal);
+
+            // Mientras se escribe no se reescribe el campo; al salir se normaliza ("007" -> 7)
+            const pintar = () => {
+                const n = conteoCorte.get(d.id);
+                tarjeta.classList.toggle('con-piezas', n > 0);
+                if (document.activeElement !== piezas) piezas.value = n > 0 ? n : '';
+                subtotal.textContent = formatoDinero(n * d.centavos / 100);
+                actualizarTotalCorte();
+            };
+            const fijar = (n) => {
+                conteoCorte.set(d.id, Math.max(0, n));
+                pintar();
+                animarTarjeta(tarjeta);
+            };
+
+            agregar.addEventListener('click', () => fijar(conteoCorte.get(d.id) + 1));
+            restar.addEventListener('click', () => fijar(conteoCorte.get(d.id) - 1));
+            piezas.addEventListener('input', () => {
+                const n = parseInt(piezas.value, 10);
+                conteoCorte.set(d.id, Number.isNaN(n) || n < 0 ? 0 : n);
+                pintar();
+            });
+            piezas.addEventListener('blur', pintar);
+            piezas.addEventListener('keydown', (e) => {
+                // Solo piezas enteras y positivas
+                if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) e.preventDefault();
+                // Enter pasa a la siguiente pieza (de los billetes sigue a las monedas)
+                if (e.key === 'Enter') {
+                    const campos = [...document.querySelectorAll('#modalCorte .dinero-piezas')];
+                    campos[campos.indexOf(piezas) + 1]?.focus();
+                }
+            });
+
+            tarjeta.append(agregar, restar, pie);
+            pintar();
+            return tarjeta;
+        }
+
+        // Total y piezas por tipo, en centavos
+        function sumarCorte(tipo = null) {
+            let centavos = 0;
+            let piezas = 0;
+            DENOMINACIONES.forEach(d => {
+                if (tipo && d.tipo !== tipo) return;
+                const n = conteoCorte.get(d.id);
+                centavos += n * d.centavos;
+                piezas += n;
+            });
+            return { centavos, piezas };
+        }
+
+        function actualizarTotalCorte() {
+            const billetes = sumarCorte('billete');
+            const monedas = sumarCorte('moneda');
+            document.getElementById('corteTotalBilletes').textContent = formatoDinero(billetes.centavos / 100);
+            document.getElementById('corteTotalMonedas').textContent = formatoDinero(monedas.centavos / 100);
+            document.getElementById('cortePiezasBilletes').textContent = billetes.piezas > 0 ? `(${trn('corte.n_billetes', billetes.piezas)})` : '';
+            document.getElementById('cortePiezasMonedas').textContent = monedas.piezas > 0 ? `(${trn('corte.n_monedas', monedas.piezas)})` : '';
+            document.getElementById('corteTotal').textContent = formatoDinero((billetes.centavos + monedas.centavos) / 100);
+        }
+
+        function pedirLimpiarCorte() {
+            if (sumarCorte().piezas === 0) return;
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = tr('corte.limpiar_mensaje');
+            abrirConfirmacion(tr('corte.limpiar_titulo'), mensaje, tr('corte.limpiar_confirmar'), () => {
+                limpiarConteo();
+                renderCorte();
+            });
+        }
+
+        /* ---------- Turno de caja: abrir y cerrar ---------- */
+        // Sin turno abierto todo se ve en gris y solo queda "Abrir caja". Al
+        // abrir se confirma lo que dejó el turno anterior; al cerrar se cuenta a
+        // ciegas (lo esperado llega hasta guardar), se decide cuánto se deja y el
+        // corte queda pendiente para el gerente.
+        let cajaActual = null;
+        let turnoActual = null;
+        let turnoAnterior = null;
+        let estadoCaja = 'cargando';    // cargando | abierta | cerrada | sin_caja | error
+        let mensajeErrorCaja = '';
+        let ultimoCorte = null;
+        let desgloseApertura = null;    // piezas, si la apertura se contó con billetes y monedas
+        let guardandoTurno = false;
+
+        const centavosDeTexto = (texto) => {
+            const valor = String(texto ?? '').trim();
+            return /^\d{1,9}(\.\d{1,2})?$/.test(valor) ? Math.round(parseFloat(valor) * 100) : null;
+        };
+
+        // "2026-10-19 21:40:05" de la BD -> "19/10/2026 21:40" (o mm/dd en inglés)
+        function fechaHoraCorta(valor) {
+            const [f, h = ''] = String(valor ?? '').split(' ');
+            const [a, m, d] = f.split('-');
+            if (!d) return valor ?? '';
+            return (window.IDIOMA === 'en' ? `${m}/${d}/${a}` : `${d}/${m}/${a}`) + (h ? ' ' + h.slice(0, 5) : '');
+        }
+
+        async function cargarTurno() {
+            pintarEstadoCaja('cargando');
+            try {
+                const res = await fetch('turno_estado.php');
+                const datos = await res.json();
+                if (!datos.success) throw new Error(datos.message || '');
+                cajaActual = datos.caja;
+                turnoActual = datos.turno;
+                turnoAnterior = datos.anterior;
+                pintarEstadoCaja(!cajaActual ? 'sin_caja' : (turnoActual ? 'abierta' : 'cerrada'));
+            } catch (error) {
+                mensajeErrorCaja = error.message || tr('buscar.sin_conexion');
+                pintarEstadoCaja('error');
+            }
+        }
+
+        function pintarEstadoCaja(estado = estadoCaja) {
+            estadoCaja = estado;
+            const abierta = estado === 'abierta';
+            document.body.classList.toggle('caja-bloqueada', !abierta);
+            document.querySelector('main.pos-layout').inert = !abierta;
+            document.getElementById('cajaCerrada').hidden = abierta;
+            document.querySelector('.corte-boton').disabled = !abierta;
+
+            const titulo = document.getElementById('cajaCerradaTitulo');
+            const texto = document.getElementById('cajaCerradaTexto');
+            document.getElementById('btnAbrirCaja').hidden = estado !== 'cerrada';
+            document.getElementById('btnReintentarCaja').hidden = estado !== 'error';
+
+            if (estado === 'cargando') {
+                titulo.textContent = tr('caja.revisando');
+                texto.textContent = '';
+            } else if (estado === 'sin_caja') {
+                titulo.textContent = tr('caja.sin_caja_titulo');
+                texto.textContent = tr('caja.sin_caja_texto');
+            } else if (estado === 'error') {
+                titulo.textContent = tr('caja.error_titulo');
+                texto.textContent = mensajeErrorCaja;
+            } else if (estado === 'cerrada') {
+                titulo.textContent = tr('caja.cerrada_titulo', { n: cajaActual.numero });
+                texto.textContent = tr('caja.cerrada_texto');
+                document.getElementById('btnAbrirCaja').focus();
+            } else if (abierta && !modalSuperior()) {
+                inputBuscar.focus();
+            }
+        }
+
+        /* --- Abrir caja --- */
+        const inputApertura = document.getElementById('inputApertura');
+
+        function abrirModalApertura() {
+            if (!cajaActual) return;
+            const dejado = turnoAnterior?.efectivo_dejado;
+            document.getElementById('tituloApertura').textContent = tr('apertura.titulo', { n: cajaActual.numero });
+            document.getElementById('aperturaAnterior').textContent = dejado != null
+                ? tr('apertura.anterior', {
+                    cajero: turnoAnterior.cajero || tr('apertura.turno_anterior'),
+                    monto: formatoDinero(dejado),
+                    fecha: fechaHoraCorta(turnoAnterior.fecha_cierre)
+                })
+                : tr('apertura.primer_turno', { monto: formatoDinero(cajaActual.fondo_fijo) });
+            inputApertura.value = Number(dejado ?? cajaActual.fondo_fijo).toFixed(2);
+            desgloseApertura = null;
+            actualizarAvisoApertura();
+            abrirModal('modalApertura');
+            inputApertura.focus();
+            inputApertura.select();
+        }
+
+        // Si no coincide con lo que se dejó, se avisa (y queda registrado para el gerente)
+        function actualizarAvisoApertura() {
+            const aviso = document.getElementById('aperturaAviso');
+            const centavos = centavosDeTexto(inputApertura.value);
+            const dejado = turnoAnterior?.efectivo_dejado;
+            document.getElementById('btnConfirmarApertura').disabled = centavos === null || guardandoTurno;
+            aviso.textContent = '';
+            if (centavos === null || dejado == null) return;
+            const diferencia = centavos - aCentavos(dejado);
+            if (diferencia !== 0) {
+                aviso.textContent = tr(diferencia < 0 ? 'apertura.faltan' : 'apertura.sobran', { monto: formatoDinero(Math.abs(diferencia) / 100) })
+                    + ' ' + tr('apertura.registrado');
+            }
+        }
+
+        inputApertura.addEventListener('input', () => {
+            desgloseApertura = null;    // lo escrito a mano reemplaza el conteo
+            actualizarAvisoApertura();
+        });
+        inputApertura.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnConfirmarApertura').disabled) confirmarApertura();
+        });
+
+        // Contar con billetes y monedas: el conteo se abre encima de la apertura
+        // Contar con billetes y monedas. Si el turno anterior dejó el fondo regular
+        // (lo normal), el conteo ya viene con esas piezas: solo se confirma.
+        function contarApertura() {
+            if (modoConteo !== 'apertura') {
+                limpiarConteo();
+                modoConteo = 'apertura';
+                const dejado = turnoAnterior?.efectivo_dejado ?? cajaActual.fondo_fijo;
+                if (aCentavos(dejado) === totalPlantillaFondo()) cargarPlantillaFondo(false);
+            }
+            mostrarCorte('apertura');
+        }
+
+        function usarConteoApertura() {
+            desgloseApertura = Object.fromEntries(conteoCorte);
+            inputApertura.value = (sumarCorte().centavos / 100).toFixed(2);
+            cerrarModal('modalCorte');
+            actualizarAvisoApertura();
+            inputApertura.focus();
+        }
+
+        async function confirmarApertura() {
+            const centavos = centavosDeTexto(inputApertura.value);
+            if (centavos === null || guardandoTurno) return;
+
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('efectivo', (centavos / 100).toFixed(2));
+            // El desglose solo vale si sigue sumando lo que dice el campo
+            if (desgloseApertura && sumarCorte().centavos === centavos) {
+                datos.append('desglose', JSON.stringify(desgloseApertura));
+            }
+
+            const boton = document.getElementById('btnConfirmarApertura');
+            guardandoTurno = true;
+            boton.disabled = true;
+            boton.textContent = tr('apertura.abriendo');
+            let respuesta = null;
+            try {
+                const res = await fetch('turno_abrir.php', { method: 'POST', body: datos });
+                respuesta = await res.json();
+            } catch (error) {
+                respuesta = { success: false, message: tr('buscar.sin_conexion') };
+            }
+            guardandoTurno = false;
+            boton.textContent = tr('caja.abrir');
+            actualizarAvisoApertura();
+
+            if (!respuesta.success) {
+                mostrarAviso({ tipo: 'peligro', titulo: tr('apertura.error_titulo'), mensaje: respuesta.message || tr('error.registrar') });
+                return;
+            }
+            turnoActual = respuesta.turno;
+            cerrarModal('modalApertura');
+            limpiarConteo();
+            modoConteo = null;
+            pintarEstadoCaja('abierta');
+            mostrarToast(tr('apertura.lista'), 'exito');
+        }
+
+        /* --- Cerrar caja --- */
+        const inputVouchers = document.getElementById('inputVouchers');
+        const inputDejado = document.getElementById('inputDejado');
+
+        inputVouchers.addEventListener('input', () => {
+            document.getElementById('errorVouchers').textContent = '';
+        });
+        inputVouchers.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') continuarCierre();
+        });
+
+        // Paso 2: con el conteo listo, cuánto se deja (sugerido: el fondo base de la caja)
+        function continuarCierre() {
+            const vouchers = inputVouchers.value.trim() === '' ? 0 : centavosDeTexto(inputVouchers.value);
+            if (vouchers === null) {
+                document.getElementById('errorVouchers').textContent = tr('corte.vouchers_invalidos');
+                inputVouchers.focus();
+                return;
+            }
+            const contado = sumarCorte().centavos;
+            document.getElementById('cierreContado').textContent = formatoDinero(contado / 100);
+            document.getElementById('cierreVouchers').textContent = formatoDinero(vouchers / 100);
+            document.getElementById('cierreFondo').textContent = tr('cierre.fondo_base', { monto: formatoDinero(cajaActual.fondo_fijo) });
+            inputDejado.value = (Math.min(aCentavos(cajaActual.fondo_fijo), contado) / 100).toFixed(2);
+            actualizarEntrega();
+            abrirModal('modalCierre');
+            inputDejado.focus();
+            inputDejado.select();
+        }
+
+        function actualizarEntrega() {
+            const contado = sumarCorte().centavos;
+            const dejado = centavosDeTexto(inputDejado.value);
+            const error = document.getElementById('errorDejado');
+            const excede = dejado !== null && dejado > contado;
+            inputDejado.closest('.input-dinero').classList.toggle('con-error', excede);
+            error.textContent = excede ? tr('cierre.dejado_excede') : '';
+            document.getElementById('cierreEntrega').textContent =
+                formatoDinero((dejado === null || excede ? 0 : contado - dejado) / 100);
+            document.getElementById('btnConfirmarCierre').disabled = dejado === null || excede || guardandoTurno;
+        }
+
+        inputDejado.addEventListener('input', actualizarEntrega);
+        inputDejado.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnConfirmarCierre').disabled) confirmarCierre();
+        });
+
+        async function confirmarCierre() {
+            const dejado = centavosDeTexto(inputDejado.value);
+            const vouchers = inputVouchers.value.trim() === '' ? 0 : centavosDeTexto(inputVouchers.value);
+            if (dejado === null || vouchers === null || guardandoTurno) return;
+
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('desglose', JSON.stringify(Object.fromEntries(conteoCorte)));
+            datos.append('vouchers', (vouchers / 100).toFixed(2));
+            datos.append('dejado', (dejado / 100).toFixed(2));
+
+            const boton = document.getElementById('btnConfirmarCierre');
+            guardandoTurno = true;
+            boton.disabled = true;
+            boton.textContent = tr('cierre.cerrando');
+            let respuesta = null;
+            try {
+                const res = await fetch('turno_cerrar.php', { method: 'POST', body: datos });
+                respuesta = await res.json();
+            } catch (error) {
+                respuesta = { success: false, message: tr('buscar.sin_conexion') };
+            }
+            guardandoTurno = false;
+            boton.textContent = tr('cierre.titulo');
+            actualizarEntrega();
+
+            if (!respuesta.success) {
+                if (respuesta.caja_cerrada) {
+                    cerrarModal('modalCierre');
+                    cerrarModal('modalCorte');
+                    cargarTurno();
+                }
+                mostrarAviso({ tipo: 'peligro', titulo: tr('cierre.error_titulo'), mensaje: respuesta.message || tr('error.registrar') });
+                return;
+            }
+
+            const corte = respuesta.corte;
+            ultimoCorte = corte;
+            turnoActual = null;
+            turnoAnterior = { efectivo_dejado: corte.dejado, fecha_cierre: corte.fecha_cierre, cajero: corte.cajero };
+            cerrarModal('modalCierre');
+            cerrarModal('modalCorte');
+            limpiarConteo();
+            modoConteo = null;
+            pintarEstadoCaja('cerrada');
+            mostrarResultadoCorte(corte);
+        }
+
+        // Lo esperado se ve hasta aquí, ya guardado el corte
+        function mostrarResultadoCorte(c) {
+            const sello = document.getElementById('corteSello');
+            const clase = { Cuadrada: 'is-cuadrada', Faltante: 'is-faltante', Sobrante: 'is-sobrante' }[c.resultado];
+            sello.className = `corte-sello ${clase}`;
+            sello.textContent = c.resultado === 'Cuadrada'
+                ? tr('resultado.cuadrada')
+                : tr(c.resultado === 'Faltante' ? 'resultado.faltante' : 'resultado.sobrante', { monto: formatoDinero(Math.abs(c.diferencia)) });
+
+            const fila = (etiqueta, valor, clase = '') => {
+                const div = document.createElement('div');
+                div.className = `varios-fila ${clase}`;
+                const a = document.createElement('span');
+                a.textContent = etiqueta;
+                const b = document.createElement('span');
+                b.textContent = valor;
+                div.append(a, b);
+                return div;
+            };
+            const conSigno = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + formatoDinero(Math.abs(n));
+            document.getElementById('corteDetalle').replaceChildren(
+                fila(tr('resultado.ventas'), c.num_ventas),
+                fila(tr('resultado.efectivo_esperado'), formatoDinero(c.efectivo_esperado)),
+                fila(tr('cierre.contado'), formatoDinero(c.efectivo_contado)),
+                fila(tr('resultado.tarjeta_esperada'), formatoDinero(c.teorico_tarjeta)),
+                fila(tr('cierre.vouchers'), formatoDinero(c.vouchers)),
+                fila(tr('resultado.diferencia'), conSigno(c.diferencia), 'varios-estado ' + (c.diferencia === 0 ? 'is-cubierto' : 'is-restante')),
+                fila(tr('cierre.dejas'), formatoDinero(c.dejado)),
+                fila(tr('cierre.entregas'), formatoDinero(c.retirado))
+            );
+            document.getElementById('corteRevision').hidden = !c.requiere_revision;
+            abrirModal('modalCorteResultado');
+            document.getElementById('btnAceptarCorte').focus();
+            imprimirCorte();
+        }
+
+        function imprimirCorte() {
+            if (ultimoCorte) imprimirHtml(htmlTicketCorte(ultimoCorte), 'btnAceptarCorte');
+        }
+
+        function aceptarCorte() {
+            cerrarModal('modalCorteResultado');
+            pintarEstadoCaja();
+        }
+
         /* ---------- Ticket ---------- */
         // Se imprime desde un iframe oculto con su propia hoja de estilos (80 mm),
         // así la impresión no depende del diseño de la caja.
@@ -1423,25 +2527,8 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         // El método viaja al servidor en español ('Efectivo'/'Tarjeta'); en pantalla se traduce
         const nombreMetodo = (metodo) => tr('pago.' + String(metodo).toLowerCase());
 
-        function htmlTicket(t) {
-            const fila = (izq, der, clase = '') =>
-                `<div class="fila ${clase}"><span>${izq}</span><span>${der}</span></div>`;
-            const articulos = t.lineas.reduce((n, l) => n + Number(l.cantidad), 0);
-
-            const lineas = t.lineas.map(l => `
-                <div class="producto">
-                    <div class="producto-nombre">${escaparHtml(l.nombre)}</div>
-                    ${fila(`${l.cantidad} x ${formatoDinero(Number(l.precio))}`, formatoDinero(Number(l.importe)))}
-                </div>`).join('');
-
-            const pago = t.metodo === 'Efectivo' && t.recibido !== null
-                ? fila(tr('ticket.efectivo_recibido'), formatoDinero(t.recibido)) +
-                  fila(tr('ticket.cambio'), formatoDinero(t.cambio), 'destacado')
-                : '';
-
-            return `<!DOCTYPE html>
-<html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
-<style>
+        // Hoja de 80 mm para la impresora térmica (venta y corte)
+        const ESTILO_TICKET = `
     @page { size: 80mm auto; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -1462,7 +2549,31 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
     .total { font-size: 16px; font-weight: 700; margin: 2px 0; }
     .destacado { font-weight: 700; }
     .gracias { margin-top: 8px; font-weight: 700; }
-</style></head>
+    .titulo-ticket { font-weight: 700; letter-spacing: 0.1em; margin-top: 4px; }
+    .firma { margin-top: 26px; border-top: 1px solid #000; padding-top: 2px; text-align: center; font-size: 11px; }
+`;
+
+        function htmlTicket(t) {
+            const fila = (izq, der, clase = '') =>
+                `<div class="fila ${clase}"><span>${izq}</span><span>${der}</span></div>`;
+            const articulos = t.lineas.reduce((n, l) => n + Number(l.cantidad), 0);
+
+            const lineas = t.lineas.map(l => `
+                <div class="producto">
+                    <div class="producto-nombre">${escaparHtml(l.nombre)}</div>
+                    ${fila(`${l.cantidad} x ${formatoDinero(Number(l.precio))}`, formatoDinero(Number(l.importe)))}
+                </div>`).join('');
+
+            // Pago combinado: lo de la tarjeta y luego el efectivo con su cambio
+            const pago = (t.tarjeta != null ? fila(tr('ticket.pago_tarjeta'), formatoDinero(t.tarjeta)) : '') +
+                (t.recibido != null
+                    ? fila(tr('ticket.efectivo_recibido'), formatoDinero(t.recibido)) +
+                      fila(tr('ticket.cambio'), formatoDinero(t.cambio), 'destacado')
+                    : '');
+
+            return `<!DOCTYPE html>
+<html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
+<style>${ESTILO_TICKET}</style></head>
 <body>
     <div class="centro">
         <div class="marca">KOALY</div>
@@ -1493,7 +2604,57 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
         }
 
         function imprimirTicket(ticket) {
-            if (!ticket) return;
+            if (ticket) imprimirHtml(htmlTicket(ticket), 'btnFinalizarVenta');
+        }
+
+        // Ticket del corte: conteo, lo esperado, el resultado, lo que se deja y lo que se entrega
+        function htmlTicketCorte(c) {
+            const fila = (izq, der, clase = '') =>
+                `<div class="fila ${clase}"><span>${escaparHtml(izq)}</span><span>${escaparHtml(der)}</span></div>`;
+            const piezas = DENOMINACIONES
+                .filter(d => (c.desglose?.[d.id] ?? 0) > 0)
+                .map(d => fila(`${c.desglose[d.id]} x ${denominacion(d.centavos)}`, formatoDinero(c.desglose[d.id] * d.centavos / 100)))
+                .join('');
+            const resultado = c.resultado === 'Cuadrada'
+                ? tr('resultado.cuadrada')
+                : tr(c.resultado === 'Faltante' ? 'resultado.faltante' : 'resultado.sobrante', { monto: formatoDinero(Math.abs(c.diferencia)) });
+
+            return `<!DOCTYPE html>
+<html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>${escaparHtml(tr('ticket_corte.titulo'))} #${escaparHtml(c.folio)}</title>
+<style>${ESTILO_TICKET}</style></head>
+<body>
+    <div class="centro">
+        <div class="marca">KOALY</div>
+        <div class="titulo-ticket">${escaparHtml(tr('ticket_corte.titulo'))}</div>
+    </div>
+    <hr>
+    ${fila(tr('ticket.folio'), '#' + c.folio, 'destacado')}
+    ${fila(tr('ticket.caja'), c.caja)}
+    ${fila(tr('caja.cajero'), c.cajero)}
+    ${fila(tr('ticket_corte.apertura'), fechaHoraCorta(c.fecha_apertura))}
+    ${fila(tr('ticket_corte.cierre'), fechaHoraCorta(c.fecha_cierre))}
+    ${fila(tr('resultado.ventas'), c.num_ventas)}
+    <hr>
+    ${piezas}
+    ${fila(tr('cierre.contado'), formatoDinero(c.efectivo_contado), 'destacado')}
+    ${fila(tr('cierre.vouchers'), formatoDinero(c.vouchers), 'destacado')}
+    <hr>
+    ${fila(tr('ticket_corte.fondo_inicial'), formatoDinero(c.efectivo_apertura))}
+    ${fila(tr('ticket_corte.ventas_efectivo'), formatoDinero(c.teorico_efectivo))}
+    ${fila(tr('resultado.efectivo_esperado'), formatoDinero(c.efectivo_esperado))}
+    ${fila(tr('ticket_corte.ventas_tarjeta'), formatoDinero(c.teorico_tarjeta))}
+    <hr>
+    <div class="centro total">${escaparHtml(resultado)}</div>
+    <hr>
+    ${fila(tr('cierre.dejas'), formatoDinero(c.dejado))}
+    ${fila(tr('cierre.entregas'), formatoDinero(c.retirado), 'total')}
+    <div class="firma">${escaparHtml(tr('ticket_corte.firma_cajero'))}</div>
+    <div class="firma">${escaparHtml(tr('ticket_corte.firma_gerente'))}</div>
+</body></html>`;
+        }
+
+        // Imprime un HTML desde un iframe oculto y regresa el foco al botón indicado
+        function imprimirHtml(html, idEnfoque) {
             let marco = document.getElementById('marcoTicket');
             if (!marco) {
                 marco = document.createElement('iframe');
@@ -1506,9 +2667,9 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             marco.onload = () => {
                 marco.contentWindow.focus();
                 marco.contentWindow.print();
-                document.getElementById('btnFinalizarVenta').focus();
+                document.getElementById(idEnfoque)?.focus();
             };
-            marco.srcdoc = htmlTicket(ticket);
+            marco.srcdoc = html;
         }
 
         function mostrarVentaCompletada(metodo, venta) {
@@ -1518,8 +2679,9 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
             const bloqueCambio = document.getElementById('ventaCambio');
             if (venta.cambio !== null) {
                 document.getElementById('ventaCambioMonto').textContent = formatoDinero(venta.cambio);
-                document.getElementById('ventaCambioDetalle').textContent =
-                    tr('venta.detalle', { recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) });
+                document.getElementById('ventaCambioDetalle').textContent = venta.tarjeta != null
+                    ? tr('venta.detalle_varios', { tarjeta: formatoDinero(venta.tarjeta), recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) })
+                    : tr('venta.detalle', { recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) });
                 bloqueCambio.style.display = 'block';
             } else {
                 bloqueCambio.style.display = 'none';
@@ -1544,6 +2706,7 @@ $verKoalyCss  = filemtime(__DIR__ . '/../estilos/koaly.css');
 
         renderCarrito();
         cargarCatalogo();
+        cargarTurno();
     </script>
 </body>
 </html>

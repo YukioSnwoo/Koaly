@@ -66,6 +66,7 @@ return [
     'metodo_pago.Efectivo' => 'Cash',
     'metodo_pago.Tarjeta Credito' => 'Card',
     'metodo_pago.Transferencia' => 'Bank transfer',
+    'metodo_pago.Varios' => 'Mixed (cash and card)',
 
     // categoria (valores de la tabla Categorias)
     'categoria.Bebidas' => 'Beverages',
