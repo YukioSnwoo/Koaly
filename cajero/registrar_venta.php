@@ -3,6 +3,9 @@ session_start();
 
 header('Content-Type: application/json');
 
+// Mensajes en el idioma de la sesión (cajero/lang). Lo que se guarda en la BD sigue en español.
+require_once __DIR__ . '/includes/i18n.php';
+
 function responder(int $codigo, array $datos): void
 {
     http_response_code($codigo);
@@ -11,18 +14,18 @@ function responder(int $codigo, array $datos): void
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    responder(405, ['success' => false, 'message' => 'Método no permitido']);
+    responder(405, ['success' => false, 'message' => t('servidor.metodo_no_permitido')]);
 }
 
 if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
-    responder(401, ['success' => false, 'message' => 'Tu sesión expiró. Vuelve a iniciar sesión.']);
+    responder(401, ['success' => false, 'message' => t('servidor.sesion_expirada')]);
 }
 
 require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
 
 if (!csrfValido()) {
-    responder(403, ['success' => false, 'message' => 'Token de seguridad inválido. Recarga la página.']);
+    responder(403, ['success' => false, 'message' => t('servidor.token_invalido')]);
 }
 
 /* ------------------------------------------------------------
@@ -44,7 +47,7 @@ if (
     || $cajero['id_sucursal'] === null
     || $cajero['sucursal_estado'] !== 'Activa'
 ) {
-    responder(403, ['success' => false, 'message' => 'Tu cuenta o sucursal no está activa.']);
+    responder(403, ['success' => false, 'message' => t('servidor.cuenta_inactiva')]);
 }
 
 $idCajero   = (int) $cajero['id_usuario'];
@@ -54,13 +57,14 @@ $idSucursal = (int) $cajero['id_sucursal'];
    Entrada
    ------------------------------------------------------------ */
 $metodo = $_POST['metodo'] ?? '';
-if (!in_array($metodo, ['Efectivo', 'Tarjeta'], true)) {
-    responder(400, ['success' => false, 'message' => 'Método de pago inválido.']);
+// Varios = una parte con tarjeta y el resto en efectivo
+if (!in_array($metodo, ['Efectivo', 'Tarjeta', 'Varios'], true)) {
+    responder(400, ['success' => false, 'message' => t('servidor.metodo_invalido')]);
 }
 
 $items = json_decode($_POST['items'] ?? '', true);
 if (!is_array($items) || count($items) === 0) {
-    responder(400, ['success' => false, 'message' => 'La venta no tiene productos.']);
+    responder(400, ['success' => false, 'message' => t('servidor.venta_vacia')]);
 }
 
 // Agrupa por producto por si el cliente manda uno repetido
@@ -69,7 +73,7 @@ foreach ($items as $item) {
     $idProducto = (int) ($item['id_producto'] ?? 0);
     $cantidad   = (int) ($item['cantidad'] ?? 0);
     if ($idProducto <= 0 || $cantidad <= 0) {
-        responder(400, ['success' => false, 'message' => 'Hay productos con cantidad inválida.']);
+        responder(400, ['success' => false, 'message' => t('servidor.cantidad_invalida')]);
     }
     $cantidades[$idProducto] = ($cantidades[$idProducto] ?? 0) + $cantidad;
 }
@@ -150,11 +154,11 @@ try {
     foreach ($cantidades as $idProducto => $cantidad) {
         $p = $productos[$idProducto] ?? null;
         if (!$p) {
-            throw new DomainException('Uno de los productos ya no está disponible. Quítalo de la venta.');
+            throw new DomainException(t('servidor.producto_no_disponible'));
         }
         $disponible = (int) ($p['cantidad_disponible'] ?? 0);
         if ($disponible < $cantidad) {
-            throw new DomainException("Existencias insuficientes de \"{$p['nombre']}\" en esta sucursal (quedan $disponible).");
+            throw new DomainException(t('servidor.existencias_insuficientes', ['p' => $p['nombre'], 'n' => $disponible]));
         }
 
         $precioCentavos  = (int) round((float) $p['precio'] * 100);
@@ -177,16 +181,37 @@ try {
     $subtotalCentavos  = (int) round($totalCentavos / 1.16);
     $impuestosCentavos = $totalCentavos - $subtotalCentavos;
 
-    /* --- Efectivo recibido --- */
+    /* --- Pago: cuánto con tarjeta, cuánto en efectivo y el cambio --- */
+    $tarjetaCentavos = 0;
+    if ($metodo === 'Tarjeta') {
+        $tarjetaCentavos = $totalCentavos;
+    } elseif ($metodo === 'Varios') {
+        $columnasVentas = columnasTabla($pdo, 'Ventas');
+        if (!isset($columnasVentas['monto_efectivo'], $columnasVentas['monto_tarjeta'])) {
+            throw new RuntimeException('Para cobrar con varios métodos falta correr sql/006_pago_combinado.sql (columnas monto_efectivo y monto_tarjeta en Ventas).');
+        }
+        // Con tarjeta va una parte: ni todo ni más, porque la tarjeta no da cambio
+        $tarjetaCentavos = (int) round((float) ($_POST['monto_tarjeta'] ?? 0) * 100);
+        if ($tarjetaCentavos <= 0 || $tarjetaCentavos >= $totalCentavos) {
+            throw new DomainException(t('servidor.tarjeta_invalida', ['total' => dinero($totalCentavos / 100)]));
+        }
+    }
+
+    // Lo que se cubre en efectivo; el cambio sale de lo recibido
+    $efectivoCentavos = $totalCentavos - $tarjetaCentavos;
     $recibidoCentavos = null;
     $cambioCentavos   = null;
-    if ($metodo === 'Efectivo') {
+    if ($efectivoCentavos > 0) {
         $recibidoCentavos = (int) round((float) ($_POST['efectivo_recibido'] ?? 0) * 100);
-        if ($recibidoCentavos < $totalCentavos) {
-            throw new DomainException('El efectivo recibido no cubre el total de $' . $centavosADinero($totalCentavos) . '.');
+        if ($recibidoCentavos < $efectivoCentavos) {
+            throw new DomainException($metodo === 'Varios'
+                ? t('servidor.efectivo_insuficiente_resto', ['resto' => dinero($efectivoCentavos / 100)])
+                : t('servidor.efectivo_insuficiente', ['total' => dinero($totalCentavos / 100)]));
         }
-        $cambioCentavos = $recibidoCentavos - $totalCentavos;
+        $cambioCentavos = $recibidoCentavos - $efectivoCentavos;
     }
+    // Solo el pago combinado lleva desglose de tarjeta en el ticket
+    $tarjetaTicket = $metodo === 'Varios' ? $tarjetaCentavos / 100 : null;
 
     /* --- Caja asignada (solo si Ventas ya tiene la columna id_caja) --- */
     $idCaja = null;
@@ -205,6 +230,9 @@ try {
         'impuestos'         => $centavosADinero($impuestosCentavos),
         'iva'               => $centavosADinero($impuestosCentavos),
         'total'             => $centavosADinero($totalCentavos),
+        // Desglose del cobro (sql/006): efectivo neto, sin el cambio
+        'monto_efectivo'    => $centavosADinero($efectivoCentavos),
+        'monto_tarjeta'     => $centavosADinero($tarjetaCentavos),
     ];
     if ($idCaja !== null) {
         $valoresVenta['id_caja'] = (int) $idCaja;
@@ -266,7 +294,7 @@ try {
 
         $descontar->execute([$l['cantidad'], $idSucursal, $l['id_producto'], $l['cantidad']]);
         if ($descontar->rowCount() !== 1) {
-            throw new DomainException('Las existencias cambiaron mientras se cobraba. Intenta de nuevo.');
+            throw new DomainException(t('servidor.existencias_cambiaron'));
         }
 
         $registrarMovimiento->execute([
@@ -294,7 +322,7 @@ try {
     // (método de pago o columna faltante); los de PDO no se exponen.
     $mensaje = ($e instanceof RuntimeException && !($e instanceof PDOException))
         ? $e->getMessage()
-        : 'No se pudo guardar la venta en la base de datos.';
+        : t('servidor.error_bd');
     responder(500, ['success' => false, 'message' => $mensaje]);
 }
 
@@ -302,9 +330,11 @@ try {
    Datos del ticket (después del commit: si algo falla aquí la venta
    ya quedó guardada, así que solo se omite lo que no se pudo leer)
    ------------------------------------------------------------ */
+// Fecha del ticket en el formato del idioma: 16/10/2026 (es) o 10/16/2026 (en)
+$formatoFecha = idiomaActual() === 'en' ? 'm/d/Y' : 'd/m/Y';
 $ticket = [
     'folio'     => $idVenta,
-    'fecha'     => date('d/m/Y'),
+    'fecha'     => date($formatoFecha),
     'hora'      => date('H:i:s'),
     'sucursal'  => null,
     'direccion' => null,
@@ -322,6 +352,7 @@ $ticket = [
     'subtotal'  => $subtotalCentavos / 100,
     'iva'       => $impuestosCentavos / 100,
     'total'     => $totalCentavos / 100,
+    'tarjeta'   => $tarjetaTicket,
     'recibido'  => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
     'cambio'    => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
 ];
@@ -332,7 +363,7 @@ try {
     $stmt->execute([$idVenta]);
     if ($fechaHora = $stmt->fetchColumn()) {
         $fecha = new DateTime($fechaHora);
-        $ticket['fecha'] = $fecha->format('d/m/Y');
+        $ticket['fecha'] = $fecha->format($formatoFecha);
         $ticket['hora']  = $fecha->format('H:i:s');
     }
 
@@ -358,7 +389,7 @@ try {
     ");
     $stmt->execute([$idCajero, $idSucursal]);
     if ($caja = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $ticket['caja'] = 'Caja ' . $caja['numero_caja'] . ($caja['nombre'] ? ' · ' . $caja['nombre'] : '');
+        $ticket['caja'] = t('ticket.caja_n', ['n' => $caja['numero_caja']]) . ($caja['nombre'] ? ' · ' . $caja['nombre'] : '');
     }
 } catch (Throwable $e) {
     error_log('registrar_venta (ticket): ' . $e->getMessage());
@@ -369,6 +400,7 @@ responder(200, [
     'id_venta' => $idVenta,
     'subtotal' => $subtotalCentavos / 100,
     'total'    => $totalCentavos / 100,
+    'tarjeta'  => $tarjetaTicket,
     'recibido' => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
     'cambio'   => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
     'ticket'   => $ticket,

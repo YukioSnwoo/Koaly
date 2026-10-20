@@ -1,0 +1,206 @@
+<?php
+// Textos de la caja — Español (idioma base).
+// es.php y en.php deben tener exactamente las mismas claves.
+// Plurales: [singular, plural]. Variables: {nombre}.
+// Todas las claves llegan también al JavaScript (window.TEXTOS).
+return [
+
+    // página y encabezado
+    'caja.titulo' => 'Caja',
+    'caja.cajero' => 'Cajero',
+    'caja.sucursal' => 'Sucursal',
+    'caja.sin_asignar' => 'Sin asignar',
+    'tema.a_claro' => 'Cambiar a modo claro',
+    'tema.a_oscuro' => 'Cambiar a modo oscuro',
+    'idioma.cambiar' => 'Cambiar idioma',
+    'sesion.cerrar' => 'Cerrar sesión',
+    'sesion.pregunta' => '¿Deseas cerrar sesión?',
+    'sesion.quedarme' => 'No, me quedo',
+    'sesion.confirmar' => 'Sí, cerrar sesión',
+
+    // común
+    'comun.total' => 'Total',
+    'comun.cerrar' => 'Cerrar',
+    'comun.cancelar' => 'Cancelar',
+    'comun.aceptar' => 'Aceptar',
+    'comun.atras' => 'Atrás',
+    'comun.entendido' => 'Entendido',
+    'comun.limpiar' => 'Limpiar',
+    'comun.agotado' => 'Agotado',
+    'comun.n_productos' => ['1 producto', '{n} productos'],
+    'comun.n_articulos' => ['1 artículo', '{n} artículos'],
+    'comun.n_unidades' => ['{n} unidad', '{n} unidades'],
+    'comun.n_disponibles' => ['{n} disponible', '{n} disponibles'],
+
+    // buscador
+    'buscar.placeholder' => 'Buscar por nombre o clave...',
+    'buscar.clave' => 'Clave',
+    'buscar.existencias' => 'Existencias: {n}',
+    'buscar.sin_resultados' => 'Sin resultados para "{q}".',
+    'buscar.sin_conexion' => 'No se pudo conectar con el servidor.',
+    'buscar.sin_conexion_alerta' => 'No se pudo conectar con el servidor para buscar el producto.',
+
+    // catálogo
+    'catalogo.titulo' => 'Productos',
+    'catalogo.cargando' => 'Cargando productos...',
+    'catalogo.error' => 'No se pudo cargar el catálogo. Puedes usar el buscador.',
+    'catalogo.vacio' => 'No hay productos activos.',
+    'catalogo.quitar_uno' => 'Quitar uno',
+    'catalogo.quitar_uno_de' => 'Quitar uno de {p}',
+    'catalogo.agregar_aria' => 'Agregar {p}, {precio}',
+    'catalogo.en_venta_aria' => ', {n} en la venta',
+    'catalogo.agotado_aria' => ', agotado',
+
+    // categorías del catálogo
+    'categorias.titulo' => 'Categorías',
+    'categorias.todas' => 'Todas',
+    'categorias.sin_categoria' => 'Sin categoría',
+    'categorias.vacia' => 'Todavía no hay productos en esta categoría.',
+    // nombres de la tabla Categorias (la clave es el nombre exacto en la BD)
+    'categoria.Abarrotes' => 'Abarrotes',
+    'categoria.Bebidas' => 'Bebidas',
+    'categoria.Cuidado Personal' => 'Cuidado Personal',
+    'categoria.Electronica' => 'Electrónica',
+    'categoria.Hogar' => 'Hogar',
+    'categoria.Ropa' => 'Ropa',
+
+    // existencias
+    'stock.quedan' => 'Quedan {n}',
+    'stock.solo_hay' => 'Solo hay {n}',
+    'stock.solo_hay_existencia' => 'Solo hay {n} en existencia',
+
+    // lista de venta
+    'lista.titulo' => 'Lista de venta',
+    'lista.ayuda' => 'Selecciona un producto y presiona {supr} o {borrar} para quitarlo.',
+    'lista.tecla_supr' => 'Supr',
+    'lista.col_clave' => 'Clave',
+    'lista.col_producto' => 'Producto',
+    'lista.col_cantidad' => 'Cantidad',
+    'lista.col_precio' => 'Precio',
+    'lista.col_importe' => 'Importe',
+    'lista.col_acciones' => 'Acciones',
+    'lista.vacia' => 'Agrega productos desde el catálogo o el buscador',
+    'lista.quitar_producto' => 'Quitar producto',
+    'lista.agregar_uno' => 'Agregar uno',
+    'lista.cantidad_de' => 'Cantidad de {p}',
+    'lista.eliminar_producto' => 'Eliminar producto',
+    'lista.eliminar_de' => 'Eliminar {p}',
+
+    // panel derecho
+    'resumen.escaneo' => 'Escaneo',
+    'resumen.resumen' => 'Resumen',
+    'resumen.articulos' => 'Artículos',
+    'resumen.pagar' => 'Pagar',
+    'resumen.sin_productos' => 'Sin productos',
+    'resumen.precio_unidad' => '{precio} c/u',
+
+    // confirmaciones
+    'eliminar.titulo' => '¿Eliminar producto?',
+    'eliminar.confirmar' => 'Sí, eliminar',
+    'vaciar.titulo' => '¿Vaciar la venta?',
+    'vaciar.mensaje' => 'Se quitarán {productos} ({articulos}) de la venta actual.',
+    'vaciar.confirmar' => 'Sí, vaciar',
+
+    // pago
+    'pago.titulo' => 'Método de pago',
+    'pago.total' => 'Total a cobrar',
+    'pago.efectivo' => 'Efectivo',
+    'pago.tarjeta' => 'Tarjeta',
+    'pago.varios' => 'Varios',
+    'pago.verificando' => 'Verificando existencias...',
+    'pago.sin_productos' => 'No hay productos en la lista de cobro.',
+    'pago.guardando' => 'Guardando...',
+    'efectivo.titulo' => 'Pago en efectivo',
+    'efectivo.recibido' => 'Efectivo recibido',
+    'efectivo.cobrar' => 'Cobrar',
+    'efectivo.faltan' => 'Faltan {monto}',
+    'efectivo.cambio' => 'Cambio',
+    'varios.titulo' => 'Pago combinado',
+    'varios.tarjeta' => 'Con tarjeta',
+    'varios.restante' => 'Falta por pagar',
+    'varios.todo_tarjeta' => 'Todo con tarjeta',
+    'varios.tarjeta_excede' => 'Es más de lo que cuesta la compra',
+
+    // corte de caja
+    'corte.boton' => 'Corte',
+    'corte.titulo' => 'Corte de caja',
+    'corte.ayuda' => 'Toca un billete o una moneda para sumar uno, o escribe cuántos hay.',
+    'corte.billetes' => 'Billetes',
+    'corte.monedas' => 'Monedas',
+    'corte.total_efectivo' => 'Total en efectivo',
+    'corte.n_billetes' => ['1 billete', '{n} billetes'],
+    'corte.n_monedas' => ['1 moneda', '{n} monedas'],
+    'corte.agregar_billete' => 'Agregar un billete de {valor}',
+    'corte.quitar_billete' => 'Quitar un billete de {valor}',
+    'corte.piezas_billete' => 'Billetes de {valor}',
+    'corte.agregar_moneda' => 'Agregar una moneda de {valor}',
+    'corte.quitar_moneda' => 'Quitar una moneda de {valor}',
+    'corte.piezas_moneda' => 'Monedas de {valor}',
+    'corte.limpiar' => 'Limpiar conteo',
+    'corte.limpiar_titulo' => '¿Limpiar el conteo?',
+    'corte.limpiar_mensaje' => 'Se borrarán todas las cantidades capturadas.',
+    'corte.limpiar_confirmar' => 'Sí, limpiar',
+
+    // venta completada
+    'venta.titulo' => 'Venta completada',
+    'venta.mensaje' => 'Venta #{folio} registrada por {total} con {metodo}.',
+    'venta.detalle' => 'Recibido: {recibido} · Total: {total}',
+    'venta.detalle_varios' => 'Tarjeta: {tarjeta} · Efectivo recibido: {recibido} · Total: {total}',
+    'venta.imprimir' => 'Imprimir ticket',
+
+    // avisos
+    'aviso.agotado_titulo' => 'Producto agotado',
+    'aviso.agotado' => '"{p}" ya no tiene existencias en esta sucursal, no se puede agregar a la venta.',
+    'aviso.insuficiente_titulo' => 'Productos insuficientes',
+    'aviso.insuficiente' => 'Solo {disponibles}.',
+    'aviso.sin_existencias' => '"{p}" ya no tiene existencias en esta sucursal.',
+    'aviso.faltantes' => 'No se puede completar la venta con estas cantidades:',
+    'aviso.pides' => 'Pides {pedida}, hay {disponibles}',
+    'aviso.revisar' => 'Revisar',
+    'aviso.ajustar' => 'Ajustar a lo disponible',
+    'aviso.quedan_solo' => 'Quedan solo {unidades} de {p}.',
+    'aviso.ajustadas' => 'Cantidades ajustadas a lo disponible.',
+    'aviso.ajustadas_quitados' => ['Cantidades ajustadas. Se quitó 1 producto agotado.', 'Cantidades ajustadas. Se quitaron {n} productos agotados.'],
+
+    // errores al cobrar
+    'error.sin_conexion_titulo' => 'Sin conexión',
+    'error.sin_conexion' => 'No se pudo conectar con el servidor. La venta NO se registró.',
+    'error.registrar_titulo' => 'No se pudo registrar la venta',
+    'error.registrar' => 'Ocurrió un error al guardar la venta.',
+
+    // mensajes del servidor (registrar_venta.php)
+    'servidor.metodo_no_permitido' => 'Método no permitido',
+    'servidor.sesion_expirada' => 'Tu sesión expiró. Vuelve a iniciar sesión.',
+    'servidor.token_invalido' => 'Token de seguridad inválido. Recarga la página.',
+    'servidor.cuenta_inactiva' => 'Tu cuenta o sucursal no está activa.',
+    'servidor.metodo_invalido' => 'Método de pago inválido.',
+    'servidor.venta_vacia' => 'La venta no tiene productos.',
+    'servidor.cantidad_invalida' => 'Hay productos con cantidad inválida.',
+    'servidor.producto_no_disponible' => 'Uno de los productos ya no está disponible. Quítalo de la venta.',
+    'servidor.existencias_insuficientes' => 'Existencias insuficientes de "{p}" en esta sucursal (quedan {n}).',
+    'servidor.efectivo_insuficiente' => 'El efectivo recibido no cubre el total de {total}.',
+    'servidor.tarjeta_invalida' => 'El monto con tarjeta debe ser mayor a $0.00 y menor que el total de {total}.',
+    'servidor.efectivo_insuficiente_resto' => 'El efectivo recibido no cubre los {resto} que faltan después de la tarjeta.',
+    'servidor.existencias_cambiaron' => 'Las existencias cambiaron mientras se cobraba. Intenta de nuevo.',
+    'servidor.error_bd' => 'No se pudo guardar la venta en la base de datos.',
+
+    // ticket
+    'ticket.caja_n' => 'Caja {n}',
+    'ticket.sucursal' => 'Sucursal {s}',
+    'ticket.tel' => 'Tel. {t}',
+    'ticket.folio' => 'Folio',
+    'ticket.fecha' => 'Fecha',
+    'ticket.hora' => 'Hora',
+    'ticket.caja' => 'Caja',
+    'ticket.atendio' => 'Atendió',
+    'ticket.articulos' => 'Artículos',
+    'ticket.subtotal' => 'Subtotal',
+    'ticket.iva' => 'IVA 16%',
+    'ticket.total' => 'TOTAL',
+    'ticket.forma_pago' => 'Forma de pago',
+    'ticket.efectivo_recibido' => 'Efectivo recibido',
+    'ticket.pago_tarjeta' => 'Pago con tarjeta',
+    'ticket.cambio' => 'Cambio',
+    'ticket.iva_incluido' => 'Precios con IVA incluido',
+    'ticket.gracias' => '¡Gracias por su compra!',
+];

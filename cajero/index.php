@@ -7,15 +7,29 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 }
 
 require_once __DIR__ . '/../admin/csrf.php';
+require_once __DIR__ . '/includes/i18n.php';
+
+// Textos de todos los idiomas (con respaldo en español): el idioma se cambia en
+// el navegador sin recargar, para no perder la venta que se está cobrando
+$textosPorIdioma = [];
+foreach (array_keys(IDIOMAS) as $codigo) {
+    $textosPorIdioma[$codigo] = $codigo === 'es'
+        ? $GLOBALS['CAJA_TEXTOS_ES']
+        : (require __DIR__ . "/lang/{$codigo}.php") + $GLOBALS['CAJA_TEXTOS_ES'];
+}
 
 $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<?= idiomaActual() ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAJA</title>
+    <title><?= e(t('caja.titulo')) ?> - Koaly</title>
+    <script>
+    // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
+    try { var tema = localStorage.getItem('koalicius-cajero-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+    </script>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
 </head>
@@ -23,15 +37,37 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
     <!-- Encabezado -->
     <header class="header">
-        <h1>Koaly</h1>
+        <h1>Koaly <span class="header-sub" data-i18n="caja.titulo"><?= e(t('caja.titulo')) ?></span></h1>
         <div class="user-info">
-            <div class="user-datos">
-                <span class="user-nombre" id="userName">Cajero</span>
-                <span class="user-sucursal">Sucursal: <span id="sucursalName">-</span></span>
-            </div>
-            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" title="Cerrar sesión" aria-label="Cerrar sesión">
-                <img src="../Imagenes/puertaSalida.jpeg" alt="">
+            <button type="button" class="corte-boton" onclick="abrirCorte()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+                <span data-i18n="corte.boton"><?= e(t('corte.boton')) ?></span>
             </button>
+            <details class="idioma">
+                <summary aria-label="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-title="idioma.cambiar">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <span><?= strtoupper(idiomaActual()) ?></span>
+                    <svg class="idioma-flecha" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </summary>
+                <form method="POST" action="idioma.php" class="idioma-menu">
+                    <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                    <?php foreach (IDIOMAS as $codigo => $nombre): ?>
+                        <button type="submit" name="idioma" value="<?= $codigo ?>" lang="<?= $codigo ?>"
+                                <?= $codigo === idiomaActual() ? 'aria-current="true" class="is-activo"' : '' ?>>
+                            <span class="idioma-codigo"><?= strtoupper($codigo) ?></span> <?= e($nombre) ?>
+                        </button>
+                    <?php endforeach; ?>
+                </form>
+            </details>
+            <button type="button" class="tema-boton" id="botonTema" aria-label="<?= e(t('tema.a_oscuro')) ?>" title="<?= e(t('tema.a_oscuro')) ?>">
+                <svg class="tema-luna" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="tema-sol" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            </button>
+            <div class="user-datos">
+                <span class="user-nombre" id="userName"><?= e(t('caja.cajero')) ?></span>
+                <span class="user-sucursal"><span data-i18n="caja.sucursal"><?= e(t('caja.sucursal')) ?></span>: <span id="sucursalName">-</span></span>
+            </div>
+            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
         </div>
     </header>
 
@@ -44,27 +80,33 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <div class="search-box">
                     <div class="input-buscar">
                         <svg class="icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                        <input type="text" id="inputBuscar" placeholder="Buscar por nombre o clave..." autocomplete="off"
+                        <input type="text" id="inputBuscar" placeholder="<?= e(t('buscar.placeholder')) ?>" data-i18n-placeholder="buscar.placeholder" autocomplete="off"
                                role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="resultadosBusqueda">
                         <span class="spinner" aria-hidden="true"></span>
                         <div id="resultadosBusqueda" class="search-results" role="listbox" style="display:none;"></div>
                     </div>
                 </div>
             </div>
+            <nav class="sidebar-categorias" aria-labelledby="tituloCategorias">
+                <div class="panel-title" id="tituloCategorias" data-i18n="categorias.titulo"><?= e(t('categorias.titulo')) ?></div>
+                <div class="categorias-filtro" id="filtroCategorias" role="group" aria-labelledby="tituloCategorias">
+                    <!-- Categorías dinámicas -->
+                </div>
+            </nav>
             <div class="sidebar-group">
-                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()">Limpiar</button>
+                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()" data-i18n="comun.limpiar"><?= e(t('comun.limpiar')) ?></button>
             </div>
         </aside>
 
         <!-- Catálogo Central -->
         <section class="panel catalogo-panel">
-            <h2 class="catalogo-titulo">Productos</h2>
-            <div class="catalogo-grid" id="catalogo">
-                <!-- Tarjetas dinámicas -->
+            <h2 class="catalogo-titulo" data-i18n="catalogo.titulo"><?= e(t('catalogo.titulo')) ?></h2>
+            <div class="catalogo-contenido" id="catalogo">
+                <!-- Secciones por categoría con sus tarjetas -->
             </div>
             <div class="catalogo-pie">
                 <button type="button" class="btn btn-ghost btn-lista" onclick="abrirLista()">
-                    Lista de venta <span class="contador-lista" id="contadorLista">0</span>
+                    <span data-i18n="lista.titulo"><?= e(t('lista.titulo')) ?></span> <span class="contador-lista" id="contadorLista">0</span>
                 </button>
             </div>
         </section>
@@ -72,19 +114,19 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
             <!-- Escaneo: historial en tiempo real, los escaneos seguidos del mismo producto se juntan (p1 ×3, p2, p1) -->
-            <div class="panel-title">Escaneo</div>
+            <div class="panel-title" data-i18n="resumen.escaneo"><?= e(t('resumen.escaneo')) ?></div>
             <ul class="resumen-lista" id="escaneoLista"></ul>
 
             <!-- Resumen: todo agrupado por producto (p1 ×4, p2) -->
             <div class="resumen-agrupado" id="resumenAgrupado" hidden>
-                <div class="panel-title">Resumen</div>
+                <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
                 <ul class="resumen-lista" id="resumenLista"></ul>
             </div>
 
             <div>
-                <div class="resumen-fila"><span>Artículos</span><span id="totalArticulos">0</span></div>
-                <div class="resumen-total"><span>Total</span><span id="lblTotal">$0.00</span></div>
-                <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()">Pagar</button>
+                <div class="resumen-fila"><span data-i18n="resumen.articulos"><?= e(t('resumen.articulos')) ?></span><span id="totalArticulos">0</span></div>
+                <div class="resumen-total"><span data-i18n="comun.total"><?= e(t('comun.total')) ?></span><span id="lblTotal">$0.00</span></div>
+                <button type="button" class="btn btn-primary btn-block btn-pagar" onclick="abrirModalPago()" data-i18n="resumen.pagar"><?= e(t('resumen.pagar')) ?></button>
             </div>
         </aside>
 
@@ -93,11 +135,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <!-- Modal: cerrar sesión -->
     <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
         <div class="modal-box">
-            <h2 id="tituloSalir">Cerrar sesión</h2>
-            <p class="modal-mensaje">¿Deseas cerrar sesión?</p>
+            <h2 id="tituloSalir" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></h2>
+            <p class="modal-mensaje" data-i18n="sesion.pregunta"><?= e(t('sesion.pregunta')) ?></p>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')">No, me quedo</button>
-                <button type="button" class="btn btn-danger-solid" onclick="logout()">Sí, cerrar sesión</button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')" data-i18n="sesion.quedarme"><?= e(t('sesion.quedarme')) ?></button>
+                <button type="button" class="btn btn-danger-solid" onclick="logout()" data-i18n="sesion.confirmar"><?= e(t('sesion.confirmar')) ?></button>
             </div>
         </div>
     </div>
@@ -106,18 +148,18 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
          Va antes de los demás modales para que la confirmación y los avisos queden encima. -->
     <div class="modal-overlay" id="modalLista" role="dialog" aria-modal="true" aria-labelledby="tituloLista">
         <div class="modal-box modal-lista">
-            <h2 id="tituloLista">Lista de venta</h2>
-            <p class="atajo-hint">Selecciona un producto y presiona <kbd>Supr</kbd> o <kbd>⌫</kbd> para quitarlo.</p>
+            <h2 id="tituloLista" data-i18n="lista.titulo"><?= e(t('lista.titulo')) ?></h2>
+            <p class="atajo-hint" id="ayudaLista"><?= i18nReemplazar(e(t('lista.ayuda')), ['supr' => '<kbd>' . e(t('lista.tecla_supr')) . '</kbd>', 'borrar' => '<kbd>⌫</kbd>']) ?></p>
             <div class="tabla-scroll">
                 <table class="tabla-venta">
                     <thead>
                         <tr>
-                            <th>Clave</th>
-                            <th>Producto</th>
-                            <th>Cantidad</th>
-                            <th class="col-num">Precio</th>
-                            <th class="col-num">Importe</th>
-                            <th class="col-acciones"><span class="sr-only">Acciones</span></th>
+                            <th data-i18n="lista.col_clave"><?= e(t('lista.col_clave')) ?></th>
+                            <th data-i18n="lista.col_producto"><?= e(t('lista.col_producto')) ?></th>
+                            <th data-i18n="lista.col_cantidad"><?= e(t('lista.col_cantidad')) ?></th>
+                            <th class="col-num" data-i18n="lista.col_precio"><?= e(t('lista.col_precio')) ?></th>
+                            <th class="col-num" data-i18n="lista.col_importe"><?= e(t('lista.col_importe')) ?></th>
+                            <th class="col-acciones"><span class="sr-only" data-i18n="lista.col_acciones"><?= e(t('lista.col_acciones')) ?></span></th>
                         </tr>
                     </thead>
                     <tbody id="listaProductos">
@@ -126,8 +168,47 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 </table>
             </div>
             <div class="modal-actions">
-                <span class="lista-total">Total <strong id="listaTotal">$0.00</strong></span>
-                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')">Cerrar</button>
+                <span class="lista-total"><span data-i18n="comun.total"><?= e(t('comun.total')) ?></span> <strong id="listaTotal">$0.00</strong></span>
+                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: corte de caja — conteo de billetes (luego monedas).
+         Va antes de la confirmación para que "¿Limpiar conteo?" quede encima. -->
+    <div class="modal-overlay" id="modalCorte" role="dialog" aria-modal="true" aria-labelledby="tituloCorte">
+        <div class="modal-box modal-corte">
+            <h2 id="tituloCorte" data-i18n="corte.titulo"><?= e(t('corte.titulo')) ?></h2>
+            <p class="atajo-hint" data-i18n="corte.ayuda"><?= e(t('corte.ayuda')) ?></p>
+
+            <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
+            <div class="dinero-grid" id="corteBilletes">
+                <!-- Tarjetas de billetes (JS) -->
+            </div>
+
+            <h3 class="corte-seccion" data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></h3>
+            <div class="dinero-grid dinero-grid--monedas" id="corteMonedas">
+                <!-- Tarjetas de monedas (JS) -->
+            </div>
+
+            <!-- Resumen: billetes, monedas y total en efectivo -->
+            <div class="corte-resumen" aria-live="polite">
+                <div class="corte-fila">
+                    <span><span data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></span> <small id="cortePiezasBilletes"></small></span>
+                    <span id="corteTotalBilletes">$0.00</span>
+                </div>
+                <div class="corte-fila">
+                    <span><span data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></span> <small id="cortePiezasMonedas"></small></span>
+                    <span id="corteTotalMonedas">$0.00</span>
+                </div>
+                <div class="corte-fila corte-fila--total">
+                    <span data-i18n="corte.total_efectivo"><?= e(t('corte.total_efectivo')) ?></span>
+                    <strong id="corteTotal">$0.00</strong>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
+                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalCorte')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
             </div>
         </div>
     </div>
@@ -138,11 +219,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="icono-peligro" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </div>
-            <h2 id="tituloEliminar">¿Eliminar producto?</h2>
+            <h2 id="tituloEliminar" data-i18n="eliminar.titulo"><?= e(t('eliminar.titulo')) ?></h2>
             <div id="eliminarContenido"></div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
-                <button type="button" class="btn btn-danger-solid" id="btnConfirmarEliminar" onclick="confirmarEliminar()">Sí, eliminar</button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalEliminar')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-danger-solid" id="btnConfirmarEliminar" onclick="confirmarEliminar()" data-i18n="eliminar.confirmar"><?= e(t('eliminar.confirmar')) ?></button>
             </div>
         </div>
     </div>
@@ -150,15 +231,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <!-- Modal: método de pago -->
     <div class="modal-overlay" id="modalPago" role="dialog" aria-modal="true" aria-labelledby="tituloPago">
         <div class="modal-box">
-            <h2 id="tituloPago">Método de pago</h2>
-            <div class="modal-total-label">Total a cobrar</div>
+            <h2 id="tituloPago" data-i18n="pago.titulo"><?= e(t('pago.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
             <div class="modal-total" id="modalTotal">$0.00</div>
             <div class="metodos-pago">
-                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span>💵</span>Efectivo</button>
-                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span>💳</span>Tarjeta</button>
+                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span class="metodo-icono" aria-hidden="true">💵</span><span data-i18n="pago.efectivo"><?= e(t('pago.efectivo')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span class="metodo-icono" aria-hidden="true">💳</span><span data-i18n="pago.tarjeta"><?= e(t('pago.tarjeta')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="abrirModalVarios()"><span class="metodo-icono" aria-hidden="true">💵💳</span><span data-i18n="pago.varios"><?= e(t('pago.varios')) ?></span></button>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')">Cancelar</button>
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
             </div>
         </div>
     </div>
@@ -166,11 +248,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <!-- Modal: pago en efectivo -->
     <div class="modal-overlay" id="modalEfectivo" role="dialog" aria-modal="true" aria-labelledby="tituloEfectivo">
         <div class="modal-box">
-            <h2 id="tituloEfectivo">Pago en efectivo</h2>
-            <div class="modal-total-label">Total a cobrar</div>
+            <h2 id="tituloEfectivo" data-i18n="efectivo.titulo"><?= e(t('efectivo.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
             <div class="modal-total" id="efectivoTotal">$0.00</div>
             <div class="form-group">
-                <label for="inputRecibido">Efectivo recibido</label>
+                <label for="inputRecibido" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
                 <div class="input-dinero">
                     <span>$</span>
                     <input type="number" id="inputRecibido" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
@@ -178,8 +260,43 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             </div>
             <div class="cambio-preview" id="cambioPreview"></div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()">Atrás</button>
-                <button type="button" class="btn btn-primary" id="btnCobrarEfectivo" onclick="cobrarEfectivo()" disabled>Cobrar</button>
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCobrarEfectivo" onclick="cobrarEfectivo()" disabled data-i18n="efectivo.cobrar"><?= e(t('efectivo.cobrar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: pago combinado (una parte con tarjeta y el resto en efectivo, con cambio) -->
+    <div class="modal-overlay" id="modalVarios" role="dialog" aria-modal="true" aria-labelledby="tituloVarios">
+        <div class="modal-box">
+            <h2 id="tituloVarios" data-i18n="varios.titulo"><?= e(t('varios.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
+            <div class="modal-total" id="variosTotal">$0.00</div>
+            <div class="form-group">
+                <label for="inputVariosEfectivo" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputVariosEfectivo" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+            <!-- Se llena sola con lo que falta después del efectivo, hasta que el cajero la escriba -->
+            <div class="form-group">
+                <label for="inputVariosTarjeta" data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputVariosTarjeta" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVariosTarjeta">
+                </div>
+                <div class="campo-error" id="errorVariosTarjeta"></div>
+            </div>
+            <!-- Desglose: lo capturado y, al final, lo que falta o el cambio -->
+            <div class="varios-resumen" aria-live="polite">
+                <div class="varios-fila"><span data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></span><span id="variosResEfectivo">$0.00</span></div>
+                <div class="varios-fila"><span data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></span><span id="variosResTarjeta">$0.00</span></div>
+                <div class="varios-fila varios-estado" id="variosEstado"><span id="variosEstadoEtiqueta"></span><span id="variosEstadoMonto"></span></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCobrarVarios" onclick="cobrarVarios()" disabled data-i18n="efectivo.cobrar"><?= e(t('efectivo.cobrar')) ?></button>
             </div>
         </div>
     </div>
@@ -187,18 +304,18 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <!-- Modal: venta completada -->
     <div class="modal-overlay" id="modalVenta" role="dialog" aria-modal="true" aria-labelledby="tituloVenta">
         <div class="modal-box">
-            <h2 id="tituloVenta">Venta completada</h2>
+            <h2 id="tituloVenta" data-i18n="venta.titulo"><?= e(t('venta.titulo')) ?></h2>
             <p class="modal-mensaje" id="ventaMensaje"></p>
             <div id="ventaCambio" style="display:none;">
                 <div class="cambio-resultado">
-                    <div class="cambio-label">Cambio</div>
+                    <div class="cambio-label" data-i18n="efectivo.cambio"><?= e(t('efectivo.cambio')) ?></div>
                     <div class="cambio-monto" id="ventaCambioMonto">$0.00</div>
                 </div>
                 <div class="cambio-detalle" id="ventaCambioDetalle"></div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 Imprimir ticket</button>
-                <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()">Aceptar</button>
+                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 <span data-i18n="venta.imprimir"><?= e(t('venta.imprimir')) ?></span></button>
+                <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()" data-i18n="comun.aceptar"><?= e(t('comun.aceptar')) ?></button>
             </div>
         </div>
     </div>
@@ -217,13 +334,33 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <!-- Notificaciones breves (existencias bajas, ajustes) -->
     <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
+    <script>
+    // Textos traducidos (cajero/lang/*.php). tr('clave', {var}) y trn('clave', n, {var}) para plurales.
+    // Llegan los de todos los idiomas; cambiarIdioma() solo cambia cuál se usa.
+    window.TEXTOS_IDIOMAS = <?= json_encode($textosPorIdioma, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+    window.IDIOMA = <?= json_encode(idiomaActual()) ?>;
+    window.TEXTOS = window.TEXTOS_IDIOMAS[window.IDIOMA];
+    function trReemplazar(texto, vars) {
+        return String(texto).replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars) ? vars[k] : m);
+    }
+    function tr(clave, vars = {}) {
+        const texto = window.TEXTOS[clave];
+        return trReemplazar(Array.isArray(texto) ? texto[1] : (texto ?? clave), vars);
+    }
+    function trn(clave, n, vars = {}) {
+        const formas = window.TEXTOS[clave] || [clave, clave];
+        return trReemplazar(Math.abs(n) === 1 ? formas[0] : formas[1], { n, ...vars });
+    }
+    </script>
     <script src="../auth.js"></script>
     <script>
         const usuario = requireRol(3);
-        if (usuario) {
-            document.getElementById('userName').textContent = usuario.nombre || 'Cajero';
-            document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || 'Sin asignar';
+        function pintarUsuario() {
+            if (!usuario) return;
+            document.getElementById('userName').textContent = usuario.nombre || tr('caja.cajero');
+            document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || tr('caja.sin_asignar');
         }
+        pintarUsuario();
 
         let carrito = [];
         let indiceSeleccionado = null;
@@ -236,7 +373,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const inputRecibido = document.getElementById('inputRecibido');
 
-        const formatoDinero = (n) => `$${n.toFixed(2)}`;
+        // Precios con separador de miles y dos decimales: $1,249.90 (también en el ticket)
+        const FORMATO_PESOS = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatoDinero = (n) => `$${FORMATO_PESOS.format(Number(n) || 0)}`;
         const aCentavos = (n) => Math.round(n * 100);
 
         /* ---------- Modales ---------- */
@@ -267,6 +406,154 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const abierto = modalSuperior();
             if (abierto && abierto.id !== 'modalVenta') cerrarModal(abierto.id);
         });
+
+        /* ---------- Tema claro / oscuro ---------- */
+        // Igual que en el panel de gerente: <html data-tema="claro|oscuro"> si el
+        // cajero eligió; si no, sigue al sistema. La elección se guarda por navegador.
+        const CLAVE_TEMA = 'koalicius-cajero-tema';
+        const botonTema = document.getElementById('botonTema');
+
+        function temaActual() {
+            const elegido = document.documentElement.getAttribute('data-tema');
+            if (elegido) return elegido;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+        }
+
+        function actualizarBotonTema() {
+            const etiqueta = temaActual() === 'oscuro' ? tr('tema.a_claro') : tr('tema.a_oscuro');
+            botonTema.setAttribute('aria-label', etiqueta);
+            botonTema.title = etiqueta;
+        }
+
+        botonTema.addEventListener('click', () => {
+            const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
+            document.documentElement.setAttribute('data-tema', nuevo);
+            try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
+            actualizarBotonTema();
+        });
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
+        actualizarBotonTema();
+
+        /* ---------- Selector de idioma ---------- */
+        // El menú se cierra al hacer clic fuera o con Escape (igual que en el gerente)
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('details.idioma[open]').forEach(d => {
+                if (!d.contains(e.target)) d.removeAttribute('open');
+            });
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
+        });
+
+        // Igual que el tema, el idioma cambia aquí mismo sin recargar: si se está
+        // cobrando, la venta (carrito, búsqueda, categoría elegida) sigue intacta.
+        // En segundo plano se guarda en la sesión, para que los mensajes del
+        // servidor al cobrar y la fecha del ticket salgan en el mismo idioma.
+        const menuIdioma = document.querySelector('.idioma-menu');
+
+        menuIdioma.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const codigo = e.submitter?.value;
+            menuIdioma.closest('details').removeAttribute('open');
+            if (!codigo || codigo === window.IDIOMA) return;
+
+            aplicarIdioma(codigo);
+
+            const datos = new FormData(menuIdioma);
+            datos.set('idioma', codigo);
+            fetch(menuIdioma.action, { method: 'POST', body: datos, headers: { Accept: 'application/json' } })
+                .catch(() => { /* sin conexión: la caja ya cambió; la sesión se queda con el anterior */ });
+        });
+
+        function aplicarIdioma(codigo) {
+            if (!window.TEXTOS_IDIOMAS[codigo]) return;
+            window.IDIOMA = codigo;
+            window.TEXTOS = window.TEXTOS_IDIOMAS[codigo];
+            document.documentElement.lang = codigo;
+            document.title = `${tr('caja.titulo')} - Koaly`;
+
+            // Textos fijos de la página, marcados con su clave
+            document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+            ['placeholder', 'aria-label', 'title'].forEach(attr => {
+                document.querySelectorAll(`[data-i18n-${attr}]`).forEach(el => {
+                    el.setAttribute(attr, tr(el.getAttribute(`data-i18n-${attr}`)));
+                });
+            });
+            pintarAyudaLista();
+            pintarUsuario();
+            actualizarBotonTema();
+
+            // Botón y menú de idioma
+            document.querySelector('.idioma > summary > span').textContent = codigo.toUpperCase();
+            menuIdioma.querySelectorAll('button[name="idioma"]').forEach(boton => {
+                const activo = boton.value === codigo;
+                boton.classList.toggle('is-activo', activo);
+                if (activo) boton.setAttribute('aria-current', 'true');
+                else boton.removeAttribute('aria-current');
+            });
+
+            // Lo que dibuja el JS: catálogo (conserva la categoría elegida), lista de venta y panel derecho
+            if (catalogo.length || categorias.length) {
+                const contenedor = document.getElementById('catalogo');
+                const scroll = contenedor.scrollTop;   // sin esto regresaría hasta arriba
+                renderCatalogo();
+                contenedor.scrollTop = scroll;
+            }
+            renderCarrito();
+        }
+
+        // "Selecciona un producto y presiona [Supr] o [⌫]..." con las teclas en <kbd>
+        function pintarAyudaLista() {
+            const teclas = { supr: tr('lista.tecla_supr'), borrar: '⌫' };
+            const partes = tr('lista.ayuda').split(/(\{supr\}|\{borrar\})/);
+            document.getElementById('ayudaLista').replaceChildren(...partes.map(parte => {
+                const tecla = parte.match(/^\{(supr|borrar)\}$/);
+                if (!tecla) return document.createTextNode(parte);
+                const kbd = document.createElement('kbd');
+                kbd.textContent = teclas[tecla[1]];
+                return kbd;
+            }));
+        }
+
+        /* ---------- Cursor personalizado ---------- */
+        // Punto morado que sigue al mouse (como en el panel de gerente). Solo con
+        // mouse; en pantallas táctiles se queda el cursor normal.
+        function initCustomCursor() {
+            if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+            const dot = document.createElement('div');
+            dot.className = 'cursor-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(dot);
+            document.body.classList.add('cursor-custom');
+
+            let x = window.innerWidth / 2;
+            let y = window.innerHeight / 2;
+            let raf = null;
+
+            const render = () => {
+                dot.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+                raf = null;
+            };
+
+            document.addEventListener('mousemove', (e) => {
+                x = e.clientX;
+                y = e.clientY;
+                if (!raf) raf = requestAnimationFrame(render);
+            });
+
+            // Crece sobre lo que se puede pulsar
+            const interactivo = 'a, button, input, select, textarea, label, [role="button"], [role="option"], .result-item, table.tabla-venta tbody tr:not(.empty-row)';
+            document.addEventListener('mouseover', (e) => {
+                if (e.target.closest(interactivo)) dot.classList.add('is-hover');
+            });
+            document.addEventListener('mouseout', (e) => {
+                if (e.target.closest(interactivo)) dot.classList.remove('is-hover');
+            });
+
+            render();
+        }
+        initCustomCursor();
 
         /* ---------- Búsqueda ---------- */
         // Sugerencias en vivo mientras se escribe; Enter (o un lector de código de
@@ -330,7 +617,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             } catch (error) {
                 if (numero !== numeroBusqueda) return;
                 buscando(false);
-                pintarMensaje('No se pudo conectar con el servidor.');
+                pintarMensaje(tr('buscar.sin_conexion'));
                 return;
             }
             if (numero !== numeroBusqueda) return;
@@ -360,7 +647,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 productos = await consultarProductos(q);
             } catch (error) {
                 buscando(false);
-                alert('No se pudo conectar con el servidor para buscar el producto.');
+                alert(tr('buscar.sin_conexion_alerta'));
                 return;
             }
             if (numero !== numeroBusqueda) return;
@@ -379,7 +666,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             consultaMostrada = q;
 
             if (productos.length === 0) {
-                pintarMensaje(`Sin resultados para "${q}".`);
+                pintarMensaje(tr('buscar.sin_resultados', { q }));
                 return;
             }
 
@@ -402,13 +689,13 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 nombre.className = 'result-nombre';
                 nombre.appendChild(resaltarCoincidencia(p.nombre, q));
                 const detalle = document.createElement('small');
-                detalle.append('Clave: ', resaltarCoincidencia(String(p.codigo), q), ' · ');
+                detalle.append(tr('buscar.clave') + ': ', resaltarCoincidencia(String(p.codigo), q), ' · ');
                 const stock = document.createElement('span');
                 if (Number(p.stock) > 0) {
-                    stock.textContent = `Existencias: ${p.stock}`;
+                    stock.textContent = tr('buscar.existencias', { n: p.stock });
                 } else {
                     stock.className = 'agotado';
-                    stock.textContent = 'Agotado';
+                    stock.textContent = tr('comun.agotado');
                 }
                 detalle.appendChild(stock);
                 info.append(nombre, detalle);
@@ -549,7 +836,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (filaNueva) filaNueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
             if (stock < STOCK_BAJO) {
-                mostrarToast(`Quedan solo ${stock} ${stock === 1 ? 'unidad' : 'unidades'} de ${producto.nombre}.`, 'aviso');
+                mostrarToast(tr('aviso.quedan_solo', { unidades: trn('comun.n_unidades', stock), p: producto.nombre }), 'aviso');
             }
         }
 
@@ -621,23 +908,47 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         // Las tarjetas se crean una vez y solo se actualizan sus etiquetas.
         const ICONO_PRODUCTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>';
         let catalogo = [];
+        let categorias = [];                  // { id, nombre } en el orden en que se muestran
+        let categoriaActiva = 'todas';        // 'todas' o el id de una categoría
+        const SIN_CATEGORIA = 0;              // productos sin categoría asignada
         const tarjetasCatalogo = new Map();   // id_producto -> elementos de su tarjeta
 
         async function cargarCatalogo() {
-            const grid = document.getElementById('catalogo');
-            if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo('Cargando productos...'));
-            let productos;
+            const contenedor = document.getElementById('catalogo');
+            if (catalogo.length === 0) contenedor.replaceChildren(mensajeCatalogo(tr('catalogo.cargando')));
+            let datos;
             try {
                 const res = await fetch('catalogo_productos.php');
-                productos = await res.json();
-                if (!Array.isArray(productos)) throw new Error('Respuesta inválida');
+                datos = await res.json();
+                if (!Array.isArray(datos?.productos) || !Array.isArray(datos?.categorias)) throw new Error('Respuesta inválida');
             } catch (error) {
                 // Si falla una recarga se conserva el catálogo que ya se ve
-                if (catalogo.length === 0) grid.replaceChildren(mensajeCatalogo('No se pudo cargar el catálogo. Puedes usar el buscador.'));
+                if (catalogo.length === 0) contenedor.replaceChildren(mensajeCatalogo(tr('catalogo.error')));
                 return;
             }
-            catalogo = productos;
+            catalogo = datos.productos;
+            categorias = datos.categorias.map(c => ({ id: Number(c.id_categoria), nombreBd: c.nombre_categoria }));
+
+            // Los productos sin categoría (o con una que ya no existe) van al final
+            const idsCategorias = new Set(categorias.map(c => c.id));
+            catalogo.forEach(p => {
+                p.id_categoria = Number(p.id_categoria) || SIN_CATEGORIA;
+                if (!idsCategorias.has(p.id_categoria)) p.id_categoria = SIN_CATEGORIA;
+            });
+            if (catalogo.some(p => p.id_categoria === SIN_CATEGORIA)) {
+                categorias.push({ id: SIN_CATEGORIA, nombreBd: null });
+            }
+            if (categoriaActiva !== 'todas' && !categorias.some(c => c.id === categoriaActiva)) {
+                categoriaActiva = 'todas';
+            }
+
             renderCatalogo();
+        }
+
+        // Nombre a mostrar en el idioma actual: categoria.<nombre en la BD> si existe, si no tal cual
+        function nombreCategoria(c) {
+            if (c.id === SIN_CATEGORIA) return tr('categorias.sin_categoria');
+            return window.TEXTOS['categoria.' + c.nombreBd] ?? c.nombreBd;
         }
 
         function mensajeCatalogo(texto) {
@@ -647,76 +958,152 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             return div;
         }
 
+        // Una sección por categoría (las vacías también, con su aviso);
+        // el filtro solo muestra u oculta secciones
         function renderCatalogo() {
-            const grid = document.getElementById('catalogo');
+            const contenedor = document.getElementById('catalogo');
             tarjetasCatalogo.clear();
 
-            if (catalogo.length === 0) {
-                grid.replaceChildren(mensajeCatalogo('No hay productos activos.'));
+            if (catalogo.length === 0 && categorias.length === 0) {
+                document.getElementById('filtroCategorias').replaceChildren();
+                contenedor.replaceChildren(mensajeCatalogo(tr('catalogo.vacio')));
                 return;
             }
 
-            grid.replaceChildren(...catalogo.map(p => {
-                // La tarjeta lleva dos botones: toda el área agrega uno y el círculo
-                // rojo de la esquina resta uno (para corregir un clic de más)
-                const tarjeta = document.createElement('div');
-                tarjeta.className = 'producto-card';
+            const secciones = categorias.map(c => {
+                const productos = catalogo.filter(p => p.id_categoria === c.id);
 
-                const agregar = document.createElement('button');
-                agregar.type = 'button';
-                agregar.className = 'producto-card-agregar';
+                const seccion = document.createElement('section');
+                seccion.className = 'catalogo-seccion';
+                seccion.dataset.categoria = c.id;
+                seccion.dataset.vacia = productos.length === 0 ? '1' : '';
 
-                const marco = document.createElement('div');
-                marco.className = 'producto-card-img';
-                if (p.imagen) {
-                    const img = document.createElement('img');
-                    img.src = `../${p.imagen}`;
-                    img.alt = '';
-                    img.loading = 'lazy';
-                    marco.appendChild(img);
+                const titulo = document.createElement('h3');
+                titulo.className = 'catalogo-seccion-titulo';
+                titulo.textContent = nombreCategoria(c);
+                const conteo = document.createElement('span');
+                conteo.className = 'catalogo-seccion-conteo';
+                conteo.textContent = productos.length;
+                titulo.appendChild(conteo);
+
+                const grid = document.createElement('div');
+                grid.className = 'catalogo-grid';
+                if (productos.length === 0) {
+                    grid.appendChild(mensajeCatalogo(tr('categorias.vacia')));
                 } else {
-                    marco.innerHTML = ICONO_PRODUCTO;
+                    grid.append(...productos.map(crearTarjeta));
                 }
 
-                const enVenta = document.createElement('span');
-                enVenta.className = 'producto-card-cantidad';
+                seccion.append(titulo, grid);
+                return seccion;
+            });
 
-                const nombre = document.createElement('span');
-                nombre.className = 'producto-card-nombre';
-                nombre.textContent = p.nombre;
-
-                const pie = document.createElement('span');
-                pie.className = 'producto-card-pie';
-                const precio = document.createElement('span');
-                precio.className = 'producto-card-precio';
-                precio.textContent = formatoDinero(Number(p.precio) || 0);
-                const existencias = document.createElement('span');
-                pie.append(precio, existencias);
-
-                agregar.append(marco, enVenta, nombre, pie);
-                agregar.addEventListener('click', () => {
-                    const antes = cantidadDeProducto(p.id_producto);
-                    agregarAlCarrito(p);
-                    if (cantidadDeProducto(p.id_producto) > antes) animarTarjeta(tarjeta);
-                });
-
-                const restar = document.createElement('button');
-                restar.type = 'button';
-                restar.className = 'producto-card-restar';
-                restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
-                restar.title = 'Quitar uno';
-                restar.setAttribute('aria-label', `Quitar uno de ${p.nombre}`);
-                restar.addEventListener('click', () => {
-                    restarUno(p.id_producto);
-                    animarTarjeta(tarjeta);
-                });
-
-                tarjeta.append(agregar, restar);
-                tarjetasCatalogo.set(p.id_producto, { producto: p, tarjeta, agregar, enVenta, existencias });
-                return tarjeta;
-            }));
-
+            contenedor.replaceChildren(...secciones);
+            renderFiltroCategorias();
+            aplicarFiltroCategoria();
             actualizarCatalogo();
+        }
+
+        function renderFiltroCategorias() {
+            const filtro = document.getElementById('filtroCategorias');
+            const chip = (valor, nombre, cantidad) => {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'categoria-chip';
+                boton.dataset.valor = valor;
+                boton.classList.toggle('vacia', cantidad === 0);
+                boton.textContent = nombre;
+                const conteo = document.createElement('span');
+                conteo.className = 'categoria-chip-conteo';
+                conteo.textContent = cantidad;
+                boton.appendChild(conteo);
+                boton.addEventListener('click', () => {
+                    categoriaActiva = valor;
+                    aplicarFiltroCategoria();
+                    document.getElementById('catalogo').scrollTop = 0;
+                });
+                return boton;
+            };
+
+            filtro.replaceChildren(
+                chip('todas', tr('categorias.todas'), catalogo.length),
+                ...categorias.map(c => chip(c.id, nombreCategoria(c), catalogo.filter(p => p.id_categoria === c.id).length))
+            );
+        }
+
+        // "Todas" muestra solo las secciones con productos, para no llenar de avisos;
+        // al elegir una categoría vacía se ve su sección con el aviso
+        function aplicarFiltroCategoria() {
+            document.querySelectorAll('#filtroCategorias .categoria-chip').forEach(boton => {
+                const activo = String(boton.dataset.valor) === String(categoriaActiva);
+                boton.classList.toggle('activo', activo);
+                boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
+            });
+            document.querySelectorAll('#catalogo .catalogo-seccion').forEach(seccion => {
+                seccion.hidden = categoriaActiva === 'todas'
+                    ? seccion.dataset.vacia === '1'
+                    : Number(seccion.dataset.categoria) !== categoriaActiva;
+            });
+        }
+
+        function crearTarjeta(p) {
+            // La tarjeta lleva dos botones: toda el área agrega uno y el círculo
+            // rojo de la esquina resta uno (para corregir un clic de más)
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'producto-card';
+
+            const agregar = document.createElement('button');
+            agregar.type = 'button';
+            agregar.className = 'producto-card-agregar';
+
+            const marco = document.createElement('div');
+            marco.className = 'producto-card-img';
+            if (p.imagen) {
+                const img = document.createElement('img');
+                img.src = `../${p.imagen}`;
+                img.alt = '';
+                img.loading = 'lazy';
+                marco.appendChild(img);
+            } else {
+                marco.innerHTML = ICONO_PRODUCTO;
+            }
+
+            const enVenta = document.createElement('span');
+            enVenta.className = 'producto-card-cantidad';
+
+            const nombre = document.createElement('span');
+            nombre.className = 'producto-card-nombre';
+            nombre.textContent = p.nombre;
+
+            const pie = document.createElement('span');
+            pie.className = 'producto-card-pie';
+            const precio = document.createElement('span');
+            precio.className = 'producto-card-precio';
+            precio.textContent = formatoDinero(Number(p.precio) || 0);
+            const existencias = document.createElement('span');
+            pie.append(precio, existencias);
+
+            agregar.append(marco, enVenta, nombre, pie);
+            agregar.addEventListener('click', () => {
+                const antes = cantidadDeProducto(p.id_producto);
+                agregarAlCarrito(p);
+                if (cantidadDeProducto(p.id_producto) > antes) animarTarjeta(tarjeta);
+            });
+
+            const restar = document.createElement('button');
+            restar.type = 'button';
+            restar.className = 'producto-card-restar';
+            restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+            restar.title = tr('catalogo.quitar_uno');
+            restar.setAttribute('aria-label', tr('catalogo.quitar_uno_de', { p: p.nombre }));
+            restar.addEventListener('click', () => {
+                restarUno(p.id_producto);
+                animarTarjeta(tarjeta);
+            });
+
+            tarjeta.append(agregar, restar);
+            tarjetasCatalogo.set(p.id_producto, { producto: p, tarjeta, agregar, enVenta, existencias });
+            return tarjeta;
         }
 
         function animarTarjeta(tarjeta) {
@@ -751,17 +1138,17 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
                 if (stock <= 0) {
                     existencias.className = 'stock-badge stock-agotado';
-                    existencias.textContent = 'Agotado';
+                    existencias.textContent = tr('comun.agotado');
                 } else if (stock < STOCK_BAJO) {
                     existencias.className = 'stock-badge stock-bajo';
-                    existencias.textContent = `Quedan ${stock}`;
+                    existencias.textContent = tr('stock.quedan', { n: stock });
                 } else {
                     existencias.className = '';
                     existencias.textContent = '';
                 }
 
-                agregar.setAttribute('aria-label', `Agregar ${producto.nombre}, ${formatoDinero(Number(producto.precio) || 0)}` +
-                    (cantidad > 0 ? `, ${cantidad} en la venta` : '') + (stock <= 0 ? ', agotado' : ''));
+                agregar.setAttribute('aria-label', tr('catalogo.agregar_aria', { p: producto.nombre, precio: formatoDinero(Number(producto.precio) || 0) }) +
+                    (cantidad > 0 ? tr('catalogo.en_venta_aria', { n: cantidad }) : '') + (stock <= 0 ? tr('catalogo.agotado_aria') : ''));
             });
         }
 
@@ -769,26 +1156,26 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         function avisoAgotado(nombre) {
             mostrarAviso({
                 tipo: 'peligro',
-                titulo: 'Producto agotado',
-                mensaje: `"${nombre}" ya no tiene existencias en esta sucursal, no se puede agregar a la venta.`
+                titulo: tr('aviso.agotado_titulo'),
+                mensaje: tr('aviso.agotado', { p: nombre })
             });
         }
 
         function avisoInsuficiente(nombre, stock, pedida) {
             mostrarAviso({
                 tipo: 'aviso',
-                titulo: 'Productos insuficientes',
+                titulo: tr('aviso.insuficiente_titulo'),
                 mensaje: stock > 0
-                    ? `Pediste ${pedida} de "${nombre}" en total, pero solo hay ${stock} ${stock === 1 ? 'disponible' : 'disponibles'}.`
-                    : `"${nombre}" ya no tiene existencias en esta sucursal.`
+                    ? tr('aviso.insuficiente', { pedida, p: nombre, disponibles: trn('comun.n_disponibles', stock) })
+                    : tr('aviso.sin_existencias', { p: nombre })
             });
         }
 
         // Texto de la etiqueta de existencias de una fila (null si no hace falta)
         function etiquetaExistencias(item) {
-            if (item.stock <= 0) return { texto: 'Agotado', clase: 'stock-agotado' };
-            if (cantidadDeProducto(item.id_producto) > item.stock) return { texto: `Solo hay ${item.stock}`, clase: 'stock-agotado' };
-            if (item.stock < STOCK_BAJO) return { texto: `Quedan ${item.stock}`, clase: 'stock-bajo' };
+            if (item.stock <= 0) return { texto: tr('comun.agotado'), clase: 'stock-agotado' };
+            if (cantidadDeProducto(item.id_producto) > item.stock) return { texto: tr('stock.solo_hay', { n: item.stock }), clase: 'stock-agotado' };
+            if (item.stock < STOCK_BAJO) return { texto: tr('stock.quedan', { n: item.stock }), clase: 'stock-bajo' };
             return null;
         }
 
@@ -826,8 +1213,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 nombre.textContent = g.nombre;
                 const detalle = document.createElement('span');
                 detalle.textContent = g.stock > 0
-                    ? `Pides ${g.cantidad}, hay ${g.stock} ${g.stock === 1 ? 'disponible' : 'disponibles'}`
-                    : 'Agotado';
+                    ? tr('aviso.pides', { pedida: g.cantidad, disponibles: trn('comun.n_disponibles', g.stock) })
+                    : tr('comun.agotado');
                 if (g.stock <= 0) detalle.className = 'stock-agotado';
                 li.append(nombre, detalle);
                 lista.appendChild(li);
@@ -835,12 +1222,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             mostrarAviso({
                 tipo: 'aviso',
-                titulo: 'Productos insuficientes',
-                mensaje: 'No se puede completar la venta con estas cantidades:',
+                titulo: tr('aviso.insuficiente_titulo'),
+                mensaje: tr('aviso.faltantes'),
                 contenido: lista,
                 botones: [
-                    { texto: 'Revisar', clase: 'btn-ghost' },
-                    { texto: 'Ajustar a lo disponible', clase: 'btn-primary', accion: ajustarADisponible }
+                    { texto: tr('aviso.revisar'), clase: 'btn-ghost' },
+                    { texto: tr('aviso.ajustar'), clase: 'btn-primary', accion: ajustarADisponible }
                 ]
             });
         }
@@ -860,8 +1247,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             indiceSeleccionado = null;
             renderCarrito();
             mostrarToast(agotados > 0
-                ? `Cantidades ajustadas. Se ${agotados === 1 ? 'quitó 1 producto agotado' : `quitaron ${agotados} productos agotados`}.`
-                : 'Cantidades ajustadas a lo disponible.', 'exito');
+                ? trn('aviso.ajustadas_quitados', agotados)
+                : tr('aviso.ajustadas'), 'exito');
         }
 
         function crearBotonCantidad(texto, etiqueta, onClick) {
@@ -880,7 +1267,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             tbody.innerHTML = '';
 
             if (carrito.length === 0) {
-                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Agrega productos desde el catálogo o el buscador</td></tr>';
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="6"></td></tr>';
+                tbody.querySelector('td').textContent = tr('lista.vacia');
                 indiceSeleccionado = null;
                 indiceResaltado = null;
                 calcularTotales();
@@ -925,7 +1313,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 stepper.className = 'qty-stepper';
 
                 const btnMenos = crearBotonCantidad('−',
-                    item.cantidad <= 1 ? 'Quitar producto' : 'Quitar uno',
+                    item.cantidad <= 1 ? tr('lista.quitar_producto') : tr('catalogo.quitar_uno'),
                     () => item.cantidad <= 1 ? pedirEliminarProducto(index) : cambiarCantidad(index, item.cantidad - 1));
                 if (item.cantidad <= 1) btnMenos.classList.add('qty-quitar');
 
@@ -935,7 +1323,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 input.step = '1';
                 input.value = item.cantidad;
                 input.className = 'input-cantidad';
-                input.setAttribute('aria-label', `Cantidad de ${item.nombre}`);
+                input.setAttribute('aria-label', tr('lista.cantidad_de', { p: item.nombre }));
                 input.addEventListener('click', (e) => e.stopPropagation());
                 input.addEventListener('change', (e) => cambiarCantidad(index, parseFloat(e.target.value)));
                 input.addEventListener('keydown', (e) => {
@@ -943,10 +1331,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 });
 
                 // "+" sigue activo en el máximo: al pulsarlo avisa cuántos hay disponibles
-                const btnMas = crearBotonCantidad('+', 'Agregar uno', () => cambiarCantidad(index, item.cantidad + 1));
+                const btnMas = crearBotonCantidad('+', tr('lista.agregar_uno'), () => cambiarCantidad(index, item.cantidad + 1));
                 if (cantidadDeProducto(item.id_producto) >= item.stock) {
                     btnMas.classList.add('qty-tope');
-                    btnMas.title = `Solo hay ${item.stock} en existencia`;
+                    btnMas.title = tr('stock.solo_hay_existencia', { n: item.stock });
                 }
 
                 stepper.append(btnMenos, input, btnMas);
@@ -963,8 +1351,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 const btnBorrar = document.createElement('button');
                 btnBorrar.type = 'button';
                 btnBorrar.className = 'btn-borrar';
-                btnBorrar.title = 'Eliminar producto';
-                btnBorrar.setAttribute('aria-label', `Eliminar ${item.nombre}`);
+                btnBorrar.title = tr('lista.eliminar_producto');
+                btnBorrar.setAttribute('aria-label', tr('lista.eliminar_de', { p: item.nombre }));
                 btnBorrar.innerHTML = ICONO_BASURA;
                 btnBorrar.addEventListener('click', () => pedirEliminarProducto(index));
                 const celdaAcciones = row.insertCell();
@@ -1017,7 +1405,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             info.append(nombre, detalle);
             tarjeta.appendChild(info);
 
-            abrirConfirmacion('¿Eliminar producto?', tarjeta, 'Sí, eliminar', () => quitarProducto(index));
+            abrirConfirmacion(tr('eliminar.titulo'), tarjeta, tr('eliminar.confirmar'), () => quitarProducto(index));
         }
 
         function limpiarTabla() {
@@ -1025,9 +1413,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const articulos = carrito.reduce((n, i) => n + i.cantidad, 0);
             const mensaje = document.createElement('p');
             mensaje.className = 'modal-mensaje';
-            mensaje.textContent = `Se quitarán ${carrito.length} producto(s) (${articulos} artículo(s)) de la venta actual.`;
+            mensaje.textContent = tr('vaciar.mensaje', { productos: trn('comun.n_productos', carrito.length), articulos: trn('comun.n_articulos', articulos) });
 
-            abrirConfirmacion('¿Vaciar la venta?', mensaje, 'Sí, vaciar', () => {
+            abrirConfirmacion(tr('vaciar.titulo'), mensaje, tr('vaciar.confirmar'), () => {
                 carrito = [];
                 indiceSeleccionado = null;
                 renderCarrito();
@@ -1091,7 +1479,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             etiquetaNombre.textContent = nombre;
             etiquetaNombre.title = nombre;
             const etiquetaPrecio = document.createElement('small');
-            etiquetaPrecio.textContent = `${formatoDinero(precio)} c/u`;
+            etiquetaPrecio.textContent = tr('resumen.precio_unidad', { precio: formatoDinero(precio) });
             info.append(etiquetaNombre, etiquetaPrecio);
 
             const importe = document.createElement('span');
@@ -1110,7 +1498,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (carrito.length === 0) {
                 const vacio = document.createElement('li');
                 vacio.className = 'resumen-vacio';
-                vacio.textContent = 'Sin productos';
+                vacio.textContent = tr('resumen.sin_productos');
                 escaneo.replaceChildren(vacio);
                 resumen.replaceChildren();
                 return;
@@ -1162,7 +1550,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             const acciones = document.getElementById('avisoAcciones');
             acciones.replaceChildren();
-            (botones || [{ texto: 'Entendido', clase: 'btn-primary' }]).forEach(b => {
+            (botones || [{ texto: tr('comun.entendido'), clase: 'btn-primary' }]).forEach(b => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = `btn ${b.clase}`;
@@ -1198,7 +1586,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         // pueden haber cambiado desde que se agregó el producto.
         async function abrirModalPago() {
             if (carrito.length === 0 || totalActual <= 0) {
-                alert('No hay productos en la lista de cobro.');
+                alert(tr('pago.sin_productos'));
                 return;
             }
             if (verificandoPago) return;
@@ -1206,11 +1594,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const btnPagar = document.querySelector('.btn-pagar');
             verificandoPago = true;
             btnPagar.disabled = true;
-            btnPagar.textContent = 'Verificando existencias...';
+            btnPagar.textContent = tr('pago.verificando');
             const faltantes = await actualizarExistencias();
             verificandoPago = false;
             btnPagar.disabled = false;
-            btnPagar.textContent = 'Pagar';
+            btnPagar.textContent = tr('resumen.pagar');
 
             // Sin conexión (null) se sigue: registrar_venta.php vuelve a validar
             if (faltantes && faltantes.length > 0) {
@@ -1233,7 +1621,146 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function volverAMetodos() {
             cerrarModal('modalEfectivo');
+            cerrarModal('modalVarios');
             abrirModal('modalPago');
+        }
+
+        /* ---------- Pago combinado ---------- */
+        // Se captura lo de tarjeta y lo de efectivo, en cualquier orden, y se
+        // cobra en cuanto se cubre el total:
+        //  - tarjeta = total: todo con tarjeta (se ignora el efectivo)
+        //  - sin tarjeta y efectivo >= total: todo en efectivo, con cambio
+        //  - tarjeta parcial: el efectivo cubre el resto y el cambio sale de ahí
+        //    (cuenta $400, tarjeta $200, recibe $500 -> cambio $300)
+        // La tarjeta nunca pasa del total: no da cambio.
+        const inputVariosTarjeta = document.getElementById('inputVariosTarjeta');
+        const inputVariosEfectivo = document.getElementById('inputVariosEfectivo');
+
+        // Monto capturado en centavos; vacío o negativo cuenta como 0
+        const centavosDe = (input) => Math.max(0, aCentavos(parseFloat(input.value)) || 0);
+
+        function abrirModalVarios() {
+            cerrarModal('modalPago');
+            document.getElementById('variosTotal').innerText = formatoDinero(totalActual);
+            inputVariosTarjeta.value = '';
+            inputVariosEfectivo.value = '';
+            tarjetaManual = false;
+            actualizarVariosPreview();
+            abrirModal('modalVarios');
+            inputVariosEfectivo.focus();
+        }
+
+        // Lo de tarjeta se calcula solo con lo que falta después del efectivo
+        // (cuenta $257, efectivo $200 -> tarjeta $57) mientras el cajero no la
+        // escriba a mano; si la borra, vuelve a calcularse.
+        let tarjetaManual = false;
+
+        function autollenarTarjeta() {
+            if (tarjetaManual) return;
+            const total = aCentavos(totalActual);
+            const recibido = centavosDe(inputVariosEfectivo);
+            const sinEfectivo = inputVariosEfectivo.value.trim() === '';
+            inputVariosTarjeta.value = sinEfectivo || recibido >= total ? '' : ((total - recibido) / 100).toFixed(2);
+        }
+
+        // Cómo se cobra con lo capturado (montos en centavos), o null si no alcanza el total
+        function montosVarios() {
+            const total = aCentavos(totalActual);
+            const tarjeta = centavosDe(inputVariosTarjeta);
+            const recibido = centavosDe(inputVariosEfectivo);
+
+            if (tarjeta > total) return null;
+            if (tarjeta === total) return { metodo: 'Tarjeta' };
+            if (tarjeta === 0) {
+                return recibido >= total ? { metodo: 'Efectivo', recibido, cambio: recibido - total } : null;
+            }
+            const resto = total - tarjeta;
+            return recibido >= resto ? { metodo: 'Varios', tarjeta, recibido, cambio: recibido - resto } : null;
+        }
+
+        // Desglose en vivo: tarjeta, efectivo y, al final, "Restante" mientras no
+        // se cubra el total o "Cambio" cuando ya se cubrió
+        function actualizarVariosPreview() {
+            const total = aCentavos(totalActual);
+            const tarjeta = centavosDe(inputVariosTarjeta);
+            const recibido = centavosDe(inputVariosEfectivo);
+            const montos = montosVarios();
+            const excede = tarjeta > total;
+            const todoTarjeta = montos?.metodo === 'Tarjeta';
+
+            document.getElementById('btnCobrarVarios').disabled = montos === null;
+
+            // La tarjeta no puede pasar del total: el error va en su propio campo
+            inputVariosTarjeta.closest('.input-dinero').classList.toggle('con-error', excede);
+            document.getElementById('errorVariosTarjeta').textContent =
+                excede ? tr('varios.tarjeta_excede') : '';
+
+            document.getElementById('variosResTarjeta').textContent = formatoDinero(tarjeta / 100);
+            // Si la tarjeta cubre todo, el efectivo no se usa
+            document.getElementById('variosResEfectivo').textContent = formatoDinero((todoTarjeta ? 0 : recibido) / 100);
+
+            const estado = document.getElementById('variosEstado');
+            const etiqueta = document.getElementById('variosEstadoEtiqueta');
+            const monto = document.getElementById('variosEstadoMonto');
+            estado.hidden = excede;
+            estado.classList.toggle('is-restante', !montos && !excede);
+            estado.classList.toggle('is-cubierto', !!montos);
+
+            if (todoTarjeta) {
+                etiqueta.textContent = tr('varios.todo_tarjeta');
+                monto.textContent = '✓';
+            } else if (montos) {
+                etiqueta.textContent = tr('efectivo.cambio');
+                monto.textContent = formatoDinero(montos.cambio / 100);
+            } else {
+                etiqueta.textContent = tr('varios.restante');
+                monto.textContent = formatoDinero((total - tarjeta - recibido) / 100);
+            }
+        }
+
+        inputVariosEfectivo.addEventListener('input', () => {
+            autollenarTarjeta();
+            actualizarVariosPreview();
+        });
+        inputVariosTarjeta.addEventListener('input', () => {
+            tarjetaManual = inputVariosTarjeta.value.trim() !== '';
+            if (!tarjetaManual) autollenarTarjeta();
+            actualizarVariosPreview();
+        });
+
+        // Enter en el efectivo: si hay parte con tarjeta pasa a revisarla; si no, cobra.
+        // Enter en la tarjeta: cobra si ya se cubrió el total.
+        const puedeCobrarVarios = () => !document.getElementById('btnCobrarVarios').disabled;
+        inputVariosEfectivo.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (centavosDe(inputVariosTarjeta) > 0) {
+                inputVariosTarjeta.focus();
+                inputVariosTarjeta.select();
+            } else if (puedeCobrarVarios()) {
+                cobrarVarios();
+            }
+        });
+        inputVariosTarjeta.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (puedeCobrarVarios()) cobrarVarios();
+            else inputVariosEfectivo.focus();
+        });
+
+        async function cobrarVarios() {
+            if (cobrando) return;
+            const montos = montosVarios();
+            if (!montos) return;
+
+            bloquearCobro(true);
+            let venta;
+            if (montos.metodo === 'Tarjeta') venta = await registrarVenta('Tarjeta');
+            else if (montos.metodo === 'Efectivo') venta = await registrarVenta('Efectivo', montos.recibido / 100);
+            else venta = await registrarVenta('Varios', montos.recibido / 100, montos.tarjeta / 100);
+            bloquearCobro(false);
+            if (!venta) return;
+
+            cerrarModal('modalVarios');
+            mostrarVentaCompletada(montos.metodo, venta);
         }
 
         // Muestra en vivo cuánto falta o cuánto cambio hay que dar
@@ -1252,11 +1779,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             const diferencia = aCentavos(recibido) - aCentavos(totalActual);
             if (diferencia < 0) {
-                preview.textContent = `Faltan ${formatoDinero(-diferencia / 100)}`;
+                preview.textContent = tr('efectivo.faltan', { monto: formatoDinero(-diferencia / 100) });
                 preview.classList.add('error');
                 btnCobrar.disabled = true;
             } else {
-                preview.innerHTML = `Cambio: <strong>${formatoDinero(diferencia / 100)}</strong>`;
+                preview.innerHTML = `${escaparHtml(tr('efectivo.cambio'))}: <strong>${formatoDinero(diferencia / 100)}</strong>`;
                 btnCobrar.disabled = false;
             }
         }
@@ -1267,7 +1794,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         });
 
         // Guarda la venta en la BD. Devuelve la respuesta del servidor o null si falló.
-        async function registrarVenta(metodo, efectivoRecibido = null) {
+        async function registrarVenta(metodo, efectivoRecibido = null, montoTarjeta = null) {
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
             datos.append('metodo', metodo);
@@ -1275,6 +1802,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 carrito.map(i => ({ id_producto: i.id_producto, cantidad: i.cantidad }))
             ));
             if (efectivoRecibido !== null) datos.append('efectivo_recibido', efectivoRecibido.toFixed(2));
+            if (montoTarjeta !== null) datos.append('monto_tarjeta', montoTarjeta.toFixed(2));
 
             let res, json;
             try {
@@ -1283,8 +1811,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             } catch (error) {
                 mostrarAviso({
                     tipo: 'peligro',
-                    titulo: 'Sin conexión',
-                    mensaje: 'No se pudo conectar con el servidor. La venta NO se registró.'
+                    titulo: tr('error.sin_conexion_titulo'),
+                    mensaje: tr('error.sin_conexion')
                 });
                 return null;
             }
@@ -1293,6 +1821,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             // 409: las existencias cambiaron entre la verificación y el cobro
             cerrarModal('modalPago');
             cerrarModal('modalEfectivo');
+            cerrarModal('modalVarios');
             if (res.status === 409) {
                 const faltantes = await actualizarExistencias();
                 if (faltantes && faltantes.length > 0) {
@@ -1302,19 +1831,24 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             }
             mostrarAviso({
                 tipo: 'peligro',
-                titulo: 'No se pudo registrar la venta',
-                mensaje: json.message || 'Ocurrió un error al guardar la venta.'
+                titulo: tr('error.registrar_titulo'),
+                mensaje: json.message || tr('error.registrar')
             });
             return null;
         }
 
         function bloquearCobro(bloquear) {
             cobrando = bloquear;
-            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo').forEach(b => {
+            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo, #btnCobrarVarios').forEach(b => {
                 b.disabled = bloquear;
             });
-            document.getElementById('btnCobrarEfectivo').textContent = bloquear ? 'Guardando...' : 'Cobrar';
-            if (!bloquear) actualizarCambioPreview();
+            ['btnCobrarEfectivo', 'btnCobrarVarios'].forEach(id => {
+                document.getElementById(id).textContent = bloquear ? tr('pago.guardando') : tr('efectivo.cobrar');
+            });
+            if (!bloquear) {
+                actualizarCambioPreview();
+                actualizarVariosPreview();
+            }
         }
 
         async function cobrarEfectivo() {
@@ -1343,6 +1877,154 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             mostrarVentaCompletada('Tarjeta', venta);
         }
 
+        /* ---------- Corte de caja: conteo de billetes y monedas ---------- */
+        // Tarjetas como las del catálogo: clic en la pieza suma uno, el círculo
+        // rojo resta uno y la cantidad también se puede escribir. El conteo se
+        // conserva aunque se cierre la ventana, hasta que se limpie.
+        // Montos en centavos; la llave es el id porque $20 es billete y moneda.
+        const DENOMINACIONES = [
+            { id: 'b20',   tipo: 'billete', centavos: 2000,   imagen: 'billete20.jpg' },
+            { id: 'b50',   tipo: 'billete', centavos: 5000,   imagen: 'billete50.jpg' },
+            { id: 'b100',  tipo: 'billete', centavos: 10000,  imagen: 'billete100.jpg' },
+            { id: 'b200',  tipo: 'billete', centavos: 20000,  imagen: 'billete200.jpg' },
+            { id: 'b500',  tipo: 'billete', centavos: 50000,  imagen: 'billete500.jpg' },
+            { id: 'b1000', tipo: 'billete', centavos: 100000, imagen: 'billete1000.jpg' },
+            { id: 'm050',  tipo: 'moneda',  centavos: 50,     imagen: 'moneda050.jpg' },
+            { id: 'm1',    tipo: 'moneda',  centavos: 100,    imagen: 'moneda1.jpg' },
+            { id: 'm2',    tipo: 'moneda',  centavos: 200,    imagen: 'moneda2.jpg' },
+            { id: 'm5',    tipo: 'moneda',  centavos: 500,    imagen: 'moneda5.jpg' },
+            { id: 'm10',   tipo: 'moneda',  centavos: 1000,   imagen: 'moneda10.jpg' },
+            { id: 'm20',   tipo: 'moneda',  centavos: 2000,   imagen: 'moneda20.jpg' },
+        ];
+        const conteoCorte = new Map(DENOMINACIONES.map(d => [d.id, 0]));
+
+        // "$20", "$1,000", "$0.50"
+        const denominacion = (centavos) => centavos % 100 === 0
+            ? '$' + (centavos / 100).toLocaleString('es-MX')
+            : formatoDinero(centavos / 100);
+
+        function abrirCorte() {
+            renderCorte();
+            abrirModal('modalCorte');
+            document.querySelector('#corteBilletes .dinero-piezas')?.focus();
+        }
+
+        function renderCorte() {
+            const tarjetas = (tipo) => DENOMINACIONES.filter(d => d.tipo === tipo).map(crearTarjetaDinero);
+            document.getElementById('corteBilletes').replaceChildren(...tarjetas('billete'));
+            document.getElementById('corteMonedas').replaceChildren(...tarjetas('moneda'));
+            actualizarTotalCorte();
+        }
+
+        function crearTarjetaDinero(d) {
+            const valor = denominacion(d.centavos);
+            const tarjeta = document.createElement('div');
+            tarjeta.className = `dinero-card dinero-card--${d.tipo}`;
+
+            const agregar = document.createElement('button');
+            agregar.type = 'button';
+            agregar.className = 'dinero-agregar';
+            agregar.setAttribute('aria-label', tr(`corte.agregar_${d.tipo}`, { valor }));
+            const img = document.createElement('img');
+            img.src = `../Imagenes/dinero/${d.imagen}`;
+            img.alt = '';
+            const etiqueta = document.createElement('span');
+            etiqueta.className = 'dinero-valor';
+            etiqueta.textContent = valor;
+            agregar.append(img, etiqueta);
+
+            const restar = document.createElement('button');
+            restar.type = 'button';
+            restar.className = 'dinero-restar';
+            restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+            restar.title = tr('catalogo.quitar_uno');
+            restar.setAttribute('aria-label', tr(`corte.quitar_${d.tipo}`, { valor }));
+
+            const pie = document.createElement('div');
+            pie.className = 'dinero-pie';
+            const piezas = document.createElement('input');
+            piezas.type = 'number';
+            piezas.min = '0';
+            piezas.step = '1';
+            piezas.inputMode = 'numeric';
+            piezas.placeholder = '0';
+            piezas.className = 'dinero-piezas';
+            piezas.setAttribute('aria-label', tr(`corte.piezas_${d.tipo}`, { valor }));
+            const subtotal = document.createElement('span');
+            subtotal.className = 'dinero-subtotal';
+            pie.append(piezas, subtotal);
+
+            // Mientras se escribe no se reescribe el campo; al salir se normaliza ("007" -> 7)
+            const pintar = () => {
+                const n = conteoCorte.get(d.id);
+                tarjeta.classList.toggle('con-piezas', n > 0);
+                if (document.activeElement !== piezas) piezas.value = n > 0 ? n : '';
+                subtotal.textContent = formatoDinero(n * d.centavos / 100);
+                actualizarTotalCorte();
+            };
+            const fijar = (n) => {
+                conteoCorte.set(d.id, Math.max(0, n));
+                pintar();
+                animarTarjeta(tarjeta);
+            };
+
+            agregar.addEventListener('click', () => fijar(conteoCorte.get(d.id) + 1));
+            restar.addEventListener('click', () => fijar(conteoCorte.get(d.id) - 1));
+            piezas.addEventListener('input', () => {
+                const n = parseInt(piezas.value, 10);
+                conteoCorte.set(d.id, Number.isNaN(n) || n < 0 ? 0 : n);
+                pintar();
+            });
+            piezas.addEventListener('blur', pintar);
+            piezas.addEventListener('keydown', (e) => {
+                // Solo piezas enteras y positivas
+                if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) e.preventDefault();
+                // Enter pasa a la siguiente pieza (de los billetes sigue a las monedas)
+                if (e.key === 'Enter') {
+                    const campos = [...document.querySelectorAll('#modalCorte .dinero-piezas')];
+                    campos[campos.indexOf(piezas) + 1]?.focus();
+                }
+            });
+
+            tarjeta.append(agregar, restar, pie);
+            pintar();
+            return tarjeta;
+        }
+
+        // Total y piezas por tipo, en centavos
+        function sumarCorte(tipo = null) {
+            let centavos = 0;
+            let piezas = 0;
+            DENOMINACIONES.forEach(d => {
+                if (tipo && d.tipo !== tipo) return;
+                const n = conteoCorte.get(d.id);
+                centavos += n * d.centavos;
+                piezas += n;
+            });
+            return { centavos, piezas };
+        }
+
+        function actualizarTotalCorte() {
+            const billetes = sumarCorte('billete');
+            const monedas = sumarCorte('moneda');
+            document.getElementById('corteTotalBilletes').textContent = formatoDinero(billetes.centavos / 100);
+            document.getElementById('corteTotalMonedas').textContent = formatoDinero(monedas.centavos / 100);
+            document.getElementById('cortePiezasBilletes').textContent = billetes.piezas > 0 ? `(${trn('corte.n_billetes', billetes.piezas)})` : '';
+            document.getElementById('cortePiezasMonedas').textContent = monedas.piezas > 0 ? `(${trn('corte.n_monedas', monedas.piezas)})` : '';
+            document.getElementById('corteTotal').textContent = formatoDinero((billetes.centavos + monedas.centavos) / 100);
+        }
+
+        function pedirLimpiarCorte() {
+            if (sumarCorte().piezas === 0) return;
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = tr('corte.limpiar_mensaje');
+            abrirConfirmacion(tr('corte.limpiar_titulo'), mensaje, tr('corte.limpiar_confirmar'), () => {
+                conteoCorte.forEach((_, id) => conteoCorte.set(id, 0));
+                renderCorte();
+            });
+        }
+
         /* ---------- Ticket ---------- */
         // Se imprime desde un iframe oculto con su propia hoja de estilos (80 mm),
         // así la impresión no depende del diseño de la caja.
@@ -1351,6 +2033,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const escaparHtml = (texto) => String(texto ?? '').replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
         }[c]));
+
+        // El método viaja al servidor en español ('Efectivo'/'Tarjeta'); en pantalla se traduce
+        const nombreMetodo = (metodo) => tr('pago.' + String(metodo).toLowerCase());
 
         function htmlTicket(t) {
             const fila = (izq, der, clase = '') =>
@@ -1363,13 +2048,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     ${fila(`${l.cantidad} x ${formatoDinero(Number(l.precio))}`, formatoDinero(Number(l.importe)))}
                 </div>`).join('');
 
-            const pago = t.metodo === 'Efectivo' && t.recibido !== null
-                ? fila('Efectivo recibido', formatoDinero(t.recibido)) +
-                  fila('Cambio', formatoDinero(t.cambio), 'destacado')
-                : '';
+            // Pago combinado: lo de la tarjeta y luego el efectivo con su cambio
+            const pago = (t.tarjeta != null ? fila(tr('ticket.pago_tarjeta'), formatoDinero(t.tarjeta)) : '') +
+                (t.recibido != null
+                    ? fila(tr('ticket.efectivo_recibido'), formatoDinero(t.recibido)) +
+                      fila(tr('ticket.cambio'), formatoDinero(t.cambio), 'destacado')
+                    : '');
 
             return `<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
+<html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
 <style>
     @page { size: 80mm auto; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1395,29 +2082,29 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 <body>
     <div class="centro">
         <div class="marca">KOALY</div>
-        ${t.sucursal ? `<div class="sucursal">Sucursal ${escaparHtml(t.sucursal)}</div>` : ''}
+        ${t.sucursal ? `<div class="sucursal">${escaparHtml(tr('ticket.sucursal', { s: t.sucursal }))}</div>` : ''}
         ${t.direccion ? `<div class="chico">${escaparHtml(t.direccion)}</div>` : ''}
-        ${t.telefono ? `<div class="chico">Tel. ${escaparHtml(t.telefono)}</div>` : ''}
+        ${t.telefono ? `<div class="chico">${escaparHtml(tr('ticket.tel', { t: t.telefono }))}</div>` : ''}
     </div>
     <hr>
-    ${fila('Folio', `#${escaparHtml(t.folio)}`, 'destacado')}
-    ${fila('Fecha', escaparHtml(t.fecha))}
-    ${fila('Hora', escaparHtml(t.hora))}
-    ${t.caja ? fila('Caja', escaparHtml(t.caja)) : ''}
-    ${t.cajero ? fila('Atendió', escaparHtml(t.cajero)) : ''}
+    ${fila(tr('ticket.folio'), `#${escaparHtml(t.folio)}`, 'destacado')}
+    ${fila(tr('ticket.fecha'), escaparHtml(t.fecha))}
+    ${fila(tr('ticket.hora'), escaparHtml(t.hora))}
+    ${t.caja ? fila(tr('ticket.caja'), escaparHtml(t.caja)) : ''}
+    ${t.cajero ? fila(tr('ticket.atendio'), escaparHtml(t.cajero)) : ''}
     <hr>
     ${lineas}
     <hr>
-    ${fila('Artículos', articulos)}
-    ${fila('Subtotal', formatoDinero(t.subtotal))}
-    ${fila('IVA 16%', formatoDinero(t.iva))}
-    ${fila('TOTAL', formatoDinero(t.total), 'total')}
+    ${fila(tr('ticket.articulos'), articulos)}
+    ${fila(tr('ticket.subtotal'), formatoDinero(t.subtotal))}
+    ${fila(tr('ticket.iva'), formatoDinero(t.iva))}
+    ${fila(tr('ticket.total'), formatoDinero(t.total), 'total')}
     <hr>
-    ${fila('Forma de pago', escaparHtml(t.metodo))}
+    ${fila(tr('ticket.forma_pago'), escaparHtml(nombreMetodo(t.metodo)))}
     ${pago}
     <hr>
-    <div class="centro chico">Precios con IVA incluido</div>
-    <div class="centro gracias">¡Gracias por su compra!</div>
+    <div class="centro chico">${escaparHtml(tr('ticket.iva_incluido'))}</div>
+    <div class="centro gracias">${escaparHtml(tr('ticket.gracias'))}</div>
 </body></html>`;
         }
 
@@ -1442,13 +2129,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function mostrarVentaCompletada(metodo, venta) {
             document.getElementById('ventaMensaje').textContent =
-                `Venta #${venta.id_venta} registrada por ${formatoDinero(venta.total)} con ${metodo}.`;
+                tr('venta.mensaje', { folio: venta.id_venta, total: formatoDinero(venta.total), metodo: nombreMetodo(metodo) });
 
             const bloqueCambio = document.getElementById('ventaCambio');
             if (venta.cambio !== null) {
                 document.getElementById('ventaCambioMonto').textContent = formatoDinero(venta.cambio);
-                document.getElementById('ventaCambioDetalle').textContent =
-                    `Recibido: ${formatoDinero(venta.recibido)} · Total: ${formatoDinero(venta.total)}`;
+                document.getElementById('ventaCambioDetalle').textContent = venta.tarjeta != null
+                    ? tr('venta.detalle_varios', { tarjeta: formatoDinero(venta.tarjeta), recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) })
+                    : tr('venta.detalle', { recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) });
                 bloqueCambio.style.display = 'block';
             } else {
                 bloqueCambio.style.display = 'none';
