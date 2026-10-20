@@ -1361,3 +1361,67 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
     width: 0; height: 0; border: 0;
     visibility: hidden;
 }
+
+/* ============================================================
+   Piel táctil de Koaly (../estilos/koaly.css se enlaza después).
+   koaly.css pone colores, fuentes, bordes y sombras de tinta a los
+   componentes comunes; aquí van las piezas propias de la caja.
+   Va al final para no tocar las reglas de arriba.
+   ============================================================ */
+
+/* Botón de restar de la tarjeta: táctil como los demás botones */
+.producto-card-restar {
+    border: 2px solid var(--tinta); border-radius: 9px;
+    background: var(--peligro-suave); color: var(--peligro-texto);
+    box-shadow: 2px 2px 0 var(--tinta);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
+}
+.producto-card-restar:hover { background: var(--peligro); color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--tinta); }
+.producto-card-restar:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--tinta); }
+
+/* Cuántas van en la venta */
+.producto-card-cantidad {
+    min-width: 2.1rem; padding: 0.05rem 0.45rem;
+    border: 2px solid var(--tinta);
+    box-shadow: 2px 2px 0 var(--tinta);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Tarjeta: se eleva con sombra de tinta; en la venta, borde y sombra morados */
+.producto-card:hover { border-color: var(--tinta); box-shadow: var(--sombra-tactil-max); transform: translate(-2px, -2px); }
+.producto-card.en-venta { border-color: var(--acento); box-shadow: 5px 5px 0 var(--acento); }
+.producto-card.agotado:hover { transform: none; box-shadow: var(--sombra-tactil-alta); border-color: var(--tinta); }
+
+/* Foto: marco fino en vez de la línea de tinta que koaly.css pone debajo */
+.producto-card .producto-card-img { border: 1.5px solid var(--borde); }
+
+/* Etiquetas de existencias con el mismo borde que las insignias */
+.stock-bajo, .stock-agotado { border: 1.5px solid currentColor; }
+
+/* Lista de venta y selector de cantidad */
+.tabla-scroll { border: 2px solid var(--tinta); border-radius: 12px; }
+.qty-stepper { border: 2px solid var(--tinta); border-radius: 10px; box-shadow: 2px 2px 0 var(--tinta); }
+.qty-stepper:focus-within { border-color: var(--tinta); box-shadow: 3px 3px 0 var(--foco); }
+
+/* Total, efectivo y cambio */
+.resumen-total { border: 2px solid var(--tinta); border-radius: 12px; box-shadow: var(--sombra-tactil); }
+.input-dinero { border: 2px solid var(--tinta); border-radius: 10px; }
+.input-dinero:focus-within { border-color: var(--tinta); box-shadow: 3px 3px 0 var(--foco); }
+/* El campo va dentro del marco: sin el borde que koaly.css pone a los campos de .form-group */
+.form-group .input-dinero input:not([type="checkbox"]):not([type="radio"]) { border: none; border-radius: 0; }
+.form-group .input-dinero input:focus { box-shadow: none; }
+.cambio-resultado { border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
+
+/* Resultados de búsqueda y avisos breves */
+.search-results { border: 2px solid var(--tinta); border-radius: 12px; box-shadow: var(--sombra-tactil-alta); }
+.toast { border: 2px solid var(--tinta); border-left-width: 6px; border-radius: 12px; box-shadow: var(--sombra-tactil); }
+
+/* Barras de desplazamiento con los colores del tema (en oscuro no quedan blancas) */
+.catalogo-grid, .resumen-lista, .tabla-scroll, .search-results, .modal-box, .lista-faltantes {
+    scrollbar-color: var(--borde-fuerte) transparent;
+}
+
+/* Campo de efectivo sin flechas de subir/bajar */
+.input-dinero input { -moz-appearance: textfield; appearance: textfield; }
+.input-dinero input::-webkit-outer-spin-button,
+.input-dinero input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
