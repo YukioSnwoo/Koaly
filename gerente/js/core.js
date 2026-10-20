@@ -1,3 +1,20 @@
+const CLAVE_TEMA = 'koaly-tema';
+
+function temaActual() {
+    const elegido = document.documentElement.getAttribute('data-tema');
+    if (elegido) return elegido;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+}
+
+function actualizarBotonTema() {
+    const boton = document.getElementById('botonTema');
+    if (!boton) return;
+    const etiqueta = temaActual() === 'oscuro' ? tj('tema_a_claro') : tj('tema_a_oscuro');
+    boton.setAttribute('aria-label', etiqueta);
+    boton.title = etiqueta;
+}
+
+
 function tj(clave, vars = {}) {
     let texto = (window.I18N && window.I18N[clave]) || clave;
     for (const [k, v] of Object.entries(vars)) texto = texto.split('{' + k + '}').join(String(v));
