@@ -1,0 +1,368 @@
+/* ============================================================
+ *  koaly.css — Estilo común de Koaly (gerente y cajero)
+ *  ------------------------------------------------------------
+ *  1. Fuentes
+ *  2. Colores: modo claro y oscuro (variables)
+ *  3. Piel táctil de los componentes comunes: botones, tarjetas,
+ *     paneles, modales, campos, insignias y pestañas
+ *
+ *  Solo define apariencia (color, borde, sombra, fuente, animación),
+ *  nunca tamaños ni posiciones: cada módulo conserva su propio layout.
+ *  Se enlaza DESPUÉS de la hoja propia del módulo para que la piel gane.
+ *
+ *  Modo oscuro: <html data-tema="oscuro">, o el sistema en oscuro si
+ *  no se eligió. Un módulo que aún tiene colores fijos (sin variables)
+ *  debe poner <html data-tema="claro"> hasta migrarlos.
+ *  ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+/* ============================================================
+ *  Tema: variables de color (modo claro y modo oscuro)
+ *  ------------------------------------------------------------
+ *  Todo el CSS usa estas variables; ningún color va escrito fijo.
+ *  - Claro: valores originales del panel.
+ *  - Oscuro: <html data-tema="oscuro">, o el sistema en oscuro si el
+ *    usuario no eligió (header.php aplica la preferencia guardada).
+ *  Contraste mínimo de texto AA (4.5:1) en ambos modos.
+ *  ============================================================ */
+:root {
+    color-scheme: light;
+    /* "Talavera": azul cobalto sobre blanco. Los neutros llevan un tinte azul
+       frío y la tinta es azul marino, no casi negro. */
+    --fondo:        #f3f6fb;
+    --superficie:   #ffffff;
+    --superficie-2: #f8fafd;
+    --superficie-3: #ebf0f8;
+    --borde:        #dbe3f0;
+    --borde-fuerte: #c2cee3;
+    --barra:        rgba(243, 246, 251, 0.92);
+    --marco-imagen: #ffffff;
+    --filtro-imagen: none;
+
+    --texto:   #14213d;
+    --texto-2: #3c4a66;
+    --texto-3: #56637e;
+    --texto-4: #8f9ab0;
+
+    --acento:              #1d3f9a;
+    --acento-hover:        #152f78;
+    --acento-texto:        #1d3f9a;
+    --acento-texto-fuerte: #13296a;
+    --acento-suave:        #e9effa;
+    --acento-suave-2:      #d8e2f6;
+    --acento-borde:        #a9bde6;
+    --acento-medio:        #5577c7;
+    --indigo-texto:        #1e3a8a;
+    --indigo-suave:        #e6ecfa;
+    --foco:                #5577c7;
+
+    /* Fondos de estado un poco más tintados para que se lean como en oscuro.
+       Los textos de estado se oscurecieron para seguir en AA (4.5:1). */
+    --ok:            #16a34a;
+    --ok-texto:      #166534;
+    --ok-suave:      #e3f4e9;
+    --ok-borde:      #a9dcbb;
+    --peligro:       #dc2626;
+    --peligro-texto: #b91c1c;
+    --peligro-suave: #fce7e7;
+    --peligro-borde: #f3b9b9;
+    --peligro-hover:       #b91c1c;
+    --peligro-suave-hover: #f9d8d8;
+    --peligro-borde-hover: #ec9a9a;
+    --ok-suave-hover:      #d2ecdc;
+    --ok-borde-hover:      #86cfa0;
+    --aviso:         #f59e0b;
+    --aviso-texto:   #9a4a07;
+    --aviso-suave:   #fcf0d4;
+    --aviso-borde:   #f1d083;
+
+    /* Estilo táctil: bordes y sombras sólidas. En claro es azul marino;
+       en oscuro, un azul grisáceo más claro que el fondo, para que el
+       relieve no se pierda. */
+    --tinta:              #14286b;
+    --sombra-suave:       0 1px 3px rgba(20, 40, 107, 0.10);
+    --sombra-tactil:      3px 3px 0 var(--tinta);
+    --sombra-tactil-alta: 5px 5px 0 var(--tinta);
+    --sombra-tactil-max:  7px 7px 0 var(--tinta);
+
+    --fuente-texto:  'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --fuente-titulo: 'Bricolage Grotesque', 'IBM Plex Sans', system-ui, sans-serif;
+    --fuente-dato:   'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+}
+
+/* Valores oscuros: se repiten en dos selectores para cubrir
+   "elegido oscuro" y "sistema en oscuro sin elección". */
+:root[data-tema="oscuro"] {
+    color-scheme: dark;
+    --fondo:        #0a1020;
+    --superficie:   #111a2e;
+    --superficie-2: #152038;
+    --superficie-3: #1b2843;
+    --borde:        #26355a;
+    --borde-fuerte: #36497a;
+    --barra:        rgba(17, 26, 46, 0.92);
+    --marco-imagen: #e6e8ec;
+    --filtro-imagen: brightness(0.92);
+
+    --texto:   #e8eaef;
+    --texto-2: #c4cbd9;
+    --texto-3: #9aa5bb;
+    --texto-4: #6b7590;
+
+    --acento:              #2f5bd3;
+    --acento-hover:        #244bb8;
+    --acento-texto:        #9db8ff;
+    --acento-texto-fuerte: #c6d5ff;
+    --acento-suave:        #13203f;
+    --acento-suave-2:      #1a2c55;
+    --acento-borde:        #34508f;
+    --acento-medio:        #6f8fe0;
+    --indigo-texto:        #b7c6ff;
+    --indigo-suave:        #172447;
+    --foco:                #2f5bd3;
+
+    --ok:            #22c55e;
+    --ok-texto:      #4ade80;
+    --ok-suave:      #0f2418;
+    --ok-borde:      #1d4630;
+    --peligro:       #dc2626;
+    --peligro-texto: #f87171;
+    --peligro-suave: #2a1416;
+    --peligro-borde: #5c2227;
+    --peligro-hover:       #b91c1c;
+    --peligro-suave-hover: #3a1a1d;
+    --peligro-borde-hover: #7a2e33;
+    --ok-suave-hover:      #143322;
+    --ok-borde-hover:      #2a6342;
+    --aviso:         #f59e0b;
+    --aviso-texto:   #fbbf24;
+    --aviso-suave:   #271f0d;
+    --aviso-borde:   #5a4413;
+    --tinta:         #3d5288;
+    --sombra-suave:  0 1px 3px rgba(0, 0, 0, 0.40);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+        color-scheme: dark;
+        --fondo:        #0a1020;
+        --superficie:   #111a2e;
+        --superficie-2: #152038;
+        --superficie-3: #1b2843;
+        --borde:        #26355a;
+        --borde-fuerte: #36497a;
+        --barra:        rgba(17, 26, 46, 0.92);
+        --marco-imagen: #e6e8ec;
+        --filtro-imagen: brightness(0.92);
+
+        --texto:   #e8eaef;
+        --texto-2: #c4cbd9;
+        --texto-3: #9aa5bb;
+        --texto-4: #6b7590;
+
+        --acento:              #2f5bd3;
+        --acento-hover:        #244bb8;
+        --acento-texto:        #9db8ff;
+        --acento-texto-fuerte: #c6d5ff;
+        --acento-suave:        #13203f;
+        --acento-suave-2:      #1a2c55;
+        --acento-borde:        #34508f;
+        --acento-medio:        #6f8fe0;
+        --indigo-texto:        #b7c6ff;
+        --indigo-suave:        #172447;
+        --foco:                #2f5bd3;
+
+        --ok:            #22c55e;
+        --ok-texto:      #4ade80;
+        --ok-suave:      #0f2418;
+        --ok-borde:      #1d4630;
+        --peligro:       #dc2626;
+        --peligro-texto: #f87171;
+        --peligro-suave: #2a1416;
+        --peligro-borde: #5c2227;
+        --peligro-hover:       #b91c1c;
+        --peligro-suave-hover: #3a1a1d;
+        --peligro-borde-hover: #7a2e33;
+        --ok-suave-hover:      #143322;
+        --ok-borde-hover:      #2a6342;
+        --aviso:         #f59e0b;
+        --aviso-texto:   #fbbf24;
+        --aviso-suave:   #271f0d;
+        --aviso-borde:   #5a4413;
+        --tinta:         #3d5288;
+        --sombra-suave:  0 1px 3px rgba(0, 0, 0, 0.40);
+    }
+}
+
+
+/* ============================================================
+ *  3. Piel táctil
+ *  ============================================================ */
+
+/* ---------- Tipografía ---------- */
+body { font-family: var(--fuente-texto); }
+h1, h2, h3,
+.kpi-value, .section-title, .caja-numero, .cajero-name,
+.producto-card-pie strong, .catalogo-precio strong, .cajero-stats-valores strong {
+    font-family: var(--fuente-titulo);
+    letter-spacing: -0.01em;
+}
+h1 { font-weight: 800; }
+.kpi-label, .cajero-stats-titulo, .segmentado-conteo, .tabla-productos th {
+    font-family: var(--fuente-dato);
+    letter-spacing: 0.04em;
+}
+
+/* ---------- Botones: se elevan al pasar el cursor y se hunden al presionar ---------- */
+.btn,
+.metodo-btn,
+.btn-salir,
+.tema-boton,
+.idioma > summary,
+.back-link,
+.header .user-info > button:not(.tema-boton) {
+    border: 2px solid var(--tinta);
+    box-shadow: var(--sombra-tactil);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
+}
+.btn:hover:not(:disabled),
+.metodo-btn:hover,
+.btn-salir:hover,
+.tema-boton:hover,
+.idioma > summary:hover,
+.back-link:hover,
+.header .user-info > button:not(.tema-boton):hover {
+    border-color: var(--tinta);
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--tinta);
+}
+.btn:active:not(:disabled),
+.metodo-btn:active,
+.btn-salir:active,
+.tema-boton:active,
+.idioma > summary:active,
+.back-link:active,
+.header .user-info > button:not(.tema-boton):active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 var(--tinta);
+}
+.btn:disabled { box-shadow: none; transform: none; }
+.btn-sm { box-shadow: 2px 2px 0 var(--tinta); }
+.btn-sm:hover:not(:disabled) { box-shadow: 3px 3px 0 var(--tinta); }
+
+/* Variantes: el color de fondo se conserva; el borde siempre es tinta */
+.btn-primary { background: var(--acento); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--acento-hover); }
+.btn-ghost { background: var(--superficie); color: var(--texto); }
+.btn-ghost:hover:not(:disabled) { background: var(--superficie-2); }
+.btn-warning { background: var(--aviso-suave); color: var(--aviso-texto); }
+
+/* ---------- Superficies: tarjetas, paneles y modales ---------- */
+.panel,
+.hero,
+.kpi,
+.card,
+.producto-card,
+.cajero-card,
+.caja-card,
+.ficha,
+.desglose,
+.catalogo-panel,
+.alert,
+.modal-box,
+.select-custom-panel,
+.idioma-menu {
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    box-shadow: var(--sombra-tactil-alta);
+}
+.modal-box { box-shadow: var(--sombra-tactil-max); }
+/* Desglose que está agrupando la tabla de ventas */
+.desglose.is-activo { border-color: var(--acento); box-shadow: 5px 5px 0 var(--acento); }
+.alert { box-shadow: var(--sombra-tactil); }
+
+/* KPI: el color de fondo dice qué tipo de dato es (antes era una franja a la izquierda) */
+.kpi.kpi--danger, .kpi.kpi--warn, .kpi.kpi--ok { border-color: var(--tinta); }
+.kpi--danger { background: var(--peligro-suave); }
+.kpi--warn   { background: var(--aviso-suave); }
+.kpi--ok     { background: var(--ok-suave); }
+.card { border-left-width: 2px; }
+
+/* Las tarjetas que llevan a otra página se elevan y se hunden como los botones */
+a.producto-card, .card:not(.card--static), .kpi--link, .cajero-card, .caja-card,
+.producto-card:has(button) {
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
+}
+a.producto-card:hover, .card:not(.card--static):hover, .kpi--link:hover,
+.cajero-card:hover, .caja-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--sombra-tactil-max);
+    border-color: var(--tinta);
+}
+a.producto-card:active, .card:not(.card--static):active, .kpi--link:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 var(--tinta);
+}
+/* Productos fuera de la sucursal: punteados y planos, para que se lean "ausentes" */
+.producto-card.is-fuera { border-style: dashed; box-shadow: none; }
+.producto-card.is-fuera:hover { transform: none; box-shadow: none; }
+.producto-card-imagen, .producto-card-img { border-bottom: 2px solid var(--tinta); }
+
+/* ---------- Campos ---------- */
+.form-group input:not([type="checkbox"]):not([type="radio"]),
+.form-group select,
+.form-group textarea,
+.toolbar input,
+.ventas-rango input[type="date"],
+.select-custom-trigger,
+.input-buscar input {
+    border: 2px solid var(--tinta);
+    border-radius: 10px;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.toolbar input:focus,
+.ventas-rango input[type="date"]:focus,
+.select-custom.is-open .select-custom-trigger,
+.select-custom-trigger:focus-visible,
+.input-buscar input:focus {
+    border-color: var(--tinta);
+    box-shadow: 3px 3px 0 var(--foco);
+    outline: none;
+}
+
+/* ---------- Insignias y pestañas ---------- */
+.badge { border: 1.5px solid currentColor; }
+.segmentado {
+    border: 2px solid var(--tinta);
+    border-radius: 12px;
+    box-shadow: var(--sombra-tactil);
+}
+.segmentado a, .segmentado button { border-left-color: var(--tinta); }
+.segmentado a.is-activo, .segmentado button.is-activo {
+    background: var(--acento);
+    color: #fff;
+    box-shadow: inset 0 -3px 0 var(--tinta);
+}
+
+/* ---------- Encabezado y tablas ---------- */
+.header { border-bottom: 2px solid var(--tinta); }
+.tabla-productos th { border-bottom: 2px solid var(--tinta); }
+
+/* ---------- Entrada: las tarjetas "caen" en su lugar al cargar ---------- */
+.kpi, .producto-card, .cajero-card, .caja-card, .card {
+    animation: koaly-caer 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.kpi:nth-child(2), .producto-card:nth-child(2), .cajero-card:nth-child(2), .caja-card:nth-child(2), .card:nth-child(2) { animation-delay: 0.04s; }
+.kpi:nth-child(3), .producto-card:nth-child(3), .cajero-card:nth-child(3), .caja-card:nth-child(3), .card:nth-child(3) { animation-delay: 0.08s; }
+.kpi:nth-child(4), .producto-card:nth-child(4), .cajero-card:nth-child(4), .caja-card:nth-child(4), .card:nth-child(4) { animation-delay: 0.12s; }
+@keyframes koaly-caer {
+    from { transform: translateY(12px) scale(0.97); opacity: 0.001; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .kpi, .producto-card, .cajero-card, .caja-card, .card { animation: none; }
+    .btn, .metodo-btn, .btn-salir, .tema-boton, .idioma > summary, .back-link,
+    a.producto-card, .card, .kpi--link, .cajero-card, .caja-card { transition: none; }
+}

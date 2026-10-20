@@ -623,7 +623,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* ---------- Cursor personalizado ---------- */
-        // Punto morado que sigue al mouse (como en el panel de gerente). Solo con
+        // Punto azul que sigue al mouse (como en el panel de gerente). Solo con
         // mouse; en pantallas táctiles se queda el cursor normal.
         function initCustomCursor() {
             if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;

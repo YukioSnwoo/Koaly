@@ -4,158 +4,8 @@
  *  ============================================================ */
 
 
-/* ============================================================
- *  Tema: variables de color (modo claro y modo oscuro)
- *  ------------------------------------------------------------
- *  Todo el CSS usa estas variables; ningún color va escrito fijo.
- *  - Claro: valores originales del panel.
- *  - Oscuro: <html data-tema="oscuro">, o el sistema en oscuro si el
- *    usuario no eligió (header.php aplica la preferencia guardada).
- *  Contraste mínimo de texto AA (4.5:1) en ambos modos.
- *  ============================================================ */
-:root {
-    color-scheme: light;
-    --fondo:        #f5f6f8;
-    --superficie:   #ffffff;
-    --superficie-2: #f8fafc;
-    --superficie-3: #f1f5f9;
-    --borde:        #e2e8f0;
-    --borde-fuerte: #cbd5e1;
-    --barra:        rgba(255, 255, 255, 0.92);
-    --marco-imagen: #ffffff;
-    --filtro-imagen: none;
-
-    --texto:   #1e293b;
-    --texto-2: #475569;
-    --texto-3: #64748b;
-    --texto-4: #94a3b8;
-
-    --acento:              #7c3aed;
-    --acento-hover:        #6d28d9;
-    --acento-texto:        #6d28d9;
-    --acento-texto-fuerte: #5b21b6;
-    --acento-suave:        #f5f3ff;
-    --acento-suave-2:      #ede9fe;
-    --acento-borde:        #c4b5fd;
-    --acento-medio:        #a78bfa;
-    --indigo-texto:        #4338ca;
-    --indigo-suave:        #eef2ff;
-
-    --ok:            #16a34a;
-    --ok-texto:      #15803d;
-    --ok-suave:      #f0fdf4;
-    --ok-borde:      #bbf7d0;
-    --peligro:       #dc2626;
-    --peligro-texto: #b91c1c;
-    --peligro-suave: #fef2f2;
-    --peligro-borde: #fecaca;
-    --peligro-hover:       #b91c1c;
-    --peligro-suave-hover: #fee2e2;
-    --peligro-borde-hover: #fca5a5;
-    --ok-suave-hover:      #dcfce7;
-    --ok-borde-hover:      #86efac;
-    --aviso:         #f59e0b;
-    --aviso-texto:   #b45309;
-    --aviso-suave:   #fffbeb;
-    --aviso-borde:   #fde68a;
-}
-
-/* Valores oscuros: se repiten en dos selectores para cubrir
-   "elegido oscuro" y "sistema en oscuro sin elección". */
-:root[data-tema="oscuro"] {
-    color-scheme: dark;
-    --fondo:        #0e1116;
-    --superficie:   #161a21;
-    --superficie-2: #1b2029;
-    --superficie-3: #212733;
-    --borde:        #2a313d;
-    --borde-fuerte: #3b4352;
-    --barra:        rgba(22, 26, 33, 0.92);
-    --marco-imagen: #e6e8ec;
-    --filtro-imagen: brightness(0.92);
-
-    --texto:   #e8eaef;
-    --texto-2: #c4c9d3;
-    --texto-3: #9ba3b2;
-    --texto-4: #6b7385;
-
-    --acento:              #7c3aed;
-    --acento-hover:        #6d28d9;
-    --acento-texto:        #b9a6ff;
-    --acento-texto-fuerte: #d4c8ff;
-    --acento-suave:        #211b35;
-    --acento-suave-2:      #2c2449;
-    --acento-borde:        #5c4b9e;
-    --acento-medio:        #8f7ae8;
-    --indigo-texto:        #b7bfff;
-    --indigo-suave:        #1f2340;
-
-    --ok:            #22c55e;
-    --ok-texto:      #4ade80;
-    --ok-suave:      #0f2418;
-    --ok-borde:      #1d4630;
-    --peligro:       #dc2626;
-    --peligro-texto: #f87171;
-    --peligro-suave: #2a1416;
-    --peligro-borde: #5c2227;
-    --peligro-hover:       #b91c1c;
-    --peligro-suave-hover: #3a1a1d;
-    --peligro-borde-hover: #7a2e33;
-    --ok-suave-hover:      #143322;
-    --ok-borde-hover:      #2a6342;
-    --aviso:         #f59e0b;
-    --aviso-texto:   #fbbf24;
-    --aviso-suave:   #271f0d;
-    --aviso-borde:   #5a4413;
-}
-@media (prefers-color-scheme: dark) {
-    :root:not([data-tema="claro"]) {
-        color-scheme: dark;
-        --fondo:        #0e1116;
-        --superficie:   #161a21;
-        --superficie-2: #1b2029;
-        --superficie-3: #212733;
-        --borde:        #2a313d;
-        --borde-fuerte: #3b4352;
-        --barra:        rgba(22, 26, 33, 0.92);
-        --marco-imagen: #e6e8ec;
-        --filtro-imagen: brightness(0.92);
-
-        --texto:   #e8eaef;
-        --texto-2: #c4c9d3;
-        --texto-3: #9ba3b2;
-        --texto-4: #6b7385;
-
-        --acento:              #7c3aed;
-        --acento-hover:        #6d28d9;
-        --acento-texto:        #b9a6ff;
-        --acento-texto-fuerte: #d4c8ff;
-        --acento-suave:        #211b35;
-        --acento-suave-2:      #2c2449;
-        --acento-borde:        #5c4b9e;
-        --acento-medio:        #8f7ae8;
-        --indigo-texto:        #b7bfff;
-        --indigo-suave:        #1f2340;
-
-        --ok:            #22c55e;
-        --ok-texto:      #4ade80;
-        --ok-suave:      #0f2418;
-        --ok-borde:      #1d4630;
-        --peligro:       #dc2626;
-        --peligro-texto: #f87171;
-        --peligro-suave: #2a1416;
-        --peligro-borde: #5c2227;
-    --peligro-hover:       #b91c1c;
-    --peligro-suave-hover: #3a1a1d;
-    --peligro-borde-hover: #7a2e33;
-    --ok-suave-hover:      #143322;
-    --ok-borde-hover:      #2a6342;
-        --aviso:         #f59e0b;
-        --aviso-texto:   #fbbf24;
-        --aviso-suave:   #271f0d;
-        --aviso-borde:   #5a4413;
-    }
-}
+/* Los colores (modo claro y oscuro), las fuentes y el estilo táctil de los
+   componentes están en ../estilos/koaly.css, compartido con el cajero. */
 
 /* Fotos de producto: en oscuro se atenúan un poco para no deslumbrar */
 .producto-card-imagen img, .ficha-imagen img, .producto-thumb { filter: var(--filtro-imagen); }
@@ -172,7 +22,7 @@ html { -webkit-text-size-adjust: 100%; }
  *   texto tenue      #64748b   4.8:1  ← lo más claro permitido para TEXTO
  *   #94a3b8 (2.6:1) solo para bordes, iconos decorativos y placeholders.
  *   Verde de texto #15803d (5.0:1); #16a34a solo para fondos/bordes.
- *   El morado es acento: botones principales, selección y marca. */
+ *   El azul cobalto es acento: botones principales, selección y marca. */
 body {
     /* Fuente del sistema: Segoe UI en Windows, San Francisco en Mac/iOS,
        Roboto en Android, Cantarell/Ubuntu en Linux. */
@@ -200,8 +50,8 @@ button { font: inherit; }
  *  Layout
  *  ============================================================ */
 .header {
-    /* Barra clara: el morado sólido era la mayor superficie saturada de la
-       pantalla y siempre estaba a la vista. Ahora solo la marca es morada. */
+    /* Barra clara: el color sólido era la mayor superficie saturada de la
+       pantalla y siempre estaba a la vista. Ahora solo la marca lleva color. */
     background: var(--barra);
     backdrop-filter: saturate(1.4) blur(8px);
     color: var(--texto);
@@ -261,7 +111,7 @@ button { font: inherit; }
     background: var(--superficie-2);
     border-color: var(--borde-fuerte);
     color: var(--acento-texto);
-    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.10);
+    box-shadow: 0 4px 10px rgba(29, 63, 154, 0.10);
     transform: translateX(-2px);
 }
 .back-link:active {
@@ -307,8 +157,8 @@ button { font: inherit; }
 }
 .btn:active { transform: translateY(1px); }
 
-.btn-primary { background: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(124,58,237,0.3); }
-.btn-primary:hover { background: var(--acento-hover); box-shadow: 0 4px 12px rgba(124,58,237,0.35); }
+.btn-primary { background: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(29,63,154,0.3); }
+.btn-primary:hover { background: var(--acento-hover); box-shadow: 0 4px 12px rgba(29,63,154,0.35); }
 
 .btn-ghost { background: var(--superficie); color: var(--texto-2); border-color: var(--borde); }
 .btn-ghost:hover { background: var(--superficie-2); border-color: var(--borde-fuerte); }
@@ -374,7 +224,7 @@ button { font: inherit; }
 .modal-overlay {
     display: none;
     position: fixed; inset: 0;
-    background: rgba(15, 23, 42, 0.55);
+    background: rgba(10, 20, 50, 0.55);
     backdrop-filter: blur(2px);
     align-items: center; justify-content: center;
     z-index: 100; padding: 1rem;
@@ -416,6 +266,9 @@ button { font: inherit; }
     margin-bottom: 0.35rem; font-weight: 600;
 }
 .form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="date"],
 .form-group input[type="number"],
 .form-group input[type="file"],
 .form-group select,
@@ -430,7 +283,7 @@ button { font: inherit; }
 .form-group select:focus,
 .form-group textarea:focus {
     border-color: var(--acento);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
     outline: none;
 }
 .form-group textarea { resize: vertical; min-height: 70px; }
@@ -489,8 +342,8 @@ button { font: inherit; }
         border-radius: 50%;
         background: var(--acento);
         border: 2px solid var(--superficie);
-        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.45),
-        0 4px 12px rgba(124, 58, 237, 0.35);
+        box-shadow: 0 0 0 2px rgba(29, 63, 154, 0.45),
+        0 4px 12px rgba(29, 63, 154, 0.35);
         pointer-events: none;
         z-index: 99999;
         transform: translate(-50%, -50%);
@@ -501,9 +354,9 @@ button { font: inherit; }
     .cursor-dot.is-hover {
         width: 28px;
         height: 28px;
-        background: #8b5cf6;
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.35),
-        0 6px 18px rgba(124, 58, 237, 0.45);
+        background: #5577c7;
+        box-shadow: 0 0 0 3px rgba(85, 119, 199, 0.35),
+        0 6px 18px rgba(29, 63, 154, 0.45);
     }
 }
 
@@ -515,6 +368,8 @@ button { font: inherit; }
     .header { padding: 0.85rem 1rem; }
     .header h1 { font-size: 1.05rem; }
     .header .user-info span { display: none; }
+    .header .user-info { gap: 0.6rem; }
+    .header .header-sub { display: none; } /* sin esto "Cerrar sesión" se salía de la pantalla */
 
     .container { margin: 1.25rem auto; }
 
