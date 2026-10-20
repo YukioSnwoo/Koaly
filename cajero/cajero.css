@@ -50,6 +50,38 @@ button { font: inherit; }
     display: flex; align-items: center; justify-content: center;
     transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
+/* Selector de idioma (mismo que el gerente; el relieve lo pone koaly.css) */
+.idioma { position: relative; }
+.idioma > summary {
+    list-style: none;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    height: 38px; padding: 0 0.65rem;
+    border-radius: 10px; background: var(--superficie);
+    color: var(--texto-2); font-weight: 600; font-size: 0.85rem;
+    cursor: pointer; user-select: none;
+}
+.idioma > summary::-webkit-details-marker { display: none; }
+.idioma > summary:hover { background: var(--acento-suave); color: var(--acento-texto); }
+.idioma-menu {
+    position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+    min-width: 11rem;
+    background: var(--superficie);
+    padding: 0.35rem;
+    display: flex; flex-direction: column;
+}
+.idioma-menu button {
+    display: flex; align-items: center; gap: 0.6rem;
+    width: 100%; text-align: left;
+    padding: 0.55rem 0.7rem; border: 0; border-radius: 7px;
+    background: transparent; color: var(--texto); font-size: 0.9rem; cursor: pointer;
+}
+.idioma-menu button:hover { background: var(--acento-suave); }
+.idioma-menu button.is-activo { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); font-weight: 600; }
+.idioma-codigo {
+    font-size: 0.7rem; font-weight: 700; color: var(--acento-texto);
+    background: var(--acento-suave); border-radius: 4px; padding: 0.1rem 0.3rem;
+}
+
 .tema-boton {
     display: inline-grid; place-items: center;
     width: 38px; height: 38px; padding: 0;
@@ -145,11 +177,11 @@ button { font: inherit; }
 
 .search-results {
     position: absolute;
-    top: calc(100% + 4px); left: 0; right: 0;
+    top: calc(100% + 6px); left: 0; right: 0;
     background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: 10px;
-    box-shadow: 0 12px 24px rgba(34,28,51,0.12);
+    border: 2px solid var(--tinta);
+    border-radius: 12px;
+    box-shadow: var(--sombra-tactil-alta);
     z-index: 10;
     max-height: 280px;
     overflow-y: auto;
@@ -266,15 +298,16 @@ button { font: inherit; }
     width: 30px; height: 30px;
     align-items: center; justify-content: center;
     padding: 0;
-    border: 2px solid var(--superficie); border-radius: 50%;
-    background: var(--peligro); color: #fff;
-    box-shadow: 0 2px 6px rgba(220,38,38,0.4);
+    /* Botón táctil como los demás: borde y sombra de tinta, fondo rojo suave */
+    border: 2px solid var(--tinta); border-radius: 9px;
+    background: var(--peligro-suave); color: var(--peligro-texto);
+    box-shadow: 2px 2px 0 var(--tinta);
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
 }
 .producto-card-restar svg { width: 16px; height: 16px; }
-.producto-card-restar:hover { background: var(--peligro-hover); transform: scale(1.08); }
-.producto-card-restar:active { transform: scale(0.92); }
+.producto-card-restar:hover { background: var(--peligro); color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--tinta); }
+.producto-card-restar:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--tinta); }
 .producto-card.en-venta .producto-card-restar { display: flex; }
 /* En la venta: borde y sombra morados, como el desglose activo del gerente */
 .producto-card.en-venta { border-color: var(--acento); box-shadow: 5px 5px 0 var(--acento); }
@@ -290,6 +323,10 @@ button { font: inherit; }
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
 }
+.producto-card .producto-card-img { border: 1.5px solid var(--borde); }
+/* Fotos sobre el mismo marco claro que usa el gerente: en oscuro no se ve el fondo transparente */
+.producto-card-img:has(img) { background: var(--marco-imagen); }
+.producto-card-img img { filter: var(--filtro-imagen); }
 .producto-card-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .producto-card-img svg { width: 40px; height: 40px; color: var(--borde-fuerte); }
 
@@ -310,12 +347,12 @@ button { font: inherit; }
 .producto-card-cantidad {
     display: none;
     position: absolute; top: 0.4rem; right: 0.4rem;
-    min-width: 1.9rem;
-    padding: 0.1rem 0.45rem;
-    border-radius: 999px;
+    min-width: 2.1rem;
+    padding: 0.05rem 0.45rem;
+    border: 2px solid var(--tinta); border-radius: 999px;
     background: var(--acento); color: #fff;
-    font-size: 0.75rem; font-weight: 700; text-align: center;
-    box-shadow: 0 2px 6px rgba(124,58,237,0.35);
+    font-size: 0.75rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+    box-shadow: 2px 2px 0 var(--tinta);
 }
 .producto-card.en-venta .producto-card-cantidad { display: block; }
 
@@ -345,7 +382,7 @@ button { font: inherit; }
     flex: 1; min-height: 0;
     overflow: auto;
     margin-top: 0.75rem;
-    border: 1px solid var(--borde); border-radius: 10px;
+    border: 2px solid var(--tinta); border-radius: 12px;
 }
 .modal-lista .modal-actions { justify-content: space-between; align-items: center; }
 .lista-total { font-size: 0.95rem; font-weight: 600; color: var(--texto-2); }
@@ -385,13 +422,13 @@ table.tabla-venta th.col-num { text-align: right; }
 /* Selector de cantidad [−] [n] [+] */
 .qty-stepper {
     display: inline-flex; align-items: stretch;
-    border: 1px solid var(--borde); border-radius: 8px;
+    border: 2px solid var(--tinta); border-radius: 10px;
     background: var(--superficie); overflow: hidden;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: 2px 2px 0 var(--tinta);
+    transition: box-shadow 0.15s;
 }
 .qty-stepper:focus-within {
-    border-color: var(--acento);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    box-shadow: 3px 3px 0 var(--foco);
 }
 .qty-btn {
     width: 32px; min-height: 34px;
@@ -411,7 +448,7 @@ table.tabla-venta th.col-num { text-align: right; }
     padding: 0.35rem 0.25rem;
     text-align: center;
     border: none;
-    border-left: 1px solid var(--borde); border-right: 1px solid var(--borde);
+    border-left: 2px solid var(--tinta); border-right: 2px solid var(--tinta);
     font-size: 0.95rem; font-weight: 700; color: var(--texto);
     background: transparent;
     -moz-appearance: textfield; appearance: textfield;
@@ -450,8 +487,8 @@ table.tabla-venta tbody tr.removing { animation: filaSalida 0.2s ease-in forward
     font-size: 0.72rem; font-weight: 700;
     vertical-align: middle; white-space: nowrap;
 }
-.stock-bajo { background: var(--aviso-suave); color: var(--aviso-texto); border: 1px solid var(--aviso-borde); }
-.stock-agotado { background: var(--peligro-suave); color: var(--peligro-texto); border: 1px solid var(--peligro-borde); }
+.stock-bajo { background: var(--aviso-suave); color: var(--aviso-texto); border: 1.5px solid currentColor; }
+.stock-agotado { background: var(--peligro-suave); color: var(--peligro-texto); border: 1.5px solid currentColor; }
 table.tabla-venta tbody tr.fila-sin-stock { background: var(--peligro-suave); box-shadow: inset 4px 0 0 var(--peligro); }
 table.tabla-venta tbody tr.fila-sin-stock.selected { background: var(--peligro-suave-hover); }
 .qty-btn.qty-tope { color: var(--borde-fuerte); }
@@ -535,9 +572,12 @@ kbd {
     display: flex; justify-content: space-between; align-items: baseline;
     margin-top: 0.5rem;
     padding: 0.9rem 1rem;
-    background: var(--acento-suave); border: 1px solid var(--acento-suave-2); border-radius: 10px;
+    background: var(--acento-suave);
+    border: 2px solid var(--tinta); border-radius: 12px;
+    box-shadow: var(--sombra-tactil);
     font-weight: 700; color: var(--acento-texto);
 }
+.resumen-total span:last-child { font-family: var(--fuente-titulo); }
 .resumen-total span:last-child { font-size: 1.4rem; }
 
 /* ============================================================
@@ -586,10 +626,17 @@ kbd {
 }
 .input-dinero {
     display: flex; align-items: center;
-    border: 1px solid var(--borde); border-radius: 8px;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    border: 2px solid var(--tinta); border-radius: 10px;
+    background: var(--superficie);
+    transition: box-shadow 0.15s;
 }
-.input-dinero:focus-within { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+.input-dinero:focus-within { box-shadow: 3px 3px 0 var(--foco); }
+/* El campo va dentro del marco: sin el borde que koaly.css pone a los campos de .form-group */
+.form-group .input-dinero input:not([type="checkbox"]):not([type="radio"]) { border: none; border-radius: 0; }
+.form-group .input-dinero input:focus { box-shadow: none; }
+.input-dinero input { -moz-appearance: textfield; appearance: textfield; }
+.input-dinero input::-webkit-outer-spin-button,
+.input-dinero input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .input-dinero span { padding: 0 0 0 0.9rem; color: var(--texto-3); font-weight: 600; font-size: 1.1rem; }
 .input-dinero input {
     flex: 1; min-width: 0;
@@ -605,7 +652,9 @@ kbd {
     text-align: center;
     padding: 1.25rem;
     margin: 0.75rem 0 0.25rem;
-    background: var(--ok-suave); border: 1px solid var(--ok-borde); border-radius: 12px;
+    background: var(--ok-suave);
+    border: 2px solid var(--tinta); border-radius: 12px;
+    box-shadow: var(--sombra-tactil);
 }
 .cambio-resultado .cambio-label { font-size: 0.85rem; color: var(--ok-texto); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .cambio-resultado .cambio-monto { font-size: 2.2rem; font-weight: 700; color: var(--ok-texto); line-height: 1.2; }
@@ -684,10 +733,10 @@ kbd {
 .toast {
     max-width: 340px;
     padding: 0.7rem 1rem 0.7rem 0.9rem;
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--superficie); color: var(--texto);
-    border: 1px solid var(--borde); border-left-width: 4px;
-    box-shadow: 0 10px 25px rgba(34,28,51,0.15);
+    border: 2px solid var(--tinta); border-left-width: 6px;
+    box-shadow: var(--sombra-tactil);
     font-size: 0.88rem; font-weight: 600;
     animation: toastEntrada 0.25s ease-out;
 }
