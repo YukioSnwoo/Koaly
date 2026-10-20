@@ -60,6 +60,7 @@ return [
     'metodo_pago.Tarjeta Credito' => 'Credit card',
     'metodo_pago.Tarjeta Debito' => 'Debit card',
     'metodo_pago.Transferencia' => 'Bank transfer',
+    'metodo_pago.Varios' => 'Mixed (cash and card)',
 
     // categoria (valores de la tabla Categorias)
     'categoria.Bebidas' => 'Beverages',

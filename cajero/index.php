@@ -61,7 +61,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             </button>
             <div class="user-datos">
                 <span class="user-nombre" id="userName"><?= e(t('caja.cajero')) ?></span>
-                <span class="user-sucursal"><span data-i18n="caja.sucursal" data-i18n="caja.sucursal"><?= e(t('caja.sucursal')) ?></span>: <span id="sucursalName">-</span></span>
+                <span class="user-sucursal"><span data-i18n="caja.sucursal"><?= e(t('caja.sucursal')) ?></span>: <span id="sucursalName">-</span></span>
             </div>
             <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
         </div>
@@ -102,7 +102,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             </div>
             <div class="catalogo-pie">
                 <button type="button" class="btn btn-ghost btn-lista" onclick="abrirLista()">
-                    <span data-i18n="lista.titulo" data-i18n="lista.titulo"><?= e(t('lista.titulo')) ?></span> <span class="contador-lista" id="contadorLista">0</span>
+                    <span data-i18n="lista.titulo"><?= e(t('lista.titulo')) ?></span> <span class="contador-lista" id="contadorLista">0</span>
                 </button>
             </div>
         </section>
@@ -164,7 +164,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 </table>
             </div>
             <div class="modal-actions">
-                <span class="lista-total"><span data-i18n="comun.total" data-i18n="comun.total"><?= e(t('comun.total')) ?></span> <strong id="listaTotal">$0.00</strong></span>
+                <span class="lista-total"><span data-i18n="comun.total"><?= e(t('comun.total')) ?></span> <strong id="listaTotal">$0.00</strong></span>
                 <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
             </div>
         </div>
@@ -192,8 +192,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
             <div class="modal-total" id="modalTotal">$0.00</div>
             <div class="metodos-pago">
-                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span class="metodo-icono" aria-hidden="true">💵</span><span data-i18n="pago.efectivo" data-i18n="pago.efectivo"><?= e(t('pago.efectivo')) ?></span></button>
-                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span class="metodo-icono" aria-hidden="true">💳</span><span data-i18n="pago.tarjeta" data-i18n="pago.tarjeta"><?= e(t('pago.tarjeta')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="abrirModalEfectivo()"><span class="metodo-icono" aria-hidden="true">💵</span><span data-i18n="pago.efectivo"><?= e(t('pago.efectivo')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="pagarConTarjeta()"><span class="metodo-icono" aria-hidden="true">💳</span><span data-i18n="pago.tarjeta"><?= e(t('pago.tarjeta')) ?></span></button>
+                <button type="button" class="metodo-btn" onclick="abrirModalVarios()"><span class="metodo-icono" aria-hidden="true">💵💳</span><span data-i18n="pago.varios"><?= e(t('pago.varios')) ?></span></button>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalPago')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
@@ -222,6 +223,41 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         </div>
     </div>
 
+    <!-- Modal: pago combinado (una parte con tarjeta y el resto en efectivo, con cambio) -->
+    <div class="modal-overlay" id="modalVarios" role="dialog" aria-modal="true" aria-labelledby="tituloVarios">
+        <div class="modal-box">
+            <h2 id="tituloVarios" data-i18n="varios.titulo"><?= e(t('varios.titulo')) ?></h2>
+            <div class="modal-total-label" data-i18n="pago.total"><?= e(t('pago.total')) ?></div>
+            <div class="modal-total" id="variosTotal">$0.00</div>
+            <div class="form-group">
+                <label for="inputVariosEfectivo" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputVariosEfectivo" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+            <!-- Se llena sola con lo que falta después del efectivo, hasta que el cajero la escriba -->
+            <div class="form-group">
+                <label for="inputVariosTarjeta" data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputVariosTarjeta" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVariosTarjeta">
+                </div>
+                <div class="campo-error" id="errorVariosTarjeta"></div>
+            </div>
+            <!-- Desglose: lo capturado y, al final, lo que falta o el cambio -->
+            <div class="varios-resumen" aria-live="polite">
+                <div class="varios-fila"><span data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></span><span id="variosResEfectivo">$0.00</span></div>
+                <div class="varios-fila"><span data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></span><span id="variosResTarjeta">$0.00</span></div>
+                <div class="varios-fila varios-estado" id="variosEstado"><span id="variosEstadoEtiqueta"></span><span id="variosEstadoMonto"></span></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="volverAMetodos()" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCobrarVarios" onclick="cobrarVarios()" disabled data-i18n="efectivo.cobrar"><?= e(t('efectivo.cobrar')) ?></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: venta completada -->
     <div class="modal-overlay" id="modalVenta" role="dialog" aria-modal="true" aria-labelledby="tituloVenta">
         <div class="modal-box">
@@ -235,7 +271,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <div class="cambio-detalle" id="ventaCambioDetalle"></div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 <span data-i18n="venta.imprimir" data-i18n="venta.imprimir"><?= e(t('venta.imprimir')) ?></span></button>
+                <button type="button" class="btn btn-ghost" id="btnReimprimir" onclick="imprimirTicket(ultimoTicket)">🧾 <span data-i18n="venta.imprimir"><?= e(t('venta.imprimir')) ?></span></button>
                 <button type="button" class="btn btn-primary" id="btnFinalizarVenta" onclick="finalizarVenta()" data-i18n="comun.aceptar"><?= e(t('comun.aceptar')) ?></button>
             </div>
         </div>
@@ -1542,7 +1578,146 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function volverAMetodos() {
             cerrarModal('modalEfectivo');
+            cerrarModal('modalVarios');
             abrirModal('modalPago');
+        }
+
+        /* ---------- Pago combinado ---------- */
+        // Se captura lo de tarjeta y lo de efectivo, en cualquier orden, y se
+        // cobra en cuanto se cubre el total:
+        //  - tarjeta = total: todo con tarjeta (se ignora el efectivo)
+        //  - sin tarjeta y efectivo >= total: todo en efectivo, con cambio
+        //  - tarjeta parcial: el efectivo cubre el resto y el cambio sale de ahí
+        //    (cuenta $400, tarjeta $200, recibe $500 -> cambio $300)
+        // La tarjeta nunca pasa del total: no da cambio.
+        const inputVariosTarjeta = document.getElementById('inputVariosTarjeta');
+        const inputVariosEfectivo = document.getElementById('inputVariosEfectivo');
+
+        // Monto capturado en centavos; vacío o negativo cuenta como 0
+        const centavosDe = (input) => Math.max(0, aCentavos(parseFloat(input.value)) || 0);
+
+        function abrirModalVarios() {
+            cerrarModal('modalPago');
+            document.getElementById('variosTotal').innerText = formatoDinero(totalActual);
+            inputVariosTarjeta.value = '';
+            inputVariosEfectivo.value = '';
+            tarjetaManual = false;
+            actualizarVariosPreview();
+            abrirModal('modalVarios');
+            inputVariosEfectivo.focus();
+        }
+
+        // Lo de tarjeta se calcula solo con lo que falta después del efectivo
+        // (cuenta $257, efectivo $200 -> tarjeta $57) mientras el cajero no la
+        // escriba a mano; si la borra, vuelve a calcularse.
+        let tarjetaManual = false;
+
+        function autollenarTarjeta() {
+            if (tarjetaManual) return;
+            const total = aCentavos(totalActual);
+            const recibido = centavosDe(inputVariosEfectivo);
+            const sinEfectivo = inputVariosEfectivo.value.trim() === '';
+            inputVariosTarjeta.value = sinEfectivo || recibido >= total ? '' : ((total - recibido) / 100).toFixed(2);
+        }
+
+        // Cómo se cobra con lo capturado (montos en centavos), o null si no alcanza el total
+        function montosVarios() {
+            const total = aCentavos(totalActual);
+            const tarjeta = centavosDe(inputVariosTarjeta);
+            const recibido = centavosDe(inputVariosEfectivo);
+
+            if (tarjeta > total) return null;
+            if (tarjeta === total) return { metodo: 'Tarjeta' };
+            if (tarjeta === 0) {
+                return recibido >= total ? { metodo: 'Efectivo', recibido, cambio: recibido - total } : null;
+            }
+            const resto = total - tarjeta;
+            return recibido >= resto ? { metodo: 'Varios', tarjeta, recibido, cambio: recibido - resto } : null;
+        }
+
+        // Desglose en vivo: tarjeta, efectivo y, al final, "Restante" mientras no
+        // se cubra el total o "Cambio" cuando ya se cubrió
+        function actualizarVariosPreview() {
+            const total = aCentavos(totalActual);
+            const tarjeta = centavosDe(inputVariosTarjeta);
+            const recibido = centavosDe(inputVariosEfectivo);
+            const montos = montosVarios();
+            const excede = tarjeta > total;
+            const todoTarjeta = montos?.metodo === 'Tarjeta';
+
+            document.getElementById('btnCobrarVarios').disabled = montos === null;
+
+            // La tarjeta no puede pasar del total: el error va en su propio campo
+            inputVariosTarjeta.closest('.input-dinero').classList.toggle('con-error', excede);
+            document.getElementById('errorVariosTarjeta').textContent =
+                excede ? tr('varios.tarjeta_excede') : '';
+
+            document.getElementById('variosResTarjeta').textContent = formatoDinero(tarjeta / 100);
+            // Si la tarjeta cubre todo, el efectivo no se usa
+            document.getElementById('variosResEfectivo').textContent = formatoDinero((todoTarjeta ? 0 : recibido) / 100);
+
+            const estado = document.getElementById('variosEstado');
+            const etiqueta = document.getElementById('variosEstadoEtiqueta');
+            const monto = document.getElementById('variosEstadoMonto');
+            estado.hidden = excede;
+            estado.classList.toggle('is-restante', !montos && !excede);
+            estado.classList.toggle('is-cubierto', !!montos);
+
+            if (todoTarjeta) {
+                etiqueta.textContent = tr('varios.todo_tarjeta');
+                monto.textContent = '✓';
+            } else if (montos) {
+                etiqueta.textContent = tr('efectivo.cambio');
+                monto.textContent = formatoDinero(montos.cambio / 100);
+            } else {
+                etiqueta.textContent = tr('varios.restante');
+                monto.textContent = formatoDinero((total - tarjeta - recibido) / 100);
+            }
+        }
+
+        inputVariosEfectivo.addEventListener('input', () => {
+            autollenarTarjeta();
+            actualizarVariosPreview();
+        });
+        inputVariosTarjeta.addEventListener('input', () => {
+            tarjetaManual = inputVariosTarjeta.value.trim() !== '';
+            if (!tarjetaManual) autollenarTarjeta();
+            actualizarVariosPreview();
+        });
+
+        // Enter en el efectivo: si hay parte con tarjeta pasa a revisarla; si no, cobra.
+        // Enter en la tarjeta: cobra si ya se cubrió el total.
+        const puedeCobrarVarios = () => !document.getElementById('btnCobrarVarios').disabled;
+        inputVariosEfectivo.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (centavosDe(inputVariosTarjeta) > 0) {
+                inputVariosTarjeta.focus();
+                inputVariosTarjeta.select();
+            } else if (puedeCobrarVarios()) {
+                cobrarVarios();
+            }
+        });
+        inputVariosTarjeta.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (puedeCobrarVarios()) cobrarVarios();
+            else inputVariosEfectivo.focus();
+        });
+
+        async function cobrarVarios() {
+            if (cobrando) return;
+            const montos = montosVarios();
+            if (!montos) return;
+
+            bloquearCobro(true);
+            let venta;
+            if (montos.metodo === 'Tarjeta') venta = await registrarVenta('Tarjeta');
+            else if (montos.metodo === 'Efectivo') venta = await registrarVenta('Efectivo', montos.recibido / 100);
+            else venta = await registrarVenta('Varios', montos.recibido / 100, montos.tarjeta / 100);
+            bloquearCobro(false);
+            if (!venta) return;
+
+            cerrarModal('modalVarios');
+            mostrarVentaCompletada(montos.metodo, venta);
         }
 
         // Muestra en vivo cuánto falta o cuánto cambio hay que dar
@@ -1576,7 +1751,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         });
 
         // Guarda la venta en la BD. Devuelve la respuesta del servidor o null si falló.
-        async function registrarVenta(metodo, efectivoRecibido = null) {
+        async function registrarVenta(metodo, efectivoRecibido = null, montoTarjeta = null) {
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
             datos.append('metodo', metodo);
@@ -1584,6 +1759,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 carrito.map(i => ({ id_producto: i.id_producto, cantidad: i.cantidad }))
             ));
             if (efectivoRecibido !== null) datos.append('efectivo_recibido', efectivoRecibido.toFixed(2));
+            if (montoTarjeta !== null) datos.append('monto_tarjeta', montoTarjeta.toFixed(2));
 
             let res, json;
             try {
@@ -1602,6 +1778,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             // 409: las existencias cambiaron entre la verificación y el cobro
             cerrarModal('modalPago');
             cerrarModal('modalEfectivo');
+            cerrarModal('modalVarios');
             if (res.status === 409) {
                 const faltantes = await actualizarExistencias();
                 if (faltantes && faltantes.length > 0) {
@@ -1619,11 +1796,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function bloquearCobro(bloquear) {
             cobrando = bloquear;
-            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo').forEach(b => {
+            document.querySelectorAll('#modalPago .metodo-btn, #btnCobrarEfectivo, #btnCobrarVarios').forEach(b => {
                 b.disabled = bloquear;
             });
-            document.getElementById('btnCobrarEfectivo').textContent = bloquear ? tr('pago.guardando') : tr('efectivo.cobrar');
-            if (!bloquear) actualizarCambioPreview();
+            ['btnCobrarEfectivo', 'btnCobrarVarios'].forEach(id => {
+                document.getElementById(id).textContent = bloquear ? tr('pago.guardando') : tr('efectivo.cobrar');
+            });
+            if (!bloquear) {
+                actualizarCambioPreview();
+                actualizarVariosPreview();
+            }
         }
 
         async function cobrarEfectivo() {
@@ -1675,10 +1857,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     ${fila(`${l.cantidad} x ${formatoDinero(Number(l.precio))}`, formatoDinero(Number(l.importe)))}
                 </div>`).join('');
 
-            const pago = t.metodo === 'Efectivo' && t.recibido !== null
-                ? fila(tr('ticket.efectivo_recibido'), formatoDinero(t.recibido)) +
-                  fila(tr('ticket.cambio'), formatoDinero(t.cambio), 'destacado')
-                : '';
+            // Pago combinado: lo de la tarjeta y luego el efectivo con su cambio
+            const pago = (t.tarjeta != null ? fila(tr('ticket.pago_tarjeta'), formatoDinero(t.tarjeta)) : '') +
+                (t.recibido != null
+                    ? fila(tr('ticket.efectivo_recibido'), formatoDinero(t.recibido)) +
+                      fila(tr('ticket.cambio'), formatoDinero(t.cambio), 'destacado')
+                    : '');
 
             return `<!DOCTYPE html>
 <html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
@@ -1759,8 +1943,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const bloqueCambio = document.getElementById('ventaCambio');
             if (venta.cambio !== null) {
                 document.getElementById('ventaCambioMonto').textContent = formatoDinero(venta.cambio);
-                document.getElementById('ventaCambioDetalle').textContent =
-                    tr('venta.detalle', { recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) });
+                document.getElementById('ventaCambioDetalle').textContent = venta.tarjeta != null
+                    ? tr('venta.detalle_varios', { tarjeta: formatoDinero(venta.tarjeta), recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) })
+                    : tr('venta.detalle', { recibido: formatoDinero(venta.recibido), total: formatoDinero(venta.total) });
                 bloqueCambio.style.display = 'block';
             } else {
                 bloqueCambio.style.display = 'none';

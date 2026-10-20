@@ -863,7 +863,7 @@ kbd {
 .modal-total-label { font-size: 0.8rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
 .modal-total { font-size: 1.8rem; font-weight: 700; color: var(--acento-texto); margin-bottom: 1.25rem; }
 
-.metodos-pago { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.metodos-pago { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
 .metodo-btn {
     display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
     padding: 1.1rem 0.5rem;
@@ -900,6 +900,37 @@ kbd {
     font-size: 1.1rem; font-weight: 600;
 }
 .cambio-preview { font-size: 0.9rem; color: var(--texto-3); min-height: 1.4em; }
+
+/* Campo con error (p. ej. tarjeta mayor que el total) */
+.input-dinero.con-error,
+.input-dinero.con-error:focus-within { border-color: var(--peligro); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
+.campo-error { margin-top: 0.35rem; font-size: 0.82rem; font-weight: 600; color: var(--peligro-texto); }
+.campo-error:empty { display: none; }
+
+/* Pago combinado: desglose de lo capturado y lo que falta o el cambio */
+.varios-resumen {
+    margin-top: 0.25rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--superficie-2);
+    border: 1px solid var(--borde); border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+}
+.varios-fila {
+    display: flex; justify-content: space-between; gap: 1rem;
+    padding: 0.15rem 0;
+    font-size: 0.88rem; color: var(--texto-3);
+}
+.varios-fila span:last-child { color: var(--texto); font-weight: 600; }
+.varios-estado {
+    margin-top: 0.4rem; padding-top: 0.55rem;
+    border-top: 1px dashed var(--borde-fuerte);
+    font-size: 1rem; font-weight: 700;
+}
+.varios-estado[hidden] { display: none; }
+.varios-estado.is-restante,
+.varios-estado.is-restante span:last-child { color: var(--aviso-texto); }
+.varios-estado.is-cubierto,
+.varios-estado.is-cubierto span:last-child { color: var(--ok-texto); }
 .cambio-preview.error { color: var(--peligro-texto); }
 .cambio-preview strong { color: var(--ok-texto); }
 
