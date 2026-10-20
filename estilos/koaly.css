@@ -28,34 +28,34 @@
  *  ============================================================ */
 :root {
     color-scheme: light;
-    /* "Talavera": azul cobalto sobre blanco. Los neutros llevan un tinte azul
-       frío y la tinta es azul marino, no casi negro. */
-    --fondo:        #f3f6fb;
+    /* "Lavanda papel": espejo del modo oscuro. Los neutros llevan el mismo
+       tinte morado y la tinta es morado oscuro, no casi negro. */
+    --fondo:        #f4f1fa;
     --superficie:   #ffffff;
-    --superficie-2: #f8fafd;
-    --superficie-3: #ebf0f8;
-    --borde:        #dbe3f0;
-    --borde-fuerte: #c2cee3;
-    --barra:        rgba(243, 246, 251, 0.92);
+    --superficie-2: #faf8fd;
+    --superficie-3: #efeaf7;
+    --borde:        #e2dbef;
+    --borde-fuerte: #cbc1e0;
+    --barra:        rgba(244, 241, 250, 0.92);
     --marco-imagen: #ffffff;
     --filtro-imagen: none;
 
-    --texto:   #14213d;
-    --texto-2: #3c4a66;
-    --texto-3: #56637e;
-    --texto-4: #8f9ab0;
+    --texto:   #221c33;
+    --texto-2: #4b4362;
+    --texto-3: #645c7d;
+    --texto-4: #9a92b0;
 
-    --acento:              #1d3f9a;
-    --acento-hover:        #152f78;
-    --acento-texto:        #1d3f9a;
-    --acento-texto-fuerte: #13296a;
-    --acento-suave:        #e9effa;
-    --acento-suave-2:      #d8e2f6;
-    --acento-borde:        #a9bde6;
-    --acento-medio:        #5577c7;
-    --indigo-texto:        #1e3a8a;
-    --indigo-suave:        #e6ecfa;
-    --foco:                #5577c7;
+    --acento:              #7c3aed;
+    --acento-hover:        #6d28d9;
+    --acento-texto:        #6d28d9;
+    --acento-texto-fuerte: #5b21b6;
+    --acento-suave:        #efe9fd;
+    --acento-suave-2:      #e2d8fb;
+    --acento-borde:        #c4b5fd;
+    --acento-medio:        #a78bfa;
+    --indigo-texto:        #4338ca;
+    --indigo-suave:        #eceafd;
+    --foco:                #a78bfa;
 
     /* Fondos de estado un poco más tintados para que se lean como en oscuro.
        Los textos de estado se oscurecieron para seguir en AA (4.5:1). */
@@ -77,11 +77,11 @@
     --aviso-suave:   #fcf0d4;
     --aviso-borde:   #f1d083;
 
-    /* Estilo táctil: bordes y sombras sólidas. En claro es azul marino;
-       en oscuro, un azul grisáceo más claro que el fondo, para que el
+    /* Estilo táctil: bordes y sombras sólidas. En claro es un morado oscuro;
+       en oscuro, un morado grisáceo más claro que el fondo, para que el
        relieve no se pierda. */
-    --tinta:              #14286b;
-    --sombra-suave:       0 1px 3px rgba(20, 40, 107, 0.10);
+    --tinta:              #3b3156;
+    --sombra-suave:       0 1px 3px rgba(59, 49, 86, 0.10);
     --sombra-tactil:      3px 3px 0 var(--tinta);
     --sombra-tactil-alta: 5px 5px 0 var(--tinta);
     --sombra-tactil-max:  7px 7px 0 var(--tinta);
@@ -95,32 +95,32 @@
    "elegido oscuro" y "sistema en oscuro sin elección". */
 :root[data-tema="oscuro"] {
     color-scheme: dark;
-    --fondo:        #0a1020;
-    --superficie:   #111a2e;
-    --superficie-2: #152038;
-    --superficie-3: #1b2843;
-    --borde:        #26355a;
-    --borde-fuerte: #36497a;
-    --barra:        rgba(17, 26, 46, 0.92);
+    --fondo:        #0e1116;
+    --superficie:   #161a21;
+    --superficie-2: #1b2029;
+    --superficie-3: #212733;
+    --borde:        #2a313d;
+    --borde-fuerte: #3b4352;
+    --barra:        rgba(22, 26, 33, 0.92);
     --marco-imagen: #e6e8ec;
     --filtro-imagen: brightness(0.92);
 
     --texto:   #e8eaef;
-    --texto-2: #c4cbd9;
-    --texto-3: #9aa5bb;
-    --texto-4: #6b7590;
+    --texto-2: #c4c9d3;
+    --texto-3: #9ba3b2;
+    --texto-4: #6b7385;
 
-    --acento:              #2f5bd3;
-    --acento-hover:        #244bb8;
-    --acento-texto:        #9db8ff;
-    --acento-texto-fuerte: #c6d5ff;
-    --acento-suave:        #13203f;
-    --acento-suave-2:      #1a2c55;
-    --acento-borde:        #34508f;
-    --acento-medio:        #6f8fe0;
-    --indigo-texto:        #b7c6ff;
-    --indigo-suave:        #172447;
-    --foco:                #2f5bd3;
+    --acento:              #7c3aed;
+    --acento-hover:        #6d28d9;
+    --acento-texto:        #b9a6ff;
+    --acento-texto-fuerte: #d4c8ff;
+    --acento-suave:        #211b35;
+    --acento-suave-2:      #2c2449;
+    --acento-borde:        #5c4b9e;
+    --acento-medio:        #8f7ae8;
+    --indigo-texto:        #b7bfff;
+    --indigo-suave:        #1f2340;
+    --foco:                #7c3aed;
 
     --ok:            #22c55e;
     --ok-texto:      #4ade80;
@@ -139,38 +139,38 @@
     --aviso-texto:   #fbbf24;
     --aviso-suave:   #271f0d;
     --aviso-borde:   #5a4413;
-    --tinta:         #3d5288;
+    --tinta:         #4d4566;
     --sombra-suave:  0 1px 3px rgba(0, 0, 0, 0.40);
 }
 @media (prefers-color-scheme: dark) {
     :root:not([data-tema="claro"]) {
         color-scheme: dark;
-        --fondo:        #0a1020;
-        --superficie:   #111a2e;
-        --superficie-2: #152038;
-        --superficie-3: #1b2843;
-        --borde:        #26355a;
-        --borde-fuerte: #36497a;
-        --barra:        rgba(17, 26, 46, 0.92);
+        --fondo:        #0e1116;
+        --superficie:   #161a21;
+        --superficie-2: #1b2029;
+        --superficie-3: #212733;
+        --borde:        #2a313d;
+        --borde-fuerte: #3b4352;
+        --barra:        rgba(22, 26, 33, 0.92);
         --marco-imagen: #e6e8ec;
         --filtro-imagen: brightness(0.92);
 
         --texto:   #e8eaef;
-        --texto-2: #c4cbd9;
-        --texto-3: #9aa5bb;
-        --texto-4: #6b7590;
+        --texto-2: #c4c9d3;
+        --texto-3: #9ba3b2;
+        --texto-4: #6b7385;
 
-        --acento:              #2f5bd3;
-        --acento-hover:        #244bb8;
-        --acento-texto:        #9db8ff;
-        --acento-texto-fuerte: #c6d5ff;
-        --acento-suave:        #13203f;
-        --acento-suave-2:      #1a2c55;
-        --acento-borde:        #34508f;
-        --acento-medio:        #6f8fe0;
-        --indigo-texto:        #b7c6ff;
-        --indigo-suave:        #172447;
-        --foco:                #2f5bd3;
+        --acento:              #7c3aed;
+        --acento-hover:        #6d28d9;
+        --acento-texto:        #b9a6ff;
+        --acento-texto-fuerte: #d4c8ff;
+        --acento-suave:        #211b35;
+        --acento-suave-2:      #2c2449;
+        --acento-borde:        #5c4b9e;
+        --acento-medio:        #8f7ae8;
+        --indigo-texto:        #b7bfff;
+        --indigo-suave:        #1f2340;
+        --foco:                #7c3aed;
 
         --ok:            #22c55e;
         --ok-texto:      #4ade80;
@@ -189,7 +189,7 @@
         --aviso-texto:   #fbbf24;
         --aviso-suave:   #271f0d;
         --aviso-borde:   #5a4413;
-        --tinta:         #3d5288;
+        --tinta:         #4d4566;
         --sombra-suave:  0 1px 3px rgba(0, 0, 0, 0.40);
     }
 }

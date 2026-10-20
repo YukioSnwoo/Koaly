@@ -2,30 +2,31 @@
    Koalicius Admin — Design System & Full Styles
    ═══════════════════════════════════════════════════ */
 
-@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/tabler-icons.min.css');
+/* Desde la v3 la hoja vive en dist/ (sin dist daba 404 y no se veía ningún ícono) */
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/dist/tabler-icons.min.css');
 
 /* ── CSS Custom Properties ── */
 :root {
-  --bg:             #0a1020;
-  --surface-1:      #111a2e;
-  --surface-2:      #0d1526;
+  --bg:             #0f1117;
+  --surface-1:      #1a1d27;
+  --surface-2:      #14161f;
   --border:         rgba(255,255,255,0.08);
   --text-primary:   #e8eaed;
-  --text-secondary: #8f9ab3;
-  --text-muted:     #56607a;
-  --accent:         #2f5bd3;
-  --accent-hover:   #3d6be0;
-  --bg-accent:      rgba(47,91,211,0.18);
-  --bg-accent-muted:rgba(47,91,211,0.10);
-  --text-accent:    #9db8ff;
+  --text-secondary: #8b8fa3;
+  --text-muted:     #555a6e;
+  --accent:         #6c5ce7;
+  --accent-hover:   #7c6ef7;
+  --bg-accent:      rgba(108,92,231,0.15);
+  --bg-accent-muted:rgba(108,92,231,0.10);
+  --text-accent:    #a29bfe;
   --bg-success:     rgba(0,184,148,0.12);
   --text-success:   #00b894;
   --bg-danger:      rgba(255,71,87,0.12);
   --text-danger:    #ff4757;
   --bg-warning:     rgba(255,165,2,0.12);
   --text-warning:   #ffa502;
-  --fill-accent:    #2f5bd3;
-  --fill-disabled:  #1f2a44;
+  --fill-accent:    #6c5ce7;
+  --fill-disabled:  #2a2d3a;
   --row-hover:      rgba(255,255,255,0.02);
   --radius:         8px;
   --radius-lg:      12px;
@@ -33,29 +34,29 @@
   --font:           'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Light theme (talavera: azul cobalto y blanco) ── */
+/* ── Light theme (lavanda suave) ── */
 :root[data-theme="light"] {
-  --bg:             #F5F8FD;
+  --bg:             #FAF9FC;
   --surface-1:      #FFFFFF;
-  --surface-2:      #EEF2FA;
-  --border:         rgba(20,40,107,0.12);
-  --text-primary:   #14213D;
-  --text-secondary: #56637E;
-  --text-muted:     #8F9AB0;
-  --accent:         #1D3F9A;
-  --accent-hover:   #152F78;
-  --bg-accent:      rgba(29,63,154,0.12);
-  --bg-accent-muted:rgba(29,63,154,0.07);
-  --text-accent:    #1D3F9A;
+  --surface-2:      #F3F1F8;
+  --border:         rgba(46,42,58,0.10);
+  --text-primary:   #2E2A3A;
+  --text-secondary: #6B6478;
+  --text-muted:     #9892A3;
+  --accent:         #9B87C4;
+  --accent-hover:   #7E6AA8;
+  --bg-accent:      rgba(155,135,196,0.15);
+  --bg-accent-muted:rgba(155,135,196,0.10);
+  --text-accent:    #7E6AA8;
   --bg-success:     rgba(0,184,148,0.12);
   --text-success:   #00946f;
   --bg-danger:      rgba(255,71,87,0.12);
   --text-danger:    #d8333f;
   --bg-warning:     rgba(255,165,2,0.15);
   --text-warning:   #a5680a;
-  --fill-accent:    #1D3F9A;
-  --fill-disabled:  #DDE4F1;
-  --row-hover:      rgba(20,40,107,0.03);
+  --fill-accent:    #9B87C4;
+  --fill-disabled:  #E4E0ED;
+  --row-hover:      rgba(46,42,58,0.03);
 }
 
 /* ── Reset & Base ── */
@@ -297,6 +298,8 @@ body{
   border:0.5px solid var(--border);
 }
 .btn--ghost:hover{background:var(--bg-accent-muted);color:var(--text-primary)}
+.btn--danger{background:var(--text-danger);color:#fff}
+.btn--danger:hover{filter:brightness(1.1)}
 .btn--sm{padding:4px 10px;font-size:12px}
 
 /* ── Inputs & Selects ── */
@@ -465,3 +468,46 @@ body{
   .branch-grid{grid-template-columns:1fr}
   .grid-2{grid-template-columns:1fr}
 }
+
+/* ── Menú de estado del gerente (botón ⋮ en Acciones) ──
+   Va con position: fixed porque .table-wrap recorta lo que se sale. */
+.menu-estado{
+  position:fixed;z-index:120;min-width:190px;
+  padding:6px;
+  background:var(--surface-1);
+  border:0.5px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  text-align:left;
+}
+.menu-estado[hidden]{display:none}
+.menu-estado__titulo{
+  padding:6px 10px 4px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-muted);
+}
+.menu-estado__item{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:7px 10px;border:none;border-radius:var(--radius);
+  background:none;color:var(--text-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer;
+}
+.menu-estado__item:hover:not(:disabled),
+.menu-estado__item:focus-visible{background:var(--bg-accent-muted);outline:none}
+.menu-estado__item i{font-size:15px;color:var(--text-secondary)}
+.menu-estado__item:disabled{cursor:default;color:var(--text-accent);font-weight:600}
+.menu-estado__item:disabled i{color:var(--text-accent)}
+.menu-estado__item--peligro,
+.menu-estado__item--peligro i{color:var(--text-danger)}
+.menu-estado__item--peligro:hover:not(:disabled){background:var(--bg-danger)}
+.menu-estado__sep{height:0.5px;margin:4px 6px;background:var(--border)}
+
+/* Modal de confirmación del cambio de estado */
+.confirmar-estado__icono{
+  width:40px;height:40px;border-radius:50%;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg-accent);color:var(--text-accent);
+}
+.confirmar-estado__icono i{font-size:20px}
+.confirmar-estado__icono--peligro{background:var(--bg-danger);color:var(--text-danger)}
+.confirmar-estado__texto{color:var(--text-secondary);font-size:13px;line-height:1.5;margin:0 0 1.25rem}
+.confirmar-estado__texto strong{color:var(--text-primary);font-weight:500}

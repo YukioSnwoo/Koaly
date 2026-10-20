@@ -154,7 +154,7 @@ foreach ($sucursales as $sucursal) {
 $stmt = $pdo->prepare("
     SELECT id_usuario, nombre
     FROM Usuarios
-    WHERE id_rol = 2 AND (id_sucursal IS NULL OR id_sucursal = ?)
+    WHERE id_rol = 2 AND estado <> 'Baja' AND (id_sucursal IS NULL OR id_sucursal = ?)
     ORDER BY nombre
 ");
 $stmt->execute([$idSeleccionada]);

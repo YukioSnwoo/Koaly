@@ -28,10 +28,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <title><?= e(t('caja.titulo')) ?> - Koaly</title>
     <script>
     // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
-    try { var tema = localStorage.getItem('koalicius-cajero-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+    try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koalicius-cajero-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
     </script>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
+    <!-- Estilo común de Koaly (colores claro/oscuro, fuentes y piel táctil); va al final para que gane -->
+    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= filemtime(__DIR__ . '/../estilos/koaly.css') ?>">
 </head>
 <body class="caja-bloqueada">
 
@@ -516,7 +518,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         /* ---------- Tema claro / oscuro ---------- */
         // Igual que en el panel de gerente: <html data-tema="claro|oscuro"> si el
         // cajero eligió; si no, sigue al sistema. La elección se guarda por navegador.
-        const CLAVE_TEMA = 'koalicius-cajero-tema';
+        // Común con el gerente: el tema elegido se mantiene al pasar de un módulo a otro
+        const CLAVE_TEMA = 'koaly-tema';
         const botonTema = document.getElementById('botonTema');
 
         function temaActual() {
@@ -623,7 +626,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* ---------- Cursor personalizado ---------- */
-        // Punto azul que sigue al mouse (como en el panel de gerente). Solo con
+        // Punto morado que sigue al mouse (como en el panel de gerente). Solo con
         // mouse; en pantallas táctiles se queda el cursor normal.
         function initCustomCursor() {
             if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;

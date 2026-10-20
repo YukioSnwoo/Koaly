@@ -10,6 +10,15 @@ require_once __DIR__ . '/profanity_filter.php';
 
 $error = '';
 
+// Mismos estados que usa el gerente para sus cajeros. Solo "Activo" puede iniciar sesión.
+const ESTADOS_GERENTE = [
+    'Activo'      => ['icono' => 'user-check',  'badge' => 'badge--success'],
+    'Vacaciones'  => ['icono' => 'beach',       'badge' => 'badge--warning'],
+    'Incapacidad' => ['icono' => 'first-aid-kit', 'badge' => 'badge--warning'],
+    'Licencia'    => ['icono' => 'user-pause',  'badge' => 'badge--warning'],
+    'Baja'        => ['icono' => 'user-off',    'badge' => 'badge--danger'],
+];
+
 // Procesar acciones POST antes de enviar contenido al navegador.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -94,6 +103,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->prepare("UPDATE Usuarios SET nombre = ?, email = ? WHERE id_usuario = ? AND id_rol = 2")
                 ->execute([$nombre, $email, $idGerente]);
+
+            header('Location: gerentes.php');
+            exit;
+        }
+
+        if ($action === 'cambiar_estado') {
+            $idGerente = (int) ($_POST['id_usuario'] ?? 0);
+            $estado = (string) ($_POST['estado'] ?? '');
+
+            if (!isset(ESTADOS_GERENTE[$estado])) {
+                throw new RuntimeException('Estado no válido.');
+            }
+            $stmt = $pdo->prepare("SELECT estado FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+            $stmt->execute([$idGerente]);
+            $estadoActual = $stmt->fetchColumn();
+            if ($estadoActual === false) {
+                throw new RuntimeException('El gerente no existe.');
+            }
+
+            if ($estado !== $estadoActual) {
+                $pdo->beginTransaction();
+                $pdo->prepare("UPDATE Usuarios SET estado = ?, fecha_inicio_estado = ? WHERE id_usuario = ? AND id_rol = 2")
+                    ->execute([$estado, date('Y-m-d'), $idGerente]);
+
+                // Con la baja deja su sucursal (que queda inactiva hasta tener otro gerente).
+                // En vacaciones, incapacidad o licencia la conserva: es temporal.
+                if ($estado === 'Baja') {
+                    asignarSucursalAGerente($pdo, $idGerente, 0);
+                }
+                $pdo->commit();
+            }
 
             header('Location: gerentes.php');
             exit;
@@ -188,11 +228,9 @@ $todasSucursales = $pdo->query("
                         <td style="color:var(--text-secondary)"><?= htmlspecialchars($g['email']) ?></td>
                         <td><?= $g['sucursal_nombre'] ? htmlspecialchars($g['sucursal_nombre']) : '<span style="color:var(--text-muted)">Sin asignar</span>' ?></td>
                         <td>
-                            <?php if ($g['estado'] === 'Activo'): ?>
-                                <span class="badge badge--success">Activo</span>
-                            <?php else: ?>
-                                <span class="badge badge--warning">Pendiente</span>
-                            <?php endif; ?>
+                            <span class="badge <?= ESTADOS_GERENTE[(string) $g['estado']]['badge'] ?? 'badge--warning' ?>">
+                                <?= htmlspecialchars($g['estado'] !== '' && $g['estado'] !== null ? $g['estado'] : 'Sin estado') ?>
+                            </span>
                         </td>
                         <td>
                             <button class="icon-btn" title="Editar" onclick="editarGerente(this)"
@@ -203,6 +241,12 @@ $todasSucursales = $pdo->query("
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                 data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
+                            <button class="icon-btn" title="Cambiar estado" aria-haspopup="menu" aria-expanded="false"
+                                onclick="abrirMenuEstado(this)"
+                                data-id="<?= (int) $g['id_usuario'] ?>"
+                                data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
+                                data-estado="<?= htmlspecialchars((string) $g['estado'], ENT_QUOTES) ?>"
+                                data-sucursal="<?= htmlspecialchars((string) ($g['sucursal_nombre'] ?? ''), ENT_QUOTES) ?>"><i class="ti ti-dots-vertical"></i></button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -299,7 +343,141 @@ $todasSucursales = $pdo->query("
     </div>
 </div>
 
+<!-- Menú: cambiar estado del gerente (uno solo, se coloca junto al botón ⋮ de la fila) -->
+<div class="menu-estado" id="menuEstado" role="menu" hidden>
+    <div class="menu-estado__titulo">Cambiar estado</div>
+    <?php foreach (ESTADOS_GERENTE as $estado => $info): ?>
+        <?php if ($estado === 'Baja'): ?><div class="menu-estado__sep"></div><?php endif; ?>
+        <button type="button" role="menuitem" data-estado="<?= $estado ?>"
+                class="menu-estado__item<?= $estado === 'Baja' ? ' menu-estado__item--peligro' : '' ?>">
+            <i class="ti ti-<?= $info['icono'] ?>"></i><?= $estado === 'Baja' ? 'Dar de baja' : $estado ?>
+        </button>
+    <?php endforeach; ?>
+</div>
+<form method="POST" action="gerentes.php" id="formEstado" hidden>
+    <input type="hidden" name="action" value="cambiar_estado">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+    <input type="hidden" name="id_usuario" value="">
+    <input type="hidden" name="estado" value="">
+</form>
+
+<!-- Modal: confirmar el cambio de estado -->
+<div id="modalConfirmarEstado" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmarEstadoTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:130;align-items:center;justify-content:center">
+    <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
+        <div class="confirmar-estado__icono" id="confirmarEstadoIcono"><i class="ti"></i></div>
+        <h2 id="confirmarEstadoTitulo" style="font-size:16px;font-weight:500;margin:0 0 .5rem"></h2>
+        <p class="confirmar-estado__texto" id="confirmarEstadoTexto"></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn--ghost" onclick="closeModal('modalConfirmarEstado')">Cancelar</button>
+            <button type="button" class="btn btn--primary" id="confirmarEstadoAceptar"></button>
+        </div>
+    </div>
+</div>
+
 <script>
+(function () {
+    const menu = document.getElementById('menuEstado');
+    const form = document.getElementById('formEstado');
+    const modal = document.getElementById('modalConfirmarEstado');
+    const aceptar = document.getElementById('confirmarEstadoAceptar');
+    let boton = null;
+
+    // Texto sin innerHTML: el nombre y la sucursal vienen de la base
+    function parrafo(partes) {
+        const p = document.getElementById('confirmarEstadoTexto');
+        p.replaceChildren(...partes.map(([texto, fuerte]) => {
+            if (!fuerte) return document.createTextNode(texto);
+            const b = document.createElement('strong');
+            b.textContent = texto;
+            return b;
+        }));
+    }
+
+    function confirmarCambio(btn, estado, icono) {
+        const nombre = btn.dataset.nombre;
+        const sucursal = btn.dataset.sucursal;
+        const baja = estado === 'Baja';
+        let titulo, texto;
+        if (baja) {
+            titulo = 'Dar de baja al gerente';
+            texto = [['Se dará de baja a '], [nombre, true], ['. Ya no podrá iniciar sesión.']];
+            if (sucursal) texto.push([' Dejará '], [sucursal, true], [', que queda inactiva hasta que le asignes otro gerente.']);
+        } else if (estado === 'Activo') {
+            titulo = 'Activar gerente';
+            texto = [[nombre, true], [' podrá volver a iniciar sesión.']];
+            if (!sucursal) texto.push([' No tiene sucursal: asígnale una para que pueda trabajar.']);
+        } else {
+            titulo = 'Cambiar a ' + estado;
+            texto = [[nombre, true], [' quedará en '], [estado.toLowerCase(), true],
+                ['. No podrá iniciar sesión mientras tanto' + (sucursal ? ', pero conserva su sucursal.' : '.')]];
+        }
+
+        document.getElementById('confirmarEstadoTitulo').textContent = titulo;
+        parrafo(texto);
+        const caja = document.getElementById('confirmarEstadoIcono');
+        caja.classList.toggle('confirmar-estado__icono--peligro', baja);
+        caja.firstElementChild.className = 'ti ti-' + icono;
+        aceptar.className = 'btn ' + (baja ? 'btn--danger' : 'btn--primary');
+        aceptar.textContent = baja ? 'Dar de baja' : 'Confirmar';
+        aceptar.onclick = () => {
+            aceptar.disabled = true;
+            form.id_usuario.value = btn.dataset.id;
+            form.estado.value = estado;
+            form.submit();
+        };
+        aceptar.disabled = false;
+        openModal('modalConfirmarEstado');
+        aceptar.focus();
+    }
+
+    function cerrar() {
+        if (!boton) return;
+        menu.hidden = true;
+        boton.setAttribute('aria-expanded', 'false');
+        boton = null;
+    }
+
+    window.abrirMenuEstado = function (btn) {
+        if (boton === btn) { cerrar(); return; }
+        cerrar();
+        boton = btn;
+        // El estado actual queda marcado y no se puede volver a elegir
+        menu.querySelectorAll('[data-estado]').forEach(item => {
+            item.disabled = item.dataset.estado === btn.dataset.estado;
+        });
+        menu.hidden = false;
+        // Alineado al borde derecho del botón; hacia arriba si no cabe abajo
+        const r = btn.getBoundingClientRect();
+        const alto = menu.offsetHeight;
+        const top = r.bottom + 4 + alto > window.innerHeight ? r.top - alto - 4 : r.bottom + 4;
+        menu.style.top = Math.max(8, top) + 'px';
+        menu.style.left = Math.max(8, r.right - menu.offsetWidth) + 'px';
+        btn.setAttribute('aria-expanded', 'true');
+        const primero = menu.querySelector('[data-estado]:not(:disabled)');
+        if (primero) primero.focus();
+    };
+
+    menu.addEventListener('click', e => {
+        const item = e.target.closest('[data-estado]');
+        if (!item || item.disabled || !boton) return;
+        const btn = boton;
+        cerrar();
+        confirmarCambio(btn, item.dataset.estado, item.querySelector('i').className.replace('ti ti-', ''));
+    });
+
+    document.addEventListener('click', e => {
+        if (boton && !menu.contains(e.target) && !boton.contains(e.target)) cerrar();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (modal.style.display === 'flex') closeModal('modalConfirmarEstado');
+        else if (boton) { const b = boton; cerrar(); b.focus(); }
+    });
+    window.addEventListener('scroll', cerrar, true);
+    window.addEventListener('resize', cerrar);
+})();
+
 function editarGerente(btn) {
     const form = document.getElementById('formEditarGerente');
     form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
