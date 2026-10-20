@@ -515,10 +515,11 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     width: 20px;
     height: 20px;
     object-fit: contain;
-    
-    filter: invert(1); 
 }
 
+:root[data-tema="oscuro"] .sidebar-icon {
+    filter: invert(1);
+}
 .sidebar-brand {
     padding: 1.5rem; 
     font-size: 1.2rem; 
