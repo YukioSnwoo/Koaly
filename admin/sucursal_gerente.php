@@ -8,10 +8,10 @@ const SUCURSAL_ACTIVA = 'Activa';
 // Valor que ya usaba sucursales.php para cualquier sucursal no activa.
 const SUCURSAL_INACTIVA = 'Cierre_Definitivo';
 
-// El usuario debe ser gerente y estar libre (o ya asignado a $idSucursal).
+// El usuario debe ser gerente, no estar dado de baja y estar libre (o ya asignado a $idSucursal).
 function gerenteAsignable(PDO $pdo, int $idGerente, int $idSucursal = 0): bool
 {
-    $stmt = $pdo->prepare("SELECT id_sucursal FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+    $stmt = $pdo->prepare("SELECT id_sucursal FROM Usuarios WHERE id_usuario = ? AND id_rol = 2 AND estado <> 'Baja'");
     $stmt->execute([$idGerente]);
     $fila = $stmt->fetch();
 
@@ -39,12 +39,15 @@ function sucursalSinGerente(PDO $pdo, int $idSucursal): bool
 // Lanza RuntimeException si no es válido; el llamador debe hacer rollback ante cualquier excepción.
 function asignarSucursalAGerente(PDO $pdo, int $idGerente, int $idSucursalNueva): void
 {
-    $stmt = $pdo->prepare("SELECT id_sucursal FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+    $stmt = $pdo->prepare("SELECT id_sucursal, estado FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
     $stmt->execute([$idGerente]);
     $fila = $stmt->fetch();
 
     if (!$fila) {
         throw new RuntimeException('El gerente no existe.');
+    }
+    if ($idSucursalNueva > 0 && $fila['estado'] === 'Baja') {
+        throw new RuntimeException('El gerente está dado de baja. Reactívalo antes de asignarle una sucursal.');
     }
 
     $idSucursalAnterior = (int) ($fila['id_sucursal'] ?? 0);
@@ -56,7 +59,11 @@ function asignarSucursalAGerente(PDO $pdo, int $idGerente, int $idSucursalNueva)
     }
 
     $hoy = date('Y-m-d');
-    $pdo->beginTransaction();
+    // Puede llamarse dentro de una transacción ya abierta (p. ej. al dar de baja)
+    $propia = !$pdo->inTransaction();
+    if ($propia) {
+        $pdo->beginTransaction();
+    }
 
     $pdo->prepare("UPDATE Usuarios SET id_sucursal = ? WHERE id_usuario = ? AND id_rol = 2")
         ->execute([$idSucursalNueva > 0 ? $idSucursalNueva : null, $idGerente]);
@@ -75,5 +82,7 @@ function asignarSucursalAGerente(PDO $pdo, int $idGerente, int $idSucursalNueva)
         ")->execute([SUCURSAL_INACTIVA, $hoy, $idSucursalAnterior, SUCURSAL_INACTIVA]);
     }
 
-    $pdo->commit();
+    if ($propia) {
+        $pdo->commit();
+    }
 }

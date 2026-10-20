@@ -28,18 +28,20 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <title><?= e(t('caja.titulo')) ?> - Koaly</title>
     <script>
     // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
-    try { var tema = localStorage.getItem('koalicius-cajero-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+    try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koalicius-cajero-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
     </script>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken()) ?>">
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
+    <!-- Estilo común de Koaly (colores claro/oscuro, fuentes y piel táctil); va al final para que gane -->
+    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= filemtime(__DIR__ . '/../estilos/koaly.css') ?>">
 </head>
-<body>
+<body class="caja-bloqueada">
 
     <!-- Encabezado -->
     <header class="header">
         <h1>Koaly <span class="header-sub" data-i18n="caja.titulo"><?= e(t('caja.titulo')) ?></span></h1>
         <div class="user-info">
-            <button type="button" class="corte-boton" onclick="abrirCorte()">
+            <button type="button" class="corte-boton" onclick="abrirCorte()" disabled>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
                 <span data-i18n="corte.boton"><?= e(t('corte.boton')) ?></span>
             </button>
@@ -72,7 +74,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     </header>
 
     <!-- Panel Principal -->
-    <main class="pos-layout">
+    <main class="pos-layout" inert>
 
         <!-- Lateral Izquierdo -->
         <aside class="panel sidebar">
@@ -132,6 +134,19 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
     </main>
 
+    <!-- Caja cerrada: todo en gris y solo el botón para abrirla (o por qué no se puede) -->
+    <div class="caja-cerrada" id="cajaCerrada">
+        <div class="caja-cerrada-card">
+            <div class="caja-cerrada-icono" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h2 id="cajaCerradaTitulo"><?= e(t('caja.revisando')) ?></h2>
+            <p id="cajaCerradaTexto"></p>
+            <button type="button" class="btn btn-primary btn-abrir-caja" id="btnAbrirCaja" onclick="abrirModalApertura()" data-i18n="caja.abrir" hidden><?= e(t('caja.abrir')) ?></button>
+            <button type="button" class="btn btn-ghost" id="btnReintentarCaja" onclick="cargarTurno()" data-i18n="caja.reintentar" hidden><?= e(t('caja.reintentar')) ?></button>
+        </div>
+    </div>
+
     <!-- Modal: cerrar sesión -->
     <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
         <div class="modal-box">
@@ -174,12 +189,43 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         </div>
     </div>
 
-    <!-- Modal: corte de caja — conteo de billetes (luego monedas).
-         Va antes de la confirmación para que "¿Limpiar conteo?" quede encima. -->
+    <!-- Turno de caja. Orden de apilamiento: apertura < conteo < cierre < resultado,
+         y todos antes de la confirmación y los avisos para que esos queden encima. -->
+
+    <!-- Modal: abrir caja (viene lleno con lo que dejó el turno anterior) -->
+    <div class="modal-overlay" id="modalApertura" role="dialog" aria-modal="true" aria-labelledby="tituloApertura">
+        <div class="modal-box">
+            <h2 id="tituloApertura"></h2>
+            <div class="apertura-anterior" id="aperturaAnterior"></div>
+            <div class="form-group">
+                <label for="inputApertura" data-i18n="apertura.cuanto_hay"><?= e(t('apertura.cuanto_hay')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputApertura" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="aperturaAviso">
+                </div>
+                <div class="apertura-aviso" id="aperturaAviso" aria-live="polite"></div>
+            </div>
+            <button type="button" class="btn-enlace" onclick="contarApertura()" data-i18n="apertura.contar"><?= e(t('apertura.contar')) ?></button>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalApertura')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarApertura" onclick="confirmarApertura()" data-i18n="caja.abrir"><?= e(t('caja.abrir')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: conteo de billetes y monedas. Sirve para abrir caja y para el corte (cierre). -->
     <div class="modal-overlay" id="modalCorte" role="dialog" aria-modal="true" aria-labelledby="tituloCorte">
         <div class="modal-box modal-corte">
-            <h2 id="tituloCorte" data-i18n="corte.titulo"><?= e(t('corte.titulo')) ?></h2>
-            <p class="atajo-hint" data-i18n="corte.ayuda"><?= e(t('corte.ayuda')) ?></p>
+            <div class="corte-encabezado">
+                <h2 id="tituloCorte"></h2>
+                <!-- Carga el fondo regular ($1,000 en piezas chicas) en el conteo -->
+                <button type="button" class="corte-plantilla" onclick="pedirPlantillaFondo()" data-i18n-title="corte.plantilla_ayuda" title="<?= e(t('corte.plantilla_ayuda')) ?>">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
+                    <span data-i18n="corte.plantilla"><?= e(t('corte.plantilla')) ?></span>
+                    <small id="cortePlantillaTotal"></small>
+                </button>
+            </div>
+            <p class="atajo-hint" id="corteAyuda"></p>
 
             <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
             <div class="dinero-grid" id="corteBilletes">
@@ -189,6 +235,19 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <h3 class="corte-seccion" data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></h3>
             <div class="dinero-grid dinero-grid--monedas" id="corteMonedas">
                 <!-- Tarjetas de monedas (JS) -->
+            </div>
+
+            <!-- Solo en el corte: lo cobrado con tarjeta según los comprobantes de la terminal -->
+            <div class="corte-tarjeta" id="corteTarjeta">
+                <h3 class="corte-seccion" data-i18n="corte.tarjeta"><?= e(t('corte.tarjeta')) ?></h3>
+                <div class="form-group">
+                    <label for="inputVouchers" data-i18n="corte.vouchers"><?= e(t('corte.vouchers')) ?></label>
+                    <div class="input-dinero">
+                        <span>$</span>
+                        <input type="number" id="inputVouchers" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVouchers">
+                    </div>
+                    <div class="campo-error" id="errorVouchers"></div>
+                </div>
             </div>
 
             <!-- Resumen: billetes, monedas y total en efectivo -->
@@ -207,8 +266,55 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
-                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalCorte')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
+                <button type="button" class="btn btn-ghost corte-limpiar" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
+                <button type="button" class="btn btn-ghost" id="btnCorteCancelar" onclick="cerrarModal('modalCorte')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCorteUsar" onclick="usarConteoApertura()" data-i18n="corte.usar_total"><?= e(t('corte.usar_total')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCorteContinuar" onclick="continuarCierre()" data-i18n="corte.continuar"><?= e(t('corte.continuar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: cerrar caja — cuánto se deja y cuánto se entrega al gerente -->
+    <div class="modal-overlay" id="modalCierre" role="dialog" aria-modal="true" aria-labelledby="tituloCierre">
+        <div class="modal-box">
+            <h2 id="tituloCierre" data-i18n="cierre.titulo"><?= e(t('cierre.titulo')) ?></h2>
+            <div class="varios-resumen">
+                <div class="varios-fila"><span data-i18n="cierre.contado"><?= e(t('cierre.contado')) ?></span><span id="cierreContado">$0.00</span></div>
+                <div class="varios-fila"><span data-i18n="cierre.vouchers"><?= e(t('cierre.vouchers')) ?></span><span id="cierreVouchers">$0.00</span></div>
+            </div>
+            <div class="form-group cierre-dejar">
+                <label for="inputDejado" data-i18n="cierre.dejar"><?= e(t('cierre.dejar')) ?></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="number" id="inputDejado" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorDejado cierreFondo">
+                </div>
+                <div class="campo-error" id="errorDejado"></div>
+                <small class="cierre-fondo" id="cierreFondo"></small>
+            </div>
+            <div class="corte-resumen">
+                <div class="corte-fila corte-fila--total">
+                    <span data-i18n="cierre.entregas"><?= e(t('cierre.entregas')) ?></span>
+                    <strong id="cierreEntrega">$0.00</strong>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCierre')" data-i18n="comun.atras"><?= e(t('comun.atras')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCierre" onclick="confirmarCierre()" data-i18n="cierre.titulo"><?= e(t('cierre.titulo')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: resultado del corte (solo se cierra con "Aceptar") -->
+    <div class="modal-overlay" id="modalCorteResultado" role="dialog" aria-modal="true" aria-labelledby="tituloCorteResultado">
+        <div class="modal-box modal-confirmar">
+            <div class="corte-sello" id="corteSello"></div>
+            <h2 id="tituloCorteResultado" data-i18n="resultado.titulo"><?= e(t('resultado.titulo')) ?></h2>
+            <div class="varios-resumen corte-detalle" id="corteDetalle"></div>
+            <p class="modal-mensaje corte-revision" id="corteRevision" data-i18n="resultado.revision" hidden><?= e(t('resultado.revision')) ?></p>
+            <p class="modal-mensaje" data-i18n="resultado.enviado"><?= e(t('resultado.enviado')) ?></p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="imprimirCorte()">🧾 <span data-i18n="resultado.imprimir"><?= e(t('resultado.imprimir')) ?></span></button>
+                <button type="button" class="btn btn-primary" id="btnAceptarCorte" onclick="aceptarCorte()" data-i18n="comun.aceptar"><?= e(t('comun.aceptar')) ?></button>
             </div>
         </div>
     </div>
@@ -387,11 +493,13 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             document.getElementById(id).classList.remove('open');
         }
 
+        const MODALES_SIN_ESCAPE = ['modalVenta', 'modalCorteResultado'];
+
         // Clic fuera de la caja o Escape cierra el modal, excepto el de venta
         // completada: la venta solo se cierra con "Aceptar".
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay && overlay.id !== 'modalVenta') cerrarModal(overlay.id);
+                if (e.target === overlay && !MODALES_SIN_ESCAPE.includes(overlay.id)) cerrarModal(overlay.id);
             });
         });
 
@@ -404,13 +512,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             const abierto = modalSuperior();
-            if (abierto && abierto.id !== 'modalVenta') cerrarModal(abierto.id);
+            if (abierto && !MODALES_SIN_ESCAPE.includes(abierto.id)) cerrarModal(abierto.id);
         });
 
         /* ---------- Tema claro / oscuro ---------- */
         // Igual que en el panel de gerente: <html data-tema="claro|oscuro"> si el
         // cajero eligió; si no, sigue al sistema. La elección se guarda por navegador.
-        const CLAVE_TEMA = 'koalicius-cajero-tema';
+        // Común con el gerente: el tema elegido se mantiene al pasar de un módulo a otro
+        const CLAVE_TEMA = 'koaly-tema';
         const botonTema = document.getElementById('botonTema');
 
         function temaActual() {
@@ -482,6 +591,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             pintarAyudaLista();
             pintarUsuario();
             actualizarBotonTema();
+            pintarEstadoCaja();
 
             // Botón y menú de idioma
             document.querySelector('.idioma > summary > span').textContent = codigo.toUpperCase();
@@ -1818,10 +1928,21 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             }
             if (json.success) return json;
 
+            // Sin cambio en caja: la ventana de pago sigue abierta para cambiar el monto o el método
+            if (json.sin_cambio) {
+                mostrarAviso({ tipo: 'aviso', titulo: tr('aviso.sin_cambio_titulo'), mensaje: json.message });
+                return null;
+            }
+
             // 409: las existencias cambiaron entre la verificación y el cobro
             cerrarModal('modalPago');
             cerrarModal('modalEfectivo');
             cerrarModal('modalVarios');
+            if (json.caja_cerrada) {
+                cargarTurno();
+                mostrarAviso({ tipo: 'aviso', titulo: tr('caja.cerrada_aviso'), mensaje: json.message });
+                return null;
+            }
             if (res.status === 409) {
                 const faltantes = await actualizarExistencias();
                 if (faltantes && faltantes.length > 0) {
@@ -1903,10 +2024,63 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             ? '$' + (centavos / 100).toLocaleString('es-MX')
             : formatoDinero(centavos / 100);
 
-        function abrirCorte() {
+        // El mismo conteo sirve para abrir caja ('apertura') y para el corte ('cierre');
+        // al cambiar de uso se empieza de cero
+        let modoCorte = 'cierre';
+        let modoConteo = null;      // para qué es el conteo guardado
+
+        function mostrarCorte(modo) {
+            if (modoConteo !== modo) limpiarConteo();
+            modoCorte = modoConteo = modo;
+            const cierre = modo === 'cierre';
+            document.getElementById('tituloCorte').textContent = tr(cierre ? 'corte.titulo' : 'corte.titulo_apertura');
+            document.getElementById('corteAyuda').textContent = tr(cierre ? 'corte.ayuda_cierre' : 'corte.ayuda');
+            document.getElementById('corteTarjeta').hidden = !cierre;
+            document.getElementById('btnCorteCancelar').hidden = !cierre;
+            document.getElementById('btnCorteContinuar').hidden = !cierre;
+            document.getElementById('btnCorteUsar').hidden = cierre;
+            document.getElementById('errorVouchers').textContent = '';
             renderCorte();
             abrirModal('modalCorte');
             document.querySelector('#corteBilletes .dinero-piezas')?.focus();
+        }
+
+        // Botón "Corte" de la barra: cerrar caja. No con una venta a medias.
+        function abrirCorte() {
+            if (estadoCaja !== 'abierta') return;
+            if (carrito.length > 0) {
+                mostrarAviso({ tipo: 'aviso', titulo: tr('cierre.venta_en_curso_titulo'), mensaje: tr('cierre.venta_en_curso') });
+                return;
+            }
+            mostrarCorte('cierre');
+        }
+
+        function limpiarConteo() {
+            conteoCorte.forEach((_, id) => conteoCorte.set(id, 0));
+            document.getElementById('inputVouchers').value = '';
+        }
+
+        // Fondo regular: $1,000 en billetes chicos y monedas para dar cambio.
+        // Es lo que se deja normalmente al cerrar la caja.
+        const PLANTILLA_FONDO = { b100: 2, b50: 6, b20: 10, m10: 20, m5: 10, m2: 15, m1: 15, m050: 10 };
+        const totalPlantillaFondo = () => DENOMINACIONES.reduce((total, d) => total + (PLANTILLA_FONDO[d.id] ?? 0) * d.centavos, 0);
+        document.getElementById('cortePlantillaTotal').textContent = denominacion(totalPlantillaFondo());
+
+        function cargarPlantillaFondo(pintar = true) {
+            conteoCorte.forEach((_, id) => conteoCorte.set(id, PLANTILLA_FONDO[id] ?? 0));
+            if (pintar) renderCorte();
+        }
+
+        // Si ya hay piezas contadas, pregunta antes de reemplazarlas
+        function pedirPlantillaFondo() {
+            if (sumarCorte().piezas === 0) {
+                cargarPlantillaFondo();
+                return;
+            }
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = tr('corte.plantilla_mensaje');
+            abrirConfirmacion(tr('corte.plantilla_titulo'), mensaje, tr('corte.plantilla_confirmar'), () => cargarPlantillaFondo());
         }
 
         function renderCorte() {
@@ -2020,9 +2194,328 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             mensaje.className = 'modal-mensaje';
             mensaje.textContent = tr('corte.limpiar_mensaje');
             abrirConfirmacion(tr('corte.limpiar_titulo'), mensaje, tr('corte.limpiar_confirmar'), () => {
-                conteoCorte.forEach((_, id) => conteoCorte.set(id, 0));
+                limpiarConteo();
                 renderCorte();
             });
+        }
+
+        /* ---------- Turno de caja: abrir y cerrar ---------- */
+        // Sin turno abierto todo se ve en gris y solo queda "Abrir caja". Al
+        // abrir se confirma lo que dejó el turno anterior; al cerrar se cuenta a
+        // ciegas (lo esperado llega hasta guardar), se decide cuánto se deja y el
+        // corte queda pendiente para el gerente.
+        let cajaActual = null;
+        let turnoActual = null;
+        let turnoAnterior = null;
+        let estadoCaja = 'cargando';    // cargando | abierta | cerrada | sin_caja | error
+        let mensajeErrorCaja = '';
+        let ultimoCorte = null;
+        let desgloseApertura = null;    // piezas, si la apertura se contó con billetes y monedas
+        let guardandoTurno = false;
+
+        const centavosDeTexto = (texto) => {
+            const valor = String(texto ?? '').trim();
+            return /^\d{1,9}(\.\d{1,2})?$/.test(valor) ? Math.round(parseFloat(valor) * 100) : null;
+        };
+
+        // "2026-10-19 21:40:05" de la BD -> "19/10/2026 21:40" (o mm/dd en inglés)
+        function fechaHoraCorta(valor) {
+            const [f, h = ''] = String(valor ?? '').split(' ');
+            const [a, m, d] = f.split('-');
+            if (!d) return valor ?? '';
+            return (window.IDIOMA === 'en' ? `${m}/${d}/${a}` : `${d}/${m}/${a}`) + (h ? ' ' + h.slice(0, 5) : '');
+        }
+
+        async function cargarTurno() {
+            pintarEstadoCaja('cargando');
+            try {
+                const res = await fetch('turno_estado.php');
+                const datos = await res.json();
+                if (!datos.success) throw new Error(datos.message || '');
+                cajaActual = datos.caja;
+                turnoActual = datos.turno;
+                turnoAnterior = datos.anterior;
+                pintarEstadoCaja(!cajaActual ? 'sin_caja' : (turnoActual ? 'abierta' : 'cerrada'));
+            } catch (error) {
+                mensajeErrorCaja = error.message || tr('buscar.sin_conexion');
+                pintarEstadoCaja('error');
+            }
+        }
+
+        function pintarEstadoCaja(estado = estadoCaja) {
+            estadoCaja = estado;
+            const abierta = estado === 'abierta';
+            document.body.classList.toggle('caja-bloqueada', !abierta);
+            document.querySelector('main.pos-layout').inert = !abierta;
+            document.getElementById('cajaCerrada').hidden = abierta;
+            document.querySelector('.corte-boton').disabled = !abierta;
+
+            const titulo = document.getElementById('cajaCerradaTitulo');
+            const texto = document.getElementById('cajaCerradaTexto');
+            document.getElementById('btnAbrirCaja').hidden = estado !== 'cerrada';
+            document.getElementById('btnReintentarCaja').hidden = estado !== 'error';
+
+            if (estado === 'cargando') {
+                titulo.textContent = tr('caja.revisando');
+                texto.textContent = '';
+            } else if (estado === 'sin_caja') {
+                titulo.textContent = tr('caja.sin_caja_titulo');
+                texto.textContent = tr('caja.sin_caja_texto');
+            } else if (estado === 'error') {
+                titulo.textContent = tr('caja.error_titulo');
+                texto.textContent = mensajeErrorCaja;
+            } else if (estado === 'cerrada') {
+                titulo.textContent = tr('caja.cerrada_titulo', { n: cajaActual.numero });
+                texto.textContent = tr('caja.cerrada_texto');
+                document.getElementById('btnAbrirCaja').focus();
+            } else if (abierta && !modalSuperior()) {
+                inputBuscar.focus();
+            }
+        }
+
+        /* --- Abrir caja --- */
+        const inputApertura = document.getElementById('inputApertura');
+
+        function abrirModalApertura() {
+            if (!cajaActual) return;
+            const dejado = turnoAnterior?.efectivo_dejado;
+            document.getElementById('tituloApertura').textContent = tr('apertura.titulo', { n: cajaActual.numero });
+            document.getElementById('aperturaAnterior').textContent = dejado != null
+                ? tr('apertura.anterior', {
+                    cajero: turnoAnterior.cajero || tr('apertura.turno_anterior'),
+                    monto: formatoDinero(dejado),
+                    fecha: fechaHoraCorta(turnoAnterior.fecha_cierre)
+                })
+                : tr('apertura.primer_turno', { monto: formatoDinero(cajaActual.fondo_fijo) });
+            inputApertura.value = Number(dejado ?? cajaActual.fondo_fijo).toFixed(2);
+            desgloseApertura = null;
+            actualizarAvisoApertura();
+            abrirModal('modalApertura');
+            inputApertura.focus();
+            inputApertura.select();
+        }
+
+        // Si no coincide con lo que se dejó, se avisa (y queda registrado para el gerente)
+        function actualizarAvisoApertura() {
+            const aviso = document.getElementById('aperturaAviso');
+            const centavos = centavosDeTexto(inputApertura.value);
+            const dejado = turnoAnterior?.efectivo_dejado;
+            document.getElementById('btnConfirmarApertura').disabled = centavos === null || guardandoTurno;
+            aviso.textContent = '';
+            if (centavos === null || dejado == null) return;
+            const diferencia = centavos - aCentavos(dejado);
+            if (diferencia !== 0) {
+                aviso.textContent = tr(diferencia < 0 ? 'apertura.faltan' : 'apertura.sobran', { monto: formatoDinero(Math.abs(diferencia) / 100) })
+                    + ' ' + tr('apertura.registrado');
+            }
+        }
+
+        inputApertura.addEventListener('input', () => {
+            desgloseApertura = null;    // lo escrito a mano reemplaza el conteo
+            actualizarAvisoApertura();
+        });
+        inputApertura.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnConfirmarApertura').disabled) confirmarApertura();
+        });
+
+        // Contar con billetes y monedas: el conteo se abre encima de la apertura
+        // Contar con billetes y monedas. Si el turno anterior dejó el fondo regular
+        // (lo normal), el conteo ya viene con esas piezas: solo se confirma.
+        function contarApertura() {
+            if (modoConteo !== 'apertura') {
+                limpiarConteo();
+                modoConteo = 'apertura';
+                const dejado = turnoAnterior?.efectivo_dejado ?? cajaActual.fondo_fijo;
+                if (aCentavos(dejado) === totalPlantillaFondo()) cargarPlantillaFondo(false);
+            }
+            mostrarCorte('apertura');
+        }
+
+        function usarConteoApertura() {
+            desgloseApertura = Object.fromEntries(conteoCorte);
+            inputApertura.value = (sumarCorte().centavos / 100).toFixed(2);
+            cerrarModal('modalCorte');
+            actualizarAvisoApertura();
+            inputApertura.focus();
+        }
+
+        async function confirmarApertura() {
+            const centavos = centavosDeTexto(inputApertura.value);
+            if (centavos === null || guardandoTurno) return;
+
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('efectivo', (centavos / 100).toFixed(2));
+            // El desglose solo vale si sigue sumando lo que dice el campo
+            if (desgloseApertura && sumarCorte().centavos === centavos) {
+                datos.append('desglose', JSON.stringify(desgloseApertura));
+            }
+
+            const boton = document.getElementById('btnConfirmarApertura');
+            guardandoTurno = true;
+            boton.disabled = true;
+            boton.textContent = tr('apertura.abriendo');
+            let respuesta = null;
+            try {
+                const res = await fetch('turno_abrir.php', { method: 'POST', body: datos });
+                respuesta = await res.json();
+            } catch (error) {
+                respuesta = { success: false, message: tr('buscar.sin_conexion') };
+            }
+            guardandoTurno = false;
+            boton.textContent = tr('caja.abrir');
+            actualizarAvisoApertura();
+
+            if (!respuesta.success) {
+                mostrarAviso({ tipo: 'peligro', titulo: tr('apertura.error_titulo'), mensaje: respuesta.message || tr('error.registrar') });
+                return;
+            }
+            turnoActual = respuesta.turno;
+            cerrarModal('modalApertura');
+            limpiarConteo();
+            modoConteo = null;
+            pintarEstadoCaja('abierta');
+            mostrarToast(tr('apertura.lista'), 'exito');
+        }
+
+        /* --- Cerrar caja --- */
+        const inputVouchers = document.getElementById('inputVouchers');
+        const inputDejado = document.getElementById('inputDejado');
+
+        inputVouchers.addEventListener('input', () => {
+            document.getElementById('errorVouchers').textContent = '';
+        });
+        inputVouchers.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') continuarCierre();
+        });
+
+        // Paso 2: con el conteo listo, cuánto se deja (sugerido: el fondo base de la caja)
+        function continuarCierre() {
+            const vouchers = inputVouchers.value.trim() === '' ? 0 : centavosDeTexto(inputVouchers.value);
+            if (vouchers === null) {
+                document.getElementById('errorVouchers').textContent = tr('corte.vouchers_invalidos');
+                inputVouchers.focus();
+                return;
+            }
+            const contado = sumarCorte().centavos;
+            document.getElementById('cierreContado').textContent = formatoDinero(contado / 100);
+            document.getElementById('cierreVouchers').textContent = formatoDinero(vouchers / 100);
+            document.getElementById('cierreFondo').textContent = tr('cierre.fondo_base', { monto: formatoDinero(cajaActual.fondo_fijo) });
+            inputDejado.value = (Math.min(aCentavos(cajaActual.fondo_fijo), contado) / 100).toFixed(2);
+            actualizarEntrega();
+            abrirModal('modalCierre');
+            inputDejado.focus();
+            inputDejado.select();
+        }
+
+        function actualizarEntrega() {
+            const contado = sumarCorte().centavos;
+            const dejado = centavosDeTexto(inputDejado.value);
+            const error = document.getElementById('errorDejado');
+            const excede = dejado !== null && dejado > contado;
+            inputDejado.closest('.input-dinero').classList.toggle('con-error', excede);
+            error.textContent = excede ? tr('cierre.dejado_excede') : '';
+            document.getElementById('cierreEntrega').textContent =
+                formatoDinero((dejado === null || excede ? 0 : contado - dejado) / 100);
+            document.getElementById('btnConfirmarCierre').disabled = dejado === null || excede || guardandoTurno;
+        }
+
+        inputDejado.addEventListener('input', actualizarEntrega);
+        inputDejado.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnConfirmarCierre').disabled) confirmarCierre();
+        });
+
+        async function confirmarCierre() {
+            const dejado = centavosDeTexto(inputDejado.value);
+            const vouchers = inputVouchers.value.trim() === '' ? 0 : centavosDeTexto(inputVouchers.value);
+            if (dejado === null || vouchers === null || guardandoTurno) return;
+
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('desglose', JSON.stringify(Object.fromEntries(conteoCorte)));
+            datos.append('vouchers', (vouchers / 100).toFixed(2));
+            datos.append('dejado', (dejado / 100).toFixed(2));
+
+            const boton = document.getElementById('btnConfirmarCierre');
+            guardandoTurno = true;
+            boton.disabled = true;
+            boton.textContent = tr('cierre.cerrando');
+            let respuesta = null;
+            try {
+                const res = await fetch('turno_cerrar.php', { method: 'POST', body: datos });
+                respuesta = await res.json();
+            } catch (error) {
+                respuesta = { success: false, message: tr('buscar.sin_conexion') };
+            }
+            guardandoTurno = false;
+            boton.textContent = tr('cierre.titulo');
+            actualizarEntrega();
+
+            if (!respuesta.success) {
+                if (respuesta.caja_cerrada) {
+                    cerrarModal('modalCierre');
+                    cerrarModal('modalCorte');
+                    cargarTurno();
+                }
+                mostrarAviso({ tipo: 'peligro', titulo: tr('cierre.error_titulo'), mensaje: respuesta.message || tr('error.registrar') });
+                return;
+            }
+
+            const corte = respuesta.corte;
+            ultimoCorte = corte;
+            turnoActual = null;
+            turnoAnterior = { efectivo_dejado: corte.dejado, fecha_cierre: corte.fecha_cierre, cajero: corte.cajero };
+            cerrarModal('modalCierre');
+            cerrarModal('modalCorte');
+            limpiarConteo();
+            modoConteo = null;
+            pintarEstadoCaja('cerrada');
+            mostrarResultadoCorte(corte);
+        }
+
+        // Lo esperado se ve hasta aquí, ya guardado el corte
+        function mostrarResultadoCorte(c) {
+            const sello = document.getElementById('corteSello');
+            const clase = { Cuadrada: 'is-cuadrada', Faltante: 'is-faltante', Sobrante: 'is-sobrante' }[c.resultado];
+            sello.className = `corte-sello ${clase}`;
+            sello.textContent = c.resultado === 'Cuadrada'
+                ? tr('resultado.cuadrada')
+                : tr(c.resultado === 'Faltante' ? 'resultado.faltante' : 'resultado.sobrante', { monto: formatoDinero(Math.abs(c.diferencia)) });
+
+            const fila = (etiqueta, valor, clase = '') => {
+                const div = document.createElement('div');
+                div.className = `varios-fila ${clase}`;
+                const a = document.createElement('span');
+                a.textContent = etiqueta;
+                const b = document.createElement('span');
+                b.textContent = valor;
+                div.append(a, b);
+                return div;
+            };
+            const conSigno = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + formatoDinero(Math.abs(n));
+            document.getElementById('corteDetalle').replaceChildren(
+                fila(tr('resultado.ventas'), c.num_ventas),
+                fila(tr('resultado.efectivo_esperado'), formatoDinero(c.efectivo_esperado)),
+                fila(tr('cierre.contado'), formatoDinero(c.efectivo_contado)),
+                fila(tr('resultado.tarjeta_esperada'), formatoDinero(c.teorico_tarjeta)),
+                fila(tr('cierre.vouchers'), formatoDinero(c.vouchers)),
+                fila(tr('resultado.diferencia'), conSigno(c.diferencia), 'varios-estado ' + (c.diferencia === 0 ? 'is-cubierto' : 'is-restante')),
+                fila(tr('cierre.dejas'), formatoDinero(c.dejado)),
+                fila(tr('cierre.entregas'), formatoDinero(c.retirado))
+            );
+            document.getElementById('corteRevision').hidden = !c.requiere_revision;
+            abrirModal('modalCorteResultado');
+            document.getElementById('btnAceptarCorte').focus();
+            imprimirCorte();
+        }
+
+        function imprimirCorte() {
+            if (ultimoCorte) imprimirHtml(htmlTicketCorte(ultimoCorte), 'btnAceptarCorte');
+        }
+
+        function aceptarCorte() {
+            cerrarModal('modalCorteResultado');
+            pintarEstadoCaja();
         }
 
         /* ---------- Ticket ---------- */
@@ -2036,6 +2529,32 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         // El método viaja al servidor en español ('Efectivo'/'Tarjeta'); en pantalla se traduce
         const nombreMetodo = (metodo) => tr('pago.' + String(metodo).toLowerCase());
+
+        // Hoja de 80 mm para la impresora térmica (venta y corte)
+        const ESTILO_TICKET = `
+    @page { size: 80mm auto; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        width: 80mm; padding: 5mm 4mm 8mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12px; line-height: 1.35; color: #000;
+    }
+    .centro { text-align: center; }
+    .marca { font-size: 20px; font-weight: 700; letter-spacing: 0.2em; }
+    .sucursal { font-weight: 700; margin-top: 2px; }
+    .chico { font-size: 11px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .fila { display: flex; justify-content: space-between; gap: 8px; }
+    .fila span:last-child { text-align: right; white-space: nowrap; }
+    .producto { margin-bottom: 4px; }
+    .producto-nombre { font-weight: 700; word-break: break-word; }
+    .producto .fila { padding-left: 8px; }
+    .total { font-size: 16px; font-weight: 700; margin: 2px 0; }
+    .destacado { font-weight: 700; }
+    .gracias { margin-top: 8px; font-weight: 700; }
+    .titulo-ticket { font-weight: 700; letter-spacing: 0.1em; margin-top: 4px; }
+    .firma { margin-top: 26px; border-top: 1px solid #000; padding-top: 2px; text-align: center; font-size: 11px; }
+`;
 
         function htmlTicket(t) {
             const fila = (izq, der, clase = '') =>
@@ -2057,28 +2576,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             return `<!DOCTYPE html>
 <html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>Ticket #${escaparHtml(t.folio)}</title>
-<style>
-    @page { size: 80mm auto; margin: 0; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        width: 80mm; padding: 5mm 4mm 8mm;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 12px; line-height: 1.35; color: #000;
-    }
-    .centro { text-align: center; }
-    .marca { font-size: 20px; font-weight: 700; letter-spacing: 0.2em; }
-    .sucursal { font-weight: 700; margin-top: 2px; }
-    .chico { font-size: 11px; }
-    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
-    .fila { display: flex; justify-content: space-between; gap: 8px; }
-    .fila span:last-child { text-align: right; white-space: nowrap; }
-    .producto { margin-bottom: 4px; }
-    .producto-nombre { font-weight: 700; word-break: break-word; }
-    .producto .fila { padding-left: 8px; }
-    .total { font-size: 16px; font-weight: 700; margin: 2px 0; }
-    .destacado { font-weight: 700; }
-    .gracias { margin-top: 8px; font-weight: 700; }
-</style></head>
+<style>${ESTILO_TICKET}</style></head>
 <body>
     <div class="centro">
         <div class="marca">KOALY</div>
@@ -2109,7 +2607,57 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         function imprimirTicket(ticket) {
-            if (!ticket) return;
+            if (ticket) imprimirHtml(htmlTicket(ticket), 'btnFinalizarVenta');
+        }
+
+        // Ticket del corte: conteo, lo esperado, el resultado, lo que se deja y lo que se entrega
+        function htmlTicketCorte(c) {
+            const fila = (izq, der, clase = '') =>
+                `<div class="fila ${clase}"><span>${escaparHtml(izq)}</span><span>${escaparHtml(der)}</span></div>`;
+            const piezas = DENOMINACIONES
+                .filter(d => (c.desglose?.[d.id] ?? 0) > 0)
+                .map(d => fila(`${c.desglose[d.id]} x ${denominacion(d.centavos)}`, formatoDinero(c.desglose[d.id] * d.centavos / 100)))
+                .join('');
+            const resultado = c.resultado === 'Cuadrada'
+                ? tr('resultado.cuadrada')
+                : tr(c.resultado === 'Faltante' ? 'resultado.faltante' : 'resultado.sobrante', { monto: formatoDinero(Math.abs(c.diferencia)) });
+
+            return `<!DOCTYPE html>
+<html lang="${window.IDIOMA}"><head><meta charset="UTF-8"><title>${escaparHtml(tr('ticket_corte.titulo'))} #${escaparHtml(c.folio)}</title>
+<style>${ESTILO_TICKET}</style></head>
+<body>
+    <div class="centro">
+        <div class="marca">KOALY</div>
+        <div class="titulo-ticket">${escaparHtml(tr('ticket_corte.titulo'))}</div>
+    </div>
+    <hr>
+    ${fila(tr('ticket.folio'), '#' + c.folio, 'destacado')}
+    ${fila(tr('ticket.caja'), c.caja)}
+    ${fila(tr('caja.cajero'), c.cajero)}
+    ${fila(tr('ticket_corte.apertura'), fechaHoraCorta(c.fecha_apertura))}
+    ${fila(tr('ticket_corte.cierre'), fechaHoraCorta(c.fecha_cierre))}
+    ${fila(tr('resultado.ventas'), c.num_ventas)}
+    <hr>
+    ${piezas}
+    ${fila(tr('cierre.contado'), formatoDinero(c.efectivo_contado), 'destacado')}
+    ${fila(tr('cierre.vouchers'), formatoDinero(c.vouchers), 'destacado')}
+    <hr>
+    ${fila(tr('ticket_corte.fondo_inicial'), formatoDinero(c.efectivo_apertura))}
+    ${fila(tr('ticket_corte.ventas_efectivo'), formatoDinero(c.teorico_efectivo))}
+    ${fila(tr('resultado.efectivo_esperado'), formatoDinero(c.efectivo_esperado))}
+    ${fila(tr('ticket_corte.ventas_tarjeta'), formatoDinero(c.teorico_tarjeta))}
+    <hr>
+    <div class="centro total">${escaparHtml(resultado)}</div>
+    <hr>
+    ${fila(tr('cierre.dejas'), formatoDinero(c.dejado))}
+    ${fila(tr('cierre.entregas'), formatoDinero(c.retirado), 'total')}
+    <div class="firma">${escaparHtml(tr('ticket_corte.firma_cajero'))}</div>
+    <div class="firma">${escaparHtml(tr('ticket_corte.firma_gerente'))}</div>
+</body></html>`;
+        }
+
+        // Imprime un HTML desde un iframe oculto y regresa el foco al botón indicado
+        function imprimirHtml(html, idEnfoque) {
             let marco = document.getElementById('marcoTicket');
             if (!marco) {
                 marco = document.createElement('iframe');
@@ -2122,9 +2670,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             marco.onload = () => {
                 marco.contentWindow.focus();
                 marco.contentWindow.print();
-                document.getElementById('btnFinalizarVenta').focus();
+                document.getElementById(idEnfoque)?.focus();
             };
-            marco.srcdoc = htmlTicket(ticket);
+            marco.srcdoc = html;
         }
 
         function mostrarVentaCompletada(metodo, venta) {
@@ -2161,6 +2709,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         renderCarrito();
         cargarCatalogo();
+        cargarTurno();
     </script>
 </body>
 </html>

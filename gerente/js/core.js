@@ -20,7 +20,12 @@ function tj(clave, vars = {}) {
  * ============================================================ */
 function abrirModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.classList.add('open');
+    if (!modal) return;
+    // Los formularios se llenan con select.value = ..., que no dispara "change":
+    // sin esto el select personalizado seguía mostrando el valor anterior
+    // (p. ej. "Activo" en un cajero que está de vacaciones).
+    modal.querySelectorAll('select').forEach(s => s.dispatchEvent(new Event('select-custom:sincronizar')));
+    modal.classList.add('open');
 }
 
 function cerrarModal(id) {
@@ -170,7 +175,11 @@ async function logoutConfirmado() {
             peligroso: true
         }
     );
-    if (ok && typeof logout === 'function') logout();
+    if (!ok) return;
+    // Antes dependía de logout() de ../auth.js; si ese archivo faltaba en el
+    // servidor (pasó: daba 404), el botón no hacía nada y sin ningún error.
+    try { sessionStorage.removeItem('usuario'); } catch (e) {}
+    window.location.href = '../logout.php';
 }
 
 
@@ -218,7 +227,8 @@ document.addEventListener('keydown', (e) => {
  * <html data-tema="claro|oscuro"> si el usuario eligió; si no, sigue
  * al sistema (prefers-color-scheme). La elección se guarda por navegador.
  * ============================================================ */
-const CLAVE_TEMA = 'koalicius-gerente-tema';
+// Común con el cajero: el tema elegido se mantiene al pasar de un módulo a otro
+const CLAVE_TEMA = 'koaly-tema';
 
 function temaActual() {
     const elegido = document.documentElement.getAttribute('data-tema');
@@ -244,3 +254,35 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('DOMContentLoaded', actualizarBotonTema);
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
+
+
+/* ============================================================
+ * Barra lateral en celular: el botón ☰ la abre encima del contenido.
+ * Se cierra con el fondo oscuro, con Esc, al elegir una página o
+ * al agrandar la ventana (en escritorio siempre está visible).
+ * ============================================================ */
+function initBarraLateral() {
+    const boton = document.getElementById('botonMenu');
+    const fondo = document.getElementById('barraLateralFondo');
+    const barra = document.getElementById('barraLateral');
+    if (!boton || !barra) return;
+
+    const abierta = () => document.body.classList.contains('sidebar-abierta');
+    const poner = (abrir) => {
+        document.body.classList.toggle('sidebar-abierta', abrir);
+        boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        if (abrir) {
+            const actual = barra.querySelector('.sidebar-link.active') || barra.querySelector('.sidebar-link');
+            if (actual) actual.focus();
+        }
+    };
+
+    boton.addEventListener('click', () => poner(!abierta()));
+    if (fondo) fondo.addEventListener('click', () => poner(false));
+    barra.querySelectorAll('.sidebar-link').forEach(a => a.addEventListener('click', () => poner(false)));
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && abierta()) { poner(false); boton.focus(); }
+    });
+    window.matchMedia('(min-width: 901px)').addEventListener('change', (e) => { if (e.matches) poner(false); });
+}
+document.addEventListener('DOMContentLoaded', initBarraLateral);
