@@ -23,6 +23,9 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
 require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
+require_once __DIR__ . '/includes/caja.php';
+
+usarHoraLocal($pdo);
 
 if (!csrfValido()) {
     responder(403, ['success' => false, 'message' => t('servidor.token_invalido')]);
@@ -128,6 +131,21 @@ $centavosADinero = fn(int $c): string => number_format($c / 100, 2, '.', '');
 try {
     $pdo->beginTransaction();
 
+    /* --- Caja y turno: solo se vende con la caja abierta (sql/008) ---
+       El turno queda bloqueado hasta el commit: si en ese momento se está
+       cerrando la caja, el corte espera a que termine esta venta. */
+    $stmt = $pdo->prepare("SELECT id_caja FROM Cajas WHERE id_cajero_asignado = ? AND id_sucursal = ? ORDER BY numero_caja LIMIT 1");
+    $stmt->execute([$idCajero, $idSucursal]);
+    $idCaja = $stmt->fetchColumn() ?: null;
+    if ($idCaja === null) {
+        throw new CajaCerradaException(t('servidor.sin_caja'));
+    }
+    $turno = turnoAbierto($pdo, (int) $idCaja, true);
+    if (!$turno) {
+        throw new CajaCerradaException(t('servidor.caja_cerrada'));
+    }
+    $idTurno = (int) $turno['id_turno'];
+
     /* --- Método de pago --- */
     $stmt = $pdo->prepare("SELECT id_metodo_pago FROM Metodos_Pago WHERE LOWER(nombre_metodo) LIKE ? LIMIT 1");
     $stmt->execute([strtolower($metodo) . '%']);
@@ -213,12 +231,16 @@ try {
     // Solo el pago combinado lleva desglose de tarjeta en el ticket
     $tarjetaTicket = $metodo === 'Varios' ? $tarjetaCentavos / 100 : null;
 
-    /* --- Caja asignada (solo si Ventas ya tiene la columna id_caja) --- */
-    $idCaja = null;
-    if (isset(columnasTabla($pdo, 'Ventas')['id_caja'])) {
-        $stmt = $pdo->prepare("SELECT id_caja FROM Cajas WHERE id_cajero_asignado = ? AND id_sucursal = ? LIMIT 1");
-        $stmt->execute([$idCajero, $idSucursal]);
-        $idCaja = $stmt->fetchColumn() ?: null;
+    /* --- El cambio sale del efectivo que ya hay en la caja ---
+       En caja: lo de la apertura + el efectivo neto de las ventas del turno.
+       El monto no se manda al navegador (el corte es a ciegas). */
+    if ($cambioCentavos !== null && $cambioCentavos > 0) {
+        $stmt = $pdo->prepare("SELECT COALESCE(SUM(monto_efectivo), 0) FROM Ventas WHERE id_turno = ?");
+        $stmt->execute([$idTurno]);
+        $enCajaCentavos = bdACentavos($turno['efectivo_apertura']) + bdACentavos($stmt->fetchColumn());
+        if ($cambioCentavos > $enCajaCentavos) {
+            throw new SinCambioException(t('servidor.sin_cambio'));
+        }
     }
 
     /* --- Venta --- */
@@ -233,10 +255,10 @@ try {
         // Desglose del cobro (sql/006): efectivo neto, sin el cambio
         'monto_efectivo'    => $centavosADinero($efectivoCentavos),
         'monto_tarjeta'     => $centavosADinero($tarjetaCentavos),
+        'id_caja'           => (int) $idCaja,
+        // Turno en que se cobró: con esto se calcula lo esperado en el corte
+        'id_turno'          => $idTurno,
     ];
-    if ($idCaja !== null) {
-        $valoresVenta['id_caja'] = (int) $idCaja;
-    }
     if ($recibidoCentavos !== null) {
         $valoresVenta['efectivo_recibido'] = $centavosADinero($recibidoCentavos);
         $valoresVenta['cambio']            = $centavosADinero($cambioCentavos);
@@ -312,7 +334,13 @@ try {
     $pdo->commit();
 } catch (DomainException $e) {
     $pdo->rollBack();
-    responder(409, ['success' => false, 'message' => $e->getMessage()]);
+    // caja_cerrada: la caja vuelve a mostrar "Abrir caja"
+    responder(409, [
+        'success'      => false,
+        'message'      => $e->getMessage(),
+        'caja_cerrada' => $e instanceof CajaCerradaException,
+        'sin_cambio'   => $e instanceof SinCambioException,   // la ventana de pago sigue abierta
+    ]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

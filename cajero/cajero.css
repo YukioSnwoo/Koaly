@@ -996,6 +996,24 @@ kbd {
    Corte de caja: conteo de billetes (tarjetas como las del catálogo)
    ============================================================ */
 .modal-box.modal-corte { width: 920px; }
+/* Título del conteo con el botón "Fondo regular" a la derecha */
+.corte-encabezado {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+.corte-encabezado h2 { margin-bottom: 0; }
+.corte-plantilla {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--acento-borde); border-radius: 8px;
+    background: var(--acento-suave); color: var(--acento-texto);
+    font-weight: 600; font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.corte-plantilla:hover { background: var(--acento); border-color: var(--acento); color: #fff; }
+.corte-plantilla:active { transform: translateY(1px); }
+.corte-plantilla small { font-weight: 500; opacity: 0.8; }
 .corte-seccion {
     margin: 1rem 0 0.6rem;
     font-size: 0.8rem; font-weight: 700; color: var(--texto-2);
@@ -1098,6 +1116,104 @@ kbd {
     font-weight: 700; color: var(--acento-texto);
 }
 .corte-fila--total strong { font-size: 1.4rem; }
+
+/* ============================================================
+   Turno de caja: caja cerrada, abrir caja, cerrar caja y resultado
+   ============================================================ */
+/* Sin turno abierto: el punto de venta en gris (y inerte desde el JS) */
+.pos-layout { transition: filter 0.3s, opacity 0.3s; }
+body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
+
+.caja-cerrada {
+    position: fixed; inset: 0; z-index: 40;   /* debajo de la barra (50) y de los modales (100) */
+    display: grid; place-items: center;
+    padding: 1rem;
+    pointer-events: none;
+}
+.caja-cerrada[hidden] { display: none; }
+.caja-cerrada-card {
+    pointer-events: auto;
+    width: 100%; max-width: 360px;
+    padding: 2rem 1.75rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde); border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(15,23,42,0.18);
+    text-align: center;
+    animation: fadeInUp 0.25s ease-out both;
+}
+.caja-cerrada-icono {
+    width: 60px; height: 60px;
+    margin: 0 auto 1rem;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--acento-suave-2); color: var(--acento-texto);
+}
+.caja-cerrada-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--texto); }
+.caja-cerrada-card p { margin-top: 0.4rem; font-size: 0.92rem; color: var(--texto-3); }
+.caja-cerrada-card p:empty { display: none; }
+.caja-cerrada-card .btn { margin-top: 1.25rem; }
+
+/* El único botón brillante: late para que se note */
+.btn-abrir-caja {
+    padding: 0.9rem 2.2rem;
+    font-size: 1.05rem;
+    animation: latidoAbrir 2s ease-out infinite;
+}
+.btn-abrir-caja[hidden] { display: none; }
+@keyframes latidoAbrir {
+    0%   { box-shadow: 0 0 0 0 rgba(124,58,237,0.45); }
+    70%  { box-shadow: 0 0 0 16px rgba(124,58,237,0); }
+    100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
+}
+
+/* El botón Corte no hace nada con la caja cerrada */
+.corte-boton:disabled { opacity: 0.45; cursor: not-allowed; }
+.header .corte-boton:disabled,
+.header .corte-boton:disabled:hover,
+.header .corte-boton:disabled:active { transform: none; box-shadow: 3px 3px 0 var(--tinta); background: var(--superficie); color: var(--texto-2); }
+
+/* Abrir caja */
+.apertura-anterior {
+    margin: 0.5rem 0 1rem;
+    padding: 0.75rem 0.9rem;
+    background: var(--acento-suave); border: 1px solid var(--acento-suave-2); border-radius: 10px;
+    font-size: 0.9rem; color: var(--acento-texto-fuerte);
+}
+.apertura-aviso { margin-top: 0.35rem; font-size: 0.85rem; font-weight: 600; color: var(--aviso-texto); }
+.apertura-aviso:empty { display: none; }
+.btn-enlace {
+    padding: 0; border: none; background: none;
+    color: var(--acento-texto); font-weight: 600; font-size: 0.9rem;
+    text-decoration: underline; text-underline-offset: 3px;
+    cursor: pointer;
+}
+.btn-enlace:hover { color: var(--acento-texto-fuerte); }
+
+/* Conteo en modo corte: vouchers de tarjeta */
+.corte-tarjeta[hidden] { display: none; }
+.corte-tarjeta .form-group { max-width: 320px; }
+.modal-corte .modal-actions [hidden] { display: none; }
+.modal-corte .corte-limpiar { margin-right: auto; }
+
+/* Cerrar caja */
+.cierre-dejar { margin-top: 1rem; }
+.cierre-fondo { display: block; margin-top: 0.35rem; font-size: 0.8rem; color: var(--texto-3); }
+
+/* Resultado del corte */
+.corte-sello {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    padding: 0.45rem 1.1rem;
+    border-radius: 999px;
+    font-size: 1.05rem; font-weight: 800;
+    animation: fadeInUp 0.25s ease-out both;
+}
+.corte-sello.is-cuadrada { background: var(--ok-suave); color: var(--ok-texto); border: 1px solid var(--ok-borde); }
+.corte-sello.is-faltante { background: var(--peligro-suave); color: var(--peligro-texto); border: 1px solid var(--peligro-borde); }
+.corte-sello.is-sobrante { background: var(--aviso-suave); color: var(--aviso-texto); border: 1px solid var(--aviso-borde); }
+.corte-detalle { margin: 0.75rem 0; text-align: left; }
+.corte-revision { color: var(--peligro-texto); font-weight: 600; font-size: 0.9rem; }
+.corte-revision[hidden] { display: none; }
 
 /* Avisos de existencias */
 .icono-aviso {
