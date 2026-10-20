@@ -494,11 +494,12 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     transition: background-color 0.3s ease;
 }
 
+
 .sidebar {
     width: 250px;
-    background: var(--superficie, #ffffff); 
-    color: var(--texto, #1e293b); 
-    border-right: 1px solid var(--borde, #e2e8f0);
+    background: #ffffff;
+    color: #1e293b;
+    border-right: 4px solid #7c3aed; 
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -508,23 +509,14 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     left: 0;
     z-index: 100;
     transition: all 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
 }
 
-
-.sidebar-icon {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-}
-
-:root[data-tema="oscuro"] .sidebar-icon {
-    filter: invert(1);
-}
 .sidebar-brand {
     padding: 1.5rem; 
     font-size: 1.2rem; 
     font-weight: 700; 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+    border-bottom: 1px solid #e2e8f0; 
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -549,27 +541,59 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     align-items: center;
     gap: 1rem;
     padding: 0.8rem 1.5rem;
-    color: var(--texto-2, #475569);
+    color: #475569; 
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.2s ease;
     border-left: 4px solid transparent;
 }
 
 .sidebar-link:hover {
-    background: var(--acento-suave, #f5f3ff); 
+    background: #f1f5f9;
+    color: #1e293b;
 }
 
 .sidebar-link.active {
-    background: var(--acento-suave-2, #ede9fe);
-    color: var(--acento-texto, #6d28d9);
-    border-left-color: var(--acento, #7c3aed);
+    background: #f5f3ff;
+    color: #7c3aed;
+    border-left-color: #7c3aed;
+}
+
+.sidebar-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 :root[data-tema="oscuro"] .sidebar {
-    background: var(--superficie, #161a21);
-    border-right-color: var(--borde, #2a313d);
+    background: #161a21;
+    border-right-color: #7c3aed;
+    box-shadow: none;
 }
+
+:root[data-tema="oscuro"] .sidebar-brand {
+    border-bottom-color: #2a313d;
+}
+
+:root[data-tema="oscuro"] .sidebar-link {
+    color: #cbd5e1;
+}
+
+:root[data-tema="oscuro"] .sidebar-link:hover {
+    background: #1b2029;
+    color: #fff;
+}
+
+:root[data-tema="oscuro"] .sidebar-link.active {
+    background: #211b35;
+    color: #a78bfa;
+    border-left-color: #a78bfa;
+}
+
+:root[data-tema="oscuro"] .sidebar-icon {
+    filter: invert(1);
+}
+
 
 .main-wrapper {
     flex: 1;
@@ -579,7 +603,6 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     width: calc(100% - 250px);
     transition: margin-left 0.3s ease, width 0.3s ease;
 }
-
 
 .btn-toggle-sidebar {
     background: transparent;
