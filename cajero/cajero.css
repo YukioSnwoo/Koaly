@@ -205,6 +205,17 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .user-nombre { display: block; font-size: 0.9rem; font-weight: 500; color: var(--texto-2); }
 .user-sucursal { display: block; font-size: 0.78rem; color: var(--texto-3); }
 
+/* Botón de corte de caja (junto al idioma) */
+.corte-boton {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie);
+    color: var(--texto-2); font-weight: 600; font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.corte-boton:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
+
 /* Selector de idioma (mismo que el panel de gerente) */
 .idioma { position: relative; }
 .idioma > summary {
@@ -244,6 +255,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 
 /* Botones de la barra con relieve (idioma, tema, cerrar sesión), igual que el
    gerente: se elevan al pasar el cursor y se hunden al presionar */
+.header .corte-boton,
 .header .idioma > summary,
 .header .tema-boton,
 .header .btn-salir {
@@ -251,6 +263,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     box-shadow: 3px 3px 0 var(--tinta);
     transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
 }
+.header .corte-boton:hover,
 .header .idioma > summary:hover,
 .header .tema-boton:hover,
 .header .btn-salir:hover {
@@ -258,6 +271,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0 var(--tinta);
 }
+.header .corte-boton:active,
 .header .idioma > summary:active,
 .header .tema-boton:active,
 .header .btn-salir:active {
@@ -977,6 +991,113 @@ kbd {
 }
 .eliminar-producto strong { display: block; color: var(--texto); font-size: 0.95rem; }
 .eliminar-producto small { display: block; color: var(--texto-3); font-size: 0.82rem; }
+
+/* ============================================================
+   Corte de caja: conteo de billetes (tarjetas como las del catálogo)
+   ============================================================ */
+.modal-box.modal-corte { width: 920px; }
+.corte-seccion {
+    margin: 1rem 0 0.6rem;
+    font-size: 0.8rem; font-weight: 700; color: var(--texto-2);
+    text-transform: uppercase; letter-spacing: 0.05em;
+}
+.dinero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.9rem;
+    padding: 4px;               /* deja ver el anillo de foco y la sombra */
+    margin: -4px;
+}
+.dinero-card {
+    position: relative;
+    padding-bottom: 0.6rem;
+    border: 1px solid var(--borde); border-radius: 12px;
+    background: var(--superficie);
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.dinero-card:hover { border-color: var(--acento-borde); box-shadow: 0 12px 24px rgba(15,23,42,0.10); transform: translateY(-3px); }
+.dinero-card:has(.dinero-agregar:active) { transform: translateY(0) scale(0.98); }
+.dinero-card.con-piezas { border-color: var(--acento-medio); box-shadow: inset 0 0 0 1px var(--acento-medio); }
+.dinero-card.bump { animation: tarjetaPulso 0.3s ease-out; }
+
+/* Toda la imagen es el botón que suma uno */
+.dinero-agregar {
+    width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+    padding: 0.6rem 0.6rem 0;
+    border: none; border-radius: 11px;
+    background: transparent; color: var(--texto);
+    cursor: pointer;
+}
+.dinero-agregar img {
+    width: 100%; aspect-ratio: 1 / 2;
+    object-fit: contain;
+    border-radius: 6px;
+    filter: var(--filtro-imagen);
+    user-select: none; -webkit-user-drag: none;
+}
+.dinero-valor { font-size: 1rem; font-weight: 700; color: var(--acento-texto); }
+
+/* Círculo rojo: resta uno (solo si ya hay billetes de esa denominación) */
+.dinero-restar {
+    display: none;
+    position: absolute; top: 0.4rem; left: 0.4rem;
+    width: 30px; height: 30px;
+    align-items: center; justify-content: center;
+    padding: 0;
+    border: 2px solid var(--superficie); border-radius: 50%;
+    background: var(--peligro); color: #fff;
+    box-shadow: 0 2px 6px rgba(220,38,38,0.4);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+.dinero-restar svg { width: 16px; height: 16px; }
+.dinero-restar:hover { background: var(--peligro-hover); transform: scale(1.08); }
+.dinero-restar:active { transform: scale(0.92); }
+.dinero-card.con-piezas .dinero-restar { display: flex; }
+
+.dinero-pie {
+    display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+    padding: 0.45rem 0.6rem 0;
+}
+.dinero-piezas {
+    width: 100%;
+    padding: 0.4rem;
+    border: 1px solid var(--borde); border-radius: 8px;
+    background: var(--superficie); color: var(--texto);
+    font-size: 0.95rem; font-weight: 700; text-align: center;
+    -moz-appearance: textfield; appearance: textfield;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dinero-piezas::-webkit-outer-spin-button,
+.dinero-piezas::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.dinero-piezas:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+.dinero-subtotal { font-size: 0.8rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+
+/* Monedas: imagen cuadrada y tarjetas más angostas */
+.dinero-grid--monedas { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); }
+.dinero-card--moneda .dinero-agregar img { aspect-ratio: 1 / 1; border-radius: 50%; }
+
+/* Resumen del corte: billetes, monedas y total en efectivo */
+.corte-resumen {
+    margin-top: 1.1rem;
+    padding: 0.75rem 1rem;
+    background: var(--acento-suave); border: 1px solid var(--acento-suave-2); border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+}
+.corte-fila {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    padding: 0.15rem 0;
+    font-size: 0.9rem; color: var(--texto-2);
+}
+.corte-fila > span:last-child { color: var(--texto); font-weight: 600; }
+.corte-fila small { color: var(--texto-3); }
+.corte-fila--total {
+    margin-top: 0.4rem; padding-top: 0.55rem;
+    border-top: 1px dashed var(--acento-borde);
+    font-weight: 700; color: var(--acento-texto);
+}
+.corte-fila--total strong { font-size: 1.4rem; }
 
 /* Avisos de existencias */
 .icono-aviso {
