@@ -57,7 +57,8 @@ $idSucursal = (int) $cajero['id_sucursal'];
    Entrada
    ------------------------------------------------------------ */
 $metodo = $_POST['metodo'] ?? '';
-if (!in_array($metodo, ['Efectivo', 'Tarjeta'], true)) {
+// Varios = una parte con tarjeta y el resto en efectivo
+if (!in_array($metodo, ['Efectivo', 'Tarjeta', 'Varios'], true)) {
     responder(400, ['success' => false, 'message' => t('servidor.metodo_invalido')]);
 }
 
@@ -180,16 +181,37 @@ try {
     $subtotalCentavos  = (int) round($totalCentavos / 1.16);
     $impuestosCentavos = $totalCentavos - $subtotalCentavos;
 
-    /* --- Efectivo recibido --- */
+    /* --- Pago: cuánto con tarjeta, cuánto en efectivo y el cambio --- */
+    $tarjetaCentavos = 0;
+    if ($metodo === 'Tarjeta') {
+        $tarjetaCentavos = $totalCentavos;
+    } elseif ($metodo === 'Varios') {
+        $columnasVentas = columnasTabla($pdo, 'Ventas');
+        if (!isset($columnasVentas['monto_efectivo'], $columnasVentas['monto_tarjeta'])) {
+            throw new RuntimeException('Para cobrar con varios métodos falta correr sql/006_pago_combinado.sql (columnas monto_efectivo y monto_tarjeta en Ventas).');
+        }
+        // Con tarjeta va una parte: ni todo ni más, porque la tarjeta no da cambio
+        $tarjetaCentavos = (int) round((float) ($_POST['monto_tarjeta'] ?? 0) * 100);
+        if ($tarjetaCentavos <= 0 || $tarjetaCentavos >= $totalCentavos) {
+            throw new DomainException(t('servidor.tarjeta_invalida', ['total' => dinero($totalCentavos / 100)]));
+        }
+    }
+
+    // Lo que se cubre en efectivo; el cambio sale de lo recibido
+    $efectivoCentavos = $totalCentavos - $tarjetaCentavos;
     $recibidoCentavos = null;
     $cambioCentavos   = null;
-    if ($metodo === 'Efectivo') {
+    if ($efectivoCentavos > 0) {
         $recibidoCentavos = (int) round((float) ($_POST['efectivo_recibido'] ?? 0) * 100);
-        if ($recibidoCentavos < $totalCentavos) {
-            throw new DomainException(t('servidor.efectivo_insuficiente', ['total' => dinero($totalCentavos / 100)]));
+        if ($recibidoCentavos < $efectivoCentavos) {
+            throw new DomainException($metodo === 'Varios'
+                ? t('servidor.efectivo_insuficiente_resto', ['resto' => dinero($efectivoCentavos / 100)])
+                : t('servidor.efectivo_insuficiente', ['total' => dinero($totalCentavos / 100)]));
         }
-        $cambioCentavos = $recibidoCentavos - $totalCentavos;
+        $cambioCentavos = $recibidoCentavos - $efectivoCentavos;
     }
+    // Solo el pago combinado lleva desglose de tarjeta en el ticket
+    $tarjetaTicket = $metodo === 'Varios' ? $tarjetaCentavos / 100 : null;
 
     /* --- Caja asignada (solo si Ventas ya tiene la columna id_caja) --- */
     $idCaja = null;
@@ -208,6 +230,9 @@ try {
         'impuestos'         => $centavosADinero($impuestosCentavos),
         'iva'               => $centavosADinero($impuestosCentavos),
         'total'             => $centavosADinero($totalCentavos),
+        // Desglose del cobro (sql/006): efectivo neto, sin el cambio
+        'monto_efectivo'    => $centavosADinero($efectivoCentavos),
+        'monto_tarjeta'     => $centavosADinero($tarjetaCentavos),
     ];
     if ($idCaja !== null) {
         $valoresVenta['id_caja'] = (int) $idCaja;
@@ -327,6 +352,7 @@ $ticket = [
     'subtotal'  => $subtotalCentavos / 100,
     'iva'       => $impuestosCentavos / 100,
     'total'     => $totalCentavos / 100,
+    'tarjeta'   => $tarjetaTicket,
     'recibido'  => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
     'cambio'    => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
 ];
@@ -374,6 +400,7 @@ responder(200, [
     'id_venta' => $idVenta,
     'subtotal' => $subtotalCentavos / 100,
     'total'    => $totalCentavos / 100,
+    'tarjeta'  => $tarjetaTicket,
     'recibido' => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
     'cambio'   => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
     'ticket'   => $ticket,
