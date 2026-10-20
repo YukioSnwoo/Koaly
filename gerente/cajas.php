@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/guardia.php';
+require_once __DIR__ . '/includes/turnos.php';
 
 $ESTADOS_VALIDOS = ['Activa', 'Inactiva', 'Mantenimiento'];
 
@@ -211,6 +212,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: cajas.php');
             exit;
 
+        /* -------- Fondo base (lo que se deja en caja al cerrar) -------- */
+        } elseif ($action === 'fondo') {
+            $id = (int) ($_POST['id_caja'] ?? 0);
+            $fondoCentavos = montoFormularioEnCentavos($_POST['fondo_fijo'] ?? '');
+            if ($fondoCentavos === null || $fondoCentavos > 10000000) {
+                throw new RuntimeException(t('turnos.error_fondo'));
+            }
+            $stmt = $pdo->prepare("UPDATE Cajas SET fondo_fijo = ? WHERE id_caja = ? AND id_sucursal = ?");
+            $stmt->execute([number_format($fondoCentavos / 100, 2, '.', ''), $id, $idSucursalGerente]);
+
+            $_SESSION['flash'] = ['msg' => t('turnos.fondo_guardado')];
+            header('Location: cajas.php');
+            exit;
+
         /* -------- Eliminar -------- */
         } elseif ($action === 'eliminar') {
             $id = (int) ($_POST['id_caja'] ?? 0);
@@ -256,7 +271,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    ------------------------------------------------------------ */
 $stmt = $pdo->prepare("
     SELECT c.id_caja, c.numero_caja, c.nombre, c.estado,
-           c.id_cajero_asignado,
+           c.id_cajero_asignado, c.fondo_fijo,
+           t.fecha_apertura AS turno_desde, ut.nombre AS turno_cajero,
            u.nombre AS cajero_nombre,
            u.estado AS cajero_estado,
            c.creado_en,
@@ -265,11 +281,18 @@ $stmt = $pdo->prepare("
              WHERE v.id_caja = c.id_caja AND v.fecha_hora >= CURDATE()) AS monto_hoy
     FROM Cajas c
     LEFT JOIN Usuarios u ON u.id_usuario = c.id_cajero_asignado
+    LEFT JOIN Turnos_Caja t ON t.id_caja = c.id_caja AND t.estado = 'Abierto'
+    LEFT JOIN Usuarios ut ON ut.id_usuario = t.id_cajero_apertura
     WHERE c.id_sucursal = ?
     ORDER BY c.numero_caja
 ");
 $stmt->execute([$idSucursalGerente]);
 $cajas = $stmt->fetchAll();
+
+// Cortes que los cajeros entregaron y falta recibir
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM Turnos_Caja WHERE id_sucursal = ? AND estado_revision = 'Pendiente'");
+$stmt->execute([$idSucursalGerente]);
+$cortesPendientes = (int) $stmt->fetchColumn();
 
 // Cajeros activos + los que ya tienen caja aunque no estén activos (vacaciones,
 // licencia…): si no aparecieran, editar la caja los desasignaría sin avisar.
@@ -328,7 +351,15 @@ require __DIR__ . '/header.php';
             <?= e(t('cajas.resumen', ['activas' => numero($totalActivas), 'total' => numero(count($cajas))])) ?>
         </p>
     </div>
-    <button type="button" class="btn btn-primary" onclick="abrirModalNuevaCaja()">+ <?= e(t('cajas.nueva')) ?></button>
+    <div class="acciones">
+        <a href="cortes.php" class="btn btn-ghost">
+            <?= e(t('turnos.ver_cortes')) ?>
+            <?php if ($cortesPendientes > 0): ?>
+                <span class="badge badge-warning"><?= e(tn('turnos.n_pendientes', $cortesPendientes)) ?></span>
+            <?php endif; ?>
+        </a>
+        <button type="button" class="btn btn-primary" onclick="abrirModalNuevaCaja()">+ <?= e(t('cajas.nueva')) ?></button>
+    </div>
 </div>
 
 <?php if ($exito): ?>
@@ -397,6 +428,22 @@ require __DIR__ . '/header.php';
                     <span><?= e(t('cajas.ventas_hoy')) ?>: <strong><?= dinero($c['monto_hoy']) ?></strong></span>
                     <span>·</span>
                     <span><?= e(tn('cajas.ventas_total', (int) $c['num_ventas'])) ?></span>
+                </div>
+
+                <div class="caja-ventas">
+                    <span><?= e(t('turnos.fondo_base')) ?>: <strong><?= dinero($c['fondo_fijo']) ?></strong></span>
+                    <button type="button" class="btn-enlace-caja" onclick="abrirModalFondo(this)"
+                        data-id="<?= (int) $c['id_caja'] ?>"
+                        data-numero="<?= e($c['numero_caja']) ?>"
+                        data-fondo="<?= e(number_format((float) $c['fondo_fijo'], 2, '.', '')) ?>"
+                    ><?= e(t('turnos.cambiar')) ?></button>
+                </div>
+                <div class="caja-ventas">
+                    <?php if ($c['turno_desde']): ?>
+                        <span class="badge badge-activo"><?= e(t('turnos.caja_abierta', ['cajero' => $c['turno_cajero'] ?? '—', 'hora' => fecha($c['turno_desde'])])) ?></span>
+                    <?php else: ?>
+                        <span class="badge badge-inactivo"><?= e(t('turnos.caja_cerrada')) ?></span>
+                    <?php endif; ?>
                 </div>
 
                 <div class="caja-actions">
@@ -501,5 +548,46 @@ require __DIR__ . '/header.php';
         </form>
     </div>
 </div>
+
+<!-- Modal: fondo base de una caja -->
+<div class="modal-overlay" id="modalFondo">
+    <div class="modal-box modal-box--sm">
+        <h2 id="tituloFondo"></h2>
+        <p class="modal-ayuda"><?= e(t('turnos.fondo_ayuda')) ?></p>
+        <form method="POST" id="formFondo">
+            <input type="hidden" name="action" value="fondo">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="id_caja" value="">
+            <div class="form-group">
+                <label for="inputFondo"><?= e(t('turnos.fondo_base')) ?></label>
+                <input type="number" id="inputFondo" name="fondo_fijo" min="0" max="100000" step="0.01" inputmode="decimal" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalFondo')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn-primary"><?= e(t('comun.guardar')) ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-enlace-caja {
+        padding: 0; border: none; background: none; cursor: pointer;
+        color: var(--acento-texto); font-weight: 600; font-size: inherit;
+        text-decoration: underline; text-underline-offset: 3px;
+    }
+</style>
+<script>
+    const TITULO_FONDO = <?= json_encode(t('turnos.fondo_titulo'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+
+    function abrirModalFondo(boton) {
+        const form = document.getElementById('formFondo');
+        form.id_caja.value = boton.dataset.id;
+        form.fondo_fijo.value = boton.dataset.fondo;
+        document.getElementById('tituloFondo').textContent = TITULO_FONDO.replace('{caja}', boton.dataset.numero);
+        abrirModal('modalFondo');
+        form.fondo_fijo.select();
+    }
+</script>
 
 <?php require __DIR__ . '/footer.php'; ?>
