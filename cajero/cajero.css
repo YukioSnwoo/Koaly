@@ -7,29 +7,29 @@
    ============================================================ */
 :root {
     color-scheme: light;
-    --fondo:        #f3f6fb;
+    --fondo:        #f5f6f8;
     --superficie:   #ffffff;
-    --superficie-2: #f8fafd;
-    --superficie-3: #ebf0f8;
-    --borde:        #dbe3f0;
-    --borde-fuerte: #c2cee3;
-    --barra:        rgba(243, 246, 251, 0.92);
+    --superficie-2: #f8fafc;
+    --superficie-3: #f1f5f9;
+    --borde:        #e2e8f0;
+    --borde-fuerte: #cbd5e1;
+    --barra:        rgba(255, 255, 255, 0.92);
     --marco-imagen: #ffffff;
     --filtro-imagen: none;
 
-    --texto:   #14213d;
-    --texto-2: #3c4a66;
-    --texto-3: #56637e;
-    --texto-4: #8f9ab0;
+    --texto:   #1e293b;
+    --texto-2: #475569;
+    --texto-3: #64748b;
+    --texto-4: #94a3b8;
 
-    --acento:              #1d3f9a;
-    --acento-hover:        #152f78;
-    --acento-texto:        #1d3f9a;
-    --acento-texto-fuerte: #13296a;
-    --acento-suave:        #e9effa;
-    --acento-suave-2:      #d8e2f6;
-    --acento-borde:        #a9bde6;
-    --acento-medio:        #5577c7;
+    --acento:              #7c3aed;
+    --acento-hover:        #6d28d9;
+    --acento-texto:        #6d28d9;
+    --acento-texto-fuerte: #5b21b6;
+    --acento-suave:        #f5f3ff;
+    --acento-suave-2:      #ede9fe;
+    --acento-borde:        #c4b5fd;
+    --acento-medio:        #a78bfa;
 
     --ok:            #16a34a;
     --ok-texto:      #15803d;
@@ -50,38 +50,38 @@
     --aviso-borde-hover: #fcd34d;
 
     /* Estilo táctil de los botones de la barra (como el gerente, estilos/koaly.css):
-       borde y sombra sólida. En claro es azul marino; en oscuro, un azul
+       borde y sombra sólida. En claro es un morado oscuro; en oscuro, uno
        grisáceo más claro que el fondo para que el relieve no se pierda. */
-    --tinta: #14286b;
+    --tinta: #3b3156;
 }
 
 /* Valores oscuros: se repiten en dos selectores para cubrir
    "elegido oscuro" y "sistema en oscuro sin elección". */
 :root[data-tema="oscuro"] {
     color-scheme: dark;
-    --fondo:        #0a1020;
-    --superficie:   #111a2e;
-    --superficie-2: #152038;
-    --superficie-3: #1b2843;
-    --borde:        #26355a;
-    --borde-fuerte: #36497a;
-    --barra:        rgba(17, 26, 46, 0.92);
+    --fondo:        #0e1116;
+    --superficie:   #161a21;
+    --superficie-2: #1b2029;
+    --superficie-3: #212733;
+    --borde:        #2a313d;
+    --borde-fuerte: #3b4352;
+    --barra:        rgba(22, 26, 33, 0.92);
     --marco-imagen: #e6e8ec;
     --filtro-imagen: brightness(0.92);
 
     --texto:   #e8eaef;
-    --texto-2: #c4cbd9;
-    --texto-3: #9aa5bb;
-    --texto-4: #6b7590;
+    --texto-2: #c4c9d3;
+    --texto-3: #9ba3b2;
+    --texto-4: #6b7385;
 
-    --acento:              #2f5bd3;
-    --acento-hover:        #244bb8;
-    --acento-texto:        #9db8ff;
-    --acento-texto-fuerte: #c6d5ff;
-    --acento-suave:        #13203f;
-    --acento-suave-2:      #1a2c55;
-    --acento-borde:        #34508f;
-    --acento-medio:        #6f8fe0;
+    --acento:              #7c3aed;
+    --acento-hover:        #6d28d9;
+    --acento-texto:        #b9a6ff;
+    --acento-texto-fuerte: #d4c8ff;
+    --acento-suave:        #211b35;
+    --acento-suave-2:      #2c2449;
+    --acento-borde:        #5c4b9e;
+    --acento-medio:        #8f7ae8;
 
     --ok:            #22c55e;
     --ok-texto:      #4ade80;
@@ -100,34 +100,34 @@
     --aviso-borde:   #5a4413;
     --aviso-suave-hover: #33290f;
     --aviso-borde-hover: #7a5c18;
-    --tinta: #3d5288;
+    --tinta: #4d4566;
 }
 @media (prefers-color-scheme: dark) {
     :root:not([data-tema="claro"]) {
         color-scheme: dark;
-        --fondo:        #0a1020;
-        --superficie:   #111a2e;
-        --superficie-2: #152038;
-        --superficie-3: #1b2843;
-        --borde:        #26355a;
-        --borde-fuerte: #36497a;
-        --barra:        rgba(17, 26, 46, 0.92);
+        --fondo:        #0e1116;
+        --superficie:   #161a21;
+        --superficie-2: #1b2029;
+        --superficie-3: #212733;
+        --borde:        #2a313d;
+        --borde-fuerte: #3b4352;
+        --barra:        rgba(22, 26, 33, 0.92);
         --marco-imagen: #e6e8ec;
         --filtro-imagen: brightness(0.92);
 
         --texto:   #e8eaef;
-        --texto-2: #c4cbd9;
-        --texto-3: #9aa5bb;
-        --texto-4: #6b7590;
+        --texto-2: #c4c9d3;
+        --texto-3: #9ba3b2;
+        --texto-4: #6b7385;
 
-        --acento:              #2f5bd3;
-        --acento-hover:        #244bb8;
-        --acento-texto:        #9db8ff;
-        --acento-texto-fuerte: #c6d5ff;
-        --acento-suave:        #13203f;
-        --acento-suave-2:      #1a2c55;
-        --acento-borde:        #34508f;
-        --acento-medio:        #6f8fe0;
+        --acento:              #7c3aed;
+        --acento-hover:        #6d28d9;
+        --acento-texto:        #b9a6ff;
+        --acento-texto-fuerte: #d4c8ff;
+        --acento-suave:        #211b35;
+        --acento-suave-2:      #2c2449;
+        --acento-borde:        #5c4b9e;
+        --acento-medio:        #8f7ae8;
 
         --ok:            #22c55e;
         --ok-texto:      #4ade80;
@@ -146,7 +146,7 @@
         --aviso-borde:   #5a4413;
         --aviso-suave-hover: #33290f;
         --aviso-borde-hover: #7a5c18;
-        --tinta: #3d5288;
+        --tinta: #4d4566;
     }
 }
 
@@ -380,7 +380,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 }
 .search-box.cargando .spinner { opacity: 1; animation: girar 0.6s linear infinite; }
 
-/* Fondo azul suave para que la barra se distinga del panel */
+/* Fondo morado suave para que la barra se distinga del panel */
 .search-box input {
     width: 100%;
     padding: 0.6rem 2.25rem 0.6rem 2.3rem;
@@ -393,7 +393,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .search-box input:focus {
     border-color: var(--acento);
     background: var(--superficie);
-    box-shadow: 0 0 0 3px rgba(29,63,154,0.15);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
     outline: none;
 }
 
@@ -448,8 +448,8 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-block { width: 100%; }
 
-.btn-primary { background: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(29,63,154,0.3); }
-.btn-primary:hover:not(:disabled) { background: var(--acento-hover); box-shadow: 0 4px 12px rgba(29,63,154,0.35); }
+.btn-primary { background: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(124,58,237,0.3); }
+.btn-primary:hover:not(:disabled) { background: var(--acento-hover); box-shadow: 0 4px 12px rgba(124,58,237,0.35); }
 
 .btn-ghost { background: var(--superficie); color: var(--texto-2); border-color: var(--borde); }
 .btn-ghost:hover { background: var(--superficie-2); border-color: var(--borde-fuerte); }
@@ -509,7 +509,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .categoria-chip:active { transform: translateX(2px) scale(0.98); }
 .categoria-chip.vacia { color: var(--texto-3); }
 .categoria-chip.activo,
-.categoria-chip.activo:hover { background: var(--acento); border-color: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(29,63,154,0.3); }
+.categoria-chip.activo:hover { background: var(--acento); border-color: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(124,58,237,0.3); }
 .categoria-chip-conteo {
     min-width: 1.3rem;
     padding: 0 0.35rem;
@@ -624,7 +624,7 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     border-radius: 999px;
     background: var(--acento); color: #fff;
     font-size: 0.75rem; font-weight: 700; text-align: center;
-    box-shadow: 0 2px 6px rgba(29,63,154,0.35);
+    box-shadow: 0 2px 6px rgba(124,58,237,0.35);
 }
 .producto-card.en-venta .producto-card-cantidad { display: block; }
 
@@ -701,7 +701,7 @@ table.tabla-venta th.col-num { text-align: right; }
 }
 .qty-stepper:focus-within {
     border-color: var(--acento);
-    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
 }
 .qty-btn {
     width: 32px; min-height: 34px;
@@ -889,7 +889,7 @@ kbd {
 .metodo-btn .metodo-icono { font-size: 1.6rem; line-height: 1; }
 .metodo-btn:hover:not(:disabled) {
     background: var(--acento); border-color: var(--acento); color: #fff;
-    transform: translateY(-2px); box-shadow: 0 8px 18px rgba(29,63,154,0.30);
+    transform: translateY(-2px); box-shadow: 0 8px 18px rgba(124,58,237,0.30);
 }
 .metodo-btn:active:not(:disabled) { transform: translateY(0); }
 .metodo-btn:disabled { opacity: 0.5; cursor: wait; }
@@ -905,7 +905,7 @@ kbd {
     background: var(--superficie);
     transition: border-color 0.15s, box-shadow 0.15s;
 }
-.input-dinero:focus-within { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(29,63,154,0.12); }
+.input-dinero:focus-within { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
 .input-dinero span { padding: 0 0 0 0.9rem; color: var(--texto-3); font-weight: 600; font-size: 1.1rem; }
 .input-dinero input {
     flex: 1; min-width: 0;
@@ -1089,7 +1089,7 @@ kbd {
 }
 .dinero-piezas::-webkit-outer-spin-button,
 .dinero-piezas::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.dinero-piezas:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(29,63,154,0.12); }
+.dinero-piezas:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
 .dinero-subtotal { font-size: 0.8rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
 
 /* Monedas: imagen cuadrada y tarjetas más angostas */
@@ -1161,9 +1161,9 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 }
 .btn-abrir-caja[hidden] { display: none; }
 @keyframes latidoAbrir {
-    0%   { box-shadow: 0 0 0 0 rgba(29,63,154,0.45); }
-    70%  { box-shadow: 0 0 0 16px rgba(29,63,154,0); }
-    100% { box-shadow: 0 0 0 0 rgba(29,63,154,0); }
+    0%   { box-shadow: 0 0 0 0 rgba(124,58,237,0.45); }
+    70%  { box-shadow: 0 0 0 16px rgba(124,58,237,0); }
+    100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
 }
 
 /* El botón Corte no hace nada con la caja cerrada */
@@ -1291,8 +1291,8 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
         border-radius: 50%;
         background: var(--acento);
         border: 2px solid var(--superficie);
-        box-shadow: 0 0 0 2px rgba(29, 63, 154, 0.45),
-                    0 4px 12px rgba(29, 63, 154, 0.35);
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.45),
+                    0 4px 12px rgba(124, 58, 237, 0.35);
         pointer-events: none;
         z-index: 99999;
         transform: translate(-50%, -50%);
@@ -1303,9 +1303,9 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
     .cursor-dot.is-hover {
         width: 28px;
         height: 28px;
-        background: #5577c7;
-        box-shadow: 0 0 0 3px rgba(85, 119, 199, 0.35),
-                    0 6px 18px rgba(29, 63, 154, 0.45);
+        background: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.35),
+                    0 6px 18px rgba(124, 58, 237, 0.45);
     }
 }
 
@@ -1361,3 +1361,67 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
     width: 0; height: 0; border: 0;
     visibility: hidden;
 }
+
+/* ============================================================
+   Piel táctil de Koaly (../estilos/koaly.css se enlaza después).
+   koaly.css pone colores, fuentes, bordes y sombras de tinta a los
+   componentes comunes; aquí van las piezas propias de la caja.
+   Va al final para no tocar las reglas de arriba.
+   ============================================================ */
+
+/* Botón de restar de la tarjeta: táctil como los demás botones */
+.producto-card-restar {
+    border: 2px solid var(--tinta); border-radius: 9px;
+    background: var(--peligro-suave); color: var(--peligro-texto);
+    box-shadow: 2px 2px 0 var(--tinta);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
+}
+.producto-card-restar:hover { background: var(--peligro); color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--tinta); }
+.producto-card-restar:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--tinta); }
+
+/* Cuántas van en la venta */
+.producto-card-cantidad {
+    min-width: 2.1rem; padding: 0.05rem 0.45rem;
+    border: 2px solid var(--tinta);
+    box-shadow: 2px 2px 0 var(--tinta);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Tarjeta: se eleva con sombra de tinta; en la venta, borde y sombra morados */
+.producto-card:hover { border-color: var(--tinta); box-shadow: var(--sombra-tactil-max); transform: translate(-2px, -2px); }
+.producto-card.en-venta { border-color: var(--acento); box-shadow: 5px 5px 0 var(--acento); }
+.producto-card.agotado:hover { transform: none; box-shadow: var(--sombra-tactil-alta); border-color: var(--tinta); }
+
+/* Foto: marco fino en vez de la línea de tinta que koaly.css pone debajo */
+.producto-card .producto-card-img { border: 1.5px solid var(--borde); }
+
+/* Etiquetas de existencias con el mismo borde que las insignias */
+.stock-bajo, .stock-agotado { border: 1.5px solid currentColor; }
+
+/* Lista de venta y selector de cantidad */
+.tabla-scroll { border: 2px solid var(--tinta); border-radius: 12px; }
+.qty-stepper { border: 2px solid var(--tinta); border-radius: 10px; box-shadow: 2px 2px 0 var(--tinta); }
+.qty-stepper:focus-within { border-color: var(--tinta); box-shadow: 3px 3px 0 var(--foco); }
+
+/* Total, efectivo y cambio */
+.resumen-total { border: 2px solid var(--tinta); border-radius: 12px; box-shadow: var(--sombra-tactil); }
+.input-dinero { border: 2px solid var(--tinta); border-radius: 10px; }
+.input-dinero:focus-within { border-color: var(--tinta); box-shadow: 3px 3px 0 var(--foco); }
+/* El campo va dentro del marco: sin el borde que koaly.css pone a los campos de .form-group */
+.form-group .input-dinero input:not([type="checkbox"]):not([type="radio"]) { border: none; border-radius: 0; }
+.form-group .input-dinero input:focus { box-shadow: none; }
+.cambio-resultado { border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
+
+/* Resultados de búsqueda y avisos breves */
+.search-results { border: 2px solid var(--tinta); border-radius: 12px; box-shadow: var(--sombra-tactil-alta); }
+.toast { border: 2px solid var(--tinta); border-left-width: 6px; border-radius: 12px; box-shadow: var(--sombra-tactil); }
+
+/* Barras de desplazamiento con los colores del tema (en oscuro no quedan blancas) */
+.catalogo-grid, .resumen-lista, .tabla-scroll, .search-results, .modal-box, .lista-faltantes {
+    scrollbar-color: var(--borde-fuerte) transparent;
+}
+
+/* Campo de efectivo sin flechas de subir/bajar */
+.input-dinero input { -moz-appearance: textfield; appearance: textfield; }
+.input-dinero input::-webkit-outer-spin-button,
+.input-dinero input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

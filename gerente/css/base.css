@@ -22,7 +22,7 @@ html { -webkit-text-size-adjust: 100%; }
  *   texto tenue      #64748b   4.8:1  ← lo más claro permitido para TEXTO
  *   #94a3b8 (2.6:1) solo para bordes, iconos decorativos y placeholders.
  *   Verde de texto #15803d (5.0:1); #16a34a solo para fondos/bordes.
- *   El azul cobalto es acento: botones principales, selección y marca. */
+ *   El morado es acento: botones principales, selección y marca. */
 body {
     /* Fuente del sistema: Segoe UI en Windows, San Francisco en Mac/iOS,
        Roboto en Android, Cantarell/Ubuntu en Linux. */
@@ -50,8 +50,8 @@ button { font: inherit; }
  *  Layout
  *  ============================================================ */
 .header {
-    /* Barra clara: el color sólido era la mayor superficie saturada de la
-       pantalla y siempre estaba a la vista. Ahora solo la marca lleva color. */
+    /* Barra clara: el morado sólido era la mayor superficie saturada de la
+       pantalla y siempre estaba a la vista. Ahora solo la marca es morada. */
     background: var(--barra);
     backdrop-filter: saturate(1.4) blur(8px);
     color: var(--texto);
@@ -111,7 +111,7 @@ button { font: inherit; }
     background: var(--superficie-2);
     border-color: var(--borde-fuerte);
     color: var(--acento-texto);
-    box-shadow: 0 4px 10px rgba(29, 63, 154, 0.10);
+    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.10);
     transform: translateX(-2px);
 }
 .back-link:active {
@@ -157,8 +157,8 @@ button { font: inherit; }
 }
 .btn:active { transform: translateY(1px); }
 
-.btn-primary { background: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(29,63,154,0.3); }
-.btn-primary:hover { background: var(--acento-hover); box-shadow: 0 4px 12px rgba(29,63,154,0.35); }
+.btn-primary { background: var(--acento); color: #fff; box-shadow: 0 1px 2px rgba(124,58,237,0.3); }
+.btn-primary:hover { background: var(--acento-hover); box-shadow: 0 4px 12px rgba(124,58,237,0.35); }
 
 .btn-ghost { background: var(--superficie); color: var(--texto-2); border-color: var(--borde); }
 .btn-ghost:hover { background: var(--superficie-2); border-color: var(--borde-fuerte); }
@@ -224,7 +224,7 @@ button { font: inherit; }
 .modal-overlay {
     display: none;
     position: fixed; inset: 0;
-    background: rgba(10, 20, 50, 0.55);
+    background: rgba(34, 28, 51, 0.55);
     backdrop-filter: blur(2px);
     align-items: center; justify-content: center;
     z-index: 100; padding: 1rem;
@@ -283,7 +283,7 @@ button { font: inherit; }
 .form-group select:focus,
 .form-group textarea:focus {
     border-color: var(--acento);
-    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
     outline: none;
 }
 .form-group textarea { resize: vertical; min-height: 70px; }
@@ -342,8 +342,8 @@ button { font: inherit; }
         border-radius: 50%;
         background: var(--acento);
         border: 2px solid var(--superficie);
-        box-shadow: 0 0 0 2px rgba(29, 63, 154, 0.45),
-        0 4px 12px rgba(29, 63, 154, 0.35);
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.45),
+        0 4px 12px rgba(124, 58, 237, 0.35);
         pointer-events: none;
         z-index: 99999;
         transform: translate(-50%, -50%);
@@ -354,9 +354,9 @@ button { font: inherit; }
     .cursor-dot.is-hover {
         width: 28px;
         height: 28px;
-        background: #5577c7;
-        box-shadow: 0 0 0 3px rgba(85, 119, 199, 0.35),
-        0 6px 18px rgba(29, 63, 154, 0.45);
+        background: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.35),
+        0 6px 18px rgba(124, 58, 237, 0.45);
     }
 }
 

@@ -77,7 +77,7 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--acento) 0%, #4f7be0 100%);
+    background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -85,7 +85,7 @@
     font-weight: 700;
     color: #fff;
     margin-bottom: 0.85rem;
-    box-shadow: 0 6px 16px rgba(29,63,154,0.25);
+    box-shadow: 0 6px 16px rgba(124,58,237,0.25);
     flex-shrink: 0;
 }
 
@@ -195,7 +195,7 @@
     width: 72px;
     height: 72px;
     border-radius: 14px;
-    background: linear-gradient(135deg, var(--acento-hover) 0%, #4f7be0 100%);
+    background: linear-gradient(135deg, var(--acento-hover) 0%, #a855f7 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -203,7 +203,7 @@
     font-weight: 800;
     color: #fff;
     margin-bottom: 0.85rem;
-    box-shadow: 0 6px 16px rgba(21,47,120,0.25);
+    box-shadow: 0 6px 16px rgba(109,40,217,0.25);
     flex-shrink: 0;
     letter-spacing: 0.02em;
 }
@@ -238,7 +238,7 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--acento) 0%, #4f7be0 100%);
+    background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -523,7 +523,7 @@
 .vista-coleccion[data-vista="lista"] .caja-numero,
 .vista-coleccion[data-vista="lista"] .cajero-avatar {
     width: 48px; height: 48px; margin: 0; font-size: 1rem;
-    box-shadow: 0 3px 8px rgba(21,47,120,0.18);
+    box-shadow: 0 3px 8px rgba(109,40,217,0.18);
 }
 
 .vista-coleccion[data-vista="lista"] > .caja-card {
