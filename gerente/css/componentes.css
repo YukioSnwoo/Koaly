@@ -47,7 +47,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 }
 .toolbar input:focus, .toolbar select:focus {
     border-color: var(--acento);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
     outline: none;
 }
 .toolbar input { flex: 1; min-width: 200px; }
@@ -265,7 +265,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 .form-group select:focus {
     border-color: var(--acento);
     background-color: var(--superficie);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
     outline: none;
 }
 
@@ -361,7 +361,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 .select-custom-trigger:focus-visible {
     border-color: var(--acento);
     background: var(--superficie);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
     outline: none;
 }
 
@@ -484,7 +484,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     outline: none;
     border-color: var(--acento);
     background: var(--superficie);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    box-shadow: 0 0 0 3px rgba(29,63,154,0.12);
 }
 
 
@@ -513,7 +513,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 
 .sidebar {
     width: 250px;
-    background: #1e293b;
+    background: #14286b;
     color: #fff;
     display: flex;
     flex-direction: column;
@@ -561,7 +561,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     align-items: center;
     gap: 1rem;
     padding: 0.8rem 1.5rem;
-    color: #cbd5e1;
+    color: #c6d5ff;
     text-decoration: none;
     font-weight: 500;
     transition: all 0.2s ease;
@@ -576,7 +576,7 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 .sidebar-link.active {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
-    border-left-color: #3b82f6;
+    border-left-color: #9db8ff;
 }
 
 .main-wrapper {
@@ -588,8 +588,8 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 }
 
 :root[data-tema="oscuro"] .sidebar {
-    background: #0f172a;
+    background: #0d1838;
 }
 :root[data-tema="oscuro"] .sidebar-link.active {
-    border-left-color: #a78bfa;
+    border-left-color: #6f8fe0;
 }

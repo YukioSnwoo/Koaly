@@ -6,26 +6,26 @@
 
 /* ── CSS Custom Properties ── */
 :root {
-  --bg:             #0f1117;
-  --surface-1:      #1a1d27;
-  --surface-2:      #14161f;
+  --bg:             #0a1020;
+  --surface-1:      #111a2e;
+  --surface-2:      #0d1526;
   --border:         rgba(255,255,255,0.08);
   --text-primary:   #e8eaed;
-  --text-secondary: #8b8fa3;
-  --text-muted:     #555a6e;
-  --accent:         #6c5ce7;
-  --accent-hover:   #7c6ef7;
-  --bg-accent:      rgba(108,92,231,0.15);
-  --bg-accent-muted:rgba(108,92,231,0.10);
-  --text-accent:    #a29bfe;
+  --text-secondary: #8f9ab3;
+  --text-muted:     #56607a;
+  --accent:         #2f5bd3;
+  --accent-hover:   #3d6be0;
+  --bg-accent:      rgba(47,91,211,0.18);
+  --bg-accent-muted:rgba(47,91,211,0.10);
+  --text-accent:    #9db8ff;
   --bg-success:     rgba(0,184,148,0.12);
   --text-success:   #00b894;
   --bg-danger:      rgba(255,71,87,0.12);
   --text-danger:    #ff4757;
   --bg-warning:     rgba(255,165,2,0.12);
   --text-warning:   #ffa502;
-  --fill-accent:    #6c5ce7;
-  --fill-disabled:  #2a2d3a;
+  --fill-accent:    #2f5bd3;
+  --fill-disabled:  #1f2a44;
   --row-hover:      rgba(255,255,255,0.02);
   --radius:         8px;
   --radius-lg:      12px;
@@ -33,29 +33,29 @@
   --font:           'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Light theme (lavanda suave) ── */
+/* ── Light theme (talavera: azul cobalto y blanco) ── */
 :root[data-theme="light"] {
-  --bg:             #FAF9FC;
+  --bg:             #F5F8FD;
   --surface-1:      #FFFFFF;
-  --surface-2:      #F3F1F8;
-  --border:         rgba(46,42,58,0.10);
-  --text-primary:   #2E2A3A;
-  --text-secondary: #6B6478;
-  --text-muted:     #9892A3;
-  --accent:         #9B87C4;
-  --accent-hover:   #7E6AA8;
-  --bg-accent:      rgba(155,135,196,0.15);
-  --bg-accent-muted:rgba(155,135,196,0.10);
-  --text-accent:    #7E6AA8;
+  --surface-2:      #EEF2FA;
+  --border:         rgba(20,40,107,0.12);
+  --text-primary:   #14213D;
+  --text-secondary: #56637E;
+  --text-muted:     #8F9AB0;
+  --accent:         #1D3F9A;
+  --accent-hover:   #152F78;
+  --bg-accent:      rgba(29,63,154,0.12);
+  --bg-accent-muted:rgba(29,63,154,0.07);
+  --text-accent:    #1D3F9A;
   --bg-success:     rgba(0,184,148,0.12);
   --text-success:   #00946f;
   --bg-danger:      rgba(255,71,87,0.12);
   --text-danger:    #d8333f;
   --bg-warning:     rgba(255,165,2,0.15);
   --text-warning:   #a5680a;
-  --fill-accent:    #9B87C4;
-  --fill-disabled:  #E4E0ED;
-  --row-hover:      rgba(46,42,58,0.03);
+  --fill-accent:    #1D3F9A;
+  --fill-disabled:  #DDE4F1;
+  --row-hover:      rgba(20,40,107,0.03);
 }
 
 /* ── Reset & Base ── */
