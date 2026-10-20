@@ -186,6 +186,8 @@ $pestanas = [
 $filtrosStock    = ['todos', 'normal', 'bajo', 'agotado', 'alerta'];
 $filtroInicial   = in_array($_GET['stock'] ?? '', $filtrosStock, true) ? $_GET['stock'] : 'todos';
 $busquedaInicial = trim((string) ($_GET['buscar'] ?? ''));
+$ordenes         = ['nombre', 'stock_asc', 'stock_desc', 'precio_asc', 'precio_desc'];
+$ordenInicial    = in_array($_GET['orden'] ?? '', $ordenes, true) ? $_GET['orden'] : 'nombre';
 // Sin productos en la sucursal se abre en "Por agregar" para empezar por ahí
 $grupoInicial = isset($pestanas[$_GET['grupo'] ?? '']) ? $_GET['grupo'] : ($conteos['con'] > 0 ? 'con' : 'agregar');
 
@@ -280,6 +282,12 @@ require __DIR__ . '/header.php';
                     <option value="<?= $valor ?>"<?= $valor === $filtroInicial ? ' selected' : '' ?>><?= e($texto) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php // Sin stock (otras pestañas) quedan al final al ordenar por stock ?>
+            <select id="ordenProductos" aria-label="<?= e(t('prods.ordenar')) ?>">
+                <?php foreach ($ordenes as $valor): ?>
+                    <option value="<?= $valor ?>"<?= $valor === $ordenInicial ? ' selected' : '' ?>><?= e(t('prods.orden_' . $valor)) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
     </div>
 
@@ -290,7 +298,8 @@ require __DIR__ . '/header.php';
                 $estado    = (string) $p['estado'];
                 $categoria = tValor('categoria', $p['nombre_categoria'], t('comun.sin_categoria'));
                 $atributos = 'data-grupo="' . $p['grupo'] . '" data-categoria="' . (int) $p['id_categoria'] . '"'
-                    . ' data-nombre="' . e(mb_strtolower($p['nombre'] . ' ' . $p['codigo'] . ' ' . ($p['descripcion'] ?? ''))) . '"';
+                    . ' data-nombre="' . e(mb_strtolower($p['nombre'] . ' ' . $p['codigo'] . ' ' . ($p['descripcion'] ?? ''))) . '"'
+                    . ' data-precio="' . (float) ($p['grupo'] === 'con' ? $p['precio_venta'] : $p['precio']) . '"';
             ?>
             <?php if ($p['grupo'] === 'con'): ?>
                 <?php

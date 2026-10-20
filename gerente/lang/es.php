@@ -169,6 +169,12 @@ return [
     'prods.resumen_aria' => 'Resumen del inventario',
     'prods.kpi_productos_sub' => 'de {n} en el catálogo',
     'prods.no_en_sucursal' => 'No está en su sucursal',
+    'prods.ordenar' => 'Ordenar productos',
+    'prods.orden_nombre' => 'Nombre (A-Z)',
+    'prods.orden_stock_asc' => 'Stock: menor a mayor',
+    'prods.orden_stock_desc' => 'Stock: mayor a menor',
+    'prods.orden_precio_asc' => 'Precio: menor a mayor',
+    'prods.orden_precio_desc' => 'Precio: mayor a menor',
     'inicio.card_productos' => 'Catálogo de la empresa e inventario de su sucursal: stock, precios y alta de productos.',
     'inicio.card_movimientos' => 'Historial de entradas, salidas, ajustes y cambios de precio.',
 
@@ -339,6 +345,13 @@ return [
     'ventas.col_iva' => 'IVA',
     'ventas.col_total' => 'Total',
     'ventas.csv_archivo' => 'ventas',
+
+    // vista (cajas y cajeros)
+    'vista.aria' => 'Cómo mostrar',
+    'vista.iconos' => 'Íconos',
+    'vista.lista' => 'Lista',
+    'vista.columnas' => 'Columnas por estado',
+    'vista.galeria' => 'Galería',
 
     // cajas
     'cajas.titulo' => 'Cajas',

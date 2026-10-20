@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/turnos.php';
+require_once __DIR__ . '/includes/vistas.php';
 
 $ESTADOS_VALIDOS = ['Activa', 'Inactiva', 'Mantenimiento'];
 
@@ -376,7 +377,8 @@ require __DIR__ . '/header.php';
         </div>
     </div>
 <?php else: ?>
-    <div class="cajas-grid">
+    <div class="vista-barra"><?= selectorVistas('gridCajas', 'cajas') ?></div>
+    <div class="cajas-grid vista-coleccion" id="gridCajas" data-vista="iconos">
         <?php foreach ($cajas as $c): ?>
             <?php
                 $esActiva = $c['estado'] === 'Activa';
@@ -387,7 +389,9 @@ require __DIR__ . '/header.php';
                 ][$c['estado']] ?? 'badge-inactivo';
                 $tieneCajero = !empty($c['id_cajero_asignado']);
             ?>
-            <div class="caja-card <?= $esActiva ? '' : 'is-inactiva' ?>">
+            <div class="caja-card <?= $esActiva ? '' : 'is-inactiva' ?>"
+                 data-columna="<?= e(t('estado_caja.' . $c['estado'])) ?>"
+                 data-columna-orden="<?= (int) array_search($c['estado'], $ESTADOS_VALIDOS, true) ?>">
                 <div class="caja-numero" aria-hidden="true">
                     <?= htmlspecialchars($c['numero_caja']) ?>
                 </div>
@@ -398,7 +402,7 @@ require __DIR__ . '/header.php';
                     <div class="caja-nombre caja-nombre--muted"><?= e(t('cajas.sin_nombre')) ?></div>
                 <?php endif; ?>
 
-                <div style="margin-bottom: 0.5rem;">
+                <div class="caja-estado">
                     <span class="badge <?= $estadoBadge ?>"><?= e(t('estado_caja.' . $c['estado'])) ?></span>
                     <?php if ($esActiva && !$tieneCajero): ?>
                         <span class="badge badge-danger" title="<?= e(t('cajas.sin_cajero_ayuda')) ?>"><?= e(t('cajas.sin_cajero')) ?></span>
@@ -424,13 +428,13 @@ require __DIR__ . '/header.php';
                     <?php endif; ?>
                 </div>
 
-                <div class="caja-ventas">
+                <div class="caja-ventas caja-ventas--hoy">
                     <span><?= e(t('cajas.ventas_hoy')) ?>: <strong><?= dinero($c['monto_hoy']) ?></strong></span>
                     <span>·</span>
                     <span><?= e(tn('cajas.ventas_total', (int) $c['num_ventas'])) ?></span>
                 </div>
 
-                <div class="caja-ventas">
+                <div class="caja-ventas caja-ventas--fondo">
                     <span><?= e(t('turnos.fondo_base')) ?>: <strong><?= dinero($c['fondo_fijo']) ?></strong></span>
                     <button type="button" class="btn-enlace-caja" onclick="abrirModalFondo(this)"
                         data-id="<?= (int) $c['id_caja'] ?>"
@@ -438,7 +442,7 @@ require __DIR__ . '/header.php';
                         data-fondo="<?= e(number_format((float) $c['fondo_fijo'], 2, '.', '')) ?>"
                     ><?= e(t('turnos.cambiar')) ?></button>
                 </div>
-                <div class="caja-ventas">
+                <div class="caja-ventas caja-ventas--turno">
                     <?php if ($c['turno_desde']): ?>
                         <span class="badge badge-activo"><?= e(t('turnos.caja_abierta', ['cajero' => $c['turno_cajero'] ?? '—', 'hora' => fecha($c['turno_desde'])])) ?></span>
                     <?php else: ?>

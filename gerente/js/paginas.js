@@ -197,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Componentes
     initCustomSelects();
+    initVistas();
 
     // Productos — filtros
     initFiltrosProductos();
@@ -286,9 +287,10 @@ function initScrollInfinito() {
 
 
 /* ============================================================
- * ██ PRODUCTOS — Pestañas (grupo), búsqueda, categoría y stock
+ * ██ PRODUCTOS — Pestañas (grupo), búsqueda, categoría, stock y orden
  * El filtro de stock solo aplica a "En mi sucursal": en las demás
  * pestañas se oculta, porque esos productos no tienen stock.
+ * Al ordenar por stock, los que no tienen (fuera de la sucursal) van al final.
  * ============================================================ */
 function initFiltrosProductos() {
     const grid = document.getElementById('gridProductos');
@@ -298,12 +300,16 @@ function initFiltrosProductos() {
     const buscador  = document.getElementById('buscarProducto');
     const categoria = document.getElementById('filtroCategoria');
     const filtro    = document.getElementById('filtroStock');
+    const orden     = document.getElementById('ordenProductos');
     const vacio     = document.getElementById('productosSinResultados');
     const marcada   = document.querySelector('#pestanasProductos .is-activo');
     const umbral    = (filtro && parseInt(filtro.dataset.umbral, 10)) || 10;
     // El select de stock puede estar envuelto por el select personalizado
     const cajaStock = filtro ? (filtro.closest('.select-custom') || filtro) : null;
     let grupo = marcada ? marcada.dataset.grupo : 'con';
+    // El servidor las manda por nombre: ese es el orden base y el desempate
+    const tarjetas = Array.from(grid.querySelectorAll('[data-grupo]'));
+    tarjetas.forEach((card, i) => { card.dataset.posicion = i; });
 
     const cumpleStock = (stock, tipo) => {
         if (tipo === 'agotado') return stock === 0;
@@ -331,6 +337,28 @@ function initFiltrosProductos() {
         if (vacio) vacio.hidden = visibles > 0;
     };
 
+    const ordenar = () => {
+        const [campo, sentido] = (orden ? orden.value : 'nombre').split('_');
+        const signo = sentido === 'desc' ? -1 : 1;
+        const valor = card => {
+            const v = parseFloat(campo === 'stock' ? card.dataset.stock : card.dataset.precio);
+            return Number.isNaN(v) ? null : v;
+        };
+        const lista = tarjetas.slice();
+        if (campo === 'stock' || campo === 'precio') {
+            lista.sort((a, b) => {
+                const va = valor(a), vb = valor(b);
+                if (va === null || vb === null) {
+                    if (va !== vb) return va === null ? 1 : -1;
+                } else if (va !== vb) {
+                    return (va - vb) * signo;
+                }
+                return a.dataset.posicion - b.dataset.posicion;
+            });
+        }
+        grid.append(...lista);
+    };
+
     pestanas.forEach(btn => btn.addEventListener('click', () => {
         grupo = btn.dataset.grupo;
         pestanas.forEach(b => {
@@ -342,5 +370,7 @@ function initFiltrosProductos() {
     if (buscador)  buscador.addEventListener('input', aplicar);
     if (categoria) categoria.addEventListener('change', aplicar);
     if (filtro)    filtro.addEventListener('change', aplicar);
+    if (orden)     orden.addEventListener('change', ordenar);
+    ordenar(); // el orden también puede venir de la URL (?orden=stock_asc)
     aplicar(); // pestaña, búsqueda y stock pueden venir de la URL (?stock=alerta)
 }

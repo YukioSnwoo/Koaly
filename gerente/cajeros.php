@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/guardia.php';
+require_once __DIR__ . '/includes/vistas.php';
 
 /**
  * Calcula las iniciales de un nombre (máx. 2 letras).
@@ -302,7 +303,8 @@ require __DIR__ . '/header.php';
         </div>
     </div>
 <?php else: ?>
-    <div class="cajeros-grid">
+    <div class="vista-barra"><?= selectorVistas('gridCajeros', 'cajeros') ?></div>
+    <div class="cajeros-grid vista-coleccion" id="gridCajeros" data-vista="iconos">
         <?php foreach ($cajeros as $c): ?>
             <?php
                 $esActivo   = $c['estado'] === 'Activo';
@@ -314,13 +316,15 @@ require __DIR__ . '/header.php';
                     'Baja'         => 'badge-danger',
                 ][$c['estado']] ?? 'badge-inactivo';
             ?>
-            <div class="cajero-card <?= $esActivo ? '' : 'is-inactivo' ?>">
+            <div class="cajero-card <?= $esActivo ? '' : 'is-inactivo' ?>"
+                 data-columna="<?= e(t('estado_usuario.' . $c['estado'])) ?>"
+                 data-columna-orden="<?= (int) array_search($c['estado'], $ESTADOS_VALIDOS, true) ?>">
                 <div class="cajero-avatar" aria-hidden="true">
                     <?= htmlspecialchars(iniciales($c['nombre'])) ?>
                 </div>
                 <div class="cajero-name"><?= htmlspecialchars($c['nombre']) ?></div>
                 <div class="cajero-email"><?= htmlspecialchars($c['email']) ?></div>
-                <div style="margin-bottom: 0.85rem;">
+                <div class="cajero-estado">
                     <span class="badge <?= $estadoBadge ?>"><?= e(t('estado_usuario.' . $c['estado'])) ?></span>
                 </div>
 
