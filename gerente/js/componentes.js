@@ -215,3 +215,74 @@ document.addEventListener('click', (e) => {
         _cerrarTodosLosSelects(null);
     }
 });
+
+
+/* ============================================================
+ * Selector de vista estilo Finder — cajas y cajeros
+ * <div data-vistas="idDelContenedor" data-vistas-clave="cajas"> con
+ * botones [data-vista]: iconos, lista, columnas, galeria.
+ * La vista se pone en data-vista del contenedor (el CSS hace el resto)
+ * y se recuerda en este navegador. En "columnas" las tarjetas se
+ * agrupan por su data-columna (el estado), ordenadas por data-columna-orden.
+ * ============================================================ */
+const VISTAS_VALIDAS = ['iconos', 'lista', 'columnas', 'galeria'];
+
+function initVistas() {
+    document.querySelectorAll('[data-vistas]').forEach(barra => {
+        const contenedor = document.getElementById(barra.dataset.vistas);
+        if (!contenedor) return;
+
+        const botones = barra.querySelectorAll('[data-vista]');
+        const clave   = 'koaly.vista.' + barra.dataset.vistasClave;
+        // Orden original de las tarjetas, para volver a él al salir de columnas
+        const tarjetas = Array.from(contenedor.children);
+
+        const pintar = (vista) => {
+            contenedor.dataset.vista = vista;
+            botones.forEach(b => {
+                const activo = b.dataset.vista === vista;
+                b.classList.toggle('is-activo', activo);
+                b.setAttribute('aria-pressed', activo ? 'true' : 'false');
+            });
+
+            contenedor.replaceChildren();
+            if (vista !== 'columnas') {
+                contenedor.append(...tarjetas);
+                return;
+            }
+
+            const columnas = new Map();
+            tarjetas.forEach(card => {
+                const titulo = card.dataset.columna || '';
+                if (!columnas.has(titulo)) {
+                    columnas.set(titulo, { orden: parseInt(card.dataset.columnaOrden, 10) || 0, cards: [] });
+                }
+                columnas.get(titulo).cards.push(card);
+            });
+            [...columnas.entries()]
+                .sort((a, b) => a[1].orden - b[1].orden)
+                .forEach(([titulo, { cards }]) => {
+                    const col = document.createElement('section');
+                    col.className = 'vista-columna';
+                    const encabezado = document.createElement('h2');
+                    encabezado.className = 'vista-columna-titulo';
+                    encabezado.textContent = titulo;
+                    const conteo = document.createElement('span');
+                    conteo.className = 'segmentado-conteo';
+                    conteo.textContent = cards.length;
+                    encabezado.append(' ', conteo);
+                    col.append(encabezado, ...cards);
+                    contenedor.append(col);
+                });
+        };
+
+        botones.forEach(btn => btn.addEventListener('click', () => {
+            pintar(btn.dataset.vista);
+            try { localStorage.setItem(clave, btn.dataset.vista); } catch (err) { /* modo privado */ }
+        }));
+
+        let guardada = null;
+        try { guardada = localStorage.getItem(clave); } catch (err) { /* modo privado */ }
+        if (VISTAS_VALIDAS.includes(guardada) && guardada !== 'iconos') pintar(guardada);
+    });
+}

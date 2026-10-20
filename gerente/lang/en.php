@@ -169,6 +169,12 @@ return [
     'prods.resumen_aria' => 'Inventory summary',
     'prods.kpi_productos_sub' => 'of {n} in the catalog',
     'prods.no_en_sucursal' => 'Not in your branch',
+    'prods.ordenar' => 'Sort products',
+    'prods.orden_nombre' => 'Name (A-Z)',
+    'prods.orden_stock_asc' => 'Stock: low to high',
+    'prods.orden_stock_desc' => 'Stock: high to low',
+    'prods.orden_precio_asc' => 'Price: low to high',
+    'prods.orden_precio_desc' => 'Price: high to low',
     'inicio.card_productos' => 'Company catalog and your branch inventory: stock, prices and adding products.',
     'inicio.card_movimientos' => 'History of stock in, stock out, adjustments and price changes.',
 
@@ -339,6 +345,13 @@ return [
     'ventas.col_iva' => 'VAT',
     'ventas.col_total' => 'Total',
     'ventas.csv_archivo' => 'sales',
+
+    // vista (cajas y cajeros)
+    'vista.aria' => 'View as',
+    'vista.iconos' => 'Icons',
+    'vista.lista' => 'List',
+    'vista.columnas' => 'Columns by status',
+    'vista.galeria' => 'Gallery',
 
     // cajas
     'cajas.titulo' => 'Registers',
