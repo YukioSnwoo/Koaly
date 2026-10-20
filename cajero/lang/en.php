@@ -120,6 +120,26 @@ return [
     'varios.todo_tarjeta' => 'All by card',
     'varios.tarjeta_excede' => 'That\'s more than the purchase total',
 
+    // corte de caja
+    'corte.boton' => 'Cash count',
+    'corte.titulo' => 'Cash count',
+    'corte.ayuda' => 'Tap a bill or a coin to add one, or type how many there are.',
+    'corte.billetes' => 'Bills',
+    'corte.monedas' => 'Coins',
+    'corte.total_efectivo' => 'Total cash',
+    'corte.n_billetes' => ['1 bill', '{n} bills'],
+    'corte.n_monedas' => ['1 coin', '{n} coins'],
+    'corte.agregar_billete' => 'Add one {valor} bill',
+    'corte.quitar_billete' => 'Remove one {valor} bill',
+    'corte.piezas_billete' => '{valor} bills',
+    'corte.agregar_moneda' => 'Add one {valor} coin',
+    'corte.quitar_moneda' => 'Remove one {valor} coin',
+    'corte.piezas_moneda' => '{valor} coins',
+    'corte.limpiar' => 'Clear count',
+    'corte.limpiar_titulo' => 'Clear the count?',
+    'corte.limpiar_mensaje' => 'All entered amounts will be cleared.',
+    'corte.limpiar_confirmar' => 'Yes, clear',
+
     // venta completada
     'venta.titulo' => 'Sale completed',
     'venta.mensaje' => 'Sale #{folio} recorded for {total}, paid by {metodo}.',

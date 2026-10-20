@@ -39,6 +39,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <header class="header">
         <h1>Koaly <span class="header-sub" data-i18n="caja.titulo"><?= e(t('caja.titulo')) ?></span></h1>
         <div class="user-info">
+            <button type="button" class="corte-boton" onclick="abrirCorte()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+                <span data-i18n="corte.boton"><?= e(t('corte.boton')) ?></span>
+            </button>
             <details class="idioma">
                 <summary aria-label="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-title="idioma.cambiar">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -166,6 +170,45 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="modal-actions">
                 <span class="lista-total"><span data-i18n="comun.total"><?= e(t('comun.total')) ?></span> <strong id="listaTotal">$0.00</strong></span>
                 <button type="button" class="btn btn-primary" onclick="cerrarModal('modalLista')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: corte de caja — conteo de billetes (luego monedas).
+         Va antes de la confirmación para que "¿Limpiar conteo?" quede encima. -->
+    <div class="modal-overlay" id="modalCorte" role="dialog" aria-modal="true" aria-labelledby="tituloCorte">
+        <div class="modal-box modal-corte">
+            <h2 id="tituloCorte" data-i18n="corte.titulo"><?= e(t('corte.titulo')) ?></h2>
+            <p class="atajo-hint" data-i18n="corte.ayuda"><?= e(t('corte.ayuda')) ?></p>
+
+            <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
+            <div class="dinero-grid" id="corteBilletes">
+                <!-- Tarjetas de billetes (JS) -->
+            </div>
+
+            <h3 class="corte-seccion" data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></h3>
+            <div class="dinero-grid dinero-grid--monedas" id="corteMonedas">
+                <!-- Tarjetas de monedas (JS) -->
+            </div>
+
+            <!-- Resumen: billetes, monedas y total en efectivo -->
+            <div class="corte-resumen" aria-live="polite">
+                <div class="corte-fila">
+                    <span><span data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></span> <small id="cortePiezasBilletes"></small></span>
+                    <span id="corteTotalBilletes">$0.00</span>
+                </div>
+                <div class="corte-fila">
+                    <span><span data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></span> <small id="cortePiezasMonedas"></small></span>
+                    <span id="corteTotalMonedas">$0.00</span>
+                </div>
+                <div class="corte-fila corte-fila--total">
+                    <span data-i18n="corte.total_efectivo"><?= e(t('corte.total_efectivo')) ?></span>
+                    <strong id="corteTotal">$0.00</strong>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
+                <button type="button" class="btn btn-primary" onclick="cerrarModal('modalCorte')" data-i18n="comun.cerrar"><?= e(t('comun.cerrar')) ?></button>
             </div>
         </div>
     </div>
@@ -1832,6 +1875,154 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             cerrarModal('modalPago');
             mostrarVentaCompletada('Tarjeta', venta);
+        }
+
+        /* ---------- Corte de caja: conteo de billetes y monedas ---------- */
+        // Tarjetas como las del catálogo: clic en la pieza suma uno, el círculo
+        // rojo resta uno y la cantidad también se puede escribir. El conteo se
+        // conserva aunque se cierre la ventana, hasta que se limpie.
+        // Montos en centavos; la llave es el id porque $20 es billete y moneda.
+        const DENOMINACIONES = [
+            { id: 'b20',   tipo: 'billete', centavos: 2000,   imagen: 'billete20.jpg' },
+            { id: 'b50',   tipo: 'billete', centavos: 5000,   imagen: 'billete50.jpg' },
+            { id: 'b100',  tipo: 'billete', centavos: 10000,  imagen: 'billete100.jpg' },
+            { id: 'b200',  tipo: 'billete', centavos: 20000,  imagen: 'billete200.jpg' },
+            { id: 'b500',  tipo: 'billete', centavos: 50000,  imagen: 'billete500.jpg' },
+            { id: 'b1000', tipo: 'billete', centavos: 100000, imagen: 'billete1000.jpg' },
+            { id: 'm050',  tipo: 'moneda',  centavos: 50,     imagen: 'moneda050.jpg' },
+            { id: 'm1',    tipo: 'moneda',  centavos: 100,    imagen: 'moneda1.jpg' },
+            { id: 'm2',    tipo: 'moneda',  centavos: 200,    imagen: 'moneda2.jpg' },
+            { id: 'm5',    tipo: 'moneda',  centavos: 500,    imagen: 'moneda5.jpg' },
+            { id: 'm10',   tipo: 'moneda',  centavos: 1000,   imagen: 'moneda10.jpg' },
+            { id: 'm20',   tipo: 'moneda',  centavos: 2000,   imagen: 'moneda20.jpg' },
+        ];
+        const conteoCorte = new Map(DENOMINACIONES.map(d => [d.id, 0]));
+
+        // "$20", "$1,000", "$0.50"
+        const denominacion = (centavos) => centavos % 100 === 0
+            ? '$' + (centavos / 100).toLocaleString('es-MX')
+            : formatoDinero(centavos / 100);
+
+        function abrirCorte() {
+            renderCorte();
+            abrirModal('modalCorte');
+            document.querySelector('#corteBilletes .dinero-piezas')?.focus();
+        }
+
+        function renderCorte() {
+            const tarjetas = (tipo) => DENOMINACIONES.filter(d => d.tipo === tipo).map(crearTarjetaDinero);
+            document.getElementById('corteBilletes').replaceChildren(...tarjetas('billete'));
+            document.getElementById('corteMonedas').replaceChildren(...tarjetas('moneda'));
+            actualizarTotalCorte();
+        }
+
+        function crearTarjetaDinero(d) {
+            const valor = denominacion(d.centavos);
+            const tarjeta = document.createElement('div');
+            tarjeta.className = `dinero-card dinero-card--${d.tipo}`;
+
+            const agregar = document.createElement('button');
+            agregar.type = 'button';
+            agregar.className = 'dinero-agregar';
+            agregar.setAttribute('aria-label', tr(`corte.agregar_${d.tipo}`, { valor }));
+            const img = document.createElement('img');
+            img.src = `../Imagenes/dinero/${d.imagen}`;
+            img.alt = '';
+            const etiqueta = document.createElement('span');
+            etiqueta.className = 'dinero-valor';
+            etiqueta.textContent = valor;
+            agregar.append(img, etiqueta);
+
+            const restar = document.createElement('button');
+            restar.type = 'button';
+            restar.className = 'dinero-restar';
+            restar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+            restar.title = tr('catalogo.quitar_uno');
+            restar.setAttribute('aria-label', tr(`corte.quitar_${d.tipo}`, { valor }));
+
+            const pie = document.createElement('div');
+            pie.className = 'dinero-pie';
+            const piezas = document.createElement('input');
+            piezas.type = 'number';
+            piezas.min = '0';
+            piezas.step = '1';
+            piezas.inputMode = 'numeric';
+            piezas.placeholder = '0';
+            piezas.className = 'dinero-piezas';
+            piezas.setAttribute('aria-label', tr(`corte.piezas_${d.tipo}`, { valor }));
+            const subtotal = document.createElement('span');
+            subtotal.className = 'dinero-subtotal';
+            pie.append(piezas, subtotal);
+
+            // Mientras se escribe no se reescribe el campo; al salir se normaliza ("007" -> 7)
+            const pintar = () => {
+                const n = conteoCorte.get(d.id);
+                tarjeta.classList.toggle('con-piezas', n > 0);
+                if (document.activeElement !== piezas) piezas.value = n > 0 ? n : '';
+                subtotal.textContent = formatoDinero(n * d.centavos / 100);
+                actualizarTotalCorte();
+            };
+            const fijar = (n) => {
+                conteoCorte.set(d.id, Math.max(0, n));
+                pintar();
+                animarTarjeta(tarjeta);
+            };
+
+            agregar.addEventListener('click', () => fijar(conteoCorte.get(d.id) + 1));
+            restar.addEventListener('click', () => fijar(conteoCorte.get(d.id) - 1));
+            piezas.addEventListener('input', () => {
+                const n = parseInt(piezas.value, 10);
+                conteoCorte.set(d.id, Number.isNaN(n) || n < 0 ? 0 : n);
+                pintar();
+            });
+            piezas.addEventListener('blur', pintar);
+            piezas.addEventListener('keydown', (e) => {
+                // Solo piezas enteras y positivas
+                if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) e.preventDefault();
+                // Enter pasa a la siguiente pieza (de los billetes sigue a las monedas)
+                if (e.key === 'Enter') {
+                    const campos = [...document.querySelectorAll('#modalCorte .dinero-piezas')];
+                    campos[campos.indexOf(piezas) + 1]?.focus();
+                }
+            });
+
+            tarjeta.append(agregar, restar, pie);
+            pintar();
+            return tarjeta;
+        }
+
+        // Total y piezas por tipo, en centavos
+        function sumarCorte(tipo = null) {
+            let centavos = 0;
+            let piezas = 0;
+            DENOMINACIONES.forEach(d => {
+                if (tipo && d.tipo !== tipo) return;
+                const n = conteoCorte.get(d.id);
+                centavos += n * d.centavos;
+                piezas += n;
+            });
+            return { centavos, piezas };
+        }
+
+        function actualizarTotalCorte() {
+            const billetes = sumarCorte('billete');
+            const monedas = sumarCorte('moneda');
+            document.getElementById('corteTotalBilletes').textContent = formatoDinero(billetes.centavos / 100);
+            document.getElementById('corteTotalMonedas').textContent = formatoDinero(monedas.centavos / 100);
+            document.getElementById('cortePiezasBilletes').textContent = billetes.piezas > 0 ? `(${trn('corte.n_billetes', billetes.piezas)})` : '';
+            document.getElementById('cortePiezasMonedas').textContent = monedas.piezas > 0 ? `(${trn('corte.n_monedas', monedas.piezas)})` : '';
+            document.getElementById('corteTotal').textContent = formatoDinero((billetes.centavos + monedas.centavos) / 100);
+        }
+
+        function pedirLimpiarCorte() {
+            if (sumarCorte().piezas === 0) return;
+            const mensaje = document.createElement('p');
+            mensaje.className = 'modal-mensaje';
+            mensaje.textContent = tr('corte.limpiar_mensaje');
+            abrirConfirmacion(tr('corte.limpiar_titulo'), mensaje, tr('corte.limpiar_confirmar'), () => {
+                conteoCorte.forEach((_, id) => conteoCorte.set(id, 0));
+                renderCorte();
+            });
         }
 
         /* ---------- Ticket ---------- */

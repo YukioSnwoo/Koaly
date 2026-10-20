@@ -121,6 +121,26 @@ return [
     'varios.todo_tarjeta' => 'Todo con tarjeta',
     'varios.tarjeta_excede' => 'Es más de lo que cuesta la compra',
 
+    // corte de caja
+    'corte.boton' => 'Corte',
+    'corte.titulo' => 'Corte de caja',
+    'corte.ayuda' => 'Toca un billete o una moneda para sumar uno, o escribe cuántos hay.',
+    'corte.billetes' => 'Billetes',
+    'corte.monedas' => 'Monedas',
+    'corte.total_efectivo' => 'Total en efectivo',
+    'corte.n_billetes' => ['1 billete', '{n} billetes'],
+    'corte.n_monedas' => ['1 moneda', '{n} monedas'],
+    'corte.agregar_billete' => 'Agregar un billete de {valor}',
+    'corte.quitar_billete' => 'Quitar un billete de {valor}',
+    'corte.piezas_billete' => 'Billetes de {valor}',
+    'corte.agregar_moneda' => 'Agregar una moneda de {valor}',
+    'corte.quitar_moneda' => 'Quitar una moneda de {valor}',
+    'corte.piezas_moneda' => 'Monedas de {valor}',
+    'corte.limpiar' => 'Limpiar conteo',
+    'corte.limpiar_titulo' => '¿Limpiar el conteo?',
+    'corte.limpiar_mensaje' => 'Se borrarán todas las cantidades capturadas.',
+    'corte.limpiar_confirmar' => 'Sí, limpiar',
+
     // venta completada
     'venta.titulo' => 'Venta completada',
     'venta.mensaje' => 'Venta #{folio} registrada por {total} con {metodo}.',
