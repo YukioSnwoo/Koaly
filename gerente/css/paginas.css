@@ -503,6 +503,9 @@
  *  cuadrícula de siempre), lista, columnas (por estado) o galeria.
  *  ============================================================ */
 .caja-estado { margin-bottom: 0.5rem; }
+/* "Abierta por … desde …" es larga: se parte en dos líneas en vez de salirse de la tarjeta */
+.caja-ventas--turno { justify-content: center; max-width: 100%; }
+.caja-ventas--turno .badge { white-space: normal; text-align: center; line-height: 1.35; max-width: 100%; }
 .cajero-estado { margin-bottom: 0.85rem; }
 
 .vista-barra { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
@@ -615,7 +618,8 @@
 .vista-coleccion[data-vista="columnas"] {
     grid-template-columns: none;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(270px, 1fr);
+    /* Ancho fijo, como tablero: con un solo estado no se estira y se distingue de "íconos" */
+    grid-auto-columns: minmax(270px, 320px);
     align-items: start;
     gap: 1rem;
     overflow-x: auto;

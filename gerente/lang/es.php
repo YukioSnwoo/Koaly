@@ -14,6 +14,9 @@ return [
     // tema
     'tema.cambiar' => 'Cambiar tema',
 
+    // menu (barra lateral en celular)
+    'menu.abrir' => 'Abrir menú',
+
     // idioma
     'idioma.cambiar' => 'Cambiar idioma',
 

@@ -12,6 +12,7 @@ return [
     'sesion.cerrar' => 'Log out',
 
     // tema
+    'menu.abrir' => 'Open menu',
     'tema.cambiar' => 'Change theme',
 
     // idioma

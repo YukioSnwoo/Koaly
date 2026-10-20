@@ -34,7 +34,7 @@ try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koa
 <body>
 <div class="layout">
     <!-- Barra Lateralllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="barraLateral">
                 <div class="sidebar-brand">
             <img src="../Imagenes/koala/koala-normal.png" alt="Koaly" class="sidebar-logo">
             <span>Koaly</span>
@@ -61,12 +61,19 @@ try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koa
             </a>
         </nav>
      </aside> 
+    <div class="sidebar-fondo" id="barraLateralFondo" aria-hidden="true"></div>
     <!-- Barra Lateralllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll -->
 
     <!-- CONTENIDO PRINCIPAL -->
     <div class="main-wrapper">
         <header class="header">
-            <h1>Koaly <span class="header-sub"><?= e(t('panel.titulo')) ?></span></h1>
+            <div class="header-izq">
+                <button type="button" class="tema-boton sidebar-toggle" id="botonMenu"
+                        aria-controls="barraLateral" aria-expanded="false" aria-label="<?= e(t('menu.abrir')) ?>" title="<?= e(t('menu.abrir')) ?>">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+                </button>
+                <h1>Koaly <span class="header-sub"><?= e(t('panel.titulo')) ?></span></h1>
+            </div>
             <div class="user-info">
                 <details class="idioma">
                     <summary aria-label="<?= e(t('idioma.cambiar')) ?>">
