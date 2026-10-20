@@ -403,29 +403,19 @@ body{
   color:var(--text-secondary);
 }
 
-/* ── Botón Dar de baja ── */
-.btn-baja-wrapper{
-  background:var(--bg-danger);
-  border:none;
-  padding:4px;
-  margin-left:4px;
-  border-radius:var(--radius);
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  vertical-align:middle;
-  transition:opacity .15s;
+/* ── Botones Dar de baja (rojo pastel) / Dar de alta (verde) ── */
+.btn--baja,
+.btn--alta{margin-left:4px;vertical-align:middle}
+.btn--baja{
+  background:#f8b4b4;
+  color:#8a1c1c;
 }
-.btn-baja-wrapper:hover{opacity:.8}
-.baja-rect-negro{
-  background:var(--text-danger);
+.btn--baja:hover{background:#f49a9a}
+.btn--alta{
+  background:#00b894;
   color:#fff;
-  padding:2px 8px;
-  border-radius:4px;
-  font-size:11px;
-  font-weight:500;
-  font-family:var(--font);
 }
+.btn--alta:hover{background:#00a383}
 
 /* ── Avatar ── */
 .avatar{

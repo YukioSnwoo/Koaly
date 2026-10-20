@@ -62,7 +62,7 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Escribe el motivo del rechazo.');
             }
             $stmt = $pdo->prepare("UPDATE Solicitudes_Productos SET estado = 'Rechazada', motivo_rechazo = ?, resuelto_en = NOW(), resuelto_por = ? WHERE id_solicitud = ?");
-            $stmt->execute([$motivo, $admin['id_usuario'], $idSolicitud]);
+            $stmt->execute([$motivo, $_SESSION['id_usuario'], $idSolicitud]);
             $mensaje = 'Solicitud rechazada.';
 
         } elseif ($action === 'aprobar_eliminar') {
@@ -73,7 +73,7 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("UPDATE Productos SET estado = 'Descontinuado', modificado_en = NOW() WHERE id_producto = ?")
                 ->execute([$sol['id_producto']]);
             $stmt = $pdo->prepare("UPDATE Solicitudes_Productos SET estado = 'Aprobada', resuelto_en = NOW(), resuelto_por = ? WHERE id_solicitud = ?");
-            $stmt->execute([$admin['id_usuario'], $idSolicitud]);
+            $stmt->execute([$_SESSION['id_usuario'], $idSolicitud]);
             $mensaje = 'Producto dado de baja del catálogo.';
 
         } else { // aprobar_agregar: el admin acepta la sugerencia tal cual o la rechaza
@@ -121,7 +121,7 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmt = $pdo->prepare("UPDATE Solicitudes_Productos SET estado = 'Aprobada', id_producto_creado = ?, resuelto_en = NOW(), resuelto_por = ? WHERE id_solicitud = ?");
-            $stmt->execute([$idCreado, $admin['id_usuario'], $idSolicitud]);
+            $stmt->execute([$idCreado, $_SESSION['id_usuario'], $idSolicitud]);
         }
 
         $pdo->commit();

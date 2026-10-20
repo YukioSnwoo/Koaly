@@ -13,6 +13,8 @@ $error = '';
 // Procesar acciones POST antes de enviar contenido al navegador.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    // Baja/alta también se lanzan desde panel.php; se regresa a la página de origen.
+    $volverA = ($_POST['volver'] ?? '') === 'panel' ? 'panel.php' : 'gerentes.php';
 
     try {
         if (!csrfValido()) {
@@ -47,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->commit();
-            header('Location: gerentes.php');
+            header('Location: ' . $volverA);
             exit;
         }
 
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('El gerente no existe o ya está activo.');
             }
 
-            header('Location: gerentes.php');
+            header('Location: ' . $volverA);
             exit;
         }
 
@@ -205,7 +207,7 @@ $todasSucursales = $pdo->query("
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['gerentes']) ?></h1>
+        <h1><?= htmlspecialchars('Gerentes') ?></h1>
         <p>Registra gerentes y asígnalos a una sucursal</p>
     </div>
     <button class="btn btn--primary" onclick="openModal('modalGerente')"><i class="ti ti-user-plus"></i>Registrar gerente</button>
@@ -218,7 +220,7 @@ $todasSucursales = $pdo->query("
 <div class="table-wrap" style="margin-top:1rem">
     <table class="table" id="tblGerentes">
         <thead><tr>
-            <th>Nombre</th><th>Correo</th><th>Sucursal asignada</th><th>Estado</th><th>Acciones</th>
+            <th>Nombre</th><th>Correo</th><th>Sucursal asignada</th><th>Estado</th><th style="width:270px">Acciones</th>
         </tr></thead>
         <tbody>
             <?php if (empty($gerentes)): ?>
@@ -246,7 +248,7 @@ $todasSucursales = $pdo->query("
                                 <span class="badge badge--warning"><?= htmlspecialchars($g['estado']) ?></span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td style="white-space:nowrap">
                             <button class="icon-btn" title="Editar" onclick="editarGerente(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
@@ -256,15 +258,15 @@ $todasSucursales = $pdo->query("
                                     data-id="<?= (int) $g['id_usuario'] ?>"
                                     data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                     data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
-                                <button class="btn-baja-wrapper" title="Dar de baja" onclick="abrirModalBaja(this)"
+                                <button type="button" class="btn btn--sm btn--baja" onclick="abrirModalBaja(this)"
                                     data-id="<?= (int) $g['id_usuario'] ?>"
-                                    data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"><span class="baja-rect-negro">Baja</span></button>
+                                    data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"><i class="ti ti-user-off"></i>Dar de baja a gerente</button>
                             <?php else: ?>
                                 <form method="POST" action="gerentes.php" style="display:inline">
                                     <input type="hidden" name="action" value="reactivar">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                                     <input type="hidden" name="id_usuario" value="<?= (int) $g['id_usuario'] ?>">
-                                    <button type="submit" class="btn btn--ghost btn--sm" title="Reactivar"><i class="ti ti-user-check"></i>Reactivar</button>
+                                    <button type="submit" class="btn btn--sm btn--alta"><i class="ti ti-user-check"></i>Dar de alta</button>
                                 </form>
                             <?php endif; ?>
                         </td>
