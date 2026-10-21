@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/correos_empleado.php';
+require_once __DIR__ . '/includes/vistas.php';
 
 /**
  * Calcula las iniciales de un nombre (máx. 2 letras).
@@ -373,7 +374,8 @@ require __DIR__ . '/header.php';
         </div>
     </div>
 <?php else: ?>
-    <div class="cajeros-grid">
+    <div class="vista-barra"><?= selectorVistas('gridCajeros', 'cajeros') ?></div>
+    <div class="cajeros-grid vista-coleccion" id="gridCajeros" data-vista="iconos">
         <?php foreach ($cajeros as $c): ?>
             <?php
                 $id          = (int) $c['id_usuario'];
@@ -386,7 +388,9 @@ require __DIR__ . '/header.php';
                     'Baja'         => 'badge-danger',
                 ][$c['estado']] ?? 'badge-inactivo';
             ?>
-            <article class="cajero-card <?= $esActivo ? '' : 'is-inactivo' ?>">
+            <article class="cajero-card <?= $esActivo ? '' : 'is-inactivo' ?>"
+                     data-columna="<?= e(t('estado_usuario.' . $c['estado'])) ?>"
+                     data-columna-orden="<?= (int) array_search($c['estado'], $ESTADOS_VALIDOS, true) ?>">
                 <header class="cajero-cabecera">
                     <div class="cajero-avatar" aria-hidden="true"><?= e(iniciales($c['nombre'])) ?></div>
                     <div class="cajero-identidad">

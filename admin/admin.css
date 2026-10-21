@@ -2,7 +2,8 @@
    Koalicius Admin — Design System & Full Styles
    ═══════════════════════════════════════════════════ */
 
-@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/tabler-icons.min.css');
+/* Desde la v3 la hoja vive en dist/ (sin dist daba 404 y no se veía ningún ícono) */
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/dist/tabler-icons.min.css');
 
 /* ── CSS Custom Properties ── */
 :root {
@@ -297,6 +298,8 @@ body{
   border:0.5px solid var(--border);
 }
 .btn--ghost:hover{background:var(--bg-accent-muted);color:var(--text-primary)}
+.btn--danger{background:var(--text-danger);color:#fff}
+.btn--danger:hover{filter:brightness(1.1)}
 .btn--sm{padding:4px 10px;font-size:12px}
 
 /* ── Inputs & Selects ── */
@@ -465,3 +468,46 @@ body{
   .branch-grid{grid-template-columns:1fr}
   .grid-2{grid-template-columns:1fr}
 }
+
+/* ── Menú de estado del gerente (botón ⋮ en Acciones) ──
+   Va con position: fixed porque .table-wrap recorta lo que se sale. */
+.menu-estado{
+  position:fixed;z-index:120;min-width:190px;
+  padding:6px;
+  background:var(--surface-1);
+  border:0.5px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  text-align:left;
+}
+.menu-estado[hidden]{display:none}
+.menu-estado__titulo{
+  padding:6px 10px 4px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-muted);
+}
+.menu-estado__item{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:7px 10px;border:none;border-radius:var(--radius);
+  background:none;color:var(--text-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer;
+}
+.menu-estado__item:hover:not(:disabled),
+.menu-estado__item:focus-visible{background:var(--bg-accent-muted);outline:none}
+.menu-estado__item i{font-size:15px;color:var(--text-secondary)}
+.menu-estado__item:disabled{cursor:default;color:var(--text-accent);font-weight:600}
+.menu-estado__item:disabled i{color:var(--text-accent)}
+.menu-estado__item--peligro,
+.menu-estado__item--peligro i{color:var(--text-danger)}
+.menu-estado__item--peligro:hover:not(:disabled){background:var(--bg-danger)}
+.menu-estado__sep{height:0.5px;margin:4px 6px;background:var(--border)}
+
+/* Modal de confirmación del cambio de estado */
+.confirmar-estado__icono{
+  width:40px;height:40px;border-radius:50%;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg-accent);color:var(--text-accent);
+}
+.confirmar-estado__icono i{font-size:20px}
+.confirmar-estado__icono--peligro{background:var(--bg-danger);color:var(--text-danger)}
+.confirmar-estado__texto{color:var(--text-secondary);font-size:13px;line-height:1.5;margin:0 0 1.25rem}
+.confirmar-estado__texto strong{color:var(--text-primary);font-weight:500}
