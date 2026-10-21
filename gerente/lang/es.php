@@ -6,7 +6,6 @@ return [
 
     // panel
     'panel.titulo' => 'Panel de gerencia',
-    'panel.volver' => 'Volver al inicio',
 
     // sesion
     'sesion.cerrar' => 'Cerrar sesión',

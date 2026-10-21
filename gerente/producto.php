@@ -214,7 +214,6 @@ $stmt->execute([$idSucursalGerente, $idProducto]);
 $movimientos = $stmt->fetchAll();
 
 $pageTitle    = $producto['nombre'];
-$showBackLink = false;
 require __DIR__ . '/header.php';
 ?>
 

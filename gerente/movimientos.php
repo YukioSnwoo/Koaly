@@ -178,7 +178,6 @@ $filtros = array_filter([
 $url = static fn(array $extra) => 'movimientos.php?' . http_build_query($filtros + $extra);
 
 $pageTitle    = t('mov.titulo');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 

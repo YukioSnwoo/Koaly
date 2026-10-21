@@ -6,7 +6,6 @@ return [
 
     // panel
     'panel.titulo' => 'Manager panel',
-    'panel.volver' => 'Back to home',
 
     // sesion
     'sesion.cerrar' => 'Log out',

@@ -134,7 +134,6 @@ $cortes = $stmt->fetchAll();
 $badgeResultado = ['Cuadrada' => 'badge-activo', 'Faltante' => 'badge-danger', 'Sobrante' => 'badge-warning'];
 
 $pageTitle    = t('turnos.cortes');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 

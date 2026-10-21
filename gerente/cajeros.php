@@ -334,7 +334,6 @@ foreach ($cajeros as $c) {
 }
 
 $pageTitle    = t('cajeros.titulo');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 

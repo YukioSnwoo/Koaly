@@ -408,7 +408,6 @@ $hayFiltros = $idCajero || $idMetodo || $idCaja || $idProducto;
 $pct = static fn(float $parte, float $todo) => $todo > 0 ? round($parte / $todo * 100) : 0;
 
 $pageTitle    = t('ventas.titulo');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 
