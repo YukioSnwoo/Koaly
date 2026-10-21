@@ -325,9 +325,15 @@ if ($vista === 'solicitudes') {
         return 'inventario.php?' + params.toString();
     }
 
+    const form = document.getElementById('formFiltrosInventario');
+    let peticion = null;
+
     async function refrescar() {
+        // Cancela la petición anterior: solo cuenta la respuesta más reciente.
+        if (peticion) peticion.abort();
+        peticion = new AbortController();
         try {
-            const res = await fetch(urlActual(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const res = await fetch(urlActual(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: peticion.signal });
             if (!res.ok) return;
             tbody.innerHTML = await res.text();
             if (indicador) {
@@ -356,6 +362,19 @@ if ($vista === 'solicitudes') {
             refrescar();
             iniciar();
         }
+    });
+
+    // Búsqueda en vivo: filtra mientras se escribe (con una pausa breve para no saturar).
+    let espera = null;
+    form.elements['buscar'].addEventListener('input', () => {
+        clearTimeout(espera);
+        espera = setTimeout(refrescar, 250);
+    });
+    form.elements['sucursal'].addEventListener('change', refrescar);
+    form.elements['categoria'].addEventListener('change', refrescar);
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        refrescar();
     });
 
     iniciar();
