@@ -567,9 +567,16 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 }
 
 .sidebar-link.active {
-    background: #f5f3ff;
-    color: #7c3aed;
-    border-left-color: #7c3aed;
+    background: #5020a3; 
+    color: #f1f5f9;   
+    border-left-color: #6e31d7; 
+    font-weight: 700;    
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+}
+
+
+.sidebar-link.active .sidebar-icon {
+    filter: invert(31%) sepia(83%) saturate(1900%) hue-rotate(245deg) brightness(95%) contrast(95%);
 }
 
 .sidebar-icon {
@@ -598,9 +605,13 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 }
 
 :root[data-tema="oscuro"] .sidebar-link.active {
-    background: #211b35;
-    color: #a78bfa;
+    background: #211b35; 
+    color: #a78bfa;     
     border-left-color: #a78bfa;
+}
+
+:root[data-tema="oscuro"] .sidebar-link.active .sidebar-icon {
+    filter: invert(65%) sepia(43%) saturate(5315%) hue-rotate(224deg) brightness(101%) contrast(97%);
 }
 
 :root[data-tema="oscuro"] .sidebar-icon {
