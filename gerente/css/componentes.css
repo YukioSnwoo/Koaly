@@ -505,6 +505,257 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
 }
 .select-custom-trigger > span { overflow: hidden; text-overflow: ellipsis; }
 
+/* ============================================================
+ *  Barra de filtros unificada (includes/barra_filtros.php)
+ *  Un solo bloque: periodo y facetas son campos de la misma pieza,
+ *  separados por líneas finas, no controles sueltos.
+ *  ============================================================ */
+.filtros {
+    /* El periodo mide lo que su fecha; las facetas se reparten el resto y,
+       si no caben, bajan a otra fila estirándose (sin huecos ni textos
+       cortados). Las líneas internas las dibuja cada campo (arriba e
+       izquierda) y el recorte del borde redondeado esconde las de la orilla. */
+    display: flex;
+    flex-wrap: wrap;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    background: var(--superficie);
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    box-shadow: var(--sombra-tactil-alta);
+}
+.filtros-campo {
+    flex: 1 1 11rem;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.55rem 0.9rem;
+    box-shadow: -1.5px 0 0 var(--borde), 0 -1.5px 0 var(--borde);
+}
+.filtros-campo--periodo { flex: 0 0 auto; }
+.filtros-etiqueta {
+    font-family: var(--fuente-dato);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--texto-3);
+}
+
+/* Periodo: ‹ [📅 1 oct – 20 oct] › */
+.filtros-periodo { display: flex; align-items: center; gap: 0.3rem; }
+.filtros-valor {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0.35rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    color: var(--texto);
+    text-align: left;
+    cursor: pointer;
+}
+.filtros-valor span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filtros-valor svg { color: var(--acento-texto); flex-shrink: 0; }
+.filtros-valor:hover, .filtros-valor[aria-expanded="true"] { background: var(--acento-suave); color: var(--acento-texto); }
+.filtros-flecha {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    padding: 0;
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    background: var(--superficie-2);
+    color: var(--texto-2);
+    cursor: pointer;
+}
+.filtros-flecha:hover:not(:disabled) { background: var(--acento-suave); border-color: var(--acento-borde); color: var(--acento-texto); }
+.filtros-flecha:disabled { opacity: 0.35; cursor: not-allowed; }
+.filtros-atajos-sinjs { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+
+/* Facetas: el menú propio sin su marco (el marco es la barra) */
+.filtros .select-custom { display: block; width: 100%; }
+.filtros .select-custom-trigger,
+.filtros .select-custom.is-open .select-custom-trigger,
+.filtros .select-custom-trigger:focus-visible {
+    width: 100%;
+    min-height: 0;
+    padding: 0.2rem 0.35rem;
+    border: 0;
+    border-radius: 8px;
+    box-shadow: none;
+    background: transparent;
+    font-weight: 600;
+    color: var(--texto);
+}
+.filtros .select-custom-trigger:hover,
+.filtros .select-custom.is-open .select-custom-trigger { background: var(--acento-suave); color: var(--acento-texto); }
+/* "Todos…" se ve igual que cualquier opción (la etiqueta ya dice qué filtra) */
+.filtros .select-custom-trigger.is-placeholder,
+.filtros .select-custom-trigger.is-placeholder > span { color: inherit; font-weight: 600; font-style: normal; }
+
+/* Pie: quitar filtros y aviso de periodo ajustado (solo si hay algo que decir) */
+.filtros-pie {
+    flex: 1 1 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 0.45rem 0.9rem;
+    box-shadow: 0 -1.5px 0 var(--borde);
+    background: var(--superficie-2);
+}
+.filtros-pie:not(:has(.filtros-limpiar)):has(.filtros-aviso:empty) { display: none; }
+.filtros-limpiar { font-size: 0.82rem; font-weight: 600; color: var(--acento-texto); }
+.filtros-aviso { margin: 0; font-size: 0.82rem; color: var(--aviso-texto); }
+.filtros-aviso:empty { display: none; }
+
+/* Opciones con su rango de actividad */
+.select-custom-option:has(.select-custom-detalle) { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+.select-custom-detalle { display: block; max-width: 20rem; font-size: 0.72rem; font-weight: 500; color: var(--texto-3); white-space: normal; }
+.select-custom-option.is-fuera .select-custom-detalle { color: var(--aviso-texto); }
+.select-custom-option.is-disabled .select-custom-detalle { color: var(--texto-4); }
+
+@media (max-width: 640px) {
+    .filtros-campo, .filtros-campo--periodo { flex: 1 1 100%; }
+}
+
+/* ---- Calendario del periodo ---- */
+.calendario {
+    position: fixed;
+    z-index: 300;
+    display: none;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "atajos cuerpo" "pie pie";
+    width: min(36rem, calc(100vw - 16px));
+    background: var(--superficie);
+    color: var(--texto);
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    box-shadow: var(--sombra-tactil-max);
+}
+.calendario.is-open { display: grid; }
+.calendario-atajos {
+    grid-area: atajos;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 9.5rem;
+    padding: 0.6rem;
+    background: var(--superficie-2);
+    border-right: 1.5px solid var(--borde);
+    border-radius: 12px 0 0 0;
+}
+.calendario-atajos button {
+    padding: 0.45rem 0.6rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--texto);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.calendario-atajos button:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento-texto); }
+.calendario-atajos button.is-activo { background: var(--acento); color: #fff; font-weight: 600; }
+.calendario-atajos button:disabled { color: var(--texto-4); cursor: not-allowed; }
+
+.calendario-cuerpo { grid-area: cuerpo; padding: 0.75rem 0.9rem 0.5rem; }
+.calendario-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+.calendario-cabecera strong { font-family: var(--fuente-titulo); font-size: 1rem; }
+.calendario-nav {
+    width: 30px; height: 30px;
+    padding: 0;
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    background: var(--superficie);
+    color: var(--texto-2);
+    font-size: 1.1rem; line-height: 1;
+    cursor: pointer;
+}
+.calendario-nav:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento-texto); }
+.calendario-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.calendario-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.calendario-semana {
+    padding: 0.25rem 0;
+    text-align: center;
+    font-size: 0.7rem; font-weight: 700;
+    color: var(--texto-3);
+    text-transform: uppercase;
+}
+.calendario-dia {
+    position: relative;
+    height: 2.35rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--texto);
+    cursor: pointer;
+}
+.calendario-dia:hover:not(:disabled) { background: var(--acento-suave); }
+.calendario-dia:disabled { color: var(--texto-4); opacity: 0.5; cursor: not-allowed; }
+.calendario-dia.es-hoy { box-shadow: inset 0 0 0 1.5px var(--acento-medio); }
+.calendario-dia.con-actividad::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: 4px;
+    width: 4px; height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--acento-medio);
+}
+.calendario-dia.en-rango { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); border-radius: 0; }
+.calendario-dia.es-inicio { border-radius: 8px 0 0 8px; }
+.calendario-dia.es-fin { border-radius: 0 8px 8px 0; }
+.calendario-dia.es-inicio.es-fin { border-radius: 8px; }
+.calendario-dia.es-inicio, .calendario-dia.es-fin { background: var(--acento); color: #fff; font-weight: 700; }
+.calendario-dia.es-inicio::after, .calendario-dia.es-fin::after { background: #fff; }
+
+.calendario-pie {
+    grid-area: pie;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    border-top: 1.5px solid var(--borde);
+}
+.calendario-resumen { flex: 1 1 12rem; font-size: 0.85rem; font-weight: 600; color: var(--texto-2); }
+
+/* Celular: hoja que sube desde abajo, atajos en una fila deslizable */
+@media (max-width: 640px) {
+    .calendario {
+        left: 0; right: 0; bottom: 0; top: auto;
+        width: 100%;
+        max-height: 92vh;
+        overflow-y: auto;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "atajos" "cuerpo" "pie";
+        border-radius: 16px 16px 0 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .calendario-atajos {
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1.5px solid var(--borde);
+        border-radius: 14px 14px 0 0;
+    }
+}
+
 /* Barra Lateralllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll */
 .layout {
     display: flex;
@@ -638,7 +889,6 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     .main-wrapper { margin-left: 0; width: 100%; }
 }
 @media (max-width: 400px) {
-    .header h1::before { display: none; }
     .header .user-info { gap: 0.4rem; }
 }
 @media (prefers-reduced-motion: reduce) {

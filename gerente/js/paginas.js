@@ -247,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
     crearModalConfirmacion();
 
     // Componentes
+    initFiltros();
     initCustomSelects();
     initVistas();
 

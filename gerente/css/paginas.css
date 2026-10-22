@@ -430,17 +430,6 @@
 /* ============================================================
  *  Ventas de mi sucursal — desgloses y artículos por venta
  *  ============================================================ */
-.ventas-periodo {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 0.75rem; margin-bottom: 1.25rem;
-}
-.ventas-rango { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.ventas-rango label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--texto-3); }
-.ventas-rango input[type="date"] {
-    padding: 0.4rem 0.6rem; border: 1px solid var(--borde); border-radius: 8px;
-    font: inherit; font-size: 0.85rem; color: var(--texto); background: var(--superficie);
-}
-
 /* Desgloses: cuadrícula fija de 2×2 (método · cajero / caja · más vendidos).
    Con auto-fit cabían 3 por fila y la cuarta bajaba sola a todo el ancho.
    Las tarjetas de una misma fila miden lo mismo de alto (stretch). */
@@ -818,7 +807,6 @@
 /* ============================================================
  *  Barra superior — selector de idioma
  *  ============================================================ */
-.header-sub { font-weight: 500; color: var(--texto-3); font-size: 0.95rem; }
 .idioma { position: relative; }
 .idioma > summary {
     list-style: none;

@@ -1,70 +1,49 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/csv.php';
+require_once __DIR__ . '/includes/filtros.php';
 
 const VENTAS_POR_PAGINA = 50;
 const SIN_CAJA = -1;
 
 /* ============================================================
- * 1. Periodo: rango explícito (?desde=&hasta=) o un atajo (?periodo=)
- *    El periodo es lo único que afecta a los KPIs y a los desgloses.
+ * 1. Periodo: atajo (?periodo=) o rango (?desde=&hasta=), acotado a
+ *    [primera venta de la sucursal, hoy] (includes/filtros.php).
  * ============================================================ */
 $hoy = new DateTimeImmutable('today');
 
-// Primer día con ventas de la sucursal (para "Todo")
 $stmt = $pdo->prepare("SELECT MIN(fecha_hora) FROM Ventas WHERE id_sucursal = ?");
 $stmt->execute([$idSucursalGerente]);
 $primeraVenta = $stmt->fetchColumn();
 $inicioHistorico = $primeraVenta ? new DateTimeImmutable(substr($primeraVenta, 0, 10)) : $hoy;
 
-$atajos = [
-    'hoy'  => [t('ventas.periodo_hoy'),  $hoy],
-    '7'    => [t('ventas.periodo_7'),    $hoy->modify('-6 days')],
-    '30'   => [t('ventas.periodo_30'),   $hoy->modify('-29 days')],
-    'mes'  => [t('ventas.periodo_mes'),  $hoy->modify('first day of this month')],
-    'anio' => [t('ventas.periodo_anio'), $hoy->setDate((int) $hoy->format('Y'), 1, 1)],
-    'todo' => [t('ventas.periodo_todo'), min($inicioHistorico, $hoy)],
-];
-
-$leerFecha = static function (string $valor): ?DateTimeImmutable {
-    $f = DateTimeImmutable::createFromFormat('!Y-m-d', $valor);
-    return ($f && $f->format('Y-m-d') === $valor) ? $f : null;
-};
-
-$desde = $leerFecha((string) ($_GET['desde'] ?? ''));
-$hasta = $leerFecha((string) ($_GET['hasta'] ?? ''));
-
-if ($desde && $hasta) {
-    if ($desde > $hasta) {
-        [$desde, $hasta] = [$hasta, $desde];
-    }
-} else {
-    $clave = array_key_exists($_GET['periodo'] ?? '', $atajos) ? (string) $_GET['periodo'] : 'hoy';
-    $desde = $atajos[$clave][1];
-    $hasta = $hoy;
-}
-
-$atajoActivo = null;
-foreach ($atajos as $clave => [, $inicioAtajo]) {
-    if ($desde == $inicioAtajo && $hasta == $hoy) {
-        $atajoActivo = $clave;
-        break;
-    }
-}
-$esTodo = $atajoActivo === 'todo';
+$periodo     = leerPeriodo($_GET, $hoy, $inicioHistorico, 'hoy');
+$desde       = $periodo['desde'];
+$hasta       = $periodo['hasta'];
+$atajoActivo = $periodo['atajo'];
+$esTodo      = $atajoActivo === 'todo';
 
 $dias   = (int) $desde->diff($hasta)->days + 1;
 $inicio = $desde->format('Y-m-d 00:00:00');
 $fin    = $hasta->modify('+1 day')->format('Y-m-d 00:00:00');
 $inicioAnterior = $desde->modify("-{$dias} days")->format('Y-m-d 00:00:00');
 
-$wherePeriodo  = "v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?";
-$paramsPeriodo = [$idSucursalGerente, $inicio, $fin];
-
 /* ============================================================
- * 2. Opciones de la tabla: filtros, orden y agrupación
- *    Solo afectan a la tabla (y al CSV), no a los KPIs.
+ * 2. Filtros (caja, cajero, método, producto): afectan a toda la
+ *    página. Cada opción lleva su rango de actividad [primera, última
+ *    venta] para que el calendario solo deje elegir días posibles.
+ *    Orden y agrupación solo afectan a la tabla.
  * ============================================================ */
+$rangoVentas = static fn(string $clave, string $desde = 'Ventas v', string $extra = '') => rangosDeActividad($pdo, "
+    SELECT $clave AS clave, MIN(v.fecha_hora) AS desde, MAX(v.fecha_hora) AS hasta, COUNT(*) AS num
+    FROM $desde WHERE v.id_sucursal = ? $extra GROUP BY $clave
+", [$idSucursalGerente]);
+$rangosCajero   = $rangoVentas('v.id_cajero');
+$rangosMetodo   = $rangoVentas('v.id_metodo_pago');
+$rangosCaja     = $rangoVentas('COALESCE(v.id_caja, ' . SIN_CAJA . ')');
+$rangosProducto = $rangoVentas('dv.id_producto', 'Detalle_Venta dv INNER JOIN Ventas v ON v.id_venta = dv.id_venta');
+$diasConVentas  = diasConActividad($pdo, "SELECT DISTINCT DATE(fecha_hora) AS dia FROM Ventas WHERE id_sucursal = ? ORDER BY dia", [$idSucursalGerente]);
+
 $stmt = $pdo->prepare("SELECT id_usuario, nombre FROM Usuarios WHERE id_sucursal = ? AND id_rol = 3 ORDER BY nombre");
 $stmt->execute([$idSucursalGerente]);
 $cajeros = array_column($stmt->fetchAll(), 'nombre', 'id_usuario');
@@ -84,16 +63,13 @@ foreach ($stmt->fetchAll() as $c) {
     $cajas[(int) $c['id_caja']] = t('cajas.caja_n', ['n' => $c['numero_caja']]) . ($c['nombre'] ? ' · ' . $c['nombre'] : '');
 }
 
-$stmt = $pdo->prepare("
-    SELECT DISTINCT p.id_producto, p.nombre
-    FROM Detalle_Venta dv
-    INNER JOIN Ventas v    ON v.id_venta = dv.id_venta
-    INNER JOIN Productos p ON p.id_producto = dv.id_producto
-    WHERE $wherePeriodo
-    ORDER BY p.nombre
-");
-$stmt->execute($paramsPeriodo);
-$productosVendidos = array_column($stmt->fetchAll(), 'nombre', 'id_producto');
+$productosVendidos = [];
+if ($rangosProducto) {
+    $marcas = implode(',', array_fill(0, count($rangosProducto), '?'));
+    $stmt = $pdo->prepare("SELECT id_producto, nombre FROM Productos WHERE id_producto IN ($marcas) ORDER BY nombre");
+    $stmt->execute(array_map('intval', array_keys($rangosProducto)));
+    $productosVendidos = array_column($stmt->fetchAll(), 'nombre', 'id_producto');
+}
 
 $idCajero   = (int) ($_GET['id_cajero'] ?? 0);
 $idMetodo   = (int) ($_GET['id_metodo'] ?? 0);
@@ -127,26 +103,32 @@ $agrupaciones = [
 $agrupar = (string) ($_GET['agrupar'] ?? '');
 if (!array_key_exists($agrupar, $agrupaciones)) $agrupar = '';
 
-$whereTabla  = $wherePeriodo;
-$paramsTabla = $paramsPeriodo;
+$whereFiltros  = '';
+$paramsFiltros = [];
 if ($idCajero > 0) {
-    $whereTabla .= " AND v.id_cajero = ?";
-    $paramsTabla[] = $idCajero;
+    $whereFiltros .= " AND v.id_cajero = ?";
+    $paramsFiltros[] = $idCajero;
 }
 if ($idMetodo > 0) {
-    $whereTabla .= " AND v.id_metodo_pago = ?";
-    $paramsTabla[] = $idMetodo;
+    $whereFiltros .= " AND v.id_metodo_pago = ?";
+    $paramsFiltros[] = $idMetodo;
 }
 if ($idCaja === SIN_CAJA) {
-    $whereTabla .= " AND v.id_caja IS NULL";
+    $whereFiltros .= " AND v.id_caja IS NULL";
 } elseif ($idCaja > 0) {
-    $whereTabla .= " AND v.id_caja = ?";
-    $paramsTabla[] = $idCaja;
+    $whereFiltros .= " AND v.id_caja = ?";
+    $paramsFiltros[] = $idCaja;
 }
 if ($idProducto > 0) {
-    $whereTabla .= " AND EXISTS (SELECT 1 FROM Detalle_Venta d2 WHERE d2.id_venta = v.id_venta AND d2.id_producto = ?)";
-    $paramsTabla[] = $idProducto;
+    $whereFiltros .= " AND EXISTS (SELECT 1 FROM Detalle_Venta d2 WHERE d2.id_venta = v.id_venta AND d2.id_producto = ?)";
+    $paramsFiltros[] = $idProducto;
 }
+
+// Un solo filtro para todo: KPIs, desgloses, tabla y CSV
+$wherePeriodo  = "v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?" . $whereFiltros;
+$paramsPeriodo = array_merge([$idSucursalGerente, $inicio, $fin], $paramsFiltros);
+$whereTabla    = $wherePeriodo;
+$paramsTabla   = $paramsPeriodo;
 
 $orderBy = ($agrupar !== '' ? $agrupaciones[$agrupar][1] . ', ' : '') . $ordenes[$orden][1] . ', v.id_venta DESC';
 
@@ -333,7 +315,7 @@ $unidades = (int) $stmt->fetchColumn();
 $variacion = null;
 if (!$esTodo) {
     $stmt = $pdo->prepare("SELECT COALESCE(SUM(v.total), 0) FROM Ventas v WHERE $wherePeriodo");
-    $stmt->execute([$idSucursalGerente, $inicioAnterior, $inicio]);
+    $stmt->execute(array_merge([$idSucursalGerente, $inicioAnterior, $inicio], $paramsFiltros));
     $montoAnterior = (float) $stmt->fetchColumn();
     $variacion = $montoAnterior > 0 ? ($monto - $montoAnterior) / $montoAnterior * 100 : null;
 }
@@ -407,6 +389,32 @@ $url = static fn(array $params) => 'ventas_sucursal.php?' . http_build_query(arr
 $hayFiltros = $idCajero || $idMetodo || $idCaja || $idProducto;
 $pct = static fn(float $parte, float $todo) => $todo > 0 ? round($parte / $todo * 100) : 0;
 
+// Barra de filtros unificada: periodo + caja, cajero, método y producto
+$opciones = static fn(array $lista, array $rangos) => array_map(
+    fn($id, $texto) => ['valor' => (string) $id, 'texto' => $texto, 'rango' => $rangos[(string) $id] ?? null],
+    array_keys($lista), $lista
+);
+$opcionesCaja = $opciones($cajas, $rangosCaja);
+if (isset($rangosCaja[(string) SIN_CAJA])) {
+    $opcionesCaja[] = ['valor' => (string) SIN_CAJA, 'texto' => t('ventas.sin_caja'), 'rango' => $rangosCaja[(string) SIN_CAJA]];
+}
+$filtros = [
+    'accion'  => 'ventas_sucursal.php',
+    'ancla'   => '',
+    'ocultos' => array_filter(['orden' => $orden !== 'recientes' ? $orden : null, 'agrupar' => $agrupar ?: null]),
+    'periodo' => [
+        'desde' => $desde, 'hasta' => $hasta, 'inicio' => $inicioHistorico, 'hoy' => $hoy,
+        'atajos' => $periodo['atajos'], 'dias' => $diasConVentas,
+    ],
+    'facetas' => [
+        ['nombre' => 'id_caja',     'etiqueta' => t('ventas.col_caja'),    'todos' => t('ventas.filtro_cajas'),     'valor' => (string) $idCaja,     'opciones' => $opcionesCaja],
+        ['nombre' => 'id_cajero',   'etiqueta' => t('ventas.col_cajero'),  'todos' => t('ventas.filtro_cajeros'),   'valor' => (string) $idCajero,   'opciones' => $opciones($cajeros, $rangosCajero)],
+        ['nombre' => 'id_metodo',   'etiqueta' => t('ventas.col_metodo'),  'todos' => t('ventas.filtro_metodos'),   'valor' => (string) $idMetodo,   'opciones' => $opciones($metodos, $rangosMetodo)],
+        ['nombre' => 'id_producto', 'etiqueta' => t('filtros.producto'),   'todos' => t('ventas.filtro_productos'), 'valor' => (string) $idProducto, 'opciones' => $opciones($productosVendidos, $rangosProducto)],
+    ],
+    'limpiar' => $hayFiltros ? $url($estadoPeriodo + array_intersect_key($estadoTabla, ['orden' => 1, 'agrupar' => 1])) : null,
+];
+
 $pageTitle    = t('ventas.titulo');
 require __DIR__ . '/header.php';
 ?>
@@ -426,23 +434,7 @@ require __DIR__ . '/header.php';
     <a class="btn btn-ghost" href="<?= e($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>"><?= e(t('comun.exportar_csv')) ?></a>
 </div>
 
-<!-- Periodo: afecta a todo -->
-<div class="ventas-periodo">
-    <div class="acciones">
-        <?php foreach ($atajos as $clave => [$texto]): ?>
-            <a href="<?= e($url(['periodo' => $clave] + $estadoTabla)) ?>"
-               class="btn btn-sm <?= $clave === $atajoActivo ? 'btn-primary' : 'btn-ghost' ?>"><?= e($texto) ?></a>
-        <?php endforeach; ?>
-    </div>
-    <form method="GET" action="ventas_sucursal.php" class="ventas-rango">
-        <?php foreach ($estadoTabla as $k => $v): ?>
-            <input type="hidden" name="<?= $k ?>" value="<?= e((string) $v) ?>">
-        <?php endforeach; ?>
-        <label><?= e(t('ventas.rango_del')) ?> <input type="date" name="desde" value="<?= $desde->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>"></label>
-        <label><?= e(t('ventas.rango_al')) ?> <input type="date" name="hasta" value="<?= $hasta->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>"></label>
-        <button type="submit" class="btn btn-ghost btn-sm"><?= e(t('ventas.rango_aplicar')) ?></button>
-    </form>
-</div>
+<?php require __DIR__ . '/includes/barra_filtros.php'; ?>
 
 <section class="kpi-grid">
     <div class="kpi kpi--ok">
@@ -547,11 +539,7 @@ require __DIR__ . '/header.php';
             <div>
                 <h2 class="section-title"><?= e(t('ventas.tabla_titulo')) ?></h2>
                 <p>
-                    <?= e(t('ventas.tabla_resumen', ['n' => numero($numTabla), 'total' => numero($numVentas)])) ?>
-                    · <?= dinero($resumenTabla['monto']) ?>
-                    <?php if ($hayFiltros): ?>
-                        · <a href="<?= e($url($estadoPeriodo + array_intersect_key($estadoTabla, ['orden' => 1, 'agrupar' => 1])) . '#tabla-ventas') ?>"><?= e(t('comun.quitar_filtros')) ?></a>
-                    <?php endif; ?>
+                    <?= e(tn('ventas.n_ventas', $numTabla)) ?> · <?= dinero($resumenTabla['monto']) ?>
                 </p>
             </div>
             <div class="segmentado" role="group" aria-label="<?= e(t('ventas.agrupar_aria')) ?>">
@@ -564,39 +552,12 @@ require __DIR__ . '/header.php';
         </div>
 
         <form method="GET" action="ventas_sucursal.php#tabla-ventas" class="toolbar ventas-filtros" onchange="this.submit()">
-            <?php foreach ($estadoPeriodo as $k => $v): ?>
-                <input type="hidden" name="<?= $k ?>" value="<?= e($v) ?>">
+            <?php foreach ($estadoPeriodo + $estadoTabla as $k => $v): ?>
+                <?php if ($k !== 'orden'): ?><input type="hidden" name="<?= e($k) ?>" value="<?= e((string) $v) ?>"><?php endif; ?>
             <?php endforeach; ?>
-            <?php if ($agrupar): ?><input type="hidden" name="agrupar" value="<?= e($agrupar) ?>"><?php endif; ?>
-
             <select name="orden" aria-label="<?= e(t('ventas.ordenar')) ?>">
                 <?php foreach ($ordenes as $clave => [$texto]): ?>
                     <option value="<?= $clave ?>"<?= $clave === $orden ? ' selected' : '' ?>><?= e(t('ventas.ordenar')) ?>: <?= e($texto) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <select name="id_cajero" aria-label="<?= e(t('ventas.col_cajero')) ?>">
-                <option value="0"><?= e(t('ventas.filtro_cajeros')) ?></option>
-                <?php foreach ($cajeros as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idCajero ? ' selected' : '' ?>><?= e($nombre) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <select name="id_metodo" aria-label="<?= e(t('ventas.col_metodo')) ?>">
-                <option value="0"><?= e(t('ventas.filtro_metodos')) ?></option>
-                <?php foreach ($metodos as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idMetodo ? ' selected' : '' ?>><?= e($nombre) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <select name="id_caja" aria-label="<?= e(t('ventas.col_caja')) ?>">
-                <option value="0"><?= e(t('ventas.filtro_cajas')) ?></option>
-                <?php foreach ($cajas as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idCaja ? ' selected' : '' ?>><?= e($nombre) ?></option>
-                <?php endforeach; ?>
-                <option value="<?= SIN_CAJA ?>"<?= $idCaja === SIN_CAJA ? ' selected' : '' ?>><?= e(t('ventas.sin_caja')) ?></option>
-            </select>
-            <select name="id_producto" aria-label="<?= e(t('ventas.filtro_producto_aria')) ?>">
-                <option value="0"><?= e(t('ventas.filtro_productos')) ?></option>
-                <?php foreach ($productosVendidos as $id => $nombre): ?>
-                    <option value="<?= (int) $id ?>"<?= (int) $id === $idProducto ? ' selected' : '' ?>><?= e(t('ventas.filtro_incluye', ['p' => $nombre])) ?></option>
                 <?php endforeach; ?>
             </select>
             <noscript><button type="submit" class="btn btn-primary"><?= e(t('comun.aplicar')) ?></button></noscript>
