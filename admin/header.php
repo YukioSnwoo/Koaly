@@ -34,6 +34,7 @@ $textos = [
         'cerrar_sesion' => 'Cerrar sesión', 'administracion' => 'Administración',
         'tema_a_claro' => 'Cambiar a modo claro', 'tema_a_oscuro' => 'Cambiar a modo oscuro',
         'menu_abrir' => 'Abrir menú', 'idioma_cambiar' => 'Cambiar idioma',
+        'solicitudes_por_revisar' => 'solicitudes de producto por revisar',
     ],
     'en' => [
         'panel_general' => 'Dashboard', 'sucursales' => 'Branches',
@@ -42,6 +43,7 @@ $textos = [
         'cerrar_sesion' => 'Log out', 'administracion' => 'Administration',
         'tema_a_claro' => 'Switch to light mode', 'tema_a_oscuro' => 'Switch to dark mode',
         'menu_abrir' => 'Open menu', 'idioma_cambiar' => 'Change language',
+        'solicitudes_por_revisar' => 'product requests to review',
     ],
 ];
 $idiomas = ['es' => 'Español', 'en' => 'English'];

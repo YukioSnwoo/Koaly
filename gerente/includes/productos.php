@@ -113,39 +113,6 @@ function leerStockParaActualizar(PDO $pdo, int $idSucursal, int $idProducto): ?i
     return $cantidad === false ? null : (int) $cantidad;
 }
 
-function guardarImagenProducto(array $archivo, string $carpetaDestino, string $rutaRelativaBase): ?string
-{
-    if (!isset($archivo['error']) || $archivo['error'] === UPLOAD_ERR_NO_FILE) {
-        return null;
-    }
-    if ($archivo['error'] !== UPLOAD_ERR_OK) {
-        throw new RuntimeException('Ocurrió un error al subir la imagen.');
-    }
-    if ($archivo['size'] > 5 * 1024 * 1024) {
-        throw new RuntimeException('La imagen no debe superar 5MB.');
-    }
-
-    $tiposPermitidos = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp'];
-    $mime = mime_content_type($archivo['tmp_name']);
-
-    if (!isset($tiposPermitidos[$mime])) {
-        throw new RuntimeException('Formato de imagen no permitido. Usa PNG, JPG o WEBP.');
-    }
-
-    if (!is_dir($carpetaDestino)) {
-        mkdir($carpetaDestino, 0755, true);
-    }
-
-    $nombreArchivo = uniqid('prod_', true) . '.' . $tiposPermitidos[$mime];
-    $rutaDestino = $carpetaDestino . '/' . $nombreArchivo;
-
-    if (!move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
-        throw new RuntimeException('No se pudo guardar la imagen en el servidor.');
-    }
-
-    return $rutaRelativaBase . '/' . $nombreArchivo;
-}
-
 /**
  * Genera un código de barras único con prefijo 750.
  */

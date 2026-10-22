@@ -35,15 +35,126 @@ function abrirModalAgregarInventario(btn) {
     if (cantidad) setTimeout(() => cantidad.select(), 50);
 }
 
+/* ------------------------------------------------------------
+ * Solicitudes de producto. El mismo modal sirve para pedir un
+ * producto nuevo y para editar una solicitud que el admin devolvió:
+ * los textos que cambian llevan data-nuevo y data-editar.
+ * ------------------------------------------------------------ */
+const LIMITE_IMAGEN_SOLICITUD = 5 * 1024 * 1024;
+
+function modoFormularioSolicitud(form, editar) {
+    const modal = form.closest('.modal-overlay');
+    modal.querySelectorAll('[data-nuevo]').forEach(el => {
+        el.textContent = editar ? el.dataset.editar : el.dataset.nuevo;
+    });
+    form.querySelector('[name="action"]').value = editar ? 'editar_solicitud' : 'solicitar_producto';
+    form.querySelector('[name="imagen"]').required = !editar;
+
+    // Nuevo: justificación. Editar: motivo de los cambios para el admin.
+    form.querySelectorAll('[data-modo]').forEach(grupo => {
+        const visible = grupo.dataset.modo === (editar ? 'editar' : 'nuevo');
+        grupo.hidden = !visible;
+        grupo.querySelectorAll('textarea').forEach(campo => {
+            campo.disabled = !visible;
+            campo.required = visible;
+        });
+    });
+}
+
+function mostrarCamposProveedor(form, mostrar) {
+    const campos = form.querySelector('#camposProveedor');
+    form.querySelector('#conProveedor').checked = mostrar;
+    campos.hidden = !mostrar;
+    campos.disabled = !mostrar;
+    validarContactoProveedor(form);
+}
+
+// Al menos un contacto del proveedor: teléfono o correo
+function validarContactoProveedor(form) {
+    const telefono = form.querySelector('[name="proveedor_telefono"]');
+    const correo = form.querySelector('[name="proveedor_correo"]');
+    const falta = !form.querySelector('#camposProveedor').disabled
+        && telefono.value.trim() === '' && correo.value.trim() === '';
+    telefono.setCustomValidity(falta ? tj('sol_contacto') : '');
+}
+
+function mostrarVistaPreviaSolicitud(form, src) {
+    const vista = form.querySelector('.imagen-preview');
+    vista.hidden = !src;
+    vista.querySelector('img').src = src || '';
+}
+
+function prepararFormularioSolicitud(form) {
+    form.reset();
+    mostrarVistaPreviaSolicitud(form, '');
+    form.querySelector('[name="imagen"]').setCustomValidity('');
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
+}
+
 function abrirModalSolicitarProducto() {
     const form = document.getElementById('formSolicitarProducto');
     if (!form) return;
-    form.reset();
-
-    const submit = form.querySelector('[type="submit"]');
-    if (submit) submit.disabled = false;
+    prepararFormularioSolicitud(form);
+    modoFormularioSolicitud(form, false);
+    form.querySelector('[name="id_solicitud"]').value = '';
+    mostrarCamposProveedor(form, false);
 
     abrirModal('modalSolicitarProducto');
+}
+
+function abrirModalEditarSolicitud(btn) {
+    const form = document.getElementById('formSolicitarProducto');
+    if (!form) return;
+    prepararFormularioSolicitud(form);
+    modoFormularioSolicitud(form, true);
+
+    const d = btn.dataset;
+    form.querySelector('[name="id_solicitud"]').value = d.id;
+    form.querySelector('[name="nombre_producto"]').value = d.nombre;
+    form.querySelector('[name="descripcion"]').value = d.descripcion;
+    form.querySelector('[name="id_categoria"]').value = d.categoria;
+    form.querySelector('[name="precio_sugerido"]').value = parseFloat(d.precio).toFixed(2);
+    form.querySelector('[name="proveedor_sugerido"]').value = d.proveedor;
+    form.querySelector('[name="proveedor_empresa"]').value = d.empresa;
+    form.querySelector('[name="proveedor_telefono"]').value = d.telefono;
+    form.querySelector('[name="proveedor_correo"]').value = d.correo;
+    mostrarCamposProveedor(form, d.proveedor !== '');
+    mostrarVistaPreviaSolicitud(form, d.imagen ? '../' + d.imagen : '');
+
+    cerrarModal('fichaSolicitud' + d.id);
+    abrirModal('modalSolicitarProducto');
+}
+
+function abrirModalCancelarSolicitud(btn) {
+    const modal = document.getElementById('modalCancelarSolicitud');
+    if (!modal) return;
+    const form = modal.querySelector('form');
+    form.reset();
+    form.querySelector('[name="id_solicitud"]').value = btn.dataset.id;
+    form.querySelector('[type="submit"]').disabled = false;
+    document.getElementById('cancelarSolicitudNombre').textContent = btn.dataset.nombre;
+
+    cerrarModal('fichaSolicitud' + btn.dataset.id);
+    abrirModal('modalCancelarSolicitud');
+}
+
+function initFormularioSolicitud() {
+    const form = document.getElementById('formSolicitarProducto');
+    if (!form) return;
+
+    form.querySelector('#conProveedor').addEventListener('change', (e) => mostrarCamposProveedor(form, e.target.checked));
+    ['proveedor_telefono', 'proveedor_correo'].forEach(nombre => {
+        form.querySelector(`[name="${nombre}"]`).addEventListener('input', () => validarContactoProveedor(form));
+    });
+
+    const imagen = form.querySelector('[name="imagen"]');
+    imagen.addEventListener('change', () => {
+        const archivo = imagen.files[0];
+        imagen.setCustomValidity(archivo && archivo.size > LIMITE_IMAGEN_SOLICITUD ? tj('sol_imagen_grande') : '');
+        if (archivo) mostrarVistaPreviaSolicitud(form, URL.createObjectURL(archivo));
+        imagen.reportValidity();
+    });
 }
 
 /* ============================================================
@@ -199,8 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initCustomSelects();
     initVistas();
 
-    // Productos — filtros
+    // Productos — filtros y solicitudes
     initFiltrosProductos();
+    initFormularioSolicitud();
 
     // Ventas y Movimientos
     initScrollInfinito();
