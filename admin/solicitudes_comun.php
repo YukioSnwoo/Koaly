@@ -129,7 +129,7 @@ function leerProveedorSolicitud(array $post): array
  * Guarda una imagen subida (PNG, JPG o WEBP de hasta 5 MB) y devuelve su
  * ruta relativa a la raíz del sitio, o null si no se subió ninguna.
  */
-function guardarImagenProducto(array $archivo, string $carpetaDestino, string $rutaRelativaBase): ?string
+function guardarImagenProducto(array $archivo, string $carpetaDestino, string $rutaRelativaBase, string $prefijo = 'prod_'): ?string
 {
     if (!isset($archivo['error']) || $archivo['error'] === UPLOAD_ERR_NO_FILE) {
         return null;
@@ -155,7 +155,7 @@ function guardarImagenProducto(array $archivo, string $carpetaDestino, string $r
         mkdir($carpetaDestino, 0755, true);
     }
 
-    $nombreArchivo = uniqid('prod_', true) . '.' . $tiposPermitidos[$mime];
+    $nombreArchivo = uniqid($prefijo, true) . '.' . $tiposPermitidos[$mime];
     $rutaDestino = $carpetaDestino . '/' . $nombreArchivo;
 
     if (!move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {

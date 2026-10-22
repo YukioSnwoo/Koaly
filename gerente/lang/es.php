@@ -7,17 +7,8 @@ return [
     // panel
     'panel.titulo' => 'Panel de gerencia',
 
-    // sesion
-    'sesion.cerrar' => 'Cerrar sesión',
-
-    // tema
-    'tema.cambiar' => 'Cambiar tema',
-
     // menu (barra lateral en celular)
     'menu.abrir' => 'Abrir menú',
-
-    // idioma
-    'idioma.cambiar' => 'Cambiar idioma',
 
     // comun
     'comun.agregar' => 'Agregar',
@@ -528,8 +519,6 @@ return [
     'cajeros.generar' => 'Generar',
 
     // js
-    'js.tema_a_oscuro' => 'Cambiar a modo oscuro',
-    'js.tema_a_claro' => 'Cambiar a modo claro',
     'js.aceptar' => 'Aceptar',
     'js.cancelar' => 'Cancelar',
     'js.confirmar_titulo' => 'Confirmar acción',

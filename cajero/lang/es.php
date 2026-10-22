@@ -8,11 +8,6 @@ return [
     // página y encabezado
     'caja.titulo' => 'Caja',
     'caja.cajero' => 'Cajero',
-    'caja.sucursal' => 'Sucursal',
-    'caja.sin_asignar' => 'Sin asignar',
-    'tema.a_claro' => 'Cambiar a modo claro',
-    'tema.a_oscuro' => 'Cambiar a modo oscuro',
-    'idioma.cambiar' => 'Cambiar idioma',
     'sesion.cerrar' => 'Cerrar sesión',
     'sesion.pregunta' => '¿Deseas cerrar sesión?',
     'sesion.quedarme' => 'No, me quedo',

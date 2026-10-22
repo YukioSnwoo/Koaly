@@ -218,36 +218,27 @@ h1 { font-weight: 800; }
 /* ---------- Botones: se elevan al pasar el cursor y se hunden al presionar ---------- */
 .btn,
 .metodo-btn,
-.btn-salir,
 .tema-boton,
-.idioma > summary,
 .back-link,
-.header .user-info > button:not(.tema-boton),
-.admin-topbar__salir {
+.header .user-info > button:not(.tema-boton) {
     border: 2px solid var(--tinta);
     box-shadow: var(--sombra-tactil);
     transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
 }
 .btn:hover:not(:disabled),
 .metodo-btn:hover,
-.btn-salir:hover,
 .tema-boton:hover,
-.idioma > summary:hover,
 .back-link:hover,
-.header .user-info > button:not(.tema-boton):hover,
-.admin-topbar__salir:hover {
+.header .user-info > button:not(.tema-boton):hover {
     border-color: var(--tinta);
     transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0 var(--tinta);
 }
 .btn:active:not(:disabled),
 .metodo-btn:active,
-.btn-salir:active,
 .tema-boton:active,
-.idioma > summary:active,
 .back-link:active,
-.header .user-info > button:not(.tema-boton):active,
-.admin-topbar__salir:active {
+.header .user-info > button:not(.tema-boton):active {
     transform: translate(3px, 3px);
     box-shadow: 0 0 0 var(--tinta);
 }
@@ -276,7 +267,6 @@ h1 { font-weight: 800; }
 .alert,
 .modal-box,
 .select-custom-panel,
-.idioma-menu,
 .stat-card,
 .branch-card,
 .table-wrap,
@@ -377,6 +367,6 @@ a.producto-card:active, .card:not(.card--static):active, .kpi--link:active {
 
 @media (prefers-reduced-motion: reduce) {
     .kpi, .producto-card, .cajero-card, .caja-card, .card, .stat-card, .branch-card { animation: none; }
-    .btn, .metodo-btn, .btn-salir, .tema-boton, .idioma > summary, .back-link, .admin-topbar__salir,
+    .btn, .metodo-btn, .tema-boton, .back-link,
     a.producto-card, .card, .kpi--link, .cajero-card, .caja-card, .branch-card { transition: none; }
 }

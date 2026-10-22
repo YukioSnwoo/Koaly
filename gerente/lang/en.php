@@ -7,15 +7,8 @@ return [
     // panel
     'panel.titulo' => 'Manager panel',
 
-    // sesion
-    'sesion.cerrar' => 'Log out',
-
-    // tema
+    // menu (barra lateral en celular)
     'menu.abrir' => 'Open menu',
-    'tema.cambiar' => 'Change theme',
-
-    // idioma
-    'idioma.cambiar' => 'Change language',
 
     // comun
     'comun.agregar' => 'Add',
@@ -526,8 +519,6 @@ return [
     'cajeros.generar' => 'Generate',
 
     // js
-    'js.tema_a_oscuro' => 'Switch to dark mode',
-    'js.tema_a_claro' => 'Switch to light mode',
     'js.aceptar' => 'OK',
     'js.cancelar' => 'Cancel',
     'js.confirmar_titulo' => 'Confirm action',

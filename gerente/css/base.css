@@ -60,23 +60,6 @@ button { font: inherit; }
     position: sticky; top: 0; z-index: 50;
     border-bottom: 1px solid var(--borde);
 }
-.header .user-info { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-.header .user-info span { font-size: 0.9rem; color: var(--texto-2); font-weight: 500; }
-.header .user-info > button:not(.tema-boton) {
-    padding: 0.45rem 0.9rem;
-    border: 1px solid var(--borde);
-    border-radius: 8px;
-    background: var(--superficie);
-    color: var(--texto-2); cursor: pointer;
-    font-weight: 600; font-size: 0.85rem;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.header .user-info > button:not(.tema-boton):hover {
-    background: var(--peligro-suave);
-    border-color: var(--peligro-borde);
-    color: var(--peligro-texto);
-}
-
 /* Ocupa todo el ancho junto a la barra lateral. width: 100% evita que se encoja
    a su contenido dentro de .main-wrapper (flex en columna); el límite solo
    frena pantallas muy anchas, y el aire va por dentro (padding), no afuera. */
@@ -327,8 +310,6 @@ button { font: inherit; }
  *  ============================================================ */
 @media (max-width: 640px) {
     .header { padding: 0.85rem 1rem; }
-    .header .user-info span { display: none; }
-    .header .user-info { gap: 0.6rem; }
 
     .container { padding-top: 1.25rem; }
 

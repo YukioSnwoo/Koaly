@@ -499,7 +499,7 @@ if ($vista === 'solicitudes') {
         // Cambios del gerente que el admin aún no revisa: la ficha va en amarillo
         $cambiosGerente = $s['estado'] === 'Pendiente' && $edicion !== null && $edicion['rol'] === 'Gerente';
     ?>
-        <article class="solicitud-ficha <?= $cambiosGerente ? 'solicitud-ficha--cambios' : '' ?>">
+        <article class="solicitud-ficha <?= $cambiosGerente ? 'solicitud-ficha--cambios' : '' ?>" data-abrir-ficha="<?= $id ?>">
             <div class="solicitud-ficha__imagen">
                 <?php if (!empty($s['imagen'])): ?>
                     <img src="../<?= htmlspecialchars($s['imagen']) ?>" alt="" loading="lazy">
@@ -796,6 +796,14 @@ function rechazarSolicitud(btn) {
     closeModal('ficha' + btn.dataset.id);
     openModal('modalRechazar');
 }
+
+// Toda la tarjeta abre la ficha, no solo el botón "Revisar" (que se queda para el teclado)
+document.querySelectorAll('[data-abrir-ficha]').forEach(tarjeta => {
+    tarjeta.addEventListener('click', (e) => {
+        if (e.target.closest('button, a') || window.getSelection().toString() !== '') return;
+        abrirFicha(tarjeta.dataset.abrirFicha);
+    });
+});
 
 // Vista previa de la imagen nueva en la ficha
 document.querySelectorAll('.ficha-admin [name="imagen"]').forEach(input => {
