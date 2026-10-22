@@ -31,43 +31,45 @@ $textos = [
         'panel_general' => 'Panel general', 'sucursales' => 'Sucursales',
         'gerentes' => 'Gerentes', 'inventario' => 'Inventario global',
         'ventas' => 'Ventas', 'reportes' => 'Reportes',
-        'configuracion' => 'Configuración', 'cerrar_sesion' => 'Cerrar sesión',
-        'modo_claro' => 'Modo claro', 'modo_oscuro' => 'Modo oscuro',
+        'cerrar_sesion' => 'Cerrar sesión', 'administracion' => 'Administración',
+        'tema_a_claro' => 'Cambiar a modo claro', 'tema_a_oscuro' => 'Cambiar a modo oscuro',
+        'menu_abrir' => 'Abrir menú', 'idioma_cambiar' => 'Cambiar idioma',
     ],
     'en' => [
         'panel_general' => 'Dashboard', 'sucursales' => 'Branches',
         'gerentes' => 'Managers', 'inventario' => 'Global inventory',
         'ventas' => 'Sales', 'reportes' => 'Reports',
-        'configuracion' => 'Settings', 'cerrar_sesion' => 'Log out',
-        'modo_claro' => 'Light mode', 'modo_oscuro' => 'Dark mode',
+        'cerrar_sesion' => 'Log out', 'administracion' => 'Administration',
+        'tema_a_claro' => 'Switch to light mode', 'tema_a_oscuro' => 'Switch to dark mode',
+        'menu_abrir' => 'Open menu', 'idioma_cambiar' => 'Change language',
     ],
 ];
+$idiomas = ['es' => 'Español', 'en' => 'English'];
 $t = $textos[$idioma] ?? $textos['es'];
 
 $pagina_actual = basename($_SERVER['PHP_SELF']);
 
-// Iniciales del avatar
-$iniciales = '';
-$palabras = explode(' ', $admin['nombre']);
-foreach ($palabras as $p) $iniciales .= mb_strtoupper(mb_substr($p, 0, 1));
-$iniciales = mb_substr($iniciales, 0, 2);
+$verAdminCss = filemtime(__DIR__ . '/admin.css');
+$verKoaly    = filemtime(__DIR__ . '/../estilos/koaly.css');
 ?>
 <!DOCTYPE html>
 <html lang="<?= $idioma ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koalicius · Admin</title>
+    <title>Koaly · Admin</title>
     <script>
-      (function(){
-        try {
-          if (localStorage.getItem('koalicius-admin-theme') === 'light') {
-            document.documentElement.setAttribute('data-theme', 'light');
-          }
-        } catch (e) {}
-      })();
+    // Tema elegido antes de pintar (común con gerente y cajero). Sin elección: sigue al sistema.
+    // La clave vieja del admin solo guardaba "light"; se respeta hasta que se elija de nuevo.
+    try {
+        var tema = localStorage.getItem('koaly-tema');
+        if (!tema && localStorage.getItem('koalicius-admin-theme') === 'light') tema = 'claro';
+        if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema);
+    } catch (e) {}
     </script>
-    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="admin.css?v=<?= $verAdminCss ?>">
+    <!-- Estilo común de Koaly (colores, fuentes y piel táctil); va al final para que gane -->
+    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body>
 <div class="admin-layout">
