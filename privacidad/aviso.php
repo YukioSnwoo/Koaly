@@ -10,7 +10,7 @@
  * Sigue la estructura de la Ley Federal de Protección de Datos Personales en
  * Posesión de los Particulares. Si el texto cambia de fondo, sube la versión:
  * todos los empleados tendrán que aceptarlo otra vez.
- * Tabla: sql/005_aviso_privacidad.sql
+ * Tabla: sql/010_aviso_privacidad.sql
  */
 
 const AVISO_PRIVACIDAD_VERSION = '2026-10-15';

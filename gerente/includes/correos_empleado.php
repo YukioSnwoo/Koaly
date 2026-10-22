@@ -64,7 +64,13 @@ function _firma(array $datos): string
  */
 function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos): bool
 {
-    $enlace = crearEnlaceAviso($pdo, $idUsuario, AVISO_ENLACE_DIAS * 24);
+    try {
+        $enlace = crearEnlaceAviso($pdo, $idUsuario, AVISO_ENLACE_DIAS * 24);
+    } catch (PDOException $e) {
+        // Sin la tabla (falta sql/010_aviso_privacidad.sql) no hay enlace que enviar
+        error_log('correos_empleado.php: no se pudo crear el enlace del aviso: ' . $e->getMessage());
+        return false;
+    }
     $dias   = AVISO_ENLACE_DIAS;
     $sitio  = urlSitio();
 

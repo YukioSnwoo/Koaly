@@ -307,14 +307,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Si aún no se ejecutó sql/010_aviso_privacidad.sql, la página funciona sin el
+// estado del aviso y avisa qué falta (antes tronaba con un error fatal).
+$hayTablaAviso = true;
+try {
+    $pdo->query("SELECT 1 FROM avisos_privacidad LIMIT 1");
+} catch (PDOException $e) {
+    if ($e->getCode() !== '42S02') throw $e;
+    $hayTablaAviso = false;
+    $errores[] = t('cajeros.falta_tabla_aviso');
+}
+$columnaAviso = $hayTablaAviso
+    ? "(SELECT MAX(a.aceptado_en) FROM avisos_privacidad a
+        WHERE a.id_usuario = u.id_usuario AND a.version = ? AND a.aceptado_en IS NOT NULL)"
+    : "NULL";
+
 $stmt = $pdo->prepare("
     SELECT u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
            COUNT(v.id_venta) AS total_ventas,
            COALESCE(SUM(v.total), 0) AS monto_total,
            (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) ORDER BY c.numero_caja SEPARATOR ', ')
             FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal) AS cajas,
-           (SELECT MAX(a.aceptado_en) FROM avisos_privacidad a
-            WHERE a.id_usuario = u.id_usuario AND a.version = ? AND a.aceptado_en IS NOT NULL) AS aviso_aceptado
+           $columnaAviso AS aviso_aceptado
     FROM Usuarios u
     LEFT JOIN Ventas v
            ON v.id_cajero = u.id_usuario AND v.id_sucursal = ?
@@ -323,14 +337,14 @@ $stmt = $pdo->prepare("
     GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado
     ORDER BY u.nombre
 ");
-$stmt->execute([AVISO_PRIVACIDAD_VERSION, $idSucursalGerente, $idSucursalGerente]);
+$stmt->execute(array_merge($hayTablaAviso ? [AVISO_PRIVACIDAD_VERSION] : [], [$idSucursalGerente, $idSucursalGerente]));
 $cajeros = $stmt->fetchAll();
 
 $totalActivos = 0;
 $totalSinAviso = 0; // cajeros que no pueden entrar a la caja hasta aceptar el aviso
 foreach ($cajeros as $c) {
     if ($c['estado'] === 'Activo') $totalActivos++;
-    if ($c['estado'] !== 'Baja' && !$c['aviso_aceptado']) $totalSinAviso++;
+    if ($hayTablaAviso && $c['estado'] !== 'Baja' && !$c['aviso_aceptado']) $totalSinAviso++;
 }
 
 $pageTitle    = t('cajeros.titulo');
@@ -408,7 +422,7 @@ require __DIR__ . '/header.php';
                         <dt><?= e(t('cajeros.contratado')) ?></dt>
                         <dd><?= e(fecha($c['fecha_contratacion'], false)) ?></dd>
                     </div>
-                    <?php if ($c['estado'] !== 'Baja'): ?>
+                    <?php if ($hayTablaAviso && $c['estado'] !== 'Baja'): ?>
                         <div>
                             <dt><?= e(t('cajeros.aviso')) ?></dt>
                             <?php if ($c['aviso_aceptado']): ?>

@@ -6,7 +6,7 @@
  *   send_recover_code    envía un código de 6 dígitos al correo
  *   reset_password       correo + código + contraseña nueva
  * Responde {success, message, ...}. Las tablas están en sql/004_login.sql
- * y sql/005_aviso_privacidad.sql.
+ * y sql/010_aviso_privacidad.sql.
  */
 session_start();
 header('Content-Type: application/json');
@@ -356,7 +356,7 @@ if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
     try {
         $aceptado = avisoAceptado($pdo, (int) $usuario['id_usuario']);
     } catch (PDOException $e) {
-        error_log('login.php: falta la tabla avisos_privacidad (sql/005_aviso_privacidad.sql)');
+        error_log('login.php: falta la tabla avisos_privacidad (sql/010_aviso_privacidad.sql)');
         error(500, 'El sistema no está listo para cajeros. Avisa al administrador.');
     }
     if (!$aceptado) {
