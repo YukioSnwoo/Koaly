@@ -28,8 +28,6 @@ return [
 
     // buscador
     'buscar.placeholder' => 'Search by name or code...',
-    'buscar.clave' => 'Code',
-    'buscar.existencias' => 'In stock: {n}',
     'buscar.sin_resultados' => 'No results for "{q}".',
     'buscar.sin_conexion' => 'Could not connect to the server.',
     'buscar.sin_conexion_alerta' => 'Could not connect to the server to search for the product.',

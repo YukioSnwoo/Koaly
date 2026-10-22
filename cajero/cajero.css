@@ -151,7 +151,7 @@
 }
 
 /* Fotos de producto: en oscuro se atenúan un poco para no deslumbrar */
-.producto-card-img img, .producto-thumb, .result-thumb, .eliminar-producto img { filter: var(--filtro-imagen); }
+.producto-card-img img, .producto-thumb, .eliminar-producto img { filter: var(--filtro-imagen); }
 
 /* ============================================================
    Reset & base
@@ -301,39 +301,6 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
     outline: none;
 }
-
-.search-results {
-    position: absolute;
-    top: calc(100% + 4px); left: 0; right: 0;
-    background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: 10px;
-    box-shadow: 0 12px 32px rgba(15,23,42,0.12);
-    z-index: 10;
-    max-height: 280px;
-    overflow-y: auto;
-    animation: fadeInUp 0.15s ease-out both;
-}
-.search-results .result-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 0.6rem 0.8rem;
-    cursor: pointer;
-    border-bottom: 1px solid var(--superficie-3);
-    font-size: 0.9rem;
-}
-.search-results .result-item:last-child { border-bottom: none; }
-.search-results .result-item.active { background: var(--acento-suave); box-shadow: inset 3px 0 0 var(--acento); }
-.search-results .result-info { flex: 1; min-width: 0; }
-.search-results .result-nombre { font-weight: 600; line-height: 1.3; }
-.search-results .result-item small { display: block; color: var(--texto-3); font-size: 0.78rem; }
-.search-results .result-precio { font-weight: 700; color: var(--acento-texto); white-space: nowrap; font-size: 0.85rem; }
-.search-results mark { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); border-radius: 3px; padding: 0 1px; }
-.search-results .agotado { color: var(--peligro-texto); font-weight: 700; }
-.search-results .result-thumb {
-    width: 36px; height: 36px; border-radius: 6px;
-    object-fit: contain; background: var(--marco-imagen); flex-shrink: 0;
-}
-.search-results .no-results { padding: 0.7rem 0.8rem; color: var(--texto-3); font-size: 0.85rem; }
 
 /* ============================================================
    Botones
@@ -493,6 +460,9 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .producto-card.agotado { opacity: 0.55; }
 .producto-card.agotado:hover { transform: none; box-shadow: none; border-color: var(--borde); }
 .producto-card.bump { animation: tarjetaPulso 0.3s ease-out; }
+.producto-card[hidden] { display: none; }   /* fuera de la búsqueda */
+/* La que agrega Enter en el buscador (clave exacta o única coincidencia) */
+.producto-card.objetivo-enter { outline: 3px dashed var(--acento); outline-offset: 3px; }
 
 .producto-card-img {
     aspect-ratio: 4 / 3;
@@ -1316,12 +1286,11 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 .form-group .input-dinero input:focus { box-shadow: none; }
 .cambio-resultado { border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
 
-/* Resultados de búsqueda y avisos breves */
-.search-results { border: 2px solid var(--tinta); border-radius: 12px; box-shadow: var(--sombra-tactil-alta); }
+/* Avisos breves */
 .toast { border: 2px solid var(--tinta); border-left-width: 6px; border-radius: 12px; box-shadow: var(--sombra-tactil); }
 
 /* Barras de desplazamiento con los colores del tema (en oscuro no quedan blancas) */
-.catalogo-grid, .resumen-lista, .tabla-scroll, .search-results, .modal-box, .lista-faltantes {
+.catalogo-grid, .resumen-lista, .tabla-scroll, .modal-box, .lista-faltantes {
     scrollbar-color: var(--borde-fuerte) transparent;
 }
 

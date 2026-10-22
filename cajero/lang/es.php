@@ -29,8 +29,6 @@ return [
 
     // buscador
     'buscar.placeholder' => 'Buscar por nombre o clave...',
-    'buscar.clave' => 'Clave',
-    'buscar.existencias' => 'Existencias: {n}',
     'buscar.sin_resultados' => 'Sin resultados para "{q}".',
     'buscar.sin_conexion' => 'No se pudo conectar con el servidor.',
     'buscar.sin_conexion_alerta' => 'No se pudo conectar con el servidor para buscar el producto.',
