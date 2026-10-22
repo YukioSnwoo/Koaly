@@ -166,8 +166,8 @@ Método de pago.
 ## Inicio de sesion  
 <img width="762" height="526" alt="image" src="https://github.com/user-attachments/assets/d12e8873-e341-4c71-b954-44af1674a7bf" />
 
-## Panel de Gerente
-<img width="1662" height="946" alt="image" src="https://github.com/user-attachments/assets/3f363b99-b665-4ba3-9f08-d0ad846a5e84" />
+## Panel de sucursal
+<img width="1665" height="945" alt="image" src="https://github.com/user-attachments/assets/1533eca9-8163-4d65-8721-d7693b6d2a19" />
 
 ## Función de agregar nuevo producto
 <img width="1800" height="874" alt="image" src="https://github.com/user-attachments/assets/22ff853a-ba44-41c3-ad8d-f8eba626d751" />
