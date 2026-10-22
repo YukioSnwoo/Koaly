@@ -164,19 +164,19 @@ Método de pago.
 
 # Imagenes
 ## Inicio de sesion  
-<img width="762" height="526" alt="image" src="https://github.com/user-attachments/assets/d12e8873-e341-4c71-b954-44af1674a7bf" />
+<img width="566" height="722" alt="image" src="https://github.com/user-attachments/assets/a526a642-4b7e-47fb-a171-c1cf99f47e98" />
 
 ## Panel de sucursal
 <img width="1665" height="945" alt="image" src="https://github.com/user-attachments/assets/1533eca9-8163-4d65-8721-d7693b6d2a19" />
 
 ## Función de agregar nuevo producto
-<img width="1800" height="874" alt="image" src="https://github.com/user-attachments/assets/22ff853a-ba44-41c3-ad8d-f8eba626d751" />
+<img width="1061" height="719" alt="image" src="https://github.com/user-attachments/assets/9393583e-e33f-4f48-b3b4-26037631e312" />
 
 ## Cajas
 <img width="1895" height="830" alt="image" src="https://github.com/user-attachments/assets/bc46ba57-52cd-4a06-a73c-5db6bb408c59" />
 
-##  Historial de ventas
-<img width="1821" height="864" alt="image" src="https://github.com/user-attachments/assets/5e49024f-b4ba-442e-be52-302653ed1b12" />
+##  Movimientos de inventario
+<img width="1510" height="786" alt="image" src="https://github.com/user-attachments/assets/e7aeb2b1-fc60-45a1-8c1c-4fe6d4c9955d" />
 
 ## Existencias
 <img width="1677" height="938" alt="image" src="https://github.com/user-attachments/assets/da0decd6-f079-4bfc-8115-02206213541c" />
