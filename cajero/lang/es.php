@@ -49,6 +49,9 @@ return [
     'categorias.todas' => 'Todas',
     'categorias.sin_categoria' => 'Sin categoría',
     'categorias.vacia' => 'Todavía no hay productos en esta categoría.',
+    'categorias.todos_agotados' => 'Todos los productos de esta categoría están agotados.',
+    'categorias.agotados' => 'Agotados',
+    'categorias.sin_agotados' => 'No hay productos agotados.',
     // nombres de la tabla Categorias (la clave es el nombre exacto en la BD)
     'categoria.Abarrotes' => 'Abarrotes',
     'categoria.Bebidas' => 'Bebidas',

@@ -391,6 +391,17 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 }
 .categoria-chip.activo .categoria-chip-conteo { background: rgba(255,255,255,0.22); color: #fff; }
 
+/* "Agotados": al final, separada de las categorías por una línea y en rojo */
+.categoria-chip--agotados { position: relative; margin-top: 0.7rem; }
+.categoria-chip--agotados::before {
+    content: ''; position: absolute; left: 0.3rem; right: 0.3rem; top: calc(-0.45rem - 1px);
+    border-top: 1px dashed var(--borde-fuerte);
+}
+.categoria-chip--agotados .categoria-chip-conteo { background: var(--peligro-suave); color: var(--peligro-texto); }
+.categoria-chip--agotados:hover { background: var(--peligro-suave); border-color: var(--peligro-borde); color: var(--peligro-texto); }
+.categoria-chip--agotados.activo,
+.categoria-chip--agotados.activo:hover { background: var(--peligro); border-color: var(--peligro); color: #fff; box-shadow: 0 1px 2px rgba(220,38,38,0.3); }
+
 .catalogo-contenido {
     flex: 1; min-height: 0;
     overflow-y: auto;
@@ -410,6 +421,10 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     background: var(--acento-suave-2); color: var(--acento-texto);
     font-size: 0.72rem; line-height: 1.6;
 }
+/* Agotados: siempre la última sección; con otras arriba, una línea la separa */
+.catalogo-seccion--agotados.separada { margin-top: 2rem; padding-top: 1.2rem; border-top: 2px dashed var(--borde-fuerte); }
+.catalogo-seccion--agotados .catalogo-seccion-titulo { color: var(--peligro-texto); }
+.catalogo-seccion--agotados .catalogo-seccion-conteo { background: var(--peligro-suave); color: var(--peligro-texto); }
 
 .catalogo-grid {
     display: grid;
@@ -1218,6 +1233,8 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
     .categorias-filtro { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
     .categoria-chip { width: auto; border-color: var(--borde); border-radius: 999px; padding: 0.4rem 0.75rem; }
     .categoria-chip:hover, .categoria-chip:active { transform: none; }
+    .categoria-chip--agotados { margin-top: 0; }
+    .categoria-chip--agotados::before { display: none; }
     .catalogo-panel { max-height: 70vh; }
     .resumen-lista { max-height: 40vh; }
 }

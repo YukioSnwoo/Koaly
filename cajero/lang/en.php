@@ -48,6 +48,9 @@ return [
     'categorias.todas' => 'All',
     'categorias.sin_categoria' => 'Uncategorized',
     'categorias.vacia' => 'No products in this category yet.',
+    'categorias.todos_agotados' => 'Every product in this category is out of stock.',
+    'categorias.agotados' => 'Out of stock',
+    'categorias.sin_agotados' => 'No products are out of stock.',
     // names from the Categorias table (the key is the exact name in the DB)
     'categoria.Abarrotes' => 'Groceries',
     'categoria.Bebidas' => 'Drinks',

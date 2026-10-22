@@ -842,8 +842,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const ICONO_PRODUCTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>';
         let catalogo = [];
         let categorias = [];                  // { id, nombre } en el orden en que se muestran
-        let categoriaActiva = 'todas';        // 'todas' o el id de una categoría
+        let categoriaActiva = 'todas';        // 'todas', el id de una categoría o AGOTADOS
         const SIN_CATEGORIA = 0;              // productos sin categoría asignada
+        const AGOTADOS = 'agotados';          // sección y chip de los productos sin existencias, al final
         const tarjetasCatalogo = new Map();   // id_producto -> elementos de su tarjeta
 
         async function cargarCatalogo() {
@@ -874,7 +875,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (catalogo.some(p => p.id_categoria === SIN_CATEGORIA)) {
                 categorias.push({ id: SIN_CATEGORIA, nombreBd: null });
             }
-            if (categoriaActiva !== 'todas' && !categorias.some(c => c.id === categoriaActiva)) {
+            if (categoriaActiva !== 'todas' && categoriaActiva !== AGOTADOS && !categorias.some(c => c.id === categoriaActiva)) {
                 categoriaActiva = 'todas';
             }
 
@@ -894,8 +895,41 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             return div;
         }
 
-        // Una sección por categoría (las vacías también, con su aviso);
-        // los filtros solo muestran u ocultan secciones y tarjetas
+        const estaAgotado = (p) => (Number(p.stock) || 0) <= 0;
+
+        // Productos de una categoría que sí se pueden vender (los agotados van a su propia sección)
+        const disponiblesDe = (idCategoria) => catalogo.filter(p => p.id_categoria === idCategoria && !estaAgotado(p));
+
+        function crearSeccion(valor, nombre, productos, mensajeVacia, clase = '') {
+            const seccion = document.createElement('section');
+            seccion.className = ('catalogo-seccion ' + clase).trim();
+            seccion.dataset.categoria = valor;
+            seccion.dataset.vacia = productos.length === 0 ? '1' : '';
+
+            const titulo = document.createElement('h3');
+            titulo.className = 'catalogo-seccion-titulo';
+            titulo.textContent = nombre;
+            const conteo = document.createElement('span');
+            conteo.className = 'catalogo-seccion-conteo';
+            conteo.dataset.total = productos.length;
+            conteo.textContent = productos.length;
+            titulo.appendChild(conteo);
+
+            const grid = document.createElement('div');
+            grid.className = 'catalogo-grid';
+            if (productos.length === 0) {
+                grid.appendChild(mensajeCatalogo(mensajeVacia));
+            } else {
+                grid.append(...productos.map(crearTarjeta));
+            }
+
+            seccion.append(titulo, grid);
+            return seccion;
+        }
+
+        // Una sección por categoría (las vacías también, con su aviso) con los
+        // productos que hay, y al final "Agotados" con todos los que no tienen
+        // existencias. Los filtros solo muestran u ocultan secciones y tarjetas.
         function renderCatalogo() {
             const contenedor = document.getElementById('catalogo');
             tarjetasCatalogo.clear();
@@ -906,34 +940,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 return;
             }
 
+            // Así actualizarCatalogo() sabe si un producto cambió de sección
+            catalogo.forEach(p => { p.enAgotados = estaAgotado(p); });
+
             const secciones = categorias.map(c => {
-                const productos = catalogo.filter(p => p.id_categoria === c.id);
-
-                const seccion = document.createElement('section');
-                seccion.className = 'catalogo-seccion';
-                seccion.dataset.categoria = c.id;
-                seccion.dataset.vacia = productos.length === 0 ? '1' : '';
-
-                const titulo = document.createElement('h3');
-                titulo.className = 'catalogo-seccion-titulo';
-                titulo.textContent = nombreCategoria(c);
-                const conteo = document.createElement('span');
-                conteo.className = 'catalogo-seccion-conteo';
-                conteo.dataset.total = productos.length;
-                conteo.textContent = productos.length;
-                titulo.appendChild(conteo);
-
-                const grid = document.createElement('div');
-                grid.className = 'catalogo-grid';
-                if (productos.length === 0) {
-                    grid.appendChild(mensajeCatalogo(tr('categorias.vacia')));
-                } else {
-                    grid.append(...productos.map(crearTarjeta));
-                }
-
-                seccion.append(titulo, grid);
-                return seccion;
+                const hayAgotados = catalogo.some(p => p.id_categoria === c.id && p.enAgotados);
+                return crearSeccion(c.id, nombreCategoria(c), disponiblesDe(c.id),
+                    tr(hayAgotados ? 'categorias.todos_agotados' : 'categorias.vacia'));
             });
+            secciones.push(crearSeccion(AGOTADOS, tr('categorias.agotados'), catalogo.filter(estaAgotado),
+                tr('categorias.sin_agotados'), 'catalogo-seccion--agotados'));
 
             const sinResultados = mensajeCatalogo('');
             sinResultados.id = 'catalogoSinResultados';
@@ -947,10 +963,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function renderFiltroCategorias() {
             const filtro = document.getElementById('filtroCategorias');
-            const chip = (valor, nombre, cantidad) => {
+            const chip = (valor, nombre, cantidad, clase = '') => {
                 const boton = document.createElement('button');
                 boton.type = 'button';
-                boton.className = 'categoria-chip';
+                boton.className = ('categoria-chip ' + clase).trim();
                 boton.dataset.valor = valor;
                 boton.classList.toggle('vacia', cantidad === 0);
                 boton.textContent = nombre;
@@ -970,7 +986,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             filtro.replaceChildren(
                 chip('todas', tr('categorias.todas'), catalogo.length),
-                ...categorias.map(c => chip(c.id, nombreCategoria(c), catalogo.filter(p => p.id_categoria === c.id).length))
+                ...categorias.map(c => chip(c.id, nombreCategoria(c), disponiblesDe(c.id).length)),
+                chip(AGOTADOS, tr('categorias.agotados'), catalogo.filter(estaAgotado).length, 'categoria-chip--agotados')
             );
         }
 
@@ -1006,10 +1023,17 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 } else {
                     seccion.hidden = categoriaActiva === 'todas'
                         ? seccion.dataset.vacia === '1'
-                        : Number(seccion.dataset.categoria) !== categoriaActiva;
+                        : seccion.dataset.categoria !== String(categoriaActiva);
                     conteo.textContent = conteo.dataset.total;
                 }
             });
+
+            // Línea que separa los agotados, solo si hay otras secciones arriba
+            const agotados = document.querySelector('#catalogo .catalogo-seccion--agotados');
+            if (agotados) {
+                const hayArriba = [...document.querySelectorAll('#catalogo .catalogo-seccion:not(.catalogo-seccion--agotados)')].some(sec => !sec.hidden);
+                agotados.classList.toggle('separada', hayArriba);
+            }
 
             const sinResultados = document.getElementById('catalogoSinResultados');
             if (sinResultados) {
@@ -1100,6 +1124,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         // Cantidad en la venta y existencias de cada tarjeta
         function actualizarCatalogo() {
+            // Si al revisar existencias un producto se agotó (o volvió a haber), cambia
+            // de sección: se arma de nuevo sin mover el scroll. renderCatalogo() vuelve
+            // a llamar aquí, ya con todo en su lugar.
+            if (catalogo.some(p => p.enAgotados !== undefined && p.enAgotados !== estaAgotado(p))) {
+                const contenedor = document.getElementById('catalogo');
+                const scroll = contenedor.scrollTop;
+                renderCatalogo();
+                contenedor.scrollTop = scroll;
+                return;
+            }
             tarjetasCatalogo.forEach(({ producto, tarjeta, agregar, enVenta, existencias }) => {
                 const stock = Number(producto.stock) || 0;
                 const cantidad = cantidadDeProducto(producto.id_producto);
