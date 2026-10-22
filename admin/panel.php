@@ -38,54 +38,66 @@ $listaSucursales = $sucursales->fetchAll();
     </div>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <p class="stat-card__label">Sucursales activas</p>
-        <p class="stat-card__value"><?= $numSucursales ?></p>
-    </div>
-    <div class="stat-card">
-        <p class="stat-card__label">Ventas de hoy</p>
-        <p class="stat-card__value">$<?= number_format($totalVentas, 0, '.', ',') ?></p>
-    </div>
-    <div class="stat-card">
-        <p class="stat-card__label">Gerentes registrados</p>
-        <p class="stat-card__value"><?= $numGerentes ?></p>
-    </div>
-    <div class="stat-card">
-        <p class="stat-card__label">Productos con bajo stock</p>
-        <p class="stat-card__value stat-card__value--danger"><?= $bajoStock ?></p>
-    </div>
-</div>
+<?php
+// Ticket de corte: las sucursales con más ventas primero; el resto se suma en una sola línea.
+$ordenadas = $listaSucursales;
+usort($ordenadas, fn($a, $b) => (float) $b['ventas_hoy'] <=> (float) $a['ventas_hoy']);
+$lineasTicket = array_slice($ordenadas, 0, 6);
+$restantes = array_slice($ordenadas, 6);
+$sinGerente = count(array_filter($listaSucursales, fn($s) => !$s['gerente_nombre']));
+$inactivas = count(array_filter($listaSucursales, fn($s) => $s['estado'] !== 'Activa'));
+$pendientes = $bajoStock + $sinGerente;
+?>
 
-<p class="section-title">Sucursales</p>
-<div class="table-wrap">
-    <table class="table">
-        <thead><tr>
-            <th>Sucursal</th><th>Gerente</th><th>Estado</th><th>Ventas hoy</th>
-        </tr></thead>
-        <tbody>
-            <?php if (empty($listaSucursales)): ?>
-                <tr><td colspan="4" style="color:var(--text-muted);text-align:center">No hay sucursales.</td></tr>
-            <?php else: ?>
-                <?php foreach ($listaSucursales as $s): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($s['nombre']) ?></td>
-                        <td><?= $s['gerente_nombre'] ? htmlspecialchars($s['gerente_nombre']) : '<span style="color:var(--text-muted)">Sin asignar</span>' ?></td>
-                        <td>
-                            <?php if ($s['estado'] === 'Activa' && $s['gerente_nombre']): ?>
-                                <span class="badge badge--success">Activa</span>
-                            <?php elseif ($s['estado'] === 'Activa'): ?>
-                                <span class="badge badge--warning">Sin gerente asignado</span>
-                            <?php else: ?>
-                                <span class="badge badge--danger">Inactiva</span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="text-align:right">$<?= number_format($s['ventas_hoy'], 0, '.', ',') ?></td>
-                    </tr>
-                <?php endforeach; ?>
+<div class="hero">
+    <div class="ticket">
+        <div class="ticket__top">
+            <b>Corte de la red</b>
+            <span><?= date('d/m/Y H:i') ?></span>
+        </div>
+        <?php if (empty($listaSucursales)): ?>
+            <p class="ticket__vacio">Aún no hay sucursales registradas.</p>
+        <?php else: ?>
+            <?php foreach ($lineasTicket as $s): ?>
+                <div class="ticket__row"><?= htmlspecialchars($s['nombre']) ?><i></i><em>$<?= number_format((float) $s['ventas_hoy'], 0, '.', ',') ?></em></div>
+            <?php endforeach; ?>
+            <?php if ($restantes): ?>
+                <div class="ticket__row">Otras <?= count($restantes) ?><i></i><em>$<?= number_format(array_sum(array_column($restantes, 'ventas_hoy')), 0, '.', ',') ?></em></div>
             <?php endif; ?>
-        </tbody>
-    </table>
+        <?php endif; ?>
+        <div class="ticket__total">
+            <span>Total del día</span>
+            <b>$<?= number_format((float) $totalVentas, 0, '.', ',') ?></b>
+        </div>
+    </div>
+
+    <div class="pend">
+        <p class="section-title">Para atender</p>
+        <?php if ($bajoStock > 0): ?>
+            <a class="pend__it" href="inventario.php">
+                <span class="pend__ic pend__ic--danger"><i class="ti ti-alert-triangle"></i></span>
+                <span class="pend__txt"><b><?= (int) $bajoStock ?> producto<?= $bajoStock != 1 ? 's' : '' ?> con stock bajo</b><small>Cinco unidades o menos en alguna sucursal</small></span>
+                <span class="btn btn--sm">Ver</span>
+            </a>
+        <?php endif; ?>
+        <?php if ($sinGerente > 0): ?>
+            <a class="pend__it" href="gerentes.php">
+                <span class="pend__ic pend__ic--warn"><i class="ti ti-user-off"></i></span>
+                <span class="pend__txt"><b><?= $sinGerente ?> sucursal<?= $sinGerente != 1 ? 'es' : '' ?> sin gerente</b><small>Asigna a alguien para activarla<?= $inactivas > 0 ? ' · ' . $inactivas . ' inactiva' . ($inactivas != 1 ? 's' : '') : '' ?></small></span>
+                <span class="btn btn--primary btn--sm">Asignar</span>
+            </a>
+        <?php endif; ?>
+        <?php if ($pendientes === 0): ?>
+            <div class="pend__it pend__it--ok">
+                <span class="pend__ic pend__ic--ok"><i class="ti ti-check"></i></span>
+                <span class="pend__txt"><b>Todo en orden</b><small>No hay nada pendiente por ahora</small></span>
+            </div>
+        <?php endif; ?>
+        <div class="pend__mini">
+            <div class="stat-card"><p class="stat-card__label">Sucursales activas</p><p class="stat-card__value"><?= $numSucursales ?></p></div>
+            <div class="stat-card"><p class="stat-card__label">Gerentes registrados</p><p class="stat-card__value"><?= $numGerentes ?></p></div>
+        </div>
+    </div>
 </div>
 
 <div style="margin-top:1rem;display:flex;gap:8px">

@@ -142,6 +142,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             $mensajeExito = t('prod.precio_ok', ['precio' => dinero($precioVenta)]);
+
+        /* -------- Solicitar al admin eliminar el producto del catálogo -------- */
+        } elseif ($action === 'solicitar_eliminar') {
+            $justificacion = trim($_POST['justificacion'] ?? '');
+            if ($justificacion === '') {
+                throw new RuntimeException(t('error.justificacion'));
+            }
+
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("
+                SELECT p.nombre, p.id_categoria, p.estado
+                FROM Inventario_Sucursal i
+                INNER JOIN Productos p ON p.id_producto = i.id_producto
+                WHERE i.id_sucursal = ? AND i.id_producto = ?
+                FOR UPDATE
+            ");
+            // El bloqueo de esta fila (que sí existe) serializa envíos simultáneos
+            // de la misma sucursal y producto; la comprobación de abajo no bastaría sola.
+            $stmt->execute([$idSucursalGerente, $idProducto]);
+            $fila = $stmt->fetch();
+            if ($fila === false) {
+                throw new RuntimeException(t('error.no_en_inventario'));
+            }
+            if ($fila['estado'] === 'Descontinuado') {
+                throw new RuntimeException(t('cat.eliminar_ya_descontinuado'));
+            }
+
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM Solicitudes_Productos
+                WHERE id_sucursal = ? AND id_producto = ? AND tipo = 'Eliminar' AND estado = 'Pendiente'
+                FOR UPDATE
+            ");
+            $stmt->execute([$idSucursalGerente, $idProducto]);
+            if ($stmt->fetch() !== false) {
+                throw new RuntimeException(t('cat.eliminar_pendiente'));
+            }
+
+            $stmt = $pdo->prepare("
+                INSERT INTO Solicitudes_Productos
+                    (id_sucursal, id_usuario, tipo, id_producto, nombre_producto, id_categoria,
+                     justificacion, estado, creado_en)
+                VALUES (?, ?, 'Eliminar', ?, ?, ?, ?, 'Pendiente', NOW())
+            ");
+            $stmt->execute([
+                $idSucursalGerente, $idUsuario, $idProducto,
+                $fila['nombre'], $fila['id_categoria'], $justificacion,
+            ]);
+
+            $pdo->commit();
+            $mensajeExito = t('cat.eliminar_enviada');
         }
 
         if ($mensajeExito !== '') {
@@ -192,6 +242,13 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$idSucursalGerente, $idProducto]);
 $ventas30 = $stmt->fetch();
+
+$stmt = $pdo->prepare("
+    SELECT 1 FROM Solicitudes_Productos
+    WHERE id_sucursal = ? AND id_producto = ? AND tipo = 'Eliminar' AND estado = 'Pendiente'
+");
+$stmt->execute([$idSucursalGerente, $idProducto]);
+$eliminacionPendiente = $stmt->fetch() !== false;
 
 $stmt = $pdo->prepare("
     SELECT MAX(v.fecha_hora) FROM Detalle_Venta dv
@@ -358,6 +415,29 @@ require __DIR__ . '/header.php';
         </div>
         <p class="ficha-accion-ayuda"><?= e(t('prod.precio_catalogo_ref', ['precio' => dinero($producto['precio_catalogo'])])) ?></p>
         <button type="submit" class="btn btn-primary"><?= e(t('prod.guardar_precio')) ?></button>
+    </form>
+
+    <!-- Solicitar eliminar del catálogo (lo resuelve el admin) -->
+    <form class="ficha-accion" method="POST" action="producto.php?id=<?= (int) $idProducto ?>"
+          onsubmit="this.querySelector('[type=submit]').disabled = true;">
+        <h2><?= e(t('cat.eliminar_titulo')) ?></h2>
+        <p class="ficha-accion-ayuda"><?= e(t('cat.eliminar_ayuda')) ?></p>
+        <input type="hidden" name="action" value="solicitar_eliminar">
+        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+        <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
+
+        <?php if ($producto['estado_producto'] === 'Descontinuado'): ?>
+            <p class="ficha-accion-ayuda"><?= e(t('cat.eliminar_ya_descontinuado')) ?></p>
+        <?php elseif ($eliminacionPendiente): ?>
+            <p class="ficha-accion-ayuda"><span class="badge badge-warning"><?= e(t('cat.en_revision')) ?></span> <?= e(t('cat.eliminar_pendiente')) ?></p>
+        <?php else: ?>
+            <div class="form-group">
+                <label for="justificacionEliminar"><?= e(t('cat.campo_justificacion')) ?> *</label>
+                <textarea id="justificacionEliminar" name="justificacion" required
+                          placeholder="<?= e(t('cat.eliminar_justificacion_ej')) ?>"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary"><?= e(t('cat.enviar_eliminar')) ?></button>
+        <?php endif; ?>
     </form>
 </div>
 

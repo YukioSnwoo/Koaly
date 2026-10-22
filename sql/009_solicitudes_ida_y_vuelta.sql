@@ -4,6 +4,7 @@
 --   - el admin acepta, rechaza o edita (la edición regresa al gerente);
 --   - el gerente aprueba los cambios del admin, los rechaza (se cancela) o edita (regresa al admin).
 -- Se puede correr más de una vez (IF NOT EXISTS es de MariaDB, que es la base del hosting).
+-- Correr DESPUÉS de sql/005_solicitudes_eliminar.sql, que crea las columnas tipo e id_producto.
 
 -- 0) Revisión previa: los estados guardados deben estar entre
 --    Pendiente, Aprobada y Rechazada. Si sale otro, NO sigas y avísame.
@@ -18,8 +19,6 @@ ALTER TABLE Solicitudes_Productos
 
 -- 2) Columnas que ya usa la revisión del admin (por si faltan) y las nuevas
 ALTER TABLE Solicitudes_Productos
-  ADD COLUMN IF NOT EXISTS tipo               ENUM('Agregar', 'Eliminar') NOT NULL DEFAULT 'Agregar',
-  ADD COLUMN IF NOT EXISTS id_producto        INT NULL,            -- producto a eliminar (tipo Eliminar)
   ADD COLUMN IF NOT EXISTS motivo_rechazo     TEXT NULL,
   ADD COLUMN IF NOT EXISTS id_producto_creado INT NULL,
   ADD COLUMN IF NOT EXISTS resuelto_en        TIMESTAMP NULL,
