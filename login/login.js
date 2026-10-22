@@ -141,6 +141,15 @@ document.addEventListener('DOMContentLoaded', () => {
             boton.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
         });
     });
+    // ===== Acceso rápido (BETA) — borrar cuando terminemos de programar =====
+document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        $('loginEmail').value    = btn.dataset.email;
+        $('loginPassword').value = '123';
+        // requestSubmit dispara el submit real (y su validación + API)
+        $('loginForm').requestSubmit();
+    });
+});
 
     // ===== Navegación =====
     $('forgotLink').addEventListener('click', () => {
@@ -315,4 +324,57 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.body.dataset.debeCambiar === '1') {
         $('newPassword').focus();
     }
-});
+    // ===== Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =====
+
+    const mascotaCara = $('mascotaCara');
+    const mascotaBurbuja = $('mascotaBurbuja');
+    const emailInput = $('loginEmail');
+    const passInput = $('loginPassword');
+
+    const IMAGENES_KOALA = {
+        normal: 'Imagenes/koala/koala-normal.png',
+        feliz: 'Imagenes/koala/koala-feliz.png',
+        pensando: 'Imagenes/koala/koala-pensando.png',
+        secreto: 'Imagenes/koala/koala-secreto.png',
+        fiesta: 'Imagenes/koala/koala-fiesta.png' 
+    };
+
+    function animarKoala(estado, mensaje, esFiesta = false) {
+        if (!mascotaCara) return;
+
+        
+        mascotaCara.src = IMAGENES_KOALA[estado] || IMAGENES_KOALA.normal;
+        
+        
+        mascotaCara.classList.remove('saltando', 'emocionada');
+        void mascotaCara.offsetWidth; 
+        mascotaCara.classList.add(esFiesta ? 'emocionada' : 'saltando');
+
+        if (mensaje !== undefined) {
+            mascotaBurbuja.textContent = mensaje;
+        }
+    }
+
+    if (emailInput && passInput && mascotaCara) {
+        emailInput.addEventListener('focus', () => animarKoala('normal', '¿Cómo te llamas?'));
+        
+        emailInput.addEventListener('input', () => {
+            const email = emailInput.value.trim();
+            if (email === '') animarKoala('normal', '¿Cuál es tu correo?');
+            else if (email.includes('@') && email.includes('.')) animarKoala('feliz', '¡Muy bien!');
+            else animarKoala('pensando', 'Escribe tu correo completo');
+        });
+
+        passInput.addEventListener('focus', () => {
+            if (emailInput.value.includes('@')) animarKoala('secreto', '¡Secreto.');
+            else animarKoala('pensando', 'Primero necesito tu correo');
+        });
+
+        passInput.addEventListener('input', () => {
+            const pass = passInput.value;
+            if (pass.length === 0) animarKoala('normal', 'Tu contraseña es secreta.');
+            else if (pass.length < 8) animarKoala('pensando', 'Un poco más segura...');
+            else animarKoala('fiesta', '¡Listos para entrar!', true);
+        }); 
+    } 
+}); 

@@ -407,3 +407,55 @@ a:focus-visible {
         transition: none !important;
     }
 }
+
+/* Mascota Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+.mascota {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.mascota-imagen {
+    width: 130px;       
+    height: 130px;      
+    object-fit: contain; 
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    user-select: none;
+}
+
+.mascota-imagen.saltando {
+    animation: mascotaSaltar 0.5s ease-out;
+}
+
+.mascota-imagen.emocionada {
+    animation: mascotaEmocion 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes mascotaSaltar {
+    0%, 100% { transform: translateY(0) scale(1); }
+    40% { transform: translateY(-15px) scale(1.1); }
+    60% { transform: translateY(-15px) scale(1.1); }
+}
+
+@keyframes mascotaEmocion {
+    from { transform: rotate(-5deg) scale(1); }
+    to { transform: rotate(5deg) scale(1.1); }
+}
+
+.mascota-burbuja {
+    margin-top: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    color: #1e40af;
+    font-size: 0.85rem;
+    font-weight: 600;
+    min-height: 2.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease;
+}

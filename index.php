@@ -1,10 +1,5 @@
 <?php
-/**
- * Inicio de sesión. La lógica está en login/login.php (API JSON) y login/login.js.
- *
- * Si ya hay sesión válida, manda directo al panel del rol. Si la cuenta debe
- * cambiar su contraseña (los paneles redirigen aquí), abre esa vista.
- */
+
 session_start();
 
 $rutasPorRol = [1 => 'admin/', 2 => 'gerente/', 3 => 'cajero/'];
@@ -56,13 +51,18 @@ $verJs  = filemtime(__DIR__ . '/login/login.js');
 <body<?= $debeCambiar ? ' data-debe-cambiar="1"' : '' ?>>
     <main class="container">
         <!-- INICIAR SESIÓN -->
+                <!-- INICIAR SESIÓN -->
         <section id="loginView"<?= $debeCambiar ? ' class="hidden"' : '' ?>>
-            <div class="logo" aria-hidden="true">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                </svg>
-            </div>
+            
+            <!-- Mascota  Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
+                        
+            <div class="mascota" id="mascota" aria-hidden="true">
 
+            <img src="Imagenes/koala/koala-normal.png" id="mascotaCara" class="mascota-imagen" alt="Mascota Koala">
+                <div class="mascota-burbuja" id="mascotaBurbuja">¿Listo para vender?</div>
+            </div>
+            <!-- Mascota  Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
+            
             <h1>Iniciar sesión</h1>
             <p class="subtitle">Bienvenido de vuelta a Koaly</p>
 
@@ -86,7 +86,18 @@ $verJs  = filemtime(__DIR__ . '/login/login.js');
             </form>
 
             <button type="button" id="forgotLink" class="link-button forgot-link">Olvidé mi contraseña</button>
-
+            <div class="quick-access" id="quickAccess" aria-label="Acceso rápido beta">
+    <span class="quick-access-title">Acceso rápido (beta)</span>
+    <button type="button" class="quick-access-btn"
+            data-email="core.armored@tienda.com"
+            data-rol="1">1 · Admin</button>
+    <button type="button" class="quick-access-btn"
+            data-email="angelmoises549@gmail.com"
+            data-rol="2">2 · Gerente</button>
+    <button type="button" class="quick-access-btn"
+            data-email="aguzman66@ucol.mx"
+            data-rol="3">3 · Cajero</button>
+</div>
             <p class="footer-note">Koaly · Gestión multisucursal</p>
         </section>
 
