@@ -261,25 +261,32 @@ if ($sucursalSeleccionada) {
     </select>
 </div>
 
-<div class="branch-grid" id="tblSucursales">
+<div class="lista" id="tblSucursales">
     <?php if (empty($sucursales)): ?>
-        <p style="color:var(--text-muted);grid-column:1/-1">No hay sucursales registradas.</p>
+        <p style="color:var(--text-muted)">No hay sucursales registradas.</p>
     <?php else: ?>
         <?php foreach ($sucursales as $s): ?>
-            <?php $estadoVisual = $s['estado'] === 'Activa' ? 'Activa' : 'Inactiva'; ?>
-            <div class="branch-card" data-nombre="<?= htmlspecialchars(strtolower($s['nombre'])) ?>" data-estado="<?= $estadoVisual ?>">
-                <div class="branch-card__header">
-                    <p class="branch-card__name"><?= htmlspecialchars($s['nombre']) ?></p>
-                    <span class="badge <?= $estadoVisual === 'Activa' ? 'badge--success' : 'badge--danger' ?>"><?= $estadoVisual ?></span>
+            <?php
+            $estadoVisual = $s['estado'] === 'Activa' ? 'Activa' : 'Inactiva';
+            $sinGerente = !$s['gerente_nombre'];
+            // Franja y etiqueta: verde activa, ámbar sin gerente, roja inactiva con gerente.
+            if ($estadoVisual === 'Activa') { $clase = ''; $badge = 'badge--success'; $texto = 'Activa'; }
+            elseif ($sinGerente)            { $clase = ' suc--warn'; $badge = 'badge--warning'; $texto = 'Sin gerente'; }
+            else                            { $clase = ' suc--bad'; $badge = 'badge--danger'; $texto = 'Inactiva'; }
+            ?>
+            <div class="suc<?= $clase ?>" data-nombre="<?= htmlspecialchars(strtolower($s['nombre'])) ?>" data-estado="<?= $estadoVisual ?>">
+                <span class="suc__tab"></span>
+                <div class="suc__nombre">
+                    <b><?= htmlspecialchars($s['nombre']) ?></b>
+                    <small><?= htmlspecialchars($s['direccion'] ?? 'Sin dirección') ?> · <?= (int) $s['num_cajeros'] ?> cajero<?= $s['num_cajeros'] != 1 ? 's' : '' ?></small>
                 </div>
-                <p class="branch-card__detail"><i class="ti ti-map-pin"></i><?= htmlspecialchars($s['direccion'] ?? 'Sin dirección') ?></p>
-                <p class="branch-card__detail"><i class="ti ti-phone"></i><?= htmlspecialchars($s['telefono'] ?? 'Sin teléfono') ?></p>
-                <p class="branch-card__detail"><i class="ti ti-user"></i><?= $s['gerente_nombre'] ? 'Gerente: ' . htmlspecialchars($s['gerente_nombre']) : 'Sin gerente asignado' ?></p>
-                <div class="branch-card__footer">
-                    <span class="branch-card__count"><?= (int) $s['num_cajeros'] ?> cajero<?= $s['num_cajeros'] != 1 ? 's' : '' ?></span>
-                    <div class="branch-card__actions">
-                        <a href="sucursales.php?id=<?= $s['id_sucursal'] ?>" class="btn btn--ghost btn--sm">Ver y editar</a>
-                    </div>
+                <div class="suc__gerente">
+                    Gerente
+                    <b><?= $s['gerente_nombre'] ? htmlspecialchars($s['gerente_nombre']) : 'Sin asignar' ?></b>
+                </div>
+                <span class="badge <?= $badge ?>"><?= $texto ?></span>
+                <div class="suc__acc">
+                    <a href="sucursales.php?id=<?= $s['id_sucursal'] ?>" class="btn btn--sm<?= $sinGerente ? ' btn--primary' : '' ?>"><?= $sinGerente ? 'Asignar gerente' : 'Ver y editar' ?></a>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -315,7 +322,7 @@ if ($sucursalSeleccionada) {
 function filtrarSucursales() {
     const q = document.getElementById('searchSucursal').value.toLowerCase();
     const estado = document.getElementById('filterEstado').value;
-    document.querySelectorAll('#tblSucursales .branch-card').forEach(card => {
+    document.querySelectorAll('#tblSucursales .suc').forEach(card => {
         card.style.display = card.dataset.nombre.includes(q) && (!estado || card.dataset.estado === estado) ? '' : 'none';
     });
 }

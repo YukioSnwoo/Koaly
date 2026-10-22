@@ -281,6 +281,16 @@ return [
     'cat.campo_justificacion' => 'Justificación',
     'cat.campo_justificacion_ej' => 'Demanda de clientes, temporada, etc.',
     'cat.enviar_solicitud' => 'Enviar solicitud',
+    'cat.tipo_Agregar' => 'Agregar',
+    'cat.tipo_Eliminar' => 'Eliminar',
+    'cat.eliminar_titulo' => 'Solicitar eliminar del catálogo',
+    'cat.eliminar_ayuda' => 'Si este producto ya no existe, el administrador revisará la solicitud y, si la aprueba, lo dará de baja del catálogo.',
+    'cat.eliminar_justificacion_ej' => 'Descontinuado por el proveedor, ya no se vende, etc.',
+    'cat.enviar_eliminar' => 'Solicitar eliminación',
+    'cat.eliminar_enviada' => 'Solicitud de eliminación enviada. El administrador la revisará.',
+    'cat.eliminar_pendiente' => 'Ya hay una solicitud de eliminación pendiente para este producto.',
+    'cat.eliminar_producto' => 'Eliminar producto',
+    'cat.eliminar_ya_descontinuado' => 'Este producto ya está descontinuado en el catálogo.',
 
     // ventas
     'ventas.titulo' => 'Ventas de la sucursal',

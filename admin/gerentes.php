@@ -19,6 +19,18 @@ const ESTADOS_GERENTE = [
     'Baja'        => ['icono' => 'user-off',    'badge' => 'badge--danger'],
 ];
 
+// Guarda en el historial cada cambio de estado. Si la tabla aún no existe (falta correr
+// sql/009), solo se anota en el log y el cambio de estado sigue funcionando.
+function registrarCambioEstado(PDO $pdo, int $idGerente, ?string $anterior, string $nuevo): void
+{
+    try {
+        $pdo->prepare("INSERT INTO Historial_Estado_Gerente (id_gerente, estado_anterior, estado_nuevo, id_admin) VALUES (?, ?, ?, ?)")
+            ->execute([$idGerente, $anterior, $nuevo, (int) ($_SESSION['id_usuario'] ?? 0) ?: null]);
+    } catch (PDOException $e) {
+        error_log('gerentes.php historial: ' . $e->getMessage());
+    }
+}
+
 // Procesar acciones POST antes de enviar contenido al navegador.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -65,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hoy,
                 $hoy
             ]);
+            registrarCambioEstado($pdo, (int) $pdo->lastInsertId(), null, 'Activo');
 
             // Al asignarle gerente, la sucursal pasa a activa.
             if ($idSucursal > 0) {
@@ -126,6 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->beginTransaction();
                 $pdo->prepare("UPDATE Usuarios SET estado = ?, fecha_inicio_estado = ? WHERE id_usuario = ? AND id_rol = 2")
                     ->execute([$estado, date('Y-m-d'), $idGerente]);
+                registrarCambioEstado($pdo, $idGerente, (string) $estadoActual, $estado);
 
                 // Con la baja deja su sucursal (que queda inactiva hasta tener otro gerente).
                 // En vacaciones, incapacidad o licencia la conserva: es temporal.
@@ -173,6 +187,28 @@ $stmt = $pdo->query("
     ORDER BY u.nombre
 ");
 $gerentes = $stmt->fetchAll();
+
+// Historial de estados por gerente (el más reciente primero) para el modal de cada fila.
+$historial = [];
+try {
+    $filasHist = $pdo->query("
+        SELECT h.id_gerente, h.estado_anterior, h.estado_nuevo, h.fecha_cambio,
+               a.nombre AS admin_nombre
+        FROM Historial_Estado_Gerente h
+        LEFT JOIN Usuarios a ON a.id_usuario = h.id_admin
+        ORDER BY h.fecha_cambio DESC, h.id_historial DESC
+    ")->fetchAll();
+    foreach ($filasHist as $h) {
+        $historial[(int) $h['id_gerente']][] = [
+            'anterior' => $h['estado_anterior'],
+            'nuevo'    => $h['estado_nuevo'],
+            'fecha'    => date('d/m/Y H:i', strtotime((string) $h['fecha_cambio'])),
+            'admin'    => $h['admin_nombre'],
+        ];
+    }
+} catch (PDOException $e) {
+    error_log('gerentes.php historial: ' . $e->getMessage());
+}
 
 // Sucursales sin gerente (para el select de asignar). Incluye las inactivas:
 // una sucursal sin gerente está inactiva y se activa al asignarle uno.
@@ -241,6 +277,9 @@ $todasSucursales = $pdo->query("
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                 data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
+                            <button class="icon-btn" title="Historial de estados" onclick="verHistorial(this)"
+                                data-id="<?= (int) $g['id_usuario'] ?>"
+                                data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"><i class="ti ti-history"></i></button>
                             <button class="icon-btn" title="Cambiar estado" aria-haspopup="menu" aria-expanded="false"
                                 onclick="abrirMenuEstado(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
@@ -253,6 +292,19 @@ $todasSucursales = $pdo->query("
             <?php endif; ?>
         </tbody>
     </table>
+</div>
+
+<!-- Modal: historial de estados del gerente -->
+<div id="modalHistorial" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="historialTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
+    <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:460px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column">
+        <h2 id="historialTitulo" style="font-size:16px;font-weight:500;margin:0 0 .25rem">Historial de estados</h2>
+        <p id="historialNombre" style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem"></p>
+        <div id="historialLista" style="overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1.25rem">
+            <button type="button" class="btn btn--ghost" onclick="closeModal('modalHistorial')">Cerrar</button>
+        </div>
+    </div>
 </div>
 
 <!-- Modal: Registrar Gerente -->
@@ -484,6 +536,59 @@ function editarGerente(btn) {
     form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
     form.querySelector('[name="email"]').value = btn.dataset.email;
     openModal('modalEditarGerente');
+}
+
+const HISTORIAL_ESTADOS = <?= json_encode($historial, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+const BADGES_ESTADO = <?= json_encode(array_map(fn($i) => $i['badge'], ESTADOS_GERENTE)) ?>;
+
+function verHistorial(btn) {
+    const lista = document.getElementById('historialLista');
+    const registros = HISTORIAL_ESTADOS[btn.dataset.id] || [];
+    document.getElementById('historialNombre').textContent = btn.dataset.nombre;
+    lista.replaceChildren();
+
+    if (registros.length === 0) {
+        const vacio = document.createElement('p');
+        vacio.style.cssText = 'color:var(--text-muted);font-size:13px';
+        vacio.textContent = 'Aún no hay cambios de estado registrados.';
+        lista.appendChild(vacio);
+    }
+
+    registros.forEach(r => {
+        const fila = document.createElement('div');
+        fila.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-bottom:10px;border-bottom:1px solid var(--border)';
+
+        const cambio = document.createElement('div');
+        cambio.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+        const etiqueta = (estado) => {
+            const b = document.createElement('span');
+            b.className = 'badge ' + (BADGES_ESTADO[estado] || 'badge--warning');
+            b.textContent = estado;
+            return b;
+        };
+        if (r.anterior) {
+            cambio.appendChild(etiqueta(r.anterior));
+            const flecha = document.createElement('i');
+            flecha.className = 'ti ti-arrow-right';
+            flecha.style.color = 'var(--text-muted)';
+            cambio.appendChild(flecha);
+        } else {
+            const inicio = document.createElement('span');
+            inicio.style.cssText = 'font-size:12px;color:var(--text-secondary)';
+            inicio.textContent = 'Estado inicial:';
+            cambio.appendChild(inicio);
+        }
+        cambio.appendChild(etiqueta(r.nuevo));
+
+        const detalle = document.createElement('div');
+        detalle.style.cssText = 'font-size:12px;color:var(--text-secondary)';
+        detalle.textContent = r.fecha + (r.admin ? ' · por ' + r.admin : '');
+
+        fila.append(cambio, detalle);
+        lista.appendChild(fila);
+    });
+
+    openModal('modalHistorial');
 }
 
 function asignarSucursal(btn) {
