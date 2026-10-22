@@ -1,5 +1,6 @@
     </main>
 </div>
-<script src="admin.js"></script>
+</div>
+<script src="admin.js?v=<?= filemtime(__DIR__ . '/admin.js') ?>"></script>
 </body>
 </html>
