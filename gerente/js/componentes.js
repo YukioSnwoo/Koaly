@@ -76,6 +76,7 @@ function initCustomSelect(select) {
         }
 
         opciones().forEach((opt, i) => {
+            if (opt.hidden) return;   // p. ej. productos de otra categoría (barra de filtros)
             const item = document.createElement('div');
             item.className = 'select-custom-option';
             item.setAttribute('role', 'option');
@@ -90,6 +91,16 @@ function initCustomSelect(select) {
             const etiqueta = document.createElement('span');
             etiqueta.textContent = opt.text;
             item.appendChild(etiqueta);
+            // Barra de filtros: rango de actividad de la opción y si cae fuera del periodo
+            if (opt.dataset.detalle) {
+                const detalle = document.createElement('small');
+                detalle.className = 'select-custom-detalle';
+                const estado = opt.dataset.estado;
+                detalle.textContent = estado === 'incompatible' ? tj('filtros_incompatible')
+                    : (estado === 'fuera' ? tj('filtros_fuera') + ' · ' : '') + opt.dataset.detalle;
+                item.classList.toggle('is-fuera', estado === 'fuera');
+                item.appendChild(detalle);
+            }
 
             if (!opt.disabled) {
                 item.addEventListener('click', () => {
@@ -153,6 +164,7 @@ function initCustomSelect(select) {
         panel.classList.add('is-open');
         wrapper.classList.add('is-open');
         trigger.setAttribute('aria-expanded', 'true');
+        posicionarPanel();                          // ya, sin esperar al siguiente cuadro (no parpadea)
         requestAnimationFrame(posicionarPanel);
     };
 
@@ -208,7 +220,7 @@ function initCustomSelect(select) {
 }
 
 function initCustomSelects() {
-    document.querySelectorAll('.toolbar select, .modal-box select').forEach(initCustomSelect);
+    document.querySelectorAll('.toolbar select, .modal-box select, .filtros select').forEach(initCustomSelect);
 }
 
 // Cerrar al hacer click fuera
@@ -286,5 +298,320 @@ function initVistas() {
         let guardada = null;
         try { guardada = localStorage.getItem(clave); } catch (err) { /* modo privado */ }
         if (VISTAS_VALIDAS.includes(guardada) && guardada !== 'iconos') pintar(guardada);
+    });
+}
+
+
+/* ============================================================
+ * Barra de filtros unificada (includes/barra_filtros.php)
+ * Periodo + facetas se limitan entre sí:
+ * - Fechas posibles: [primera actividad, hoy] ∩ rango de cada opción
+ *   elegida (data-desde / data-hasta). Una caja desactivada hace tres
+ *   meses solo deja elegir hasta su última venta.
+ * - Al elegir una opción sin actividad en el periodo, el periodo se mueve
+ *   a sus últimos días activos (misma duración) y se avisa.
+ * - Las opciones que no coinciden con las demás quedan desactivadas; las
+ *   que no tienen actividad en el periodo lo dicen en la lista.
+ * Las fechas van como 'YYYY-MM-DD' y se comparan como texto.
+ * ============================================================ */
+const _fechaUTC = (s) => { const [a, m, d] = s.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d)); };
+const _aTexto   = (f) => f.toISOString().slice(0, 10);
+const _sumarDias = (s, n) => { const f = _fechaUTC(s); f.setUTCDate(f.getUTCDate() + n); return _aTexto(f); };
+const _diasEntre = (a, b) => Math.round((_fechaUTC(b) - _fechaUTC(a)) / 864e5);
+const _maxF = (a, b) => (a > b ? a : b);
+const _minF = (a, b) => (a < b ? a : b);
+const CLAVE_AVISO_FILTROS = 'koaly.filtros.aviso';
+
+function initFiltros() {
+    document.querySelectorAll('[data-filtros]').forEach(form => {
+        const datos   = JSON.parse(form.querySelector('[data-filtros-datos]').textContent);
+        const inDesde = form.querySelector('[data-filtros-desde]');
+        const inHasta = form.querySelector('[data-filtros-hasta]');
+        const selects = Array.from(form.querySelectorAll('select[data-faceta]'));
+        const aviso   = form.querySelector('[data-filtros-aviso]');
+        const trigger = form.querySelector('[data-periodo-abrir]');
+        const flechas = Array.from(form.querySelectorAll('[data-periodo-mover]'));
+        const activos = new Set(datos.dias);
+        const idioma  = document.documentElement.lang || 'es';
+        const fmtDia  = new Intl.DateTimeFormat(idioma, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+        const fmtMes  = new Intl.DateTimeFormat(idioma, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+        const fmtSem  = new Intl.DateTimeFormat(idioma, { weekday: 'narrow', timeZone: 'UTC' });
+        const textoDia = (s) => fmtDia.format(_fechaUTC(s));
+
+        // Rango posible = [inicio, hoy] ∩ rango de cada opción elegida (menos la de "excepto")
+        const rangoPermitido = (excepto = null) => {
+            let desde = datos.inicio, hasta = datos.hoy;
+            const nombres = [];
+            selects.forEach(sel => {
+                if (sel === excepto) return;
+                const o = sel.selectedOptions[0];
+                if (o && o.dataset.desde) {
+                    desde = _maxF(desde, o.dataset.desde);
+                    hasta = _minF(hasta, o.dataset.hasta);
+                    nombres.push(o.text);
+                }
+            });
+            return { desde, hasta, nombres };
+        };
+
+        // Producto según categoría (data-depende / data-padre)
+        const aplicarDependencias = () => {
+            selects.filter(s => s.dataset.depende).forEach(hijo => {
+                const padre = form.querySelector(`select[name="${hijo.dataset.depende}"]`);
+                if (!padre) return;
+                const sinPadre = padre.value === padre.options[0].value;
+                Array.from(hijo.options).slice(1).forEach(o => { o.hidden = !sinPadre && o.dataset.padre !== padre.value; });
+                if (hijo.selectedOptions[0] && hijo.selectedOptions[0].hidden) hijo.selectedIndex = 0;
+            });
+        };
+
+        // Estado de cada opción frente a las demás facetas y al periodo
+        const pintarOpciones = () => {
+            selects.forEach(sel => {
+                const otros = rangoPermitido(sel);
+                Array.from(sel.options).slice(1).forEach(o => {
+                    if (!o.dataset.desde) return;   // sin actividad: viene desactivada del servidor
+                    const compatible = o.dataset.desde <= otros.hasta && o.dataset.hasta >= otros.desde;
+                    const enPeriodo  = o.dataset.desde <= inHasta.value && o.dataset.hasta >= inDesde.value;
+                    o.disabled = !compatible;
+                    o.dataset.estado = !compatible ? 'incompatible' : (enPeriodo ? '' : 'fuera');
+                });
+                sel.dispatchEvent(new Event('select-custom:sincronizar'));
+            });
+        };
+
+        // Periodo dentro de lo posible; si queda fuera, sus últimos días activos con la misma duración
+        const acotar = (desde, hasta, r) => {
+            const largo = _diasEntre(desde, hasta);
+            desde = _maxF(desde, r.desde);
+            hasta = _minF(hasta, r.hasta);
+            if (desde > hasta) {
+                hasta = r.hasta;
+                desde = _maxF(r.desde, _sumarDias(hasta, -largo));
+            }
+            return [desde, hasta];
+        };
+
+        const enviar = (desde, hasta, mensaje = '') => {
+            inDesde.value = desde;
+            inHasta.value = hasta;
+            if (mensaje) {
+                try { sessionStorage.setItem(CLAVE_AVISO_FILTROS, mensaje); } catch (err) { /* modo privado */ }
+            }
+            form.submit();
+        };
+
+        selects.forEach(sel => sel.addEventListener('change', () => {
+            aplicarDependencias();
+            const r = rangoPermitido();
+            const [desde, hasta] = acotar(inDesde.value, inHasta.value, r);
+            const movido = desde !== inDesde.value || hasta !== inHasta.value;
+            enviar(desde, hasta, movido
+                ? tj('filtros_ajustado', { nombre: r.nombres.join(' · '), desde: textoDia(desde), hasta: textoDia(hasta) })
+                : '');
+        }));
+
+        // ‹ › mueven el periodo su propia duración, sin salir de lo posible
+        const pintarFlechas = () => {
+            const r = rangoPermitido();
+            flechas.forEach(b => {
+                const atras = b.dataset.periodoMover === '-1';
+                b.disabled = atras ? inDesde.value <= r.desde : inHasta.value >= r.hasta;
+            });
+        };
+        flechas.forEach(b => b.addEventListener('click', () => {
+            const r = rangoPermitido();
+            const largo = _diasEntre(inDesde.value, inHasta.value) + 1;
+            const paso = Number(b.dataset.periodoMover) * largo;
+            let desde = _sumarDias(inDesde.value, paso), hasta = _sumarDias(inHasta.value, paso);
+            if (desde < r.desde) { desde = r.desde; hasta = _minF(r.hasta, _sumarDias(desde, largo - 1)); }
+            if (hasta > r.hasta) { hasta = r.hasta; desde = _maxF(r.desde, _sumarDias(hasta, -(largo - 1))); }
+            enviar(desde, hasta);
+        }));
+
+        /* ---------- Calendario ---------- */
+        const panel = document.createElement('div');
+        panel.className = 'calendario';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', tj('filtros_elegir_periodo'));
+        document.body.appendChild(panel);
+
+        let selDesde, selHasta, eligiendoFin, mes, hoverDia = null;
+
+        const pintar = () => {
+            const r = rangoPermitido();
+            const finVisible = eligiendoFin && hoverDia ? hoverDia : selHasta;
+            const [a, b] = selDesde <= finVisible ? [selDesde, finVisible] : [finVisible, selDesde];
+            panel.replaceChildren();
+
+            // Atajos (acotados a lo posible)
+            const lista = document.createElement('div');
+            lista.className = 'calendario-atajos';
+            datos.atajos.forEach(at => {
+                const desde = _maxF(at.desde, r.desde), hasta = _minF(at.hasta, r.hasta);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = at.texto;
+                btn.disabled = desde > hasta;
+                btn.classList.toggle('is-activo', !eligiendoFin && desde === selDesde && hasta === selHasta);
+                btn.addEventListener('click', () => enviar(desde, hasta));
+                lista.appendChild(btn);
+            });
+
+            // Mes
+            const cuerpo = document.createElement('div');
+            cuerpo.className = 'calendario-cuerpo';
+            const cab = document.createElement('div');
+            cab.className = 'calendario-cabecera';
+            const mesAnterior = _aTexto(new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7) - 2, 1)));
+            const mesSiguiente = _aTexto(new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 1)));
+            const navMes = (destino, etiqueta, flecha, desactivado) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'calendario-nav';
+                btn.innerHTML = flecha;
+                btn.setAttribute('aria-label', etiqueta);
+                btn.title = etiqueta;
+                btn.disabled = desactivado;
+                btn.addEventListener('click', () => { mes = destino; pintar(); });
+                return btn;
+            };
+            const titulo = document.createElement('strong');
+            const nombreMes = fmtMes.format(_fechaUTC(mes));   // solo la primera letra en mayúscula
+            titulo.textContent = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+            cab.append(
+                navMes(mesAnterior, tj('filtros_mes_anterior'), '‹', _sumarDias(mes, -1) < r.desde),
+                titulo,
+                navMes(mesSiguiente, tj('filtros_mes_siguiente'), '›', mesSiguiente > r.hasta)
+            );
+
+            const grid = document.createElement('div');
+            grid.className = 'calendario-dias';
+            for (let i = 0; i < 7; i++) {               // lunes a domingo (5 ene 1970 fue lunes)
+                const s = document.createElement('span');
+                s.className = 'calendario-semana';
+                s.textContent = fmtSem.format(new Date(Date.UTC(1970, 0, 5 + i)));
+                grid.appendChild(s);
+            }
+            const primero = _fechaUTC(mes);
+            const huecos = (primero.getUTCDay() + 6) % 7;
+            for (let i = 0; i < huecos; i++) grid.appendChild(document.createElement('span'));
+            const ultimo = _sumarDias(mesSiguiente, -1);
+            for (let dia = mes; dia <= ultimo; dia = _sumarDias(dia, 1)) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'calendario-dia';
+                btn.textContent = String(+dia.slice(8));
+                btn.dataset.dia = dia;
+                const posible = dia >= r.desde && dia <= r.hasta;
+                btn.disabled = !posible;
+                btn.classList.toggle('con-actividad', activos.has(dia));
+                btn.classList.toggle('es-hoy', dia === datos.hoy);
+                btn.classList.toggle('en-rango', dia >= a && dia <= b);
+                btn.classList.toggle('es-inicio', dia === a);
+                btn.classList.toggle('es-fin', dia === b);
+                btn.setAttribute('aria-label', textoDia(dia) + (activos.has(dia) ? ' · ' + tj('filtros_con_actividad') : ''));
+                btn.setAttribute('aria-pressed', dia >= a && dia <= b ? 'true' : 'false');
+                btn.addEventListener('click', () => {
+                    if (!eligiendoFin) {
+                        selDesde = selHasta = dia;
+                        eligiendoFin = true;
+                    } else {
+                        [selDesde, selHasta] = dia < selDesde ? [dia, selDesde] : [selDesde, dia];
+                        eligiendoFin = false;
+                    }
+                    hoverDia = null;
+                    pintar();
+                    panel.querySelector(`[data-dia="${dia}"]`)?.focus();
+                });
+                btn.addEventListener('mouseenter', () => {
+                    if (eligiendoFin && hoverDia !== dia) { hoverDia = dia; pintar(); }
+                });
+                grid.appendChild(btn);
+            }
+
+            // Resumen y acciones
+            const pie = document.createElement('div');
+            pie.className = 'calendario-pie';
+            const resumen = document.createElement('span');
+            resumen.className = 'calendario-resumen';
+            resumen.textContent = eligiendoFin
+                ? tj('filtros_elige_fin')
+                : (selDesde === selHasta ? textoDia(selDesde)
+                    : tj('filtros_rango', { desde: textoDia(selDesde), hasta: textoDia(selHasta), n: _diasEntre(selDesde, selHasta) + 1 }));
+            const cancelar = document.createElement('button');
+            cancelar.type = 'button';
+            cancelar.className = 'btn btn-ghost btn-sm';
+            cancelar.textContent = tj('cancelar');
+            cancelar.addEventListener('click', cerrar);
+            const aplicar = document.createElement('button');
+            aplicar.type = 'button';
+            aplicar.className = 'btn btn-primary btn-sm';
+            aplicar.textContent = tj('filtros_aplicar');
+            aplicar.disabled = eligiendoFin;
+            aplicar.addEventListener('click', () => enviar(selDesde, selHasta));
+            pie.append(resumen, cancelar, aplicar);
+
+            cuerpo.append(cab, grid);
+            panel.append(lista, cuerpo, pie);
+        };
+
+        const posicionar = () => {
+            if (window.matchMedia('(max-width: 640px)').matches) {   // hoja inferior (CSS)
+                panel.style.left = panel.style.top = '';
+                return;
+            }
+            const r = trigger.getBoundingClientRect();
+            const ancho = panel.offsetWidth, alto = panel.offsetHeight;
+            const arriba = window.innerHeight - r.bottom < alto + 12 && r.top > alto + 12;
+            panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8)) + 'px';
+            panel.style.top  = (arriba ? r.top - alto - 6 : r.bottom + 6) + 'px';
+        };
+
+        const abrir = () => {
+            selDesde = inDesde.value;
+            selHasta = inHasta.value;
+            eligiendoFin = false;
+            hoverDia = null;
+            mes = selHasta.slice(0, 8) + '01';
+            pintar();
+            panel.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+            requestAnimationFrame(() => {
+                posicionar();
+                (panel.querySelector('.calendario-dia.es-fin') || panel.querySelector('.calendario-dia:not(:disabled)'))?.focus();
+            });
+        };
+        function cerrar() {
+            panel.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            panel.classList.contains('is-open') ? cerrar() : abrir();
+        });
+        panel.addEventListener('click', (e) => e.stopPropagation());
+        panel.addEventListener('mouseleave', () => { if (hoverDia) { hoverDia = null; pintar(); } });
+        document.addEventListener('click', () => { if (panel.classList.contains('is-open')) cerrar(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && panel.classList.contains('is-open')) { cerrar(); trigger.focus(); }
+        });
+        window.addEventListener('resize', () => { if (panel.classList.contains('is-open')) posicionar(); });
+        window.addEventListener('scroll', (e) => {
+            if (panel.classList.contains('is-open') && !(e.target instanceof Node && panel.contains(e.target))) posicionar();
+        }, { capture: true, passive: true });
+
+        // Estado inicial
+        aplicarDependencias();
+        pintarOpciones();
+        pintarFlechas();
+        try {
+            const mensaje = sessionStorage.getItem(CLAVE_AVISO_FILTROS);
+            if (mensaje && aviso) {
+                aviso.textContent = mensaje;
+                sessionStorage.removeItem(CLAVE_AVISO_FILTROS);
+            }
+        } catch (err) { /* modo privado */ }
     });
 }

@@ -60,71 +60,14 @@ button { font: inherit; }
     position: sticky; top: 0; z-index: 50;
     border-bottom: 1px solid var(--borde);
 }
-.header h1 {
-    font-size: 1.1rem; font-weight: 700; color: var(--texto);
-    display: flex; align-items: center; gap: 0.55rem;
-}
-.header h1::before {
-    content: ''; width: 10px; height: 10px; border-radius: 3px;
-    background: var(--acento); box-shadow: 0 0 0 4px var(--acento-suave-2);
-}
-.header .user-info { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-.header .user-info span { font-size: 0.9rem; color: var(--texto-2); font-weight: 500; }
-.header .user-info > button:not(.tema-boton) {
-    padding: 0.45rem 0.9rem;
-    border: 1px solid var(--borde);
-    border-radius: 8px;
-    background: var(--superficie);
-    color: var(--texto-2); cursor: pointer;
-    font-weight: 600; font-size: 0.85rem;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.header .user-info > button:not(.tema-boton):hover {
-    background: var(--peligro-suave);
-    border-color: var(--peligro-borde);
-    color: var(--peligro-texto);
-}
-
-.container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
-
-
-/* ============================================================
- *  Back link
- *  ============================================================ */
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.9rem 0.5rem 0.7rem;
-    background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: 8px;
-    color: var(--texto-2);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.85rem;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
-}
-.back-link:hover {
-    background: var(--superficie-2);
-    border-color: var(--borde-fuerte);
-    color: var(--acento-texto);
-    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.10);
-    transform: translateX(-2px);
-}
-.back-link:active {
-    transform: translateX(-2px) scale(0.98);
-}
-.back-link svg {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    transition: transform 0.15s;
-}
-.back-link:hover svg {
-    transform: translateX(-2px);
+/* Ocupa todo el ancho junto a la barra lateral. width: 100% evita que se encoja
+   a su contenido dentro de .main-wrapper (flex en columna); el límite solo
+   frena pantallas muy anchas, y el aire va por dentro (padding), no afuera. */
+.container {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1.75rem clamp(1rem, 2.5vw, 2.25rem) 2.5rem;
 }
 
 
@@ -367,12 +310,8 @@ button { font: inherit; }
  *  ============================================================ */
 @media (max-width: 640px) {
     .header { padding: 0.85rem 1rem; }
-    .header h1 { font-size: 1.05rem; }
-    .header .user-info span { display: none; }
-    .header .user-info { gap: 0.6rem; }
-    .header .header-sub { display: none; } /* sin esto "Cerrar sesión" se salía de la pantalla */
 
-    .container { margin: 1.25rem auto; }
+    .container { padding-top: 1.25rem; }
 
     .page-header h1 { font-size: 1.25rem; }
 

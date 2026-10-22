@@ -341,7 +341,6 @@ function inicialesCorta(string $nombre): string
 }
 
 $pageTitle    = t('cajas.titulo');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 

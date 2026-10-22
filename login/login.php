@@ -5,7 +5,8 @@
  *   change_password      cambio obligatorio del primer ingreso (requiere sesión)
  *   send_recover_code    envía un código de 6 dígitos al correo
  *   reset_password       correo + código + contraseña nueva
- * Responde {success, message, ...}. Las tablas están en sql/004_login.sql.
+ * Responde {success, message, ...}. Las tablas están en sql/004_login.sql
+ * y sql/010_aviso_privacidad.sql.
  */
 session_start();
 header('Content-Type: application/json');
@@ -47,6 +48,7 @@ try {
     error(500, 'Error de conexión a la base de datos');
 }
 require_once __DIR__ . '/correo.php';
+require_once __DIR__ . '/../privacidad/aviso.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 if (!is_array($data)) {
@@ -56,48 +58,7 @@ if (!is_array($data)) {
 $action = (string) ($data['action'] ?? 'login');
 $email  = strtolower(trim((string) ($data['email'] ?? '')));
 
-/** Motivo por el que la contraseña no se acepta, o null si es válida. login.js aplica las mismas reglas. */
-function passwordIsTooSimple(string $password, string $email, ?string $nombre = null): ?string
-{
-    if (strlen($password) < 8) {
-        return 'La contraseña debe tener mínimo 8 caracteres';
-    }
-    if (preg_match('/^[a-zA-Z]+$/', $password)) {
-        return 'La contraseña no puede ser solo letras';
-    }
-    if (preg_match('/^[0-9]+$/', $password)) {
-        return 'La contraseña no puede ser solo números';
-    }
-    if (preg_match('/^[^a-zA-Z0-9]+$/', $password)) {
-        return 'La contraseña no puede ser solo símbolos';
-    }
-
-    $common = [
-        '12345678', 'password', '123456789', 'qwerty', 'abc123',
-        'password123', 'admin', 'letmein', 'welcome', '12345',
-        '1234567890', 'qwerty123', '1q2w3e4r', 'iloveyou', 'monkey'
-    ];
-    $passwordLower = mb_strtolower($password);
-    if (in_array($passwordLower, $common, true)) {
-        return 'La contraseña es demasiado común';
-    }
-
-    // Palabras del nombre de 3 letras o más (un nombre vacío o "de" no debe bloquear todo)
-    if ($nombre) {
-        foreach (preg_split('/\s+/', mb_strtolower(trim($nombre))) as $parte) {
-            if (mb_strlen($parte) >= 3 && str_contains($passwordLower, $parte)) {
-                return 'La contraseña no puede incluir tu nombre';
-            }
-        }
-    }
-
-    $local = mb_strtolower(explode('@', $email)[0] ?? '');
-    if (mb_strlen($local) >= 3 && str_contains($passwordLower, $local)) {
-        return 'La contraseña no puede incluir tu correo';
-    }
-
-    return null;
-}
+require_once __DIR__ . '/reglas_contrasena.php';
 
 function buscarUsuarioPorCorreo(PDO $pdo, string $email): ?array
 {
@@ -346,6 +307,26 @@ if ($destino === null) {
 }
 
 $pdo->prepare('DELETE FROM login_intentos WHERE email = :email')->execute([':email' => $email]);
+
+// Un cajero no entra hasta aceptar la versión vigente del aviso de privacidad.
+// No se crea la sesión: se le manda a privacidad/ con un enlace nuevo y, al
+// aceptarlo, vuelve a iniciar sesión.
+if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
+    try {
+        $aceptado = avisoAceptado($pdo, (int) $usuario['id_usuario']);
+    } catch (PDOException $e) {
+        error_log('login.php: falta la tabla avisos_privacidad (sql/010_aviso_privacidad.sql)');
+        error(500, 'El sistema no está listo para cajeros. Avisa al administrador.');
+    }
+    if (!$aceptado) {
+        responder(403, [
+            'success'        => false,
+            'requiere_aviso' => true,
+            'enlace'         => crearEnlaceAviso($pdo, (int) $usuario['id_usuario'], AVISO_ENLACE_LOGIN_HORAS),
+            'message'        => 'Antes de entrar debes leer y aceptar el aviso de privacidad. Te llevamos a él…',
+        ]);
+    }
+}
 
 // Nuevo id de sesión al autenticar (evita la fijación de sesión)
 session_regenerate_id(true);

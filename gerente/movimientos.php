@@ -2,37 +2,62 @@
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
 require_once __DIR__ . '/includes/csv.php';
+require_once __DIR__ . '/includes/filtros.php';
 
 const MOVIMIENTOS_POR_PAGINA = 50;
 
 /* ============================================================
- * Filtros: producto, tipo y rango de fechas (por defecto 30 días)
+ * Filtros: categoría del producto, producto, tipo de movimiento y fechas
+ * (por defecto 30 días). La categoría es la misma de Productos; el tipo
+ * de movimiento (venta, compra, merma...) es otra cosa y se llama así.
  * ============================================================ */
 $hoy = new DateTimeImmutable('today');
 
-$leerFecha = static function (string $valor): ?DateTimeImmutable {
-    $f = DateTimeImmutable::createFromFormat('!Y-m-d', $valor);
-    return ($f && $f->format('Y-m-d') === $valor) ? $f : null;
-};
+// Fechas posibles: del primer movimiento de la sucursal a hoy (includes/filtros.php)
+$stmt = $pdo->prepare("SELECT MIN(fecha_hora) FROM Movimientos_Inventario WHERE id_sucursal = ?");
+$stmt->execute([$idSucursalGerente]);
+$primerMovimiento = $stmt->fetchColumn();
+$inicioHistorico = $primerMovimiento ? new DateTimeImmutable(substr($primerMovimiento, 0, 10)) : $hoy;
 
-$desde = $leerFecha((string) ($_GET['desde'] ?? '')) ?? $hoy->modify('-29 days');
-$hasta = $leerFecha((string) ($_GET['hasta'] ?? '')) ?? $hoy;
-if ($desde > $hasta) {
-    [$desde, $hasta] = [$hasta, $desde];
-}
+$periodo = leerPeriodo($_GET, $hoy, $inicioHistorico, '30');
+$desde   = $periodo['desde'];
+$hasta   = $periodo['hasta'];
 
+// Rango de actividad de cada opción: el calendario solo deja elegir días posibles
+$rangoMov = static fn(string $clave, string $join = '') => rangosDeActividad($pdo, "
+    SELECT $clave AS clave, MIN(m.fecha_hora) AS desde, MAX(m.fecha_hora) AS hasta, COUNT(*) AS num
+    FROM Movimientos_Inventario m $join WHERE m.id_sucursal = ? GROUP BY $clave
+", [$idSucursalGerente]);
+$rangosProducto  = $rangoMov('m.id_producto');
+$rangosCategoria = $rangoMov('p.id_categoria', 'INNER JOIN Productos p ON p.id_producto = m.id_producto');
+$rangosTipo      = $rangoMov('m.tipo_movimiento');
+$diasConMovimiento = diasConActividad($pdo, "SELECT DISTINCT DATE(fecha_hora) AS dia FROM Movimientos_Inventario WHERE id_sucursal = ? ORDER BY dia", [$idSucursalGerente]);
+
+$categorias = array_column(
+    $pdo->query("SELECT id_categoria, nombre_categoria FROM Categorias ORDER BY nombre_categoria")->fetchAll(),
+    'nombre_categoria', 'id_categoria'
+);
+$idCategoria = (int) ($_GET['categoria'] ?? 0);
+if (!isset($categorias[$idCategoria])) $idCategoria = 0;
+
+// Productos de la sucursal con su categoría: la lista se acota a la categoría
+// elegida en el navegador (data-padre) sin recargar
 $stmt = $pdo->prepare("
-    SELECT p.id_producto, p.nombre
+    SELECT p.id_producto, p.nombre, p.id_categoria
     FROM Inventario_Sucursal i
     INNER JOIN Productos p ON p.id_producto = i.id_producto
     WHERE i.id_sucursal = ?
     ORDER BY p.nombre
 ");
 $stmt->execute([$idSucursalGerente]);
-$productos = array_column($stmt->fetchAll(), 'nombre', 'id_producto');
+$filasProductos   = $stmt->fetchAll();
+$productos        = array_column($filasProductos, 'nombre', 'id_producto');
+$categoriaProducto = array_column($filasProductos, 'id_categoria', 'id_producto');
 
 $idProducto = (int) ($_GET['producto'] ?? 0);
 if (!isset($productos[$idProducto])) $idProducto = 0;
+// Un producto de otra categoría no cuenta: manda la categoría elegida
+if ($idProducto && $idCategoria && (int) $categoriaProducto[$idProducto] !== $idCategoria) $idProducto = 0;
 
 $tipo = (string) ($_GET['tipo'] ?? '');
 if (!isset(TIPOS_MOVIMIENTO[$tipo])) $tipo = '';
@@ -42,6 +67,9 @@ $params = [$idSucursalGerente, $desde->format('Y-m-d 00:00:00'), $hasta->modify(
 if ($idProducto > 0) {
     $where .= " AND m.id_producto = ?";
     $params[] = $idProducto;
+} elseif ($idCategoria > 0) {
+    $where .= " AND m.id_producto IN (SELECT id_producto FROM Productos WHERE id_categoria = ?)";
+    $params[] = $idCategoria;
 }
 if ($tipo !== '') {
     $where .= " AND m.tipo_movimiento = ?";
@@ -51,11 +79,12 @@ if ($tipo !== '') {
 $selectMovimientos = "
     SELECT m.fecha_hora, m.tipo_movimiento, m.cantidad, m.existencia_posterior,
            m.motivo_detalle, m.id_producto,
-           p.nombre AS producto, p.codigo,
+           p.nombre AS producto, p.codigo, c.nombre_categoria,
            u.nombre AS usuario
     FROM Movimientos_Inventario m
-    INNER JOIN Productos p ON p.id_producto = m.id_producto
-    LEFT JOIN Usuarios u   ON u.id_usuario = m.realizado_por
+    INNER JOIN Productos p  ON p.id_producto = m.id_producto
+    LEFT JOIN Categorias c  ON c.id_categoria = p.id_categoria
+    LEFT JOIN Usuarios u    ON u.id_usuario = m.realizado_por
     WHERE $where
 ";
 
@@ -72,6 +101,7 @@ if (($_GET['exportar'] ?? '') === 'csv') {
                 fecha($m['fecha_hora']),
                 $m['codigo'],
                 $m['producto'],
+                tValor('categoria', $m['nombre_categoria'], t('comun.sin_categoria')),
                 esCambioPrecio($m) ? t('tipo.PRECIO') : etiquetaTipo($m['tipo_movimiento']),
                 (int) $m['cantidad'],
                 (int) $m['existencia_posterior'],
@@ -83,7 +113,7 @@ if (($_GET['exportar'] ?? '') === 'csv') {
 
     enviarCsv(
         t('mov.csv_archivo') . '_' . $desde->format('Y-m-d') . '_' . $hasta->format('Y-m-d') . '.csv',
-        [t('comun.fecha'), t('mov.codigo'), t('comun.producto'), t('mov.tipo'), t('mov.cantidad'),
+        [t('comun.fecha'), t('mov.codigo'), t('comun.producto'), t('cat.col_categoria'), t('mov.tipo'), t('mov.cantidad'),
          t('mov.quedaron'), t('mov.detalle'), t('mov.realizo')],
         $filas
     );
@@ -103,7 +133,7 @@ $pintarFilas = static function (array $movimientos): string {
             <td>
                 <a class="enlace-producto" href="producto.php?id=<?= (int) $m['id_producto'] ?>">
                     <span class="producto-nombre"><?= e($m['producto']) ?></span>
-                    <span class="producto-desc"><?= e($m['codigo']) ?></span>
+                    <span class="producto-desc"><?= e($m['codigo']) ?> · <?= e(tValor('categoria', $m['nombre_categoria'], t('comun.sin_categoria'))) ?></span>
                 </a>
             </td>
             <td>
@@ -153,16 +183,41 @@ if (($_GET['parcial'] ?? '') === '1') {
     exit;
 }
 
-$filtros = array_filter([
+$estadoUrl = array_filter([
+    'categoria' => $idCategoria ?: null,
     'producto' => $idProducto ?: null,
     'tipo'     => $tipo ?: null,
     'desde'    => $desde->format('Y-m-d'),
     'hasta'    => $hasta->format('Y-m-d'),
 ]);
-$url = static fn(array $extra) => 'movimientos.php?' . http_build_query($filtros + $extra);
+$url = static fn(array $extra) => 'movimientos.php?' . http_build_query($estadoUrl + $extra);
+
+// Barra de filtros unificada: periodo + categoría, producto y tipo de movimiento
+$hayFiltros = $idCategoria || $idProducto || $tipo !== '';
+$filtros = [
+    'accion'  => 'movimientos.php',
+    'ancla'   => '',
+    'ocultos' => [],
+    'periodo' => [
+        'desde' => $desde, 'hasta' => $hasta, 'inicio' => $inicioHistorico, 'hoy' => $hoy,
+        'atajos' => $periodo['atajos'], 'dias' => $diasConMovimiento,
+    ],
+    'facetas' => [
+        ['nombre' => 'categoria', 'etiqueta' => t('cat.col_categoria'), 'todos' => t('cat.filtro_categorias'), 'valor' => (string) $idCategoria,
+         'opciones' => array_map(fn($id, $nombre) => ['valor' => (string) $id, 'texto' => tValor('categoria', $nombre), 'rango' => $rangosCategoria[(string) $id] ?? null],
+                                 array_keys($categorias), $categorias)],
+        ['nombre' => 'producto', 'etiqueta' => t('comun.producto'), 'todos' => t('mov.filtro_productos'), 'valor' => (string) $idProducto, 'depende' => 'categoria',
+         'opciones' => array_map(fn($id, $nombre) => ['valor' => (string) $id, 'texto' => $nombre, 'rango' => $rangosProducto[(string) $id] ?? null,
+                                                      'padre' => (string) (int) $categoriaProducto[$id]],
+                                 array_keys($productos), $productos)],
+        ['nombre' => 'tipo', 'etiqueta' => t('mov.tipo'), 'todos' => t('mov.filtro_tipos'), 'vacio' => '', 'valor' => $tipo,
+         'opciones' => array_map(fn($valor) => ['valor' => $valor, 'texto' => etiquetaTipo($valor), 'rango' => $rangosTipo[$valor] ?? null],
+                                 array_keys(TIPOS_MOVIMIENTO))],
+    ],
+    'limpiar' => $hayFiltros ? 'movimientos.php?' . http_build_query(['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d')]) : null,
+];
 
 $pageTitle    = t('mov.titulo');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 
@@ -182,23 +237,7 @@ require __DIR__ . '/header.php';
     </div>
 </div>
 
-<form method="GET" action="movimientos.php" class="toolbar" onchange="if (event.target.tagName === 'SELECT') this.submit()">
-    <select name="producto" aria-label="<?= e(t('comun.producto')) ?>">
-        <option value="0"><?= e(t('mov.filtro_productos')) ?></option>
-        <?php foreach ($productos as $id => $nombre): ?>
-            <option value="<?= (int) $id ?>"<?= (int) $id === $idProducto ? ' selected' : '' ?>><?= e($nombre) ?></option>
-        <?php endforeach; ?>
-    </select>
-    <select name="tipo" aria-label="<?= e(t('mov.tipo')) ?>">
-        <option value=""><?= e(t('mov.filtro_tipos')) ?></option>
-        <?php foreach (array_keys(TIPOS_MOVIMIENTO) as $valor): ?>
-            <option value="<?= $valor ?>"<?= $valor === $tipo ? ' selected' : '' ?>><?= e(etiquetaTipo($valor)) ?></option>
-        <?php endforeach; ?>
-    </select>
-    <input type="date" name="desde" value="<?= $desde->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>" aria-label="<?= e(t('ventas.rango_del')) ?>">
-    <input type="date" name="hasta" value="<?= $hasta->format('Y-m-d') ?>" max="<?= $hoy->format('Y-m-d') ?>" aria-label="<?= e(t('ventas.rango_al')) ?>">
-    <button type="submit" class="btn btn-primary"><?= e(t('comun.aplicar')) ?></button>
-</form>
+<?php require __DIR__ . '/includes/barra_filtros.php'; ?>
 
 <section class="kpi-grid">
     <div class="kpi">

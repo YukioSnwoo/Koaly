@@ -283,7 +283,6 @@ $iniciales = static function (string $nombre): string {
 };
 
 $pageTitle    = t('prods.titulo');
-$showBackLink = true;
 require __DIR__ . '/header.php';
 ?>
 

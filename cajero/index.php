@@ -8,6 +8,14 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
 require_once __DIR__ . '/../admin/csrf.php';
 require_once __DIR__ . '/includes/i18n.php';
+require_once __DIR__ . '/../perfil/perfil.php';
+
+// Solo para el menú de perfil: sin base de datos la caja abre igual (el menú sale sin nombre)
+try {
+    require_once __DIR__ . '/../admin/database.php';
+} catch (PDOException $e) {
+    $pdo = null;
+}
 
 // Textos de todos los idiomas (con respaldo en español): el idioma se cambia en
 // el navegador sin recargar, para no perder la venta que se está cobrando
@@ -34,6 +42,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
     <!-- Estilo común de Koaly (colores claro/oscuro, fuentes y piel táctil); va al final para que gane -->
     <link rel="stylesheet" href="../estilos/koaly.css?v=<?= filemtime(__DIR__ . '/../estilos/koaly.css') ?>">
+    <link rel="stylesheet" href="../perfil/perfil.css?v=<?= filemtime(__DIR__ . '/../perfil/perfil.css') ?>">
 </head>
 <body class="caja-bloqueada">
 
@@ -45,31 +54,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
                 <span data-i18n="corte.boton"><?= e(t('corte.boton')) ?></span>
             </button>
-            <details class="idioma">
-                <summary aria-label="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-title="idioma.cambiar">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    <span><?= strtoupper(idiomaActual()) ?></span>
-                    <svg class="idioma-flecha" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-                </summary>
-                <form method="POST" action="idioma.php" class="idioma-menu">
-                    <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-                    <?php foreach (IDIOMAS as $codigo => $nombre): ?>
-                        <button type="submit" name="idioma" value="<?= $codigo ?>" lang="<?= $codigo ?>"
-                                <?= $codigo === idiomaActual() ? 'aria-current="true" class="is-activo"' : '' ?>>
-                            <span class="idioma-codigo"><?= strtoupper($codigo) ?></span> <?= e($nombre) ?>
-                        </button>
-                    <?php endforeach; ?>
-                </form>
-            </details>
-            <button type="button" class="tema-boton" id="botonTema" aria-label="<?= e(t('tema.a_oscuro')) ?>" title="<?= e(t('tema.a_oscuro')) ?>">
-                <svg class="tema-luna" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg class="tema-sol" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            </button>
-            <div class="user-datos">
-                <span class="user-nombre" id="userName"><?= e(t('caja.cajero')) ?></span>
-                <span class="user-sucursal"><span data-i18n="caja.sucursal"><?= e(t('caja.sucursal')) ?></span>: <span id="sucursalName">-</span></span>
-            </div>
-            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
+            <?= menuPerfil($pdo, (int) $_SESSION['id_usuario'], [
+                'idioma_accion' => 'idioma.php',
+                'salir'         => ['onclick' => "abrirModal('modalSalir')"],
+            ]) ?>
         </div>
     </header>
 
@@ -459,14 +447,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     }
     </script>
     <script src="../auth.js"></script>
+    <script src="../perfil/perfil.js?v=<?= filemtime(__DIR__ . '/../perfil/perfil.js') ?>"></script>
     <script>
-        const usuario = requireRol(3);
-        function pintarUsuario() {
-            if (!usuario) return;
-            document.getElementById('userName').textContent = usuario.nombre || tr('caja.cajero');
-            document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || tr('caja.sin_asignar');
-        }
-        pintarUsuario();
+        requireRol(3);
 
         let carrito = [];
         let indiceSeleccionado = null;
@@ -515,55 +498,17 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (abierto && !MODALES_SIN_ESCAPE.includes(abierto.id)) cerrarModal(abierto.id);
         });
 
-        /* ---------- Tema claro / oscuro ---------- */
-        // Igual que en el panel de gerente: <html data-tema="claro|oscuro"> si el
-        // cajero eligió; si no, sigue al sistema. La elección se guarda por navegador.
-        // Común con el gerente: el tema elegido se mantiene al pasar de un módulo a otro
-        const CLAVE_TEMA = 'koaly-tema';
-        const botonTema = document.getElementById('botonTema');
-
-        function temaActual() {
-            const elegido = document.documentElement.getAttribute('data-tema');
-            if (elegido) return elegido;
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
-        }
-
-        function actualizarBotonTema() {
-            const etiqueta = temaActual() === 'oscuro' ? tr('tema.a_claro') : tr('tema.a_oscuro');
-            botonTema.setAttribute('aria-label', etiqueta);
-            botonTema.title = etiqueta;
-        }
-
-        botonTema.addEventListener('click', () => {
-            const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
-            document.documentElement.setAttribute('data-tema', nuevo);
-            try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
-            actualizarBotonTema();
-        });
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
-        actualizarBotonTema();
-
-        /* ---------- Selector de idioma ---------- */
-        // El menú se cierra al hacer clic fuera o con Escape (igual que en el gerente)
-        document.addEventListener('click', (e) => {
-            document.querySelectorAll('details.idioma[open]').forEach(d => {
-                if (!d.contains(e.target)) d.removeAttribute('open');
-            });
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
-        });
-
-        // Igual que el tema, el idioma cambia aquí mismo sin recargar: si se está
+        /* ---------- Idioma ---------- */
+        // El tema claro/oscuro y el menú los maneja ../perfil/perfil.js.
+        // El idioma (en el menú de perfil) cambia aquí mismo sin recargar: si se está
         // cobrando, la venta (carrito, búsqueda, categoría elegida) sigue intacta.
         // En segundo plano se guarda en la sesión, para que los mensajes del
         // servidor al cobrar y la fecha del ticket salgan en el mismo idioma.
-        const menuIdioma = document.querySelector('.idioma-menu');
+        const menuIdioma = document.querySelector('[data-perfil-idioma]');
 
         menuIdioma.addEventListener('submit', (e) => {
             e.preventDefault();
             const codigo = e.submitter?.value;
-            menuIdioma.closest('details').removeAttribute('open');
             if (!codigo || codigo === window.IDIOMA) return;
 
             aplicarIdioma(codigo);
@@ -589,18 +534,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 });
             });
             pintarAyudaLista();
-            pintarUsuario();
-            actualizarBotonTema();
             pintarEstadoCaja();
-
-            // Botón y menú de idioma
-            document.querySelector('.idioma > summary > span').textContent = codigo.toUpperCase();
-            menuIdioma.querySelectorAll('button[name="idioma"]').forEach(boton => {
-                const activo = boton.value === codigo;
-                boton.classList.toggle('is-activo', activo);
-                if (activo) boton.setAttribute('aria-current', 'true');
-                else boton.removeAttribute('aria-current');
-            });
+            window.perfilAplicarIdioma?.(codigo);   // menú de perfil (perfil/perfil.js)
 
             // Lo que dibuja el JS: catálogo (conserva la categoría elegida), lista de venta y panel derecho
             if (catalogo.length || categorias.length) {

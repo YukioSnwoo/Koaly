@@ -7,11 +7,6 @@ return [
     // página y encabezado
     'caja.titulo' => 'Checkout',
     'caja.cajero' => 'Cashier',
-    'caja.sucursal' => 'Branch',
-    'caja.sin_asignar' => 'Unassigned',
-    'tema.a_claro' => 'Switch to light mode',
-    'tema.a_oscuro' => 'Switch to dark mode',
-    'idioma.cambiar' => 'Change language',
     'sesion.cerrar' => 'Log out',
     'sesion.pregunta' => 'Do you want to log out?',
     'sesion.quedarme' => 'No, stay',

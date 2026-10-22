@@ -45,112 +45,197 @@
  *  ============================================================ */
 .cajeros-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.25rem;
 }
 
+/* Tarjeta: cabecera (avatar, nombre, estado) · datos · ventas del mes · acciones */
 .cajero-card {
     background: var(--superficie);
+    border: 1px solid var(--borde);
     border-radius: 14px;
-    padding: 1.5rem 1.25rem 1.25rem;
-    border-top: 4px solid var(--acento);
-    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    padding: 1.1rem 1.2rem;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    gap: 0.9rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     animation: fadeInUp 0.3s ease-out both;
 }
 .cajero-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+    border-color: var(--acento-borde);
+    box-shadow: 0 8px 20px rgba(15,23,42,0.08);
 }
-.cajero-card.is-inactivo {
-    opacity: 0.72;
-}
-.cajero-card.is-inactivo .cajero-avatar {
-    filter: grayscale(0.75);
-}
+.cajero-card.is-inactivo { background: var(--superficie-2); }
+.cajero-card.is-inactivo .cajero-avatar { filter: grayscale(0.8); opacity: 0.75; }
 
+.cajero-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
 .cajero-avatar {
-    width: 72px;
-    height: 72px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #fff;
-    margin-bottom: 0.85rem;
-    box-shadow: 0 6px 16px rgba(124,58,237,0.25);
     flex-shrink: 0;
 }
-
+.cajero-identidad {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
 .cajero-name {
     font-size: 1rem;
     font-weight: 700;
     color: var(--texto);
-    line-height: 1.3;
-    margin-bottom: 0.3rem;
-    word-break: break-word;
+    line-height: 1.25;
+    margin: 0;
+    overflow-wrap: anywhere;
 }
-
 .cajero-email {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     color: var(--texto-3);
-    word-break: break-all;
-    margin-bottom: 0.75rem;
-    line-height: 1.3;
-}
-
-.cajero-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--superficie-3);
-    border-bottom: 1px solid var(--superficie-3);
-    margin-bottom: 1rem;
-}
-
-.cajero-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    min-width: 0;
-}
-
-.cajero-stat-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--acento-texto);
-    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
+.cajero-cabecera .badge { align-self: flex-start; flex-shrink: 0; }
 
-.cajero-stat-label {
-    font-size: 0.68rem;
-    color: var(--texto-3);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+/* Datos: etiqueta a la izquierda, valor a la derecha */
+.cajero-datos {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+}
+.cajero-datos > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.cajero-datos dt { color: var(--texto-3); }
+.cajero-datos dd {
+    margin: 0;
+    color: var(--texto);
     font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+.cajero-datos dd.texto-tenue { font-weight: 400; }
+
+/* Ventas del mes: toda la franja es el enlace a sus ventas */
+.cajero-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: auto; /* alinea la franja y los botones entre tarjetas de distinta altura */
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    background: var(--acento-suave);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s ease;
+}
+.cajero-stats:hover, .cajero-stats:focus-visible { background: var(--acento-suave-2); }
+.cajero-stats-titulo {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--texto-3);
+}
+.cajero-stats-ir {
+    color: var(--acento-texto);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+.cajero-stats-valores {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.25rem;
+    row-gap: 0.15rem;
+    font-size: 0.82rem;
+    color: var(--texto-3);
+}
+.cajero-stats-valores strong {
+    font-size: 1.1rem;
+    color: var(--acento-texto);
+    font-variant-numeric: tabular-nums;
 }
 
+/* Acciones: Editar ocupa el espacio; contraseña y baja son iconos con nombre en title/aria-label */
 .cajero-actions {
     display: flex;
     gap: 0.5rem;
-    width: 100%;
-    margin-top: auto;
 }
-.cajero-actions .btn {
-    flex: 1 1 0;
+.cajero-accion { display: contents; }
+.cajero-actions .cajero-editar { flex: 1; }
+.cajero-actions .btn-success { flex: 1; }
+.btn-icono {
+    width: 2.25rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Modal de cajero: secciones con título */
+.modal-seccion {
+    border: 0;
+    margin: 0 0 1rem;
+    padding: 0;
     min-width: 0;
-    padding: 0.5rem 0.6rem;
-    font-size: 0.8rem;
+}
+.modal-seccion[hidden] { display: none; }
+.modal-seccion legend {
+    /* float: el legend deja de "cortar" el borde del fieldset y se comporta como un título normal */
+    float: left;
+    width: 100%;
+    padding: 0;
+    margin-bottom: 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--texto-3);
+}
+.modal-seccion legend + * { clear: both; }
+.modal-seccion + .modal-seccion {
+    border-top: 1px solid var(--borde);
+    padding-top: 1rem;
+}
+.modal-seccion .form-group:last-child { margin-bottom: 0; }
+.form-ayuda {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--texto-3);
+}
+.form-ayuda[hidden] { display: none; }
+#ayudaEstado {
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
+    background: var(--aviso-suave);
+    color: var(--aviso-texto);
 }
 
 .cajero-empty {
@@ -345,17 +430,6 @@
 /* ============================================================
  *  Ventas de mi sucursal — desgloses y artículos por venta
  *  ============================================================ */
-.ventas-periodo {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 0.75rem; margin-bottom: 1.25rem;
-}
-.ventas-rango { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.ventas-rango label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--texto-3); }
-.ventas-rango input[type="date"] {
-    padding: 0.4rem 0.6rem; border: 1px solid var(--borde); border-radius: 8px;
-    font: inherit; font-size: 0.85rem; color: var(--texto); background: var(--superficie);
-}
-
 /* Desgloses: cuadrícula fija de 2×2 (método · cajero / caja · más vendidos).
    Con auto-fit cabían 3 por fila y la cuarta bajaba sola a todo el ancho.
    Las tarjetas de una misma fila miden lo mismo de alto (stretch). */
@@ -665,6 +739,39 @@
 .vista-coleccion[data-vista="galeria"] .cajero-name { font-size: 1.2rem; }
 
 
+/* ---- Tarjeta de cajero en las vistas ----
+   La tarjeta agrupa sus piezas en bloques (cabecera, datos, ventas del mes,
+   acciones), así que la lista acomoda bloques en vez de piezas sueltas. */
+.vista-coleccion[data-vista="lista"] > .cajero-card {
+    grid-template-columns: minmax(220px, 1.3fr) minmax(240px, 1.6fr) minmax(190px, 1fr) auto;
+    grid-template-areas: "cabecera datos stats acciones";
+    column-gap: 1.25rem;
+}
+.vista-coleccion[data-vista="lista"] .cajero-cabecera { grid-area: cabecera; min-width: 0; }
+.vista-coleccion[data-vista="lista"] .cajero-datos { grid-area: datos; }
+.vista-coleccion[data-vista="lista"] .cajero-stats {
+    grid-area: stats; margin: 0; padding: 0.5rem 0.75rem; width: auto;
+    display: flex; flex-direction: column; gap: 0.2rem; border: 0;
+}
+.vista-coleccion[data-vista="lista"] .cajero-actions { grid-area: acciones; margin: 0; width: auto; flex-wrap: nowrap; }
+@media (max-width: 1100px) {
+    .vista-coleccion[data-vista="lista"] > .cajero-card {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "cabecera cabecera"
+            "datos    stats"
+            "acciones acciones";
+        row-gap: 0.6rem;
+    }
+}
+@media (max-width: 640px) {
+    .vista-coleccion[data-vista="lista"] > .cajero-card {
+        grid-template-columns: 1fr;
+        grid-template-areas: "cabecera" "datos" "stats" "acciones";
+    }
+}
+
+
 /* ============================================================
  *  Inicio — resumen del día
  *  ============================================================ */
@@ -685,47 +792,16 @@
  *  ============================================================ */
 .texto-tenue    { color: var(--texto-3); }
 .texto-ok       { color: var(--ok-texto); }
+.texto-pendiente { color: var(--aviso-texto); font-weight: 600; }
+/* Botón con aspecto de enlace (acciones secundarias dentro de un texto) */
+.enlace-boton {
+    padding: 0; border: 0; background: none; font: inherit; cursor: pointer;
+    color: var(--acento-texto); font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
+}
+.enlace-boton:hover { color: var(--acento-texto-fuerte); }
+.cajero-aviso-pendiente { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .texto-peligro  { color: var(--peligro-texto); }
 .modal-ayuda    { color: var(--texto-3); font-size: 0.9rem; margin-bottom: 1rem; }
-
-
-/* ============================================================
- *  Barra superior — selector de idioma
- *  ============================================================ */
-.header-sub { font-weight: 500; color: var(--texto-3); font-size: 0.95rem; }
-.idioma { position: relative; }
-.idioma > summary {
-    list-style: none;
-    display: inline-flex; align-items: center; gap: 0.35rem;
-    padding: 0.4rem 0.65rem;
-    border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie);
-    color: var(--texto-2); font-weight: 600; font-size: 0.85rem;
-    cursor: pointer; user-select: none;
-}
-.idioma > summary::-webkit-details-marker { display: none; }
-.idioma > summary:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
-.idioma[open] .idioma-flecha { transform: rotate(180deg); }
-.idioma-flecha { transition: transform 0.15s; }
-.idioma-menu {
-    position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
-    min-width: 11rem;
-    background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px;
-    box-shadow: 0 12px 32px rgba(15,23,42,0.12);
-    padding: 0.35rem;
-    display: flex; flex-direction: column;
-}
-.idioma-menu button {
-    display: flex; align-items: center; gap: 0.6rem;
-    width: 100%; text-align: left;
-    padding: 0.55rem 0.7rem; border: 0; border-radius: 7px;
-    background: transparent; color: var(--texto); font-size: 0.9rem; cursor: pointer;
-}
-.idioma-menu button:hover { background: var(--acento-suave); }
-.idioma-menu button.is-activo { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); font-weight: 600; }
-.idioma-codigo {
-    font-size: 0.7rem; font-weight: 700; color: var(--acento-texto);
-    background: var(--acento-suave); border-radius: 4px; padding: 0.1rem 0.3rem;
-}
 
 
 /* ============================================================
@@ -1031,7 +1107,7 @@
 
 
 /* ============================================================
- *  Barra superior — botón de tema (luna en claro, sol en oscuro)
+ *  Barra superior — botón cuadrado (☰)
  *  ============================================================ */
 .tema-boton {
     display: inline-grid; place-items: center;
@@ -1041,10 +1117,3 @@
     cursor: pointer;
 }
 .tema-boton:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
-.tema-sol { display: none; }
-:root[data-tema="oscuro"] .tema-sol { display: block; }
-:root[data-tema="oscuro"] .tema-luna { display: none; }
-@media (prefers-color-scheme: dark) {
-    :root:not([data-tema="claro"]) .tema-sol { display: block; }
-    :root:not([data-tema="claro"]) .tema-luna { display: none; }
-}
