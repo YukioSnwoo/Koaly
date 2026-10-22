@@ -25,9 +25,16 @@ $stmt = $pdo->prepare("
 $stmt->execute([$idSucursalGerente, STOCK_UMBRAL_BAJO]);
 $stockAlerta = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM Solicitudes_Productos WHERE id_sucursal = ? AND estado = 'Pendiente'");
+// Abiertas: en revisión del admin (Pendiente) o esperando respuesta del gerente (Devuelta)
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) AS abiertas, COUNT(CASE WHEN estado = 'Devuelta' THEN 1 END) AS devueltas
+    FROM Solicitudes_Productos
+    WHERE id_sucursal = ? AND estado IN ('Pendiente', 'Devuelta')
+");
 $stmt->execute([$idSucursalGerente]);
-$solicitudesPendientes = (int) $stmt->fetchColumn();
+$solicitudesResumen = $stmt->fetch();
+$solicitudesPendientes = (int) $solicitudesResumen['abiertas'];
+$solicitudesDevueltas  = (int) $solicitudesResumen['devueltas'];
 
 $stmt = $pdo->prepare("
     SELECT COUNT(*) AS total, COUNT(CASE WHEN estado = 'Activa' THEN 1 END) AS activas
@@ -85,7 +92,9 @@ require __DIR__ . '/header.php';
     <a href="productos.php#solicitudes" class="kpi <?= $solicitudesPendientes > 0 ? 'kpi--warn' : '' ?> kpi--link">
         <span class="kpi-label"><?= e(t('inicio.kpi_solicitudes')) ?></span>
         <span class="kpi-value <?= $solicitudesPendientes > 0 ? 'kpi-value--warn' : '' ?>"><?= $solicitudesPendientes ?></span>
-        <span class="kpi-sub"><?= e(t('inicio.kpi_solicitudes_sub')) ?></span>
+        <span class="kpi-sub">
+            <?= e($solicitudesDevueltas > 0 ? tn('inicio.kpi_solicitudes_devueltas', $solicitudesDevueltas) : t('inicio.kpi_solicitudes_sub')) ?>
+        </span>
     </a>
     <a href="cajas.php" class="kpi kpi--link">
         <span class="kpi-label"><?= e(t('inicio.kpi_cajas')) ?></span>

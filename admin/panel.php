@@ -36,17 +36,6 @@ $listaSucursales = $sucursales->fetchAll();
         <h1><?= htmlspecialchars($t['panel_general']) ?></h1>
         <p>Vista consolidada de todas las sucursales</p>
     </div>
-    <div class="page-header__actions">
-        <form action="cambiar_idioma.php" method="POST" style="display:inline">
-            <select name="idioma" class="select" onchange="this.form.submit()">
-                <option value="es" <?= $idioma === 'es' ? 'selected' : '' ?>>Español</option>
-                <option value="en" <?= $idioma === 'en' ? 'selected' : '' ?>>English</option>
-            </select>
-        </form>
-        <div class="user-pill">
-            <div class="user-pill__avatar"><?= $iniciales ?></div>
-        </div>
-    </div>
 </div>
 
 <?php
