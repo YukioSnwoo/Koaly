@@ -6,9 +6,11 @@
  */
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
+require_once __DIR__ . '/../admin/solicitudes_comun.php';
 
 $errores = [];
 $exito = '';
+$imagenNueva = null; // imagen subida en este POST; se borra si el guardado falla
 
 /* ------------------------------------------------------------
    PRG: mensaje flash tras un POST exitoso
@@ -57,62 +59,119 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         /* -------- Solicitar un producto nuevo al administrador -------- */
         elseif ($action === 'solicitar_producto') {
-            $nombreProducto    = trim($_POST['nombre_producto'] ?? '');
-            $descripcion       = trim($_POST['descripcion'] ?? '');
-            $idCategoria       = (int) ($_POST['id_categoria'] ?? 0);
-            $precioSugerido    = (float) ($_POST['precio_sugerido'] ?? -1);
-            $proveedorSugerido = trim($_POST['proveedor_sugerido'] ?? '');
-            $justificacion     = trim($_POST['justificacion'] ?? '');
-
-            if ($nombreProducto === '' || mb_strlen($nombreProducto) > 100) {
-                throw new RuntimeException(t('error.nombre_producto'));
-            }
-            if ($idCategoria <= 0) {
-                throw new RuntimeException(t('error.categoria_requerida'));
-            }
-            if ($precioSugerido < 0) {
-                throw new RuntimeException(t('error.precio_negativo'));
-            }
+            $ficha         = leerFichaSolicitud($pdo, $_POST);
+            $proveedor     = leerProveedorSolicitud($_POST);
+            $justificacion = trim($_POST['justificacion'] ?? '');
             if ($justificacion === '') {
                 throw new RuntimeException(t('error.justificacion'));
             }
-            if (mb_strlen($proveedorSugerido) > 100) {
-                throw new RuntimeException(t('error.proveedor_largo'));
+            $imagenNueva = guardarImagenSolicitud($_FILES['imagen'] ?? []);
+            if ($imagenNueva === null) {
+                throw new RuntimeException('imagen_requerida');
             }
 
-            $check = $pdo->prepare("SELECT 1 FROM Categorias WHERE id_categoria = ?");
-            $check->execute([$idCategoria]);
-            if ($check->fetch() === false) {
-                throw new RuntimeException(t('error.categoria_invalida'));
-            }
-
+            $pdo->beginTransaction();
             $stmt = $pdo->prepare("
                 INSERT INTO Solicitudes_Productos
-                    (id_sucursal, id_usuario, nombre_producto, descripcion, id_categoria,
-                     precio_sugerido, proveedor_sugerido, justificacion, estado, creado_en)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', NOW())
+                    (id_sucursal, id_usuario, nombre_producto, descripcion, id_categoria, precio_sugerido, imagen,
+                     proveedor_sugerido, proveedor_empresa, proveedor_telefono, proveedor_correo,
+                     justificacion, estado, creado_en)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', NOW())
             ");
             $stmt->execute([
                 $idSucursalGerente,
                 (int) $gerente['id_usuario'],
-                $nombreProducto,
-                $descripcion !== '' ? $descripcion : null,
-                $idCategoria,
-                $precioSugerido,
-                $proveedorSugerido !== '' ? $proveedorSugerido : null,
+                $ficha['nombre_producto'],
+                $ficha['descripcion'],
+                $ficha['id_categoria'],
+                $ficha['precio_sugerido'],
+                $imagenNueva,
+                $proveedor['proveedor_sugerido'],
+                $proveedor['proveedor_empresa'],
+                $proveedor['proveedor_telefono'],
+                $proveedor['proveedor_correo'],
                 $justificacion,
             ]);
+            $idSolicitud = (int) $pdo->lastInsertId();
+            registrarHistorialSolicitud($pdo, $idSolicitud, (int) $gerente['id_usuario'], 'Gerente', 'Enviada', [], $justificacion);
+            $pdo->commit();
 
             $_SESSION['flash'] = ['msg' => t('cat.solicitud_enviada')];
-            header('Location: productos.php');
+            header('Location: productos.php#solicitudes');
+            exit;
+        }
+
+        /*
+         * -------- Responder a los cambios del administrador --------
+         * Solo sobre solicitudes "Devuelta" de la sucursal. Aprobar es la única
+         * forma en que el gerente agrega un producto al catálogo: el admin ya
+         * revisó la solicitud y propuso esos valores.
+         */
+        elseif (in_array($action, ['aprobar_cambios', 'cancelar_solicitud', 'editar_solicitud'], true)) {
+            $idSolicitud = (int) ($_POST['id_solicitud'] ?? 0);
+            $idUsuario   = (int) $gerente['id_usuario'];
+
+            if ($action === 'editar_solicitud') {
+                $nuevos = leerFichaSolicitud($pdo, $_POST) + leerProveedorSolicitud($_POST);
+                $nota   = trim($_POST['nota'] ?? '');
+                if ($nota === '') {
+                    throw new RuntimeException('nota');
+                }
+            } elseif ($action === 'cancelar_solicitud') {
+                $motivo = trim($_POST['motivo'] ?? '');
+                if ($motivo === '') {
+                    throw new RuntimeException('motivo');
+                }
+            }
+
+            $pdo->beginTransaction();
+            $sol = leerSolicitudBloqueada($pdo, $idSolicitud);
+            if ((int) $sol['id_sucursal'] !== $idSucursalGerente) {
+                throw new RuntimeException('no_existe');
+            }
+            if ($sol['estado'] !== 'Devuelta') {
+                throw new RuntimeException('turno');
+            }
+
+            if ($action === 'aprobar_cambios') {
+                [$idProducto, $reactivado] = crearProductoDesdeSolicitud($pdo, $sol);
+                marcarSolicitudAprobada($pdo, $idSolicitud, $idProducto, $idUsuario);
+                registrarHistorialSolicitud($pdo, $idSolicitud, $idUsuario, 'Gerente', 'Aprobada');
+                $mensaje = t($reactivado ? 'sol.reactivado_msg' : 'sol.aprobada_msg', ['id' => $idProducto]);
+            } elseif ($action === 'cancelar_solicitud') {
+                $pdo->prepare("UPDATE Solicitudes_Productos SET estado = 'Cancelada', motivo_rechazo = ?, resuelto_en = NOW(), resuelto_por = ?, actualizado_en = NOW() WHERE id_solicitud = ?")
+                    ->execute([$motivo, $idUsuario, $idSolicitud]);
+                registrarHistorialSolicitud($pdo, $idSolicitud, $idUsuario, 'Gerente', 'Cancelada', [], $motivo);
+                $mensaje = t('sol.cancelada_msg');
+            } else {
+                $imagenNueva = guardarImagenSolicitud($_FILES['imagen'] ?? []);
+                if ($imagenNueva !== null) {
+                    $nuevos['imagen'] = $imagenNueva;
+                }
+                $cambios = diferenciasSolicitud($sol, $nuevos, array_merge(CAMPOS_FICHA_SOLICITUD, CAMPOS_PROVEEDOR_SOLICITUD));
+                if (!$cambios) {
+                    throw new RuntimeException('sin_cambios');
+                }
+                actualizarSolicitud($pdo, $idSolicitud, $cambios, 'Pendiente');
+                registrarHistorialSolicitud($pdo, $idSolicitud, $idUsuario, 'Gerente', 'Editada', $cambios, $nota);
+                $mensaje = t('sol.reenviada_msg');
+            }
+
+            $pdo->commit();
+            $_SESSION['flash'] = ['msg' => $mensaje];
+            header('Location: productos.php#solicitudes');
             exit;
         }
 
     } catch (RuntimeException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        $errores[] = $e->getMessage();
+        borrarImagenSolicitud($imagenNueva);
+        // Las claves de admin/solicitudes_comun.php (p. ej. 'proveedor_contacto') se traducen aquí
+        $clave = 'sol_error.' . $e->getMessage();
+        $errores[] = t($clave) !== $clave ? t($clave) : $e->getMessage();
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
+        borrarImagenSolicitud($imagenNueva);
         $errores[] = t('error.base_datos');
     }
 }
@@ -136,21 +195,45 @@ $stmt = $pdo->prepare("
 $stmt->execute([$idSucursalGerente]);
 $productos = $stmt->fetchAll();
 
+// Las que esperan respuesta del gerente (con cambios del admin) van primero
 $stmt = $pdo->prepare("
     SELECT s.*, c.nombre_categoria
     FROM Solicitudes_Productos s
     LEFT JOIN Categorias c ON c.id_categoria = s.id_categoria
     WHERE s.id_sucursal = ?
-    ORDER BY s.creado_en DESC
+    ORDER BY (s.estado = 'Devuelta') DESC, s.creado_en DESC
     LIMIT 50
 ");
 $stmt->execute([$idSucursalGerente]);
 $solicitudes = $stmt->fetchAll();
+$historiales = historialSolicitudes($pdo, array_column($solicitudes, 'id_solicitud'));
 
-$totalSolicitudesPendientes = 0;
+$totalSolicitudesPendientes = $totalPorRevisar = 0;
 foreach ($solicitudes as $s) {
     if ($s['estado'] === 'Pendiente') $totalSolicitudesPendientes++;
+    if ($s['estado'] === 'Devuelta') $totalPorRevisar++;
 }
+
+$estadosSolicitud = [
+    'Pendiente' => 'badge-warning',
+    'Devuelta'  => 'badge-warning',
+    'Aprobada'  => 'badge-activo',
+    'Rechazada' => 'badge-danger',
+    'Cancelada' => 'badge-inactivo',
+];
+$nombresCategoria = array_column($categorias, 'nombre_categoria', 'id_categoria');
+
+// Valor legible de un campo de la ficha (también para "antes" de un cambio)
+$valorFicha = static function (string $campo, $valor) use ($nombresCategoria): string {
+    if ($valor === null || $valor === '') {
+        return '—';
+    }
+    return match ($campo) {
+        'id_categoria'    => tValor('categoria', $nombresCategoria[(int) $valor] ?? null, t('comun.sin_categoria')),
+        'precio_sugerido' => dinero($valor),
+        default           => (string) $valor,
+    };
+};
 
 $badgeEstadoProducto = [
     'Activo'        => 'badge-activo',
@@ -389,8 +472,11 @@ require __DIR__ . '/header.php';
     <div class="panel-encabezado">
         <h2 class="section-title">
             <?= e(t('cat.solicitudes')) ?>
+            <?php if ($totalPorRevisar > 0): ?>
+                <span class="badge badge-warning badge-latido"><?= e(tn('cat.n_por_revisar', $totalPorRevisar)) ?></span>
+            <?php endif; ?>
             <?php if ($totalSolicitudesPendientes > 0): ?>
-                <span class="badge badge-warning"><?= e(tn('cat.n_pendientes', $totalSolicitudesPendientes)) ?></span>
+                <span class="badge badge-inactivo"><?= e(tn('cat.n_pendientes', $totalSolicitudesPendientes)) ?></span>
             <?php endif; ?>
         </h2>
         <button type="button" class="btn btn-ghost btn-sm" onclick="abrirModalSolicitarProducto()">+ <?= e(t('cat.solicitar')) ?></button>
@@ -402,13 +488,20 @@ require __DIR__ . '/header.php';
         <ul class="solicitudes-lista">
             <?php foreach ($solicitudes as $s): ?>
                 <?php
-                    $estadoSol = in_array($s['estado'], ['Aprobada', 'Rechazada'], true) ? $s['estado'] : 'Pendiente';
-                    $claseSol = ['Aprobada' => 'badge-activo', 'Rechazada' => 'badge-danger', 'Pendiente' => 'badge-warning'][$estadoSol];
+                    $idSol     = (int) $s['id_solicitud'];
+                    $estadoSol = isset($estadosSolicitud[$s['estado']]) ? $s['estado'] : 'Pendiente';
+                    $edicion   = ultimaEdicionSolicitud($historiales[$idSol] ?? []);
+                    $devuelta  = $estadoSol === 'Devuelta';
                 ?>
-                <li class="solicitud">
+                <li class="solicitud <?= $devuelta ? 'solicitud--devuelta' : '' ?>">
                     <div class="solicitud-principal">
-                        <span class="badge <?= $claseSol ?>"><?= e(t('solicitud.' . $estadoSol)) ?></span>
+                        <?php if (!empty($s['imagen'])): ?>
+                            <img class="solicitud-miniatura" src="../<?= e($s['imagen']) ?>" alt="" loading="lazy">
+                        <?php else: ?>
+                            <span class="solicitud-miniatura" aria-hidden="true"><?= e($iniciales($s['nombre_producto'])) ?></span>
+                        <?php endif; ?>
                         <div>
+                            <span class="badge <?= $estadosSolicitud[$estadoSol] ?>"><?= e(t('solicitud.' . $estadoSol)) ?></span>
                             <strong><?= e($s['nombre_producto']) ?></strong>
                             <span class="texto-tenue">
                                 · <?= e(tValor('categoria', $s['nombre_categoria'], t('comun.sin_categoria'))) ?>
@@ -420,16 +513,30 @@ require __DIR__ . '/header.php';
                             <?php if (!empty($s['descripcion'])): ?>
                                 <p class="solicitud-desc"><?= e($s['descripcion']) ?></p>
                             <?php endif; ?>
+                            <?php if ($devuelta && $edicion !== null): ?>
+                                <div class="chips-cambio" aria-label="<?= e(t('sol.cambios_admin')) ?>">
+                                    <?php foreach (array_keys($edicion['cambios']) as $campo): ?>
+                                        <span class="chip-cambio"><?= e(t('sol.campo.' . $campo)) ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="solicitud-estado">
                         <span class="texto-tenue"><?= e(fecha($s['creado_en'])) ?></span>
                         <?php if ($estadoSol === 'Rechazada' && !empty($s['motivo_rechazo'])): ?>
                             <span class="texto-peligro"><?= e($s['motivo_rechazo']) ?></span>
+                        <?php elseif ($estadoSol === 'Cancelada'): ?>
+                            <span class="texto-tenue"><?= e(t('sol.cancelada_por_ti')) ?><?= !empty($s['motivo_rechazo']) ? ': ' . e($s['motivo_rechazo']) : '' ?></span>
                         <?php elseif ($estadoSol === 'Aprobada'): ?>
                             <span class="texto-ok"><?= e(t('cat.solicitud_creada', ['id' => (int) $s['id_producto_creado']])) ?></span>
-                        <?php else: ?>
+                        <?php elseif (!$devuelta): ?>
                             <span class="texto-tenue"><?= e(t('cat.en_revision')) ?></span>
+                        <?php endif; ?>
+                        <?php if ($devuelta): ?>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="abrirModal('fichaSolicitud<?= $idSol ?>')"><?= e(t('cat.revisar_cambios')) ?></button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="abrirModal('fichaSolicitud<?= $idSol ?>')"><?= e(t('cat.ver_ficha')) ?></button>
                         <?php endif; ?>
                     </div>
                 </li>
@@ -437,6 +544,167 @@ require __DIR__ . '/header.php';
         </ul>
     <?php endif; ?>
 </section>
+
+
+<!-- ============================================================
+     Ficha de cada solicitud: lo que cambió la última edición va en amarillo
+     ============================================================ -->
+<?php foreach ($solicitudes as $s): ?>
+    <?php
+        $idSol     = (int) $s['id_solicitud'];
+        $estadoSol = isset($estadosSolicitud[$s['estado']]) ? $s['estado'] : 'Pendiente';
+        $pasos     = $historiales[$idSol] ?? [];
+        $edicion   = ultimaEdicionSolicitud($pasos);
+        $cambiados = $edicion['cambios'] ?? [];
+        $hayProveedor = !empty($s['proveedor_sugerido']);
+    ?>
+    <div class="modal-overlay" id="fichaSolicitud<?= $idSol ?>">
+        <div class="modal-box ficha-solicitud">
+            <div class="ficha-encabezado">
+                <h2><?= e($s['nombre_producto']) ?></h2>
+                <span class="badge <?= $estadosSolicitud[$estadoSol] ?>"><?= e(t('solicitud.' . $estadoSol)) ?></span>
+            </div>
+
+            <?php if ($edicion !== null): ?>
+                <div class="ficha-aviso">
+                    <strong><?= e(t($edicion['rol'] === 'Admin' ? 'sol.cambios_admin' : 'sol.tus_cambios')) ?></strong>
+                    <?php if (!empty($edicion['nota'])): ?>
+                        <p>“<?= e($edicion['nota']) ?>”</p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="ficha-cuerpo">
+                <figure class="ficha-imagen <?= isset($cambiados['imagen']) ? 'campo-cambiado' : '' ?>">
+                    <?php if (!empty($s['imagen'])): ?>
+                        <img src="../<?= e($s['imagen']) ?>" alt="<?= e($s['nombre_producto']) ?>" loading="lazy">
+                    <?php else: ?>
+                        <span aria-hidden="true"><?= e($iniciales($s['nombre_producto'])) ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($cambiados['imagen']['antes'])): ?>
+                        <figcaption class="ficha-imagen-antes">
+                            <img src="../<?= e($cambiados['imagen']['antes']) ?>" alt="" loading="lazy">
+                            <?= e(t('sol.antes')) ?>
+                        </figcaption>
+                    <?php endif; ?>
+                </figure>
+                <dl class="ficha-datos">
+                    <?php foreach (['nombre_producto', 'id_categoria', 'precio_sugerido', 'descripcion'] as $campo): ?>
+                        <div class="ficha-campo <?= isset($cambiados[$campo]) ? 'campo-cambiado' : '' ?>">
+                            <dt><?= e(t('sol.campo.' . $campo)) ?></dt>
+                            <dd>
+                                <?= e($valorFicha($campo, $s[$campo])) ?>
+                                <?php if (isset($cambiados[$campo])): ?>
+                                    <del><?= e(t('sol.antes')) ?>: <?= e($valorFicha($campo, $cambiados[$campo]['antes'])) ?></del>
+                                <?php endif; ?>
+                            </dd>
+                        </div>
+                    <?php endforeach; ?>
+                </dl>
+            </div>
+
+            <div class="ficha-seccion">
+                <h3><?= e(t('sol.proveedor')) ?></h3>
+                <?php if (!$hayProveedor): ?>
+                    <p class="texto-tenue"><?= e(t('sol.sin_proveedor')) ?></p>
+                <?php else: ?>
+                    <dl class="ficha-proveedor">
+                        <?php foreach (CAMPOS_PROVEEDOR_SOLICITUD as $campo): ?>
+                            <div class="ficha-campo <?= isset($cambiados[$campo]) ? 'campo-cambiado' : '' ?>">
+                                <dt><?= e(t('sol.campo.' . $campo)) ?></dt>
+                                <dd><?= e($valorFicha($campo, $s[$campo] ?? null)) ?></dd>
+                            </div>
+                        <?php endforeach; ?>
+                    </dl>
+                <?php endif; ?>
+            </div>
+
+            <div class="ficha-seccion">
+                <h3><?= e(t('sol.justificacion')) ?></h3>
+                <p><?= e($s['justificacion'] ?? '') ?></p>
+            </div>
+
+            <?php if ($pasos): ?>
+                <div class="ficha-seccion">
+                    <h3><?= e(t('sol.historial')) ?></h3>
+                    <ol class="ficha-historial">
+                        <?php foreach ($pasos as $paso): ?>
+                            <li>
+                                <strong><?= e($paso['autor'] ?? t('sol.rol.' . $paso['rol'])) ?></strong>
+                                <span class="texto-tenue">(<?= e(t('sol.rol.' . $paso['rol'])) ?>)</span>
+                                <?= e(t('sol.accion.' . $paso['accion'])) ?>
+                                · <span class="texto-tenue"><?= e(fecha($paso['creado_en'])) ?></span>
+                                <?php if ($paso['cambios']): ?>
+                                    <span class="texto-tenue">
+                                        — <?= e(implode(', ', array_map(static fn ($c) => t('sol.campo.' . $c), array_keys($paso['cambios'])))) ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($paso['nota'])): ?>
+                                    <q><?= e($paso['nota']) ?></q>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ol>
+                </div>
+            <?php endif; ?>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('fichaSolicitud<?= $idSol ?>')"><?= e(t('sol.cerrar')) ?></button>
+                <?php if ($estadoSol === 'Devuelta'): ?>
+                    <button type="button" class="btn btn-danger" onclick="abrirModalCancelarSolicitud(this)"
+                            data-id="<?= $idSol ?>" data-nombre="<?= e($s['nombre_producto']) ?>">
+                        <?= e(t('sol.rechazar')) ?>
+                    </button>
+                    <button type="button" class="btn btn-ghost" onclick="abrirModalEditarSolicitud(this)"
+                            data-id="<?= $idSol ?>"
+                            data-nombre="<?= e($s['nombre_producto']) ?>"
+                            data-descripcion="<?= e($s['descripcion'] ?? '') ?>"
+                            data-categoria="<?= (int) $s['id_categoria'] ?>"
+                            data-precio="<?= e((string) $s['precio_sugerido']) ?>"
+                            data-imagen="<?= e($s['imagen'] ?? '') ?>"
+                            data-proveedor="<?= e($s['proveedor_sugerido'] ?? '') ?>"
+                            data-empresa="<?= e($s['proveedor_empresa'] ?? '') ?>"
+                            data-telefono="<?= e($s['proveedor_telefono'] ?? '') ?>"
+                            data-correo="<?= e($s['proveedor_correo'] ?? '') ?>">
+                        <?= e(t('sol.editar')) ?>
+                    </button>
+                    <form method="POST" action="productos.php" class="form-en-linea"
+                          data-confirm="<?= e(t('sol.aprobar_confirmar', ['nombre' => $s['nombre_producto']])) ?>"
+                          data-confirm-aceptar="<?= e(t('sol.aprobar')) ?>">
+                        <input type="hidden" name="action" value="aprobar_cambios">
+                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                        <input type="hidden" name="id_solicitud" value="<?= $idSol ?>">
+                        <button type="submit" class="btn btn-primary"><?= e(t('sol.aprobar')) ?></button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+<?php endforeach; ?>
+
+
+<!-- Modal: rechazar los cambios del administrador (la solicitud se cancela) -->
+<div class="modal-overlay" id="modalCancelarSolicitud">
+    <div class="modal-box">
+        <h2><?= e(t('sol.cancelar_titulo')) ?></h2>
+        <p class="modal-ayuda">
+            <strong id="cancelarSolicitudNombre"></strong> — <?= e(t('sol.cancelar_ayuda')) ?>
+        </p>
+        <form method="POST" action="productos.php" onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <input type="hidden" name="action" value="cancelar_solicitud">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
+            <div class="form-group">
+                <label><?= e(t('sol.cancelar_motivo')) ?> *</label>
+                <textarea name="motivo" required maxlength="500"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalCancelarSolicitud')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn-danger"><?= e(t('sol.cancelar_confirmar')) ?></button>
+            </div>
+        </form>
+    </div>
+</div>
 
 
 <!-- Modal: agregar producto del catálogo al inventario -->
@@ -475,15 +743,18 @@ require __DIR__ . '/header.php';
 </div>
 
 
-<!-- Modal: solicitar un producto nuevo al administrador -->
+<!-- Modal: solicitar un producto nuevo al administrador.
+     También edita una solicitud que el admin devolvió con cambios (abrirModalEditarSolicitud). -->
 <div class="modal-overlay" id="modalSolicitarProducto">
     <div class="modal-box">
-        <h2><?= e(t('cat.solicitar_titulo')) ?></h2>
-        <p class="modal-ayuda"><?= e(t('cat.solicitar_ayuda')) ?></p>
+        <h2 data-nuevo="<?= e(t('cat.solicitar_titulo')) ?>" data-editar="<?= e(t('cat.editar_titulo')) ?>"><?= e(t('cat.solicitar_titulo')) ?></h2>
+        <p class="modal-ayuda" data-nuevo="<?= e(t('cat.solicitar_ayuda')) ?>" data-editar="<?= e(t('cat.editar_ayuda')) ?>"><?= e(t('cat.solicitar_ayuda')) ?></p>
 
-        <form id="formSolicitarProducto" method="POST" action="productos.php">
+        <form id="formSolicitarProducto" method="POST" action="productos.php" enctype="multipart/form-data"
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
             <input type="hidden" name="action" value="solicitar_producto">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
 
             <div class="form-group">
                 <label><?= e(t('cat.campo_nombre')) ?> *</label>
@@ -491,8 +762,17 @@ require __DIR__ . '/header.php';
             </div>
 
             <div class="form-group">
+                <label data-nuevo="<?= e(t('cat.campo_imagen')) ?> *" data-editar="<?= e(t('cat.campo_imagen_cambiar')) ?>"><?= e(t('cat.campo_imagen')) ?> *</label>
+                <input type="file" name="imagen" accept="image/png,image/jpeg,image/webp" required>
+                <div class="imagen-preview" hidden>
+                    <img src="" alt="">
+                    <span><?= e(t('cat.campo_imagen_ayuda')) ?></span>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label><?= e(t('cat.campo_descripcion')) ?></label>
-                <textarea name="descripcion" placeholder="<?= e(t('cat.campo_descripcion_ej')) ?>"></textarea>
+                <textarea name="descripcion" maxlength="255" placeholder="<?= e(t('cat.campo_descripcion_ej')) ?>"></textarea>
             </div>
 
             <div class="form-row">
@@ -507,23 +787,53 @@ require __DIR__ . '/header.php';
                 </div>
                 <div class="form-group">
                     <label><?= e(t('cat.col_precio_sugerido')) ?> *</label>
-                    <input type="number" name="precio_sugerido" min="0" step="0.01" placeholder="0.00" required>
+                    <input type="number" name="precio_sugerido" min="0.01" step="0.01" placeholder="0.00" required>
                 </div>
             </div>
 
+            <?php // El proveedor es opcional; al marcarlo se piden sus datos (al menos un contacto) ?>
             <div class="form-group">
-                <label><?= e(t('cat.campo_proveedor')) ?></label>
-                <input type="text" name="proveedor_sugerido" maxlength="100" placeholder="<?= e(t('cat.campo_proveedor_ej')) ?>">
+                <label class="casilla">
+                    <input type="checkbox" name="con_proveedor" value="1" id="conProveedor">
+                    <?= e(t('cat.con_proveedor')) ?>
+                </label>
             </div>
+            <fieldset class="campos-proveedor" id="camposProveedor" hidden disabled>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><?= e(t('cat.proveedor_nombre')) ?> *</label>
+                        <input type="text" name="proveedor_sugerido" maxlength="100" required placeholder="<?= e(t('cat.proveedor_nombre_ej')) ?>">
+                    </div>
+                    <div class="form-group">
+                        <label><?= e(t('cat.proveedor_empresa')) ?></label>
+                        <input type="text" name="proveedor_empresa" maxlength="100" placeholder="<?= e(t('cat.proveedor_empresa_ej')) ?>">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><?= e(t('cat.proveedor_telefono')) ?></label>
+                        <input type="tel" name="proveedor_telefono" maxlength="20" pattern="\+?[0-9 \(\)\-]{7,20}" placeholder="55 1234 5678">
+                    </div>
+                    <div class="form-group">
+                        <label><?= e(t('cat.proveedor_correo')) ?></label>
+                        <input type="email" name="proveedor_correo" maxlength="150" placeholder="ventas@proveedor.com">
+                    </div>
+                </div>
+                <p class="campos-ayuda"><?= e(t('cat.proveedor_contacto_ayuda')) ?></p>
+            </fieldset>
 
-            <div class="form-group">
+            <div class="form-group" data-modo="nuevo">
                 <label><?= e(t('cat.campo_justificacion')) ?> *</label>
                 <textarea name="justificacion" required placeholder="<?= e(t('cat.campo_justificacion_ej')) ?>"></textarea>
+            </div>
+            <div class="form-group" data-modo="editar" hidden>
+                <label><?= e(t('cat.campo_nota')) ?> *</label>
+                <textarea name="nota" maxlength="500" placeholder="<?= e(t('cat.campo_nota_ej')) ?>" disabled></textarea>
             </div>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSolicitarProducto')"><?= e(t('comun.cancelar')) ?></button>
-                <button type="submit" class="btn btn-primary"><?= e(t('cat.enviar_solicitud')) ?></button>
+                <button type="submit" class="btn btn-primary" data-nuevo="<?= e(t('cat.enviar_solicitud')) ?>" data-editar="<?= e(t('cat.enviar_cambios')) ?>"><?= e(t('cat.enviar_solicitud')) ?></button>
             </div>
         </form>
     </div>

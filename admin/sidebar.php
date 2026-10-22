@@ -1,5 +1,6 @@
 <?php
 // sidebar.php — Se incluye después de header.php
+require_once __DIR__ . '/solicitudes_comun.php';
 
 $menu = [
     ['panel.php',       $t['panel_general'], 'layout-dashboard'],
@@ -9,6 +10,14 @@ $menu = [
     ['ventas.php',      $t['ventas'],        'receipt'],
     ['reportes.php',    $t['reportes'],      'chart-bar'],
 ];
+
+// Con muchas solicitudes de producto sin atender, "Inventario global" se ilumina en rojo
+try {
+    $solicitudesPorRevisar = contarSolicitudesParaAdmin($pdo);
+} catch (PDOException $e) {
+    $solicitudesPorRevisar = 0;
+}
+$inventarioEnAlerta = nivelAvisoSolicitudes($solicitudesPorRevisar) === 'critico';
 ?>
 <aside class="sidebar" id="barraLateral">
     <div class="sidebar__brand">
@@ -18,10 +27,15 @@ $menu = [
 
     <nav class="sidebar__nav">
         <?php foreach ($menu as [$archivo, $texto, $icono]): ?>
+            <?php $alerta = $archivo === 'inventario.php' && $inventarioEnAlerta; ?>
             <a href="<?= $archivo ?>"
-               class="sidebar__link <?= $pagina_actual === $archivo ? 'sidebar__link--active' : '' ?>">
+               class="sidebar__link <?= $pagina_actual === $archivo ? 'sidebar__link--active' : '' ?> <?= $alerta ? 'sidebar__link--alerta' : '' ?>"
+               <?= $alerta ? 'title="' . $solicitudesPorRevisar . ' ' . htmlspecialchars($t['solicitudes_por_revisar']) . '"' : '' ?>>
                 <i class="ti ti-<?= $icono ?>"></i>
                 <span><?= htmlspecialchars($texto) ?></span>
+                <?php if ($alerta): ?>
+                    <span class="sidebar__pill"><?= $solicitudesPorRevisar ?></span>
+                <?php endif; ?>
             </a>
         <?php endforeach; ?>
     </nav>
