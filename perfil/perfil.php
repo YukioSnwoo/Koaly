@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/../admin/csrf.php';
+require_once __DIR__ . '/../admin/preferencia_idioma.php';
 
 const PERFIL_CARPETA_FOTOS       = 'Imagenes/perfiles';
 const PERFIL_DIAS_NOTIFICACIONES = 30;
@@ -27,13 +28,13 @@ function perfilTextos(): array
     return $textos ??= require __DIR__ . '/textos.php';
 }
 
+/** El idioma de todo el sitio (admin/preferencia_idioma.php). */
 function perfilIdioma(): string
 {
-    $idioma = (string) ($_SESSION['idioma'] ?? 'es');
-    return isset(perfilTextos()[$idioma]) ? $idioma : 'es';
+    return idiomaGuardado(array_keys(perfilTextos()));
 }
 
-/** Texto del menú en el idioma de la sesión; {nombre} se reemplaza con $vars. */
+/** Texto del menú en el idioma elegido; {nombre} se reemplaza con $vars. */
 function perfilT(string $clave, array $vars = []): string
 {
     $textos = perfilTextos();

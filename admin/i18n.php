@@ -2,21 +2,20 @@
 /**
  * Idiomas del panel del admin.
  *
- * El idioma vive en $_SESSION['idioma'], la misma clave que usan el gerente y
- * la caja, así la preferencia es una sola en todo el sitio.
+ * El idioma es uno solo en todo el sitio (login, gerente y caja): lo guarda
+ * preferencia_idioma.php en una cookie que sobrevive al cerrar sesión.
  * Los textos están en admin/lang/{es,en}.php (mismas claves en ambos).
  * Requiere que la sesión ya esté iniciada (header.php lo hace).
  */
+
+require_once __DIR__ . '/preferencia_idioma.php';
 
 const IDIOMAS = [
     'es' => 'Español',
     'en' => 'English',
 ];
 
-$idiomaAdmin = (string) ($_SESSION['idioma'] ?? 'es');
-if (!isset(IDIOMAS[$idiomaAdmin])) {
-    $idiomaAdmin = 'es';
-}
+$idiomaAdmin = idiomaGuardado(array_keys(IDIOMAS));
 
 $GLOBALS['I18N_IDIOMA'] = $idiomaAdmin;
 $GLOBALS['I18N_ES']     = require __DIR__ . '/lang/es.php';

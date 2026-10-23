@@ -12,18 +12,32 @@ const CONTRASENAS_COMUNES = [
 
 const $ = (id) => document.getElementById(id);
 
+// ===== Idioma =====
+// Es el de todo el sitio (cookie koaly_idioma, la leen los paneles al entrar).
+// index.php pinta la página en ese idioma y deja aquí los textos de todos.
+const COOKIE_IDIOMA = 'koaly_idioma';
+const TEXTOS = window.LOGIN_TEXTOS || {};
+let idioma = document.documentElement.lang in TEXTOS ? document.documentElement.lang : 'es';
+
+/** Texto en el idioma actual (si falta, en español); {nombre} se reemplaza con vars. */
+function tl(clave, vars = {}) {
+    let texto = TEXTOS[idioma]?.[clave] ?? TEXTOS.es?.[clave] ?? clave;
+    for (const [k, v] of Object.entries(vars)) texto = texto.split('{' + k + '}').join(String(v));
+    return texto;
+}
+
 /** Mismas reglas que passwordIsTooSimple() en reglas_contrasena.php (salvo el nombre, que solo conoce el servidor). */
 function problemaContrasena(password, email) {
-    if (password.length < 8) return 'Debe tener mínimo 8 caracteres';
-    if (/^[a-zA-Z]+$/.test(password)) return 'No puede ser solo letras';
-    if (/^[0-9]+$/.test(password)) return 'No puede ser solo números';
-    if (/^[^a-zA-Z0-9]+$/.test(password)) return 'No puede ser solo símbolos';
+    if (password.length < 8) return tl('regla.min8');
+    if (/^[a-zA-Z]+$/.test(password)) return tl('regla.solo_letras');
+    if (/^[0-9]+$/.test(password)) return tl('regla.solo_numeros');
+    if (/^[^a-zA-Z0-9]+$/.test(password)) return tl('regla.solo_simbolos');
 
     const minusculas = password.toLowerCase();
-    if (CONTRASENAS_COMUNES.includes(minusculas)) return 'Es demasiado común';
+    if (CONTRASENAS_COMUNES.includes(minusculas)) return tl('regla.comun');
 
     const usuarioCorreo = (email || '').split('@')[0].toLowerCase();
-    if (usuarioCorreo.length >= 3 && minusculas.includes(usuarioCorreo)) return 'No puede incluir tu correo';
+    if (usuarioCorreo.length >= 3 && minusculas.includes(usuarioCorreo)) return tl('regla.correo');
 
     return null;
 }
@@ -31,8 +45,8 @@ function problemaContrasena(password, email) {
 function evaluarFuerza(password, email) {
     const problema = problemaContrasena(password, email);
     if (problema) return { nivel: 'weak', texto: '❌ ' + problema };
-    if (password.length < 12) return { nivel: 'medium', texto: '⚠️ Aceptable. Con 12 caracteres o más es más segura' };
-    return { nivel: 'strong', texto: '✅ Contraseña segura' };
+    if (password.length < 12) return { nivel: 'medium', texto: tl('fuerza.aceptable') };
+    return { nivel: 'strong', texto: tl('fuerza.segura') };
 }
 
 function mostrarMensaje(caja, tipo, texto) {
@@ -57,7 +71,8 @@ function ocupado(boton, activo, textoEspera) {
         boton.dataset.texto = boton.textContent;
         boton.textContent = textoEspera;
     } else if (boton.dataset.texto) {
-        boton.textContent = boton.dataset.texto;
+        // Si se cambió de idioma mientras esperaba, el texto sale ya en el nuevo
+        boton.textContent = boton.dataset.i18n ? tl(boton.dataset.i18n) : boton.dataset.texto;
     }
     boton.disabled = activo;
 }
@@ -71,13 +86,13 @@ async function api(datos) {
             body: JSON.stringify(datos)
         });
     } catch (error) {
-        return { success: false, message: 'No se pudo conectar con el servidor. Revisa tu conexión.' };
+        return { success: false, message: tl('msg.sin_conexion') };
     }
 
     try {
         return await respuesta.json();
     } catch (error) {
-        return { success: false, message: 'Respuesta inválida del servidor. Intenta de nuevo.' };
+        return { success: false, message: tl('msg.respuesta_invalida') };
     }
 }
 
@@ -90,9 +105,9 @@ function vigilarContrasena(campo, confirmacion, avisoCampo, avisoConfirmacion, o
     const revisarConfirmacion = () => {
         if (!confirmacion.value) return mostrarAviso(avisoConfirmacion);
         if (confirmacion.value !== campo.value) {
-            return mostrarAviso(avisoConfirmacion, 'weak', '❌ Las contraseñas no coinciden');
+            return mostrarAviso(avisoConfirmacion, 'weak', tl('fuerza.no_coinciden'));
         }
-        mostrarAviso(avisoConfirmacion, 'strong', '✅ Las contraseñas coinciden');
+        mostrarAviso(avisoConfirmacion, 'strong', tl('fuerza.coinciden'));
     };
 
     campo.addEventListener('input', () => {
@@ -110,8 +125,8 @@ function vigilarContrasena(campo, confirmacion, avisoCampo, avisoConfirmacion, o
 /** Error de la nueva contraseña antes de enviarla, o null si se puede enviar. */
 function validarNueva(password, confirmar, email) {
     const problema = problemaContrasena(password, email);
-    if (problema) return 'La contraseña no es válida: ' + problema.toLowerCase() + '.';
-    if (password !== confirmar) return 'Las contraseñas no coinciden.';
+    if (problema) return tl('msg.no_valida', { motivo: problema.toLowerCase() });
+    if (password !== confirmar) return tl('msg.no_coinciden');
     return null;
 }
 
@@ -139,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function pintarBotonTema() {
         const oscuro = document.documentElement.getAttribute('data-tema') === 'oscuro';
         botonTema.setAttribute('aria-pressed', oscuro ? 'true' : 'false');
-        botonTema.title = oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+        botonTema.title = tl(oscuro ? 'tema.a_claro' : 'tema.a_oscuro');
     }
 
     botonTema.addEventListener('click', () => {
@@ -154,8 +169,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function verContrasena(boton, visible) {
         $(boton.dataset.target).type = visible ? 'text' : 'password';
         boton.setAttribute('aria-pressed', visible ? 'true' : 'false');
-        boton.title = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+        boton.title = tl(visible ? 'contrasena.ocultar' : 'contrasena.mostrar');
     }
+
+    // ===== Idioma (botón de la esquina izquierda) =====
+    // Cambia los textos sin recargar y guarda la cookie que leen login.php y los paneles
+    function aplicarIdioma(codigo) {
+        idioma = codigo;
+        document.documentElement.lang = codigo;
+        document.title = tl('pagina.titulo');
+        document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = tl(el.dataset.i18n); });
+        ['placeholder', 'aria-label', 'title'].forEach((attr) => {
+            document.querySelectorAll(`[data-i18n-${attr}]`).forEach((el) => {
+                el.setAttribute(attr, tl(el.getAttribute(`data-i18n-${attr}`)));
+            });
+        });
+        // Textos que dependen del estado
+        pintarBotonTema();
+        document.querySelectorAll('.toggle-password').forEach((b) => verContrasena(b, b.getAttribute('aria-pressed') === 'true'));
+    }
+
+    $('botonIdioma').addEventListener('click', () => {
+        const nuevo = idioma === 'es' ? 'en' : 'es';
+        document.cookie = `${COOKIE_IDIOMA}=${nuevo}; path=/; max-age=${365 * 86400}; samesite=lax`;
+        aplicarIdioma(nuevo);
+    });
 
     document.querySelectorAll('.toggle-password').forEach((boton) => {
         boton.addEventListener('click', () => verContrasena(boton, boton.getAttribute('aria-pressed') !== 'true'));
@@ -193,10 +231,10 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
         const email = $('loginEmail').value.trim();
         const password = $('loginPassword').value;
 
-        if (!correoValido($('loginEmail'))) return mostrarMensaje(caja, 'error', 'Escribe un correo electrónico válido.');
-        if (!password) return mostrarMensaje(caja, 'error', 'Escribe tu contraseña.');
+        if (!correoValido($('loginEmail'))) return mostrarMensaje(caja, 'error', tl('msg.correo_invalido'));
+        if (!password) return mostrarMensaje(caja, 'error', tl('msg.escribe_contrasena'));
 
-        ocupado(boton, true, 'Ingresando…');
+        ocupado(boton, true, tl('msg.ingresando'));
         const resultado = await api({ action: 'login', email, password });
 
         // Cajero que aún no acepta el aviso de privacidad: primero lo lee y lo acepta
@@ -210,7 +248,7 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
             ocupado(boton, false);
             $('loginPassword').value = '';
             $('loginPassword').focus();
-            return mostrarMensaje(caja, 'error', resultado.message || 'No fue posible iniciar sesión.');
+            return mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_login'));
         }
 
         usuarioActual = resultado.user;
@@ -221,7 +259,7 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
             return mostrarVista($('changeView'));
         }
 
-        mostrarMensaje(caja, 'success', 'Inicio de sesión exitoso. Entrando…');
+        mostrarMensaje(caja, 'success', tl('msg.entrando'));
         window.location.href = resultado.destino;
     });
 
@@ -238,30 +276,30 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
         const error = validarNueva(password, $('confirmPassword').value, usuarioActual ? usuarioActual.email : '');
         if (error) return mostrarMensaje(caja, 'error', error);
 
-        ocupado(boton, true, 'Guardando…');
+        ocupado(boton, true, tl('msg.guardando'));
         const resultado = await api({ action: 'change_password', password });
 
         if (!resultado.success) {
             ocupado(boton, false);
-            return mostrarMensaje(caja, 'error', resultado.message || 'No fue posible actualizar la contraseña.');
+            return mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_actualizar'));
         }
 
         if (usuarioActual) {
             usuarioActual.debe_cambiar = 0;
             sessionStorage.setItem('usuario', JSON.stringify(usuarioActual));
         }
-        mostrarMensaje(caja, 'success', 'Contraseña actualizada. Entrando…');
+        mostrarMensaje(caja, 'success', tl('msg.actualizada'));
         window.location.href = resultado.destino || 'index.php';
     });
 
     // ===== Recuperación · paso 1: pedir el código =====
     async function enviarCodigo(caja, boton) {
-        ocupado(boton, true, 'Enviando…');
+        ocupado(boton, true, tl('msg.enviando'));
         const resultado = await api({ action: 'send_recover_code', email: correoRecuperacion });
         ocupado(boton, false);
 
         if (!resultado.success) {
-            mostrarMensaje(caja, 'error', resultado.message || 'No se pudo enviar el código.');
+            mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_codigo'));
             return false;
         }
         return true;
@@ -272,7 +310,7 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
         let restantes = SEGUNDOS_REENVIO;
         const pintar = () => {
             boton.disabled = restantes > 0;
-            boton.textContent = restantes > 0 ? `reenvía el código (${restantes} s)` : 'reenvía el código';
+            boton.textContent = restantes > 0 ? tl('reenviar.espera', { n: restantes }) : tl('reenviar.boton');
         };
         clearInterval(temporizadorReenvio);
         pintar();
@@ -287,21 +325,21 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
         evento.preventDefault();
         const caja = $('recoverMsg1');
 
-        if (!correoValido($('recoverEmail'))) return mostrarMensaje(caja, 'error', 'Escribe un correo electrónico válido.');
+        if (!correoValido($('recoverEmail'))) return mostrarMensaje(caja, 'error', tl('msg.correo_invalido'));
 
         correoRecuperacion = $('recoverEmail').value.trim();
         if (!(await enviarCodigo(caja, $('btnSendCode')))) return;
 
         mostrarVista($('recoverStep2'));
         $('recoverEmailShown').textContent = correoRecuperacion;
-        mostrarMensaje($('recoverMsg2'), 'success', 'Si el correo está registrado, te llegará un código en unos minutos.');
+        mostrarMensaje($('recoverMsg2'), 'success', tl('msg.codigo_enviado'));
         iniciarEsperaReenvio();
     });
 
     $('btnResend').addEventListener('click', async () => {
         const caja = $('recoverMsg2');
         if (!(await enviarCodigo(caja, $('btnResend')))) return;
-        mostrarMensaje(caja, 'success', 'Te enviamos un código nuevo. El anterior ya no sirve.');
+        mostrarMensaje(caja, 'success', tl('msg.codigo_nuevo'));
         $('recoverCode').value = '';
         $('recoverCode').focus();
         iniciarEsperaReenvio();
@@ -322,21 +360,21 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
         const codigo = $('recoverCode').value.trim();
         const password = $('recoverNewPass').value;
 
-        if (!/^\d{6}$/.test(codigo)) return mostrarMensaje(caja, 'error', 'El código tiene 6 dígitos.');
+        if (!/^\d{6}$/.test(codigo)) return mostrarMensaje(caja, 'error', tl('msg.codigo_6'));
         const error = validarNueva(password, $('recoverConfirmPass').value, correoRecuperacion);
         if (error) return mostrarMensaje(caja, 'error', error);
 
-        ocupado(boton, true, 'Guardando…');
+        ocupado(boton, true, tl('msg.guardando'));
         const resultado = await api({ action: 'reset_password', email: correoRecuperacion, code: codigo, password });
         ocupado(boton, false);
 
-        if (!resultado.success) return mostrarMensaje(caja, 'error', resultado.message || 'No se pudo restablecer la contraseña.');
+        if (!resultado.success) return mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_restablecer'));
 
         clearInterval(temporizadorReenvio);
         mostrarVista($('loginView'));
         $('loginEmail').value = correoRecuperacion;
         $('loginPassword').focus();
-        mostrarMensaje($('loginMessage'), 'success', resultado.message || 'Contraseña restablecida. Ya puedes iniciar sesión.');
+        mostrarMensaje($('loginMessage'), 'success', resultado.message || tl('msg.restablecida'));
     });
 
     // Los paneles mandan aquí a quien debe cambiar su contraseña: index.php ya abrió esa vista
@@ -375,25 +413,25 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
     }
 
     if (emailInput && passInput && mascotaCara) {
-        emailInput.addEventListener('focus', () => animarKoala('normal', '¿Cómo te llamas?'));
+        emailInput.addEventListener('focus', () => animarKoala('normal', tl('koala.nombre')));
         
         emailInput.addEventListener('input', () => {
             const email = emailInput.value.trim();
-            if (email === '') animarKoala('normal', '¿Cuál es tu correo?');
-            else if (email.includes('@') && email.includes('.')) animarKoala('feliz', '¡Muy bien!');
-            else animarKoala('pensando', 'Escribe tu correo completo');
+            if (email === '') animarKoala('normal', tl('koala.correo'));
+            else if (email.includes('@') && email.includes('.')) animarKoala('feliz', tl('koala.bien'));
+            else animarKoala('pensando', tl('koala.correo_completo'));
         });
 
         passInput.addEventListener('focus', () => {
-            if (emailInput.value.includes('@')) animarKoala('secreto', '¡Secreto.');
-            else animarKoala('pensando', 'Primero necesito tu correo');
+            if (emailInput.value.includes('@')) animarKoala('secreto', tl('koala.secreto'));
+            else animarKoala('pensando', tl('koala.primero_correo'));
         });
 
         passInput.addEventListener('input', () => {
             const pass = passInput.value;
-            if (pass.length === 0) animarKoala('normal', 'Tu contraseña es secreta.');
-            else if (pass.length < 8) animarKoala('pensando', 'Un poco más segura...');
-            else animarKoala('fiesta', '¡Listos para entrar!', true);
+            if (pass.length === 0) animarKoala('normal', tl('koala.contrasena_secreta'));
+            else if (pass.length < 8) animarKoala('pensando', tl('koala.mas_segura'));
+            else animarKoala('fiesta', tl('koala.listos'), true);
         }); 
     } 
 }); 
