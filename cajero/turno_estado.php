@@ -1,8 +1,8 @@
 <?php
 /**
- * Estado de la caja del cajero: si tiene turno abierto y lo que dejó el turno
- * anterior (para prellenar "Abrir caja"). Nunca manda lo vendido ni lo
- * esperado del turno: el corte es a ciegas.
+ * Estado de la caja del cajero: si tiene turno abierto, lo que dejó el turno
+ * anterior (para prellenar "Abrir caja") y, con el turno abierto, el arqueo:
+ * lo vendido, los retiros parciales y el efectivo que debería haber en caja.
  */
 session_start();
 
@@ -32,7 +32,7 @@ try {
         responder(403, ['success' => false, 'message' => t('servidor.cuenta_inactiva')]);
     }
     if ($cajero['id_caja'] === null) {
-        responder(200, ['success' => true, 'caja' => null, 'turno' => null, 'anterior' => null]);
+        responder(200, ['success' => true, 'caja' => null, 'turno' => null, 'anterior' => null, 'arqueo' => null, 'retiros' => null]);
     }
 
     $idCaja   = (int) $cajero['id_caja'];
@@ -41,12 +41,16 @@ try {
 
     responder(200, [
         'success' => true,
+        'ahora'   => date('Y-m-d H:i:s'),
+        'cajero'  => $cajero['nombre'],
         'caja' => [
-            'id'         => $idCaja,
-            'numero'     => $cajero['numero_caja'],
-            'nombre'     => $cajero['caja_nombre'],
-            'estado'     => $cajero['caja_estado'],
-            'fondo_fijo' => (float) $cajero['fondo_fijo'],
+            'id'              => $idCaja,
+            'numero'          => $cajero['numero_caja'],
+            'nombre'          => $cajero['caja_nombre'],
+            'etiqueta'        => nombreCaja($cajero),
+            'estado'          => $cajero['caja_estado'],
+            'fondo_fijo'      => (float) $cajero['fondo_fijo'],
+            'limite_efectivo' => (float) $cajero['limite_efectivo'],
         ],
         'turno' => $turno ? [
             'id'                => (int) $turno['id_turno'],
@@ -58,6 +62,8 @@ try {
             'fecha_cierre'    => $anterior['fecha_cierre'],
             'cajero'          => $anterior['cajero'],
         ] : null,
+        'arqueo'  => $turno ? arqueoEnPesos(arqueoTurno($pdo, $turno), $cajero) : null,
+        'retiros' => $turno ? retirosDelTurno($pdo, (int) $turno['id_turno']) : null,
     ]);
 } catch (Throwable $e) {
     error_log('turno_estado: ' . $e->getMessage());

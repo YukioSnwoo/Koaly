@@ -202,8 +202,10 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .header-sub { font-weight: 500; color: var(--texto-3); font-size: 0.95rem; }
 .header .user-info { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
 
-/* Botón de corte de caja (junto al menú de perfil) */
+/* Botones del turno: arqueo, retiro y corte (junto al menú de perfil) */
+.caja-acciones { display: flex; align-items: center; gap: 0.6rem; }
 .corte-boton {
+    position: relative;
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.4rem 0.7rem;
     border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie);
@@ -228,6 +230,34 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .header .corte-boton:active {
     transform: translate(3px, 3px);
     box-shadow: 0 0 0 var(--tinta);
+}
+
+/* Excedente de efectivo: el botón Retiro se pinta de aviso con un punto que late */
+.header .corte-boton.is-excedente { background: var(--aviso-suave); color: var(--aviso-texto); }
+.excedente-punto {
+    display: none;
+    position: absolute; top: -6px; right: -6px;
+    width: 12px; height: 12px;
+    border: 2px solid var(--tinta); border-radius: 50%;
+    background: var(--aviso);
+    animation: latidoExcedente 1.6s ease-out infinite;
+}
+.corte-boton.is-excedente .excedente-punto { display: block; }
+@keyframes latidoExcedente {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
+    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+}
+
+/* En pantallas angostas los botones del turno quedan solo con su ícono */
+@media (max-width: 760px) {
+    .header .user-info { gap: 0.6rem; }
+    .caja-acciones { gap: 0.45rem; }
+    .corte-boton-texto {
+        position: absolute; width: 1px; height: 1px;
+        padding: 0; margin: -1px; overflow: hidden;
+        clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
 }
 
 /* ============================================================
@@ -904,6 +934,7 @@ kbd {
 .corte-plantilla:hover { background: var(--acento); border-color: var(--acento); color: #fff; }
 .corte-plantilla:active { transform: translateY(1px); }
 .corte-plantilla small { font-weight: 500; opacity: 0.8; }
+.corte-plantilla[hidden] { display: none; }
 .corte-seccion {
     margin: 1rem 0 0.6rem;
     font-size: 0.8rem; font-weight: 700; color: var(--texto-2);
@@ -1071,6 +1102,16 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 }
 .apertura-aviso { margin-top: 0.35rem; font-size: 0.85rem; font-weight: 600; color: var(--aviso-texto); }
 .apertura-aviso:empty { display: none; }
+/* Retiro que excede o caja que no cuadra (rojo); arqueo que va tabla (verde) */
+.apertura-aviso.is-peligro { color: var(--peligro-texto); }
+.apertura-aviso.is-ok { color: var(--ok-texto); }
+
+/* Arqueo: fondo, ventas y retiros; las ventas en efectivo y con tarjeta van sangradas */
+.arqueo-detalle { margin: 0.75rem 0 0; }
+.varios-fila.arqueo-sub { padding-left: 1rem; font-size: 0.85rem; }
+.arqueo-limite { margin-top: 0.6rem; font-size: 0.85rem; color: var(--texto-3); }
+.arqueo-limite:empty { display: none; }
+.arqueo-limite.is-excedente { color: var(--aviso-texto); font-weight: 600; }
 
 /* Conteo en modo corte: vouchers de tarjeta */
 .corte-tarjeta[hidden] { display: none; }
@@ -1115,6 +1156,11 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 .icono-aviso.tipo-peligro {
     background: var(--peligro-suave); color: var(--peligro-texto);
     box-shadow: 0 0 0 6px color-mix(in srgb, var(--peligro-suave) 50%, transparent);
+}
+.icono-aviso.tipo-exito {
+    background: var(--ok-suave); color: var(--ok-texto);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--ok-suave) 50%, transparent);
+    animation: none;
 }
 
 .lista-faltantes {

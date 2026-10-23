@@ -213,15 +213,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: cajas.php');
             exit;
 
-        /* -------- Fondo base (lo que se deja en caja al cerrar) -------- */
+        /* -------- Fondo base (lo que se deja al cerrar) y límite de efectivo (alerta de excedente) -------- */
         } elseif ($action === 'fondo') {
             $id = (int) ($_POST['id_caja'] ?? 0);
             $fondoCentavos = montoFormularioEnCentavos($_POST['fondo_fijo'] ?? '');
             if ($fondoCentavos === null || $fondoCentavos > 10000000) {
                 throw new RuntimeException(t('turnos.error_fondo'));
             }
-            $stmt = $pdo->prepare("UPDATE Cajas SET fondo_fijo = ? WHERE id_caja = ? AND id_sucursal = ?");
-            $stmt->execute([number_format($fondoCentavos / 100, 2, '.', ''), $id, $idSucursalGerente]);
+            $limiteCentavos = montoFormularioEnCentavos($_POST['limite_efectivo'] ?? '');
+            if ($limiteCentavos === null || $limiteCentavos <= $fondoCentavos || $limiteCentavos > 100000000) {
+                throw new RuntimeException(t('turnos.error_limite'));
+            }
+            $stmt = $pdo->prepare("UPDATE Cajas SET fondo_fijo = ?, limite_efectivo = ? WHERE id_caja = ? AND id_sucursal = ?");
+            $stmt->execute([
+                number_format($fondoCentavos / 100, 2, '.', ''),
+                number_format($limiteCentavos / 100, 2, '.', ''),
+                $id,
+                $idSucursalGerente,
+            ]);
 
             $_SESSION['flash'] = ['msg' => t('turnos.fondo_guardado')];
             header('Location: cajas.php');
@@ -272,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
    ------------------------------------------------------------ */
 $stmt = $pdo->prepare("
     SELECT c.id_caja, c.numero_caja, c.nombre, c.estado,
-           c.id_cajero_asignado, c.fondo_fijo,
+           c.id_cajero_asignado, c.fondo_fijo, c.limite_efectivo,
            t.fecha_apertura AS turno_desde, ut.nombre AS turno_cajero,
            u.nombre AS cajero_nombre,
            u.estado AS cajero_estado,
@@ -435,10 +444,13 @@ require __DIR__ . '/header.php';
 
                 <div class="caja-ventas caja-ventas--fondo">
                     <span><?= e(t('turnos.fondo_base')) ?>: <strong><?= dinero($c['fondo_fijo']) ?></strong></span>
+                    <span>·</span>
+                    <span><?= e(t('turnos.limite')) ?>: <strong><?= dinero($c['limite_efectivo']) ?></strong></span>
                     <button type="button" class="btn-enlace-caja" onclick="abrirModalFondo(this)"
                         data-id="<?= (int) $c['id_caja'] ?>"
                         data-numero="<?= e($c['numero_caja']) ?>"
                         data-fondo="<?= e(number_format((float) $c['fondo_fijo'], 2, '.', '')) ?>"
+                        data-limite="<?= e(number_format((float) $c['limite_efectivo'], 2, '.', '')) ?>"
                     ><?= e(t('turnos.cambiar')) ?></button>
                 </div>
                 <div class="caja-ventas caja-ventas--turno">
@@ -552,7 +564,7 @@ require __DIR__ . '/header.php';
     </div>
 </div>
 
-<!-- Modal: fondo base de una caja -->
+<!-- Modal: fondo base y límite de efectivo de una caja -->
 <div class="modal-overlay" id="modalFondo">
     <div class="modal-box modal-box--sm">
         <h2 id="tituloFondo"></h2>
@@ -564,6 +576,11 @@ require __DIR__ . '/header.php';
             <div class="form-group">
                 <label for="inputFondo"><?= e(t('turnos.fondo_base')) ?></label>
                 <input type="number" id="inputFondo" name="fondo_fijo" min="0" max="100000" step="0.01" inputmode="decimal" required>
+            </div>
+            <div class="form-group">
+                <label for="inputLimite"><?= e(t('turnos.limite')) ?></label>
+                <input type="number" id="inputLimite" name="limite_efectivo" min="0" max="1000000" step="0.01" inputmode="decimal" required aria-describedby="ayudaLimite">
+                <p class="modal-ayuda" id="ayudaLimite"><?= e(t('turnos.limite_ayuda')) ?></p>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalFondo')"><?= e(t('comun.cancelar')) ?></button>
@@ -587,6 +604,7 @@ require __DIR__ . '/header.php';
         const form = document.getElementById('formFondo');
         form.id_caja.value = boton.dataset.id;
         form.fondo_fijo.value = boton.dataset.fondo;
+        form.limite_efectivo.value = boton.dataset.limite;
         document.getElementById('tituloFondo').textContent = TITULO_FONDO.replace('{caja}', boton.dataset.numero);
         abrirModal('modalFondo');
         form.fondo_fijo.select();
