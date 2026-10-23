@@ -19,6 +19,7 @@ return [
     'comun.cancelar' => 'Cancel',
     'comun.guardar' => 'Save',
     'comun.cerrar' => 'Close',
+    'comun.ver_contrasena' => 'Show password',
     'comun.filtrar' => 'Filter',
     'comun.editar' => 'Edit',
     'comun.rechazar' => 'Reject',

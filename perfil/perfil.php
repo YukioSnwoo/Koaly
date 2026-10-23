@@ -333,6 +333,12 @@ function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
     $txt = fn(string $clave) => '<span data-perfil-t="' . $clave . '">' . perfilE(perfilT($clave)) . '</span>';
     $salir = $opciones['salir'] ?? ['href' => '../logout.php'];
     $iconoSalir = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+    // Ojo para ver u ocultar una contraseña (perfil.js lo maneja); el input va justo antes
+    $botonVer = '<button type="button" class="perfil-ver" aria-pressed="false"'
+        . ' aria-label="' . perfilE(perfilT('form.ver_contrasena')) . '" title="' . perfilE(perfilT('form.ver_contrasena')) . '" data-perfil-t-attr="form.ver_contrasena">'
+        . '<svg class="perfil-ver__ojo" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+        . '<svg class="perfil-ver__tachado" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.4 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 5.24A9.12 9.12 0 0 1 12 5c6.4 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
+        . '</button>';
 
     ob_start();
     ?>
@@ -438,22 +444,31 @@ function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
 
             <fieldset class="perfil-grupo">
                 <legend data-perfil-t="form.contrasena"><?= perfilE(perfilT('form.contrasena')) ?></legend>
-                <label class="perfil-campo">
-                    <?= $txt('form.nueva') ?>
-                    <input type="password" name="nueva" autocomplete="new-password">
+                <div class="perfil-campo">
+                    <label for="perfilNueva"><?= $txt('form.nueva') ?></label>
+                    <span class="perfil-contrasena">
+                        <input type="password" id="perfilNueva" name="nueva" autocomplete="new-password">
+                        <?= $botonVer ?>
+                    </span>
                     <small><?= $txt('form.nueva_ayuda') ?></small>
-                </label>
-                <label class="perfil-campo">
-                    <?= $txt('form.confirmar') ?>
-                    <input type="password" name="confirmar" autocomplete="new-password">
-                </label>
+                </div>
+                <div class="perfil-campo">
+                    <label for="perfilConfirmar"><?= $txt('form.confirmar') ?></label>
+                    <span class="perfil-contrasena">
+                        <input type="password" id="perfilConfirmar" name="confirmar" autocomplete="new-password">
+                        <?= $botonVer ?>
+                    </span>
+                </div>
             </fieldset>
 
-            <label class="perfil-campo">
-                <?= $txt('form.actual') ?>
-                <input type="password" name="actual" autocomplete="current-password">
+            <div class="perfil-campo">
+                <label for="perfilActual"><?= $txt('form.actual') ?></label>
+                <span class="perfil-contrasena">
+                    <input type="password" id="perfilActual" name="actual" autocomplete="current-password">
+                    <?= $botonVer ?>
+                </span>
                 <small><?= $txt('form.actual_ayuda') ?></small>
-            </label>
+            </div>
 
             <input type="hidden" name="csrf_token" value="<?= perfilE(csrfToken()) ?>">
             <div class="perfil-form__acciones">

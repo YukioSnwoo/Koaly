@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function mostrarVista(vista) {
         vistas.forEach((v) => v.classList.toggle('hidden', v !== vista));
         vista.querySelectorAll('form').forEach((f) => f.reset());
+        vista.querySelectorAll('.toggle-password').forEach((b) => verContrasena(b, false)); // reset() no regresa el tipo
         vista.querySelectorAll('.message').forEach(limpiarMensaje);
         vista.querySelectorAll('.strength-warning').forEach((a) => mostrarAviso(a));
         const primero = vista.querySelector('input:not([type=hidden])');
@@ -149,15 +150,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     pintarBotonTema();
 
-    // ===== Mostrar / ocultar contraseña =====
+    // ===== Mostrar / ocultar contraseña (botón de ojo) =====
+    function verContrasena(boton, visible) {
+        $(boton.dataset.target).type = visible ? 'text' : 'password';
+        boton.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        boton.title = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+    }
+
     document.querySelectorAll('.toggle-password').forEach((boton) => {
-        boton.addEventListener('click', () => {
-            const campo = $(boton.dataset.target);
-            const mostrar = campo.type === 'password';
-            campo.type = mostrar ? 'text' : 'password';
-            boton.textContent = mostrar ? 'Ocultar' : 'Ver';
-            boton.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
-        });
+        boton.addEventListener('click', () => verContrasena(boton, boton.getAttribute('aria-pressed') !== 'true'));
     });
     // ===== Acceso rápido (BETA) — borrar cuando terminemos de programar =====
 document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {

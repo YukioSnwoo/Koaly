@@ -40,6 +40,15 @@ if (isset($_SESSION['id_usuario'])) {
 $verCss = filemtime(__DIR__ . '/login/login.css');
 $verJs  = filemtime(__DIR__ . '/login/login.js');
 $verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
+
+// Botón de ojo para ver u ocultar la contraseña del campo $id (login.js lo maneja)
+$botonVer = fn (string $id) => '<button type="button" class="toggle-password" data-target="' . $id . '"'
+    . ' aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">'
+    . '<svg class="icono-ojo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    . '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+    . '<svg class="icono-ojo-tachado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    . '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.4 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 5.24A9.12 9.12 0 0 1 12 5c6.4 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
+    . '</button>';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -97,7 +106,7 @@ $verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
                     <label for="loginPassword">Contraseña</label>
                     <div class="password-field">
                         <input type="password" id="loginPassword" placeholder="Tu contraseña" autocomplete="current-password" required>
-                        <button type="button" class="toggle-password" aria-label="Mostrar contraseña" data-target="loginPassword">Ver</button>
+                        <?= $botonVer('loginPassword') ?>
                     </div>
                 </div>
 
@@ -169,13 +178,16 @@ $verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
                     <label for="recoverNewPass">Nueva contraseña</label>
                     <div class="password-field">
                         <input type="password" id="recoverNewPass" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
-                        <button type="button" class="toggle-password" aria-label="Mostrar contraseña" data-target="recoverNewPass">Ver</button>
+                        <?= $botonVer('recoverNewPass') ?>
                     </div>
                     <div id="recoverPassWarning" class="strength-warning" aria-live="polite"></div>
                 </div>
                 <div class="form-group">
                     <label for="recoverConfirmPass">Confirmar contraseña</label>
-                    <input type="password" id="recoverConfirmPass" placeholder="Repite la contraseña" autocomplete="new-password" required>
+                    <div class="password-field">
+                        <input type="password" id="recoverConfirmPass" placeholder="Repite la contraseña" autocomplete="new-password" required>
+                        <?= $botonVer('recoverConfirmPass') ?>
+                    </div>
                     <div id="recoverConfirmWarning" class="strength-warning" aria-live="polite"></div>
                 </div>
                 <button type="submit" class="btn-primary">Restablecer contraseña</button>
@@ -205,14 +217,17 @@ $verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
                     <label for="newPassword">Nueva contraseña</label>
                     <div class="password-field">
                         <input type="password" id="newPassword" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
-                        <button type="button" class="toggle-password" aria-label="Mostrar contraseña" data-target="newPassword">Ver</button>
+                        <?= $botonVer('newPassword') ?>
                     </div>
                     <div id="newPasswordWarning" class="strength-warning" aria-live="polite"></div>
                 </div>
 
                 <div class="form-group">
                     <label for="confirmPassword">Confirmar contraseña</label>
-                    <input type="password" id="confirmPassword" placeholder="Repite la contraseña" autocomplete="new-password" required>
+                    <div class="password-field">
+                        <input type="password" id="confirmPassword" placeholder="Repite la contraseña" autocomplete="new-password" required>
+                        <?= $botonVer('confirmPassword') ?>
+                    </div>
                     <div id="confirmPasswordWarning" class="strength-warning" aria-live="polite"></div>
                 </div>
 

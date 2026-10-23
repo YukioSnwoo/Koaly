@@ -201,6 +201,22 @@ a.perfil-notif__cuerpo:hover { background: var(--superficie-2); }
 }
 .perfil-campo input:focus { outline: none; box-shadow: 3px 3px 0 var(--foco); }
 
+/* Contraseña con ojo para verla */
+.perfil-contrasena { position: relative; display: block; }
+.perfil-campo .perfil-contrasena input { padding-right: 2.8rem; }
+.perfil-ver {
+    position: absolute; top: 50%; right: 0.35rem; transform: translateY(-50%);
+    display: grid; place-items: center;
+    width: 2rem; height: 2rem; padding: 0;
+    border: none; border-radius: 8px;
+    background: transparent; color: var(--acento-texto);
+    cursor: pointer;
+}
+.perfil-ver:hover { background: var(--acento-suave); }
+.perfil-ver__tachado,
+.perfil-ver[aria-pressed="true"] .perfil-ver__ojo { display: none; }
+.perfil-ver[aria-pressed="true"] .perfil-ver__tachado { display: block; }
+
 .perfil-grupo {
     display: flex; flex-direction: column; gap: 0.75rem;
     margin: 0; padding: 0.8rem 1rem 1rem;

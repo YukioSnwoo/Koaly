@@ -212,9 +212,19 @@
         mensaje.hidden = !texto;
     }
 
+    // Ojo junto a cada contraseña: la muestra u oculta (el input va justo antes del botón)
+    function verContrasena(boton, visible) {
+        boton.previousElementSibling.type = visible ? 'text' : 'password';
+        boton.setAttribute('aria-pressed', visible ? 'true' : 'false');
+    }
+    form.querySelectorAll('.perfil-ver').forEach(b => {
+        b.addEventListener('click', () => verContrasena(b, b.getAttribute('aria-pressed') !== 'true'));
+    });
+
     function abrirPerfil() {
         cerrarMenu();
         form.reset();
+        form.querySelectorAll('.perfil-ver').forEach(b => verContrasena(b, false)); // reset() no regresa el tipo
         quitarFoto.value = '0';
         pintarAvatar(avatarForm, fotoActual);
         botonQuitar.hidden = !fotoActual;
@@ -277,7 +287,7 @@
         // Así form.reset() vuelve a lo guardado la próxima vez
         form.querySelector('[name="nombre"]').defaultValue = u.nombre;
         form.querySelector('[name="email"]').defaultValue = u.email;
-        form.querySelectorAll('[type="password"]').forEach(i => { i.value = ''; });
+        form.querySelectorAll('.perfil-contrasena input').forEach(i => { i.value = ''; }); // también las que se ven
         // auth.js guarda el usuario del inicio de sesión en sessionStorage
         try {
             const guardado = JSON.parse(sessionStorage.getItem('usuario'));
