@@ -552,7 +552,9 @@ if ($vista === 'solicitudes') {
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div class="ficha-admin" data-modo="ver">
         <form method="POST" action="inventario.php?vista=solicitudes" enctype="multipart/form-data"
-              onsubmit="this.querySelectorAll('[type=submit]').forEach(b => b.disabled = true);">
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <?php // La acción va en un campo oculto: el botón se deshabilita al enviar y un botón deshabilitado no manda su name/value ?>
+            <input type="hidden" name="action" value="editar_devolver">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_solicitud" value="<?= $id ?>">
 
@@ -684,19 +686,20 @@ if ($vista === 'solicitudes') {
                             data-id="<?= $id ?>" data-nombre="<?= htmlspecialchars($s['nombre_producto'], ENT_QUOTES) ?>">
                         <i class="ti ti-x"></i><?= e(t('comun.rechazar')) ?>
                     </button>
-                    <?php if ($esEliminar): ?>
-                        <button type="submit" name="action" value="aprobar_eliminar" class="btn btn--primary solo-ver"
-                                onclick="return confirm(<?= e(json_encode(t('sol.aprobar_baja_confirmar'), JSON_UNESCAPED_UNICODE)) ?>)">
-                            <i class="ti ti-check"></i><?= e(t('sol.aprobar_baja')) ?>
-                        </button>
-                    <?php else: ?>
+                    <?php if (!$esEliminar): ?>
                         <button type="button" class="btn btn--ghost solo-ver" onclick="editarFicha(<?= $id ?>)"><i class="ti ti-pencil"></i><?= e(t('comun.editar')) ?></button>
-                        <button type="submit" name="action" value="aprobar_agregar" class="btn btn--primary solo-ver"
-                                onclick="return confirm(<?= e(json_encode(t('sol.aceptar_confirmar'), JSON_UNESCAPED_UNICODE)) ?>)">
-                            <i class="ti ti-check"></i><?= e(t('sol.aceptar')) ?>
-                        </button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn--primary solo-ver" onclick="confirmarSolicitud(this)"
+                            data-id="<?= $id ?>" data-accion="<?= $esEliminar ? 'aprobar_eliminar' : 'aprobar_agregar' ?>"
+                            data-nombre="<?= e($s['nombre_producto']) ?>"
+                            data-detalle="<?= $esEliminar ? '' : e($valorFicha('id_categoria', $s['id_categoria']) . ' · ' . $valorFicha('precio_sugerido', $s['precio_sugerido'])) ?>"
+                            data-imagen="<?= e($s['imagen'] ?? '') ?>"
+                            data-iniciales="<?= e($inicialesProducto($s['nombre_producto'])) ?>">
+                        <i class="ti ti-check"></i><?= e(t($esEliminar ? 'sol.aprobar_baja' : 'sol.aceptar')) ?>
+                    </button>
+                    <?php if (!$esEliminar): ?>
                         <button type="button" class="btn btn--ghost solo-editar" onclick="cancelarEdicionFicha(<?= $id ?>)"><?= e(t('sol.cancelar_edicion')) ?></button>
-                        <button type="submit" name="action" value="editar_devolver" class="btn btn--primary solo-editar">
+                        <button type="submit" class="btn btn--primary solo-editar">
                             <i class="ti ti-send"></i><?= e(t('sol.enviar_cambios')) ?>
                         </button>
                     <?php endif; ?>
@@ -729,14 +732,47 @@ if ($vista === 'solicitudes') {
     </div>
 </div>
 
+<!-- Modal: confirmar "Aceptar" (alta al catálogo) o "Aprobar baja". Se abre encima de la
+     ficha y Cancelar regresa a ella; confirmarSolicitud() pone los textos de alta o de baja. -->
+<div id="modalConfirmarSolicitud" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmarTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:110;align-items:center;justify-content:center">
+    <div class="confirmar-solicitud">
+        <img src="../Imagenes/koala/koala-pensando.png" alt="" class="confirmar-solicitud__koala">
+        <h2 id="confirmarTitulo" data-alta="<?= e(t('sol.aceptar_titulo')) ?>" data-baja="<?= e(t('sol.aprobar_baja_titulo')) ?>"></h2>
+        <p class="confirmar-solicitud__mensaje" data-alta="<?= e(t('sol.aceptar_confirmar')) ?>" data-baja="<?= e(t('sol.aprobar_baja_confirmar')) ?>"></p>
+        <div class="confirmar-solicitud__producto">
+            <div class="confirmar-solicitud__imagen">
+                <img src="" alt="" hidden>
+                <span class="solicitud-ficha__iniciales" aria-hidden="true"></span>
+            </div>
+            <div class="confirmar-solicitud__texto">
+                <strong></strong>
+                <span></span>
+            </div>
+        </div>
+        <form method="POST" action="inventario.php?vista=solicitudes"
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <input type="hidden" name="action" value="">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
+            <div class="confirmar-solicitud__acciones">
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalConfirmarSolicitud')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn">
+                    <i class="ti ti-check"></i><span data-alta="<?= e(t('sol.aceptar_boton')) ?>" data-baja="<?= e(t('sol.aprobar_baja')) ?>"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // Modo "ver": campos deshabilitados (se leen como texto). Modo "editar": se pueden cambiar.
 function modoFicha(id, editar) {
     const caja = document.querySelector('#ficha' + id + ' .ficha-admin');
     caja.dataset.modo = editar ? 'editar' : 'ver';
     caja.querySelectorAll('[data-editable]').forEach(c => { c.disabled = !editar; });
-    // Solo los botones del modo actual: así Enter en un campo no acepta la solicitud mientras se edita
-    caja.querySelectorAll('[type=submit]').forEach(b => { b.disabled = b.classList.contains('solo-ver') === editar; });
+    // El único envío de la ficha es "Enviar cambios"; se reactiva cada vez que se abre
+    caja.querySelectorAll('[type=submit]').forEach(b => { b.disabled = !editar; });
     return caja;
 }
 
@@ -770,6 +806,36 @@ function rechazarSolicitud(btn) {
     document.getElementById('rechazarNombre').textContent = btn.dataset.nombre;
     closeModal('ficha' + btn.dataset.id);
     openModal('modalRechazar');
+}
+
+// "Aceptar" y "Aprobar baja" se confirman en una modal propia encima de la ficha
+function confirmarSolicitud(btn) {
+    const modal = document.getElementById('modalConfirmarSolicitud');
+    const d = btn.dataset;
+    const tipo = d.accion === 'aprobar_eliminar' ? 'baja' : 'alta';
+    modal.querySelectorAll('[data-alta]').forEach(el => { el.textContent = el.dataset[tipo]; });
+
+    const imagen = modal.querySelector('.confirmar-solicitud__imagen img');
+    const iniciales = modal.querySelector('.confirmar-solicitud__imagen span');
+    imagen.hidden = !d.imagen;
+    imagen.src = d.imagen ? '../' + d.imagen : '';
+    iniciales.hidden = !!d.imagen;
+    iniciales.textContent = d.iniciales;
+    modal.querySelector('.confirmar-solicitud__texto strong').textContent = d.nombre;
+    const detalle = modal.querySelector('.confirmar-solicitud__texto span');
+    detalle.textContent = d.detalle;
+    detalle.hidden = !d.detalle;
+
+    const f = modal.querySelector('form');
+    f.querySelector('[name="action"]').value = d.accion;
+    f.querySelector('[name="id_solicitud"]').value = d.id;
+    const enviar = f.querySelector('[type=submit]');
+    enviar.disabled = false;
+    enviar.classList.toggle('btn--primary', tipo === 'alta');
+    enviar.classList.toggle('btn--danger', tipo === 'baja');
+
+    openModal('modalConfirmarSolicitud');
+    enviar.focus();
 }
 
 // Toda la tarjeta abre la ficha, no solo el botón "Revisar" (que se queda para el teclado)

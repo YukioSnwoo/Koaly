@@ -548,6 +548,7 @@ return [
     'js.estado_ayuda_baja' => 'They will not be able to sign in, and their register will be unassigned and deactivated.',
     'js.nueva_caja' => 'New register',
     'js.editar_caja' => 'Edit register',
+    'js.campo_obligatorio' => 'This field is required.',
     'js.sol_contacto' => 'Enter at least one contact: phone or email.',
     'js.sol_imagen_grande' => 'The image must not exceed 5 MB.',
     'js.reasignar_aviso' => 'The cashier is already assigned to register {caja}. On save, they will move here and the previous register will become inactive.',
