@@ -114,6 +114,8 @@ return [
     'srv.sesion' => 'Sesión no válida. Vuelve a iniciar sesión.',
     'srv.usuario' => 'Usuario no encontrado',
     'srv.actualizada' => 'Contraseña actualizada correctamente',
+    'srv.temporal_vencida' => 'Tu contraseña temporal venció. Pide a tu gerente que te reenvíe el acceso.',
+    'srv.ya_actualizada' => 'Tu contraseña ya está actualizada. Para cambiarla usa «Olvidé mi contraseña».',
     'srv.credenciales' => 'Ingresa un correo y contraseña válidos',
     'srv.bloqueo' => 'Demasiados intentos fallidos. Espera {minutos} minutos o restablece tu contraseña.',
     'srv.incorrectos' => 'Correo o contraseña incorrectos',

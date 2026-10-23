@@ -548,19 +548,9 @@
 
 
 /* ============================================================
- *  Cajeros — contraseña temporal y enlace a ventas
+ *  Cajeros — avisos y enlace a ventas
  *  ============================================================ */
 .alert-warning { background: var(--aviso-suave); color: var(--aviso-texto); border-color: var(--aviso-borde); }
-.password-temporal {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 1.05rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    background: var(--superficie);
-    padding: 0.1rem 0.45rem;
-    border-radius: 6px;
-    user-select: all;
-}
 .cajero-ver-ventas {
     display: block;
     font-size: 0.8rem;

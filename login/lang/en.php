@@ -113,6 +113,8 @@ return [
     'srv.sesion' => 'Invalid session. Log in again.',
     'srv.usuario' => 'User not found',
     'srv.actualizada' => 'Password updated',
+    'srv.temporal_vencida' => 'Your temporary password has expired. Ask your manager to send you access again.',
+    'srv.ya_actualizada' => 'Your password is already up to date. To change it, use “Forgot my password”.',
     'srv.credenciales' => 'Enter a valid email and password',
     'srv.bloqueo' => 'Too many failed attempts. Wait {minutos} minutes or reset your password.',
     'srv.incorrectos' => 'Wrong email or password',

@@ -44,6 +44,9 @@ require_once __DIR__ . '/login/i18n.php';
 // La versión en la URL evita que el navegador use un CSS/JS viejo (Hostinger los guarda 7 días)
 $verCss = filemtime(__DIR__ . '/login/login.css');
 $verJs  = filemtime(__DIR__ . '/login/login.js');
+
+// ?correo= viene de la constancia del aviso de privacidad: el cajero solo escribe la contraseña temporal
+$correoInicial = filter_var((string) ($_GET['correo'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
 $verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
 
 // Botón de ojo para ver u ocultar la contraseña del campo $id (login.js lo maneja)
@@ -116,13 +119,13 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
             <form id="loginForm" novalidate>
                 <div class="form-group">
                     <label for="loginEmail" <?= $txt('campo.correo') ?></label>
-                    <input type="email" id="loginEmail" placeholder="<?= e(t('campo.correo_ej')) ?>" data-i18n-placeholder="campo.correo_ej" autocomplete="username" required autofocus>
+                    <input type="email" id="loginEmail" placeholder="<?= e(t('campo.correo_ej')) ?>" data-i18n-placeholder="campo.correo_ej" autocomplete="username" required<?= $correoInicial !== '' ? ' value="' . e($correoInicial) . '"' : ' autofocus' ?>>
                 </div>
 
                 <div class="form-group">
                     <label for="loginPassword" <?= $txt('campo.contrasena') ?></label>
                     <div class="password-field">
-                        <input type="password" id="loginPassword" placeholder="<?= e(t('campo.contrasena_ej')) ?>" data-i18n-placeholder="campo.contrasena_ej" autocomplete="current-password" required>
+                        <input type="password" id="loginPassword" placeholder="<?= e(t('campo.contrasena_ej')) ?>" data-i18n-placeholder="campo.contrasena_ej" autocomplete="current-password" required<?= $correoInicial !== '' ? ' autofocus' : '' ?>>
                         <?= $botonVer('loginPassword') ?>
                     </div>
                 </div>

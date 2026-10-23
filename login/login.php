@@ -49,6 +49,10 @@ try {
 } catch (PDOException $e) {
     error(500, t('srv.bd'));
 }
+// Hora de México, como el panel del gerente: el vencimiento de la contraseña
+// temporal (DATETIME) se guarda en esa hora y aquí se compara con NOW()
+date_default_timezone_set('America/Mexico_City');
+$pdo->exec("SET time_zone = '" . (new DateTimeImmutable())->format('P') . "'");
 require_once __DIR__ . '/correo.php';
 require_once __DIR__ . '/../privacidad/aviso.php';
 
@@ -79,6 +83,12 @@ function guardarContrasena(PDO $pdo, int $idUsuario, string $password): void
 {
     $pdo->prepare('UPDATE Usuarios SET contrasena_hash = :hash, debe_cambiar = 0 WHERE id_usuario = :id')
         ->execute([':hash' => password_hash($password, PASSWORD_DEFAULT), ':id' => $idUsuario]);
+    // Ya eligió la suya: la temporal deja de tener vencimiento (sin la columna, sql/013, no hay nada que limpiar)
+    try {
+        $pdo->prepare('UPDATE Usuarios SET temporal_expira_en = NULL WHERE id_usuario = :id')->execute([':id' => $idUsuario]);
+    } catch (PDOException $e) {
+        if ($e->getCode() !== '42S22') throw $e;
+    }
 }
 
 // ========== ENVIAR CÓDIGO DE RECUPERACIÓN ==========
@@ -219,7 +229,7 @@ if ($action === 'change_password') {
     }
     // Solo para el cambio obligatorio: no pide la contraseña actual
     if ((int) $usuario['debe_cambiar'] !== 1) {
-        error(403, 'Tu contraseña ya está actualizada. Para cambiarla usa «Olvidé mi contraseña».');
+        error(403, t('srv.ya_actualizada'));
     }
 
     $errorPass = passwordIsTooSimple($password, $usuario['email'], $usuario['nombre']);
@@ -318,6 +328,12 @@ if ($destino === null) {
 }
 
 $pdo->prepare('DELETE FROM login_intentos WHERE email = :email')->execute([':email' => $email]);
+
+// La contraseña temporal (la que llega por correo) sirve PASSWORD_TEMPORAL_DIAS días.
+// Va antes del aviso: con la temporal vencida no tiene caso mandarlo a aceptarlo.
+if ((int) $usuario['debe_cambiar'] === 1 && passwordTemporalVencida($pdo, (int) $usuario['id_usuario'])) {
+    error(403, t('srv.temporal_vencida'));
+}
 
 // Un cajero no entra hasta aceptar la versión vigente del aviso de privacidad.
 // No se crea la sesión: se le manda a privacidad/ con un enlace nuevo y, al

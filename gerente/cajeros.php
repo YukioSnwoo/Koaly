@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/correos_empleado.php';
+require_once __DIR__ . '/../login/reglas_contrasena.php';
 require_once __DIR__ . '/includes/vistas.php';
 
 /**
@@ -35,7 +36,6 @@ $ESTADOS_VALIDOS = ['Activo', 'Vacaciones', 'Incapacidad', 'Licencia', 'Baja'];
 
 $errores = [];
 $exito   = '';
-$passwordTemporal = null;
 $avisosCorreo     = [];   // [['ok' => bool, 'msg' => string]]: correos enviados al empleado
 
 /* ------------------------------------------------------------
@@ -43,8 +43,6 @@ $avisosCorreo     = [];   // [['ok' => bool, 'msg' => string]]: correos enviados
    ------------------------------------------------------------ */
 if (!empty($_SESSION['flash'])) {
     $exito = $_SESSION['flash']['msg'] ?? '';
-    // La contraseña temporal se muestra una sola vez
-    $passwordTemporal = $_SESSION['flash']['password'] ?? null;
     $avisosCorreo     = $_SESSION['flash']['avisos'] ?? [];
     unset($_SESSION['flash']);
 }
@@ -52,7 +50,6 @@ if (!empty($_SESSION['flash'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $mensajeExito = '';
-    $flashPassword = null;
     $flashAvisos = [];
     // Resultado de cada correo al empleado: la acción ya quedó guardada aunque el correo falle
     $avisar = static function (bool $ok, string $email, string $claveOk = 'cajeros.notificado') use (&$flashAvisos): void {
@@ -67,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'crear') {
             $nombre   = trim($_POST['nombre'] ?? '');
             $email    = trim($_POST['email'] ?? '');
-            $password = (string) ($_POST['password'] ?? '');
             $estado   = $_POST['estado'] ?? 'Activo';
             $fechaContratacion = $_POST['fecha_contratacion'] ?? date('Y-m-d');
 
@@ -76,9 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
                 throw new RuntimeException(t('error.email_invalido'));
-            }
-            if (mb_strlen($password) < 8) {
-                throw new RuntimeException(t('error.password_corta'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));
@@ -97,7 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(t('error.email_duplicado'));
             }
 
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+            // La contraseña la genera el sistema y solo llega al cajero por correo: el gerente
+            // nunca la ve. El hash de relleno se reemplaza enseguida con la temporal.
+            $hash = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare("
                 INSERT INTO Usuarios
@@ -107,12 +102,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
             $idNuevo = (int) $pdo->lastInsertId();
+            $acceso  = ponerPasswordTemporal($pdo, $idNuevo);
             $mensajeExito = t('cajeros.creado');
 
             // Bienvenida con la cuenta, la contraseña temporal y el enlace del aviso de privacidad
-            // (sin aceptarlo no entra a la caja)
+            // (sin aceptarlo no entra a la caja). Si no sale, "Reenviar acceso" genera otra.
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            $avisar(enviarAvisoPrivacidad($pdo, $idNuevo, ['nombre' => $nombre, 'email' => $email, 'password' => $password], $datosCorreo),
+            $avisar(enviarAvisoPrivacidad($pdo, $idNuevo, ['nombre' => $nombre, 'email' => $email], $datosCorreo, $acceso),
                 $email, 'cajeros.aviso_enviado');
 
         } elseif ($action === 'editar') {
@@ -243,10 +239,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
             $avisar(enviarAvisoCambioEstado($empleado, $datosCorreo, $nuevo, $nuevo === 'Baja' ? $motivoBaja : null), $empleado['email']);
 
-        } elseif ($action === 'reenviar_aviso') {
+        } elseif ($action === 'reenviar_acceso') {
+            // Si aún no entra (debe_cambiar = 1), contraseña temporal nueva: la anterior pudo
+            // perderse, vencer o no llegar. Va con el enlace del aviso si falta aceptarlo.
             $id = (int) ($_POST['id_usuario'] ?? 0);
             $check = $pdo->prepare("
-                SELECT nombre, email, estado FROM Usuarios
+                SELECT nombre, email, estado, debe_cambiar FROM Usuarios
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
@@ -254,11 +252,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($empleado === false || $empleado['estado'] === 'Baja') {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
+            $sinEntrar = (int) $empleado['debe_cambiar'] === 1;
+            try {
+                $falteAviso = !avisoAceptado($pdo, $id);
+            } catch (PDOException $e) {
+                $falteAviso = false;   // sin la tabla del aviso (sql/010) solo se manda el acceso
+            }
+            if (!$sinEntrar && !$falteAviso) {
+                throw new RuntimeException(t('cajeros.acceso_al_dia', ['nombre' => $empleado['nombre']]));
+            }
+            $acceso = $sinEntrar ? ponerPasswordTemporal($pdo, $id) : null;
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            if (!enviarAvisoPrivacidad($pdo, $id, $empleado, $datosCorreo)) {
+            $enviado = $falteAviso
+                ? enviarAvisoPrivacidad($pdo, $id, $empleado, $datosCorreo, $acceso, true)
+                : enviarAvisoPasswordRestablecida($empleado, $datosCorreo, $acceso, true);
+            if (!$enviado) {
                 throw new RuntimeException(t('cajeros.notificacion_fallo', ['email' => $empleado['email']]));
             }
-            $mensajeExito = t('cajeros.aviso_reenviado', ['email' => $empleado['email']]);
+            $mensajeExito = t($sinEntrar ? 'cajeros.acceso_reenviado' : 'cajeros.aviso_reenviado', ['email' => $empleado['email']]);
 
         } elseif ($action === 'restablecer_password') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
@@ -274,28 +285,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $nombreCajero = $empleado['nombre'];
 
-            // Sin caracteres ambiguos (0/O, 1/l/I) para dictarla sin errores
-            $alfabeto = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-            $temporal = '';
-            for ($k = 0; $k < 10; $k++) {
-                $temporal .= $alfabeto[random_int(0, strlen($alfabeto) - 1)];
-            }
-
-            $stmt = $pdo->prepare("
-                UPDATE Usuarios SET contrasena_hash = ?, debe_cambiar = 1 WHERE id_usuario = ?
-            ");
-            $stmt->execute([password_hash($temporal, PASSWORD_DEFAULT), $id]);
-
-            $mensajeExito  = t('cajeros.password_restablecida', ['nombre' => $nombreCajero]);
-            $flashPassword = $temporal;
+            // La temporal solo llega al cajero por correo; si no sale, "Reenviar acceso" genera otra
+            $acceso = ponerPasswordTemporal($pdo, $id);
+            $mensajeExito = t('cajeros.password_restablecida', ['nombre' => $nombreCajero]);
 
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            $avisar(enviarAvisoPasswordRestablecida($empleado, $datosCorreo, $temporal), $empleado['email']);
+            $avisar(enviarAvisoPasswordRestablecida($empleado, $datosCorreo, $acceso), $empleado['email'], 'cajeros.password_enviada');
         }
 
         // PRG: tras guardar, redirigir para que F5 no reenvíe el formulario
         if ($mensajeExito !== '') {
-            $_SESSION['flash'] = ['msg' => $mensajeExito, 'password' => $flashPassword, 'avisos' => $flashAvisos];
+            $_SESSION['flash'] = ['msg' => $mensajeExito, 'avisos' => $flashAvisos];
             header('Location: cajeros.php');
             exit;
         }
@@ -323,8 +323,19 @@ $columnaAviso = $hayTablaAviso
         WHERE a.id_usuario = u.id_usuario AND a.version = ? AND a.aceptado_en IS NOT NULL)"
     : "NULL";
 
+// Vencimiento de la contraseña temporal (sql/013); sin la columna no vence
+$hayVencimiento = true;
+try {
+    $pdo->query("SELECT temporal_expira_en FROM Usuarios LIMIT 1");
+} catch (PDOException $e) {
+    if ($e->getCode() !== '42S22') throw $e;
+    $hayVencimiento = false;
+}
+$columnaVence = $hayVencimiento ? 'u.temporal_expira_en' : 'NULL';
+
 $stmt = $pdo->prepare("
     SELECT u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
+           u.debe_cambiar, $columnaVence AS temporal_expira_en,
            COUNT(v.id_venta) AS total_ventas,
            COALESCE(SUM(v.total), 0) AS monto_total,
            (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) ORDER BY c.numero_caja SEPARATOR ', ')
@@ -335,7 +346,8 @@ $stmt = $pdo->prepare("
            ON v.id_cajero = u.id_usuario AND v.id_sucursal = ?
           AND v.fecha_hora >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
     WHERE u.id_rol = 3 AND u.id_sucursal = ?
-    GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado
+    GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
+             u.debe_cambiar, temporal_expira_en
     ORDER BY u.nombre
 ");
 $stmt->execute(array_merge($hayTablaAviso ? [AVISO_PRIVACIDAD_VERSION] : [], [$idSucursalGerente, $idSucursalGerente]));
@@ -367,12 +379,6 @@ require __DIR__ . '/header.php';
 
 <?php if ($exito): ?>
     <div class="alert alert-success"><?= htmlspecialchars($exito) ?></div>
-<?php endif; ?>
-<?php if ($passwordTemporal): ?>
-    <div class="alert alert-warning">
-        <?= e(t('cajeros.password_temporal')) ?>: <code class="password-temporal"><?= e($passwordTemporal) ?></code>
-        · <?= e(t('cajeros.password_temporal_aviso')) ?>
-    </div>
 <?php endif; ?>
 <?php foreach ($avisosCorreo as $aviso): ?>
     <div class="alert <?= $aviso['ok'] ? 'alert-success' : 'alert-warning' ?>"><?= e($aviso['msg']) ?></div>
@@ -423,22 +429,44 @@ require __DIR__ . '/header.php';
                         <dt><?= e(t('cajeros.contratado')) ?></dt>
                         <dd><?= e(fecha($c['fecha_contratacion'], false)) ?></dd>
                     </div>
+                    <?php
+                        // Un solo botón "Reenviar acceso": contraseña temporal nueva si aún no
+                        // entra y, si falta, el enlace del aviso. El gerente nunca ve la contraseña.
+                        $sinEntrar   = (int) $c['debe_cambiar'] === 1;
+                        $falteAviso  = $hayTablaAviso && !$c['aviso_aceptado'];
+                        $vencido     = $sinEntrar && $c['temporal_expira_en'] && strtotime($c['temporal_expira_en']) < time();
+                        $botonReenviar = static fn() => '<form method="POST" class="cajero-aviso-pendiente">'
+                            . '<input type="hidden" name="action" value="reenviar_acceso">'
+                            . '<input type="hidden" name="csrf_token" value="' . e(csrfToken()) . '">'
+                            . '<input type="hidden" name="id_usuario" value="' . $id . '">'
+                            . '<button type="submit" class="enlace-boton">' . e(t('cajeros.reenviar_acceso')) . '</button></form>';
+                    ?>
                     <?php if ($hayTablaAviso && $c['estado'] !== 'Baja'): ?>
                         <div>
                             <dt><?= e(t('cajeros.aviso')) ?></dt>
                             <?php if ($c['aviso_aceptado']): ?>
                                 <dd class="texto-ok"><?= e(t('cajeros.aviso_aceptado', ['fecha' => fecha($c['aviso_aceptado'], false)])) ?></dd>
                             <?php else: ?>
-                                <dd>
-                                    <form method="POST" class="cajero-aviso-pendiente">
-                                        <input type="hidden" name="action" value="reenviar_aviso">
-                                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-                                        <input type="hidden" name="id_usuario" value="<?= $id ?>">
-                                        <span class="badge badge-warning" title="<?= e(t('cajeros.aviso_pendiente_ayuda')) ?>"><?= e(t('cajeros.aviso_pendiente')) ?></span>
-                                        <button type="submit" class="enlace-boton"><?= e(t('cajeros.reenviar_aviso')) ?></button>
-                                    </form>
+                                <dd class="cajero-aviso-pendiente">
+                                    <span class="badge badge-warning" title="<?= e(t('cajeros.aviso_pendiente_ayuda')) ?>"><?= e(t('cajeros.aviso_pendiente')) ?></span>
+                                    <?= $sinEntrar ? '' : $botonReenviar() ?>
                                 </dd>
                             <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($sinEntrar && $c['estado'] !== 'Baja'): ?>
+                        <div>
+                            <dt><?= e(t('cajeros.acceso')) ?></dt>
+                            <dd class="cajero-aviso-pendiente">
+                                <?php if ($vencido): ?>
+                                    <span class="badge badge-danger" title="<?= e(t('cajeros.acceso_vencido_ayuda')) ?>"><?= e(t('cajeros.acceso_vencido')) ?></span>
+                                <?php else: ?>
+                                    <span class="badge badge-warning" title="<?= e(t('cajeros.acceso_pendiente_ayuda')) ?>"><?= e($c['temporal_expira_en']
+                                        ? t('cajeros.acceso_vence', ['fecha' => fecha($c['temporal_expira_en'], false)])
+                                        : t('cajeros.acceso_pendiente')) ?></span>
+                                <?php endif; ?>
+                                <?= $botonReenviar() ?>
+                            </dd>
                         </div>
                     <?php endif; ?>
                     <?php if (!$esActivo): ?>
@@ -530,19 +558,6 @@ require __DIR__ . '/header.php';
                     <input type="email" id="cajeroEmail" name="email" placeholder="<?= e(t('cajeros.campo_email_ej')) ?>"
                            maxlength="100" autocomplete="off" required>
                     <small class="form-ayuda" id="ayudaAviso"><?= e(t('cajeros.email_aviso_ayuda')) ?></small>
-                </div>
-            </fieldset>
-
-            <fieldset class="modal-seccion" id="grupoPassword">
-                <legend><?= e(t('cajeros.seccion_acceso')) ?></legend>
-                <div class="form-group">
-                    <label for="cajeroPassword"><?= e(t('cajeros.password_temporal')) ?></label>
-                    <div class="campo-con-boton">
-                        <input type="text" id="cajeroPassword" name="password" placeholder="<?= e(t('cajeros.campo_password_ej')) ?>"
-                               minlength="8" autocomplete="off" spellcheck="false">
-                        <button type="button" class="btn btn-ghost btn-sm" onclick="generarPasswordCajero()"><?= e(t('cajeros.generar')) ?></button>
-                    </div>
-                    <small class="form-ayuda"><?= e(t('cajeros.campo_password_ayuda')) ?></small>
                 </div>
             </fieldset>
 

@@ -170,13 +170,12 @@ function _prepararModalCajero(modo) {
     const titulo = document.getElementById('tituloModalCajero');
     if (titulo) titulo.textContent = tj(nuevo ? 'nuevo_cajero' : 'editar_cajero');
 
-    // Contraseña, fecha de contratación y aviso de privacidad solo al dar de alta
-    ['grupoPassword', 'grupoFechaContratacion', 'ayudaAviso'].forEach(id => {
+    // Fecha de contratación y aviso solo al dar de alta. La contraseña la genera el
+    // servidor y solo llega al cajero por correo: el gerente no la ve ni la escribe.
+    ['grupoFechaContratacion', 'ayudaAviso'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.hidden = !nuevo;
     });
-    const inputPassword = form.querySelector('[name="password"]');
-    if (inputPassword) inputPassword.required = nuevo;
 
     const submit = form.querySelector('[type="submit"]');
     if (submit) submit.disabled = false;
@@ -241,17 +240,6 @@ function abrirModalBaja(btn) {
     const submit = form.querySelector('[type="submit"]');
     if (submit) submit.disabled = false;
     abrirModal('modalBaja');
-}
-
-/** Contraseña temporal de 10 caracteres, sin letras ni números que se confundan (0/O, 1/l/I). */
-function generarPasswordCajero() {
-    const alfabeto = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    const azar = new Uint32Array(10);
-    crypto.getRandomValues(azar);
-    const input = document.querySelector('#formCajero [name="password"]');
-    input.value = Array.from(azar, n => alfabeto[n % alfabeto.length]).join('');
-    input.focus();
-    input.select();
 }
 
 document.addEventListener('change', (e) => {
