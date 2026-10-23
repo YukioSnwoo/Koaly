@@ -22,27 +22,8 @@ if (!$admin) {
     exit;
 }
 
-// Idioma
-if (!isset($_SESSION['idioma'])) $_SESSION['idioma'] = 'es';
-$idioma = $_SESSION['idioma'];
-
-$textos = [
-    'es' => [
-        'panel_general' => 'Panel general', 'sucursales' => 'Sucursales',
-        'gerentes' => 'Gerentes', 'inventario' => 'Inventario global',
-        'ventas' => 'Ventas', 'reportes' => 'Reportes',
-        'administracion' => 'Administración', 'menu_abrir' => 'Abrir menú',
-        'solicitudes_por_revisar' => 'solicitudes de producto por revisar',
-    ],
-    'en' => [
-        'panel_general' => 'Dashboard', 'sucursales' => 'Branches',
-        'gerentes' => 'Managers', 'inventario' => 'Global inventory',
-        'ventas' => 'Sales', 'reportes' => 'Reports',
-        'administracion' => 'Administration', 'menu_abrir' => 'Open menu',
-        'solicitudes_por_revisar' => 'product requests to review',
-    ],
-];
-$t = $textos[$idioma] ?? $textos['es'];
+// Idioma: textos en admin/lang/{es,en}.php
+require_once __DIR__ . '/i18n.php';
 
 $pagina_actual = basename($_SERVER['PHP_SELF']);
 
@@ -51,7 +32,7 @@ $verKoaly    = filemtime(__DIR__ . '/../estilos/koaly.css');
 $verPerfil   = filemtime(__DIR__ . '/../perfil/perfil.css');
 ?>
 <!DOCTYPE html>
-<html lang="<?= $idioma ?>">
+<html lang="<?= idiomaActual() ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -64,6 +45,8 @@ $verPerfil   = filemtime(__DIR__ . '/../perfil/perfil.css');
         if (!tema && localStorage.getItem('koalicius-admin-theme') === 'light') tema = 'claro';
         if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema);
     } catch (e) {}
+    // Textos traducidos para el JavaScript de las páginas (admin.js define tj())
+    window.I18N = <?= i18nParaJs() ?>;
     </script>
     <link rel="stylesheet" href="admin.css?v=<?= $verAdminCss ?>">
     <!-- Estilo común de Koaly (colores, fuentes y piel táctil); va al final para que gane -->

@@ -8,6 +8,7 @@ if ($esAjax) {
         exit;
     }
     require_once __DIR__ . '/database.php';
+    require_once __DIR__ . '/i18n.php';
 } else {
     require 'header.php';
     require 'sidebar.php';
@@ -55,7 +56,7 @@ function obtenerVentas(PDO $pdo, string $fFecha, string $fSucursal): array
 function renderFilasVentas(array $ventas): string
 {
     if (empty($ventas)) {
-        return '<tr><td colspan="6" style="color:var(--text-muted);text-align:center">No hay ventas registradas para esta fecha.</td></tr>';
+        return '<tr><td colspan="6" style="color:var(--text-muted);text-align:center">' . e(t('ventas.vacio')) . '</td></tr>';
     }
 
     $html = '';
@@ -65,7 +66,7 @@ function renderFilasVentas(array $ventas): string
             . '<td style="color:var(--text-secondary)">' . htmlspecialchars($v['sucursal']) . '</td>'
             . '<td style="color:var(--text-secondary)">' . htmlspecialchars($v['cajero']) . '</td>'
             . '<td style="color:var(--text-secondary)">' . date('H:i', strtotime($v['fecha_hora'])) . '</td>'
-            . '<td style="color:var(--text-secondary)">' . htmlspecialchars($v['nombre_metodo']) . '</td>'
+            . '<td style="color:var(--text-secondary)">' . e(tValor('metodo_pago', $v['nombre_metodo'])) . '</td>'
             . '<td style="text-align:right">$' . number_format((float) $v['total'], 2) . '</td>'
             . '</tr>';
     }
@@ -92,22 +93,22 @@ $sucursales = $pdo->query("SELECT id_sucursal, nombre FROM Sucursales WHERE esta
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['ventas']) ?></h1>
-        <p>Historial consolidado de todas las sucursales <span id="ventasActualizado" style="color:var(--text-muted);font-size:.85em"></span></p>
+        <h1><?= e(t('nav.ventas')) ?></h1>
+        <p><?= e(t('ventas.subtitulo')) ?> <span id="ventasActualizado" style="color:var(--text-muted);font-size:.85em"></span></p>
     </div>
 </div>
 
 <div class="stats-grid stats-grid--3" style="margin-top:1rem">
     <div class="stat-card">
-        <p class="stat-card__label">Ventas de hoy</p>
+        <p class="stat-card__label"><?= e(t('ventas.kpi_ventas')) ?></p>
         <p class="stat-card__value">$<span id="ventasHoyValor"><?= number_format($stats['total_ventas'], 0, '.', ',') ?></span></p>
     </div>
     <div class="stat-card">
-        <p class="stat-card__label">Ticket promedio</p>
+        <p class="stat-card__label"><?= e(t('ventas.kpi_ticket')) ?></p>
         <p class="stat-card__value">$<span id="ticketPromedioValor"><?= number_format($stats['ticket_promedio'], 0, '.', ',') ?></span></p>
     </div>
     <div class="stat-card">
-        <p class="stat-card__label">Transacciones hoy</p>
+        <p class="stat-card__label"><?= e(t('ventas.kpi_transacciones')) ?></p>
         <p class="stat-card__value"><span id="transaccionesHoyValor"><?= $stats['num_transacciones'] ?></span></p>
     </div>
 </div>
@@ -115,20 +116,20 @@ $sucursales = $pdo->query("SELECT id_sucursal, nombre FROM Sucursales WHERE esta
 <div class="filters">
     <form method="GET" id="formFiltrosVentas" style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
         <select name="sucursal" class="select">
-            <option value="">Todas las sucursales</option>
+            <option value=""><?= e(t('comun.todas_sucursales')) ?></option>
             <?php foreach ($sucursales as $s): ?>
                 <option value="<?= $s['id_sucursal'] ?>" <?= $fSucursal == $s['id_sucursal'] ? 'selected' : '' ?>><?= htmlspecialchars($s['nombre']) ?></option>
             <?php endforeach; ?>
         </select>
         <input type="date" name="fecha" class="input" value="<?= $fFecha ?>">
-        <button type="submit" class="btn btn--ghost btn--sm">Filtrar</button>
+        <button type="submit" class="btn btn--ghost btn--sm"><?= e(t('comun.filtrar')) ?></button>
     </form>
 </div>
 
 <div class="table-wrap">
     <table class="table">
         <thead><tr>
-            <th>Folio</th><th>Sucursal</th><th>Cajero</th><th>Hora</th><th>Pago</th><th>Total</th>
+            <th><?= e(t('ventas.col_folio')) ?></th><th><?= e(t('comun.sucursal')) ?></th><th><?= e(t('comun.cajero')) ?></th><th><?= e(t('ventas.col_hora')) ?></th><th><?= e(t('ventas.col_pago')) ?></th><th><?= e(t('comun.total')) ?></th>
         </tr></thead>
         <tbody id="tblVentasBody"><?= renderFilasVentas($ventas) ?></tbody>
     </table>
@@ -161,7 +162,7 @@ $sucursales = $pdo->query("SELECT id_sucursal, nombre FROM Sucursales WHERE esta
             valorTransacciones.textContent = datos.num_transacciones;
             if (indicador) {
                 const ahora = new Date();
-                indicador.textContent = '· actualizado ' + ahora.toLocaleTimeString();
+                indicador.textContent = '· ' + tj('actualizado', { hora: ahora.toLocaleTimeString(document.documentElement.lang) });
             }
         } catch (e) {
             // Silencioso: se reintenta en el siguiente ciclo

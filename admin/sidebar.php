@@ -4,12 +4,12 @@ require_once __DIR__ . '/solicitudes_comun.php';
 require_once __DIR__ . '/../perfil/perfil.php';
 
 $menu = [
-    ['panel.php',       $t['panel_general'], 'layout-dashboard'],
-    ['sucursales.php',  $t['sucursales'],    'building'],
-    ['gerentes.php',    $t['gerentes'],      'users'],
-    ['inventario.php',  $t['inventario'],    'package'],
-    ['ventas.php',      $t['ventas'],        'receipt'],
-    ['reportes.php',    $t['reportes'],      'chart-bar'],
+    ['panel.php',       t('nav.panel'),      'layout-dashboard'],
+    ['sucursales.php',  t('nav.sucursales'), 'building'],
+    ['gerentes.php',    t('nav.gerentes'),   'users'],
+    ['inventario.php',  t('nav.inventario'), 'package'],
+    ['ventas.php',      t('nav.ventas'),     'receipt'],
+    ['reportes.php',    t('nav.reportes'),   'chart-bar'],
 ];
 
 // Con muchas solicitudes de producto sin atender, "Inventario global" se ilumina en rojo
@@ -31,7 +31,7 @@ $inventarioEnAlerta = nivelAvisoSolicitudes($solicitudesPorRevisar) === 'critico
             <?php $alerta = $archivo === 'inventario.php' && $inventarioEnAlerta; ?>
             <a href="<?= $archivo ?>"
                class="sidebar__link <?= $pagina_actual === $archivo ? 'sidebar__link--active' : '' ?> <?= $alerta ? 'sidebar__link--alerta' : '' ?>"
-               <?= $alerta ? 'title="' . $solicitudesPorRevisar . ' ' . htmlspecialchars($t['solicitudes_por_revisar']) . '"' : '' ?>>
+               <?= $alerta ? 'title="' . e(tn('nav.solicitudes_por_revisar', $solicitudesPorRevisar)) . '"' : '' ?>>
                 <i class="ti ti-<?= $icono ?>"></i>
                 <span><?= htmlspecialchars($texto) ?></span>
                 <?php if ($alerta): ?>
@@ -48,10 +48,10 @@ $inventarioEnAlerta = nivelAvisoSolicitudes($solicitudesPorRevisar) === 'critico
         <div class="admin-topbar__izq">
             <button type="button" class="tema-boton sidebar-toggle" id="botonMenu"
                     aria-controls="barraLateral" aria-expanded="false"
-                    aria-label="<?= htmlspecialchars($t['menu_abrir']) ?>" title="<?= htmlspecialchars($t['menu_abrir']) ?>">
+                    aria-label="<?= e(t('nav.menu_abrir')) ?>" title="<?= e(t('nav.menu_abrir')) ?>">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
             </button>
-            <p class="admin-topbar__titulo">Koaly <span><?= htmlspecialchars($t['administracion']) ?></span></p>
+            <p class="admin-topbar__titulo">Koaly <span><?= e(t('nav.administracion')) ?></span></p>
         </div>
         <div class="admin-topbar__der">
             <?= menuPerfil($pdo, (int) $admin['id_usuario'], [

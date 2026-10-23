@@ -2,6 +2,16 @@
    Koaly Admin — JavaScript
    ═══════════════════════════════════════════════════ */
 
+/* ── Traducciones ──
+   header.php deja en window.I18N las claves "js.*" de admin/lang/{idioma}.php.
+   tj('clave', {n: 3}) reemplaza {n}. */
+function tj(clave, vars = {}) {
+  let texto = (window.I18N && window.I18N[clave]) || clave;
+  for (const [k, v] of Object.entries(vars)) texto = texto.split('{' + k + '}').join(String(v));
+  return texto;
+}
+
+
 /* ── Cursor personalizado ──
    Solo con puntero fino (mouse). Si JS falla, el cursor nativo queda
    visible porque la clase .cursor-custom no se añade al body. */

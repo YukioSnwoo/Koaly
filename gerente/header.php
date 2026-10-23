@@ -45,22 +45,22 @@ try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koa
         
                 <nav class="sidebar-nav">
             <a href="index.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-inicio.png" class="sidebar-icon" alt="Inicio"> <?= e(t('panel.titulo')) ?>
+                <img src="../Imagenes/iconos/icono-inicio.png" class="sidebar-icon" alt=""> <?= e(t('panel.titulo')) ?>
             </a>
             <a href="productos.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'productos.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-inventario.png" class="sidebar-icon" alt="Productos"> Productos
+                <img src="../Imagenes/iconos/icono-inventario.png" class="sidebar-icon" alt=""> <?= e(t('nav.productos')) ?>
             </a>
             <a href="movimientos.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'movimientos.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-movimientos.png" class="sidebar-icon" alt="Movimientos"> Movimientos
+                <img src="../Imagenes/iconos/icono-movimientos.png" class="sidebar-icon" alt=""> <?= e(t('nav.movimientos')) ?>
             </a>
             <a href="cajeros.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'cajeros.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-cajas.png" class="sidebar-icon" alt="Cajeros"> Cajeros
+                <img src="../Imagenes/iconos/icono-cajas.png" class="sidebar-icon" alt=""> <?= e(t('nav.cajeros')) ?>
             </a>
             <a href="cajas.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'cajas.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-caja.png" class="sidebar-icon" alt="Cajas"> Cajas
+                <img src="../Imagenes/iconos/icono-caja.png" class="sidebar-icon" alt=""> <?= e(t('nav.cajas')) ?>
             </a>
             <a href="ventas_sucursal.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'ventas_sucursal.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-ventas.png" class="sidebar-icon" alt="Ventas"> Ventas
+                <img src="../Imagenes/iconos/icono-ventas.png" class="sidebar-icon" alt=""> <?= e(t('nav.ventas')) ?>
             </a>
         </nav>
      </aside> 

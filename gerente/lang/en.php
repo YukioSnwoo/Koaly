@@ -1,11 +1,18 @@
 <?php
 // Textos del panel del gerente — English.
-// es.php, en.php y fr.php deben tener exactamente las mismas claves.
+// es.php y en.php deben tener exactamente las mismas claves.
 // Plurales: [singular, plural]. Variables: {nombre}.
 return [
 
     // panel
     'panel.titulo' => 'Manager panel',
+
+    // nav (barra lateral)
+    'nav.productos' => 'Products',
+    'nav.movimientos' => 'Movements',
+    'nav.cajeros' => 'Cashiers',
+    'nav.cajas' => 'Registers',
+    'nav.ventas' => 'Sales',
 
     // menu (barra lateral en celular)
     'menu.abrir' => 'Open menu',
@@ -62,9 +69,11 @@ return [
     'metodo_pago.Varios' => 'Mixed (cash and card)',
 
     // categoria (valores de la tabla Categorias)
+    'categoria.Abarrotes' => 'Groceries',
     'categoria.Bebidas' => 'Beverages',
     'categoria.Electronica' => 'Electronics',
     'categoria.Hogar' => 'Home',
+    'categoria.Cuidado Personal' => 'Personal Care',
     'categoria.Ropa' => 'Clothing',
     'categoria.Electrónica' => 'Electronics',
     'categoria.Botanas y dulces' => 'Snacks and sweets',
@@ -435,6 +444,7 @@ return [
     'cajas.titulo' => 'Registers',
     'cajas.caja_n' => 'Register {n}',
     'cajas.resumen' => '{activas} active of {total} registered',
+    'cajas.vacio' => 'There are no registers in your branch yet. Use “+ {nueva}” to add the first one.',
     'cajas.nueva' => 'New register',
     'cajas.creada' => 'Register created.',
     'cajas.actualizada' => 'Register updated.',
