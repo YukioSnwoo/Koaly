@@ -1,10 +1,11 @@
 <?php
 /**
  * Correos que recibe el empleado por los movimientos de su cuenta:
- *   - alta: bienvenida con el enlace para leer y aceptar el aviso de privacidad
+ *   - alta: bienvenida con la cuenta, la contraseña temporal y el enlace para
+ *     leer y aceptar el aviso de privacidad
  *   - cambio de estado: baja (con motivo: renuncia, jubilación...), vacaciones,
  *     incapacidad, licencia o regreso a activo
- *   - contraseña restablecida por el gerente
+ *   - contraseña restablecida por el gerente (con la contraseña temporal)
  *   - cambio del correo de acceso (se avisa a la dirección anterior)
  *
  * El texto del aviso y su aceptación están en privacidad/ (raíz del sitio).
@@ -58,9 +59,14 @@ function _firma(array $datos): string
 }
 
 /**
- * Bienvenida con el enlace personal para leer y aceptar el aviso de privacidad.
- * Hasta que lo acepte, el cajero no puede iniciar sesión.
- * @param array $empleado ['nombre', 'email']
+ * Bienvenida con la cuenta, la contraseña temporal y el enlace personal para
+ * leer y aceptar el aviso de privacidad. Hasta que lo acepte, el cajero no
+ * puede iniciar sesión.
+ *
+ * La contraseña temporal va en el correo porque solo sirve para el primer
+ * ingreso: el sistema obliga a cambiarla antes de dejarlo entrar a la caja.
+ * @param array $empleado ['nombre', 'email', 'password' (la temporal; sin ella, al reenviar el
+ *                        aviso, solo se le recuerda cómo entrar)]
  */
 function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos): bool
 {
@@ -73,6 +79,12 @@ function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array 
     }
     $dias   = AVISO_ENLACE_DIAS;
     $sitio  = urlSitio();
+    $acceso = isset($empleado['password'])
+        ? "    Contraseña temporal:  {$empleado['password']}\n\n"
+          . "La contraseña temporal solo sirve para tu primer ingreso: el sistema te\n"
+          . "pedirá elegir una nueva antes de dejarte entrar. No la compartas con\n"
+          . "nadie; nadie de Koaly te la pedirá."
+        : "\nEntra con tu contraseña. Si no la recuerdas, usa «Olvidé mi contraseña».";
 
     $texto = <<<TXT
     Hola {$empleado['nombre']}:
@@ -89,17 +101,15 @@ function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array 
     podrás iniciar sesión en la caja. Si el enlace vence, al iniciar sesión el
     sistema te dará uno nuevo.
 
-    Para entrar al sistema:
+    Después, para entrar al sistema:
 
-        Dirección: {$sitio}
-        Usuario:   {$empleado['email']}
-
-    Tu gerente te entregará la contraseña temporal; el sistema te pedirá
-    cambiarla la primera vez que entres.
+        Dirección:            {$sitio}
+        Correo (usuario):     {$empleado['email']}
+    {$acceso}
 
     TXT;
 
-    return enviarCorreo($empleado['email'], 'Bienvenida a Koaly: acepta tu aviso de privacidad', $texto . _firma($datos));
+    return enviarCorreo($empleado['email'], 'Bienvenida a Koaly: acepta tu aviso de privacidad', $texto . "\n" . _firma($datos));
 }
 
 /**
@@ -150,14 +160,20 @@ function enviarAvisoCambioEstado(array $empleado, array $datos, string $estado, 
     return enviarCorreo($empleado['email'], $asunto, $texto);
 }
 
-/** Aviso de que el gerente restableció la contraseña. Nunca incluye la contraseña. */
-function enviarAvisoPasswordRestablecida(array $empleado, array $datos): bool
+/**
+ * Aviso de que el gerente restableció la contraseña, con la temporal: igual que
+ * en el alta, el sistema obliga a cambiarla al entrar.
+ */
+function enviarAvisoPasswordRestablecida(array $empleado, array $datos, string $temporal): bool
 {
     $fecha = date('d/m/Y H:i');
     $texto = "Hola {$empleado['nombre']}:\n\n"
         . "El {$fecha}, tu gerente restableció la contraseña de tu cuenta en el sistema\n"
-        . "Koaly. Te entregará la contraseña temporal en persona; por seguridad no la\n"
-        . "enviamos por correo. Deberás cambiarla la próxima vez que entres.\n\n"
+        . "Koaly. Entra con estos datos:\n\n"
+        . "    Dirección:            " . urlSitio() . "\n"
+        . "    Correo (usuario):     {$empleado['email']}\n"
+        . "    Contraseña temporal:  {$temporal}\n\n"
+        . "El sistema te pedirá elegir una contraseña nueva antes de dejarte entrar.\n\n"
         . "Si no pediste este cambio, avísale a tu gerente cuanto antes.\n\n"
         . _firma($datos);
 

@@ -109,9 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idNuevo = (int) $pdo->lastInsertId();
             $mensajeExito = t('cajeros.creado');
 
-            // Bienvenida con el enlace para aceptar el aviso de privacidad (sin aceptarlo no entra a la caja)
+            // Bienvenida con la cuenta, la contraseña temporal y el enlace del aviso de privacidad
+            // (sin aceptarlo no entra a la caja)
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            $avisar(enviarAvisoPrivacidad($pdo, $idNuevo, ['nombre' => $nombre, 'email' => $email], $datosCorreo),
+            $avisar(enviarAvisoPrivacidad($pdo, $idNuevo, ['nombre' => $nombre, 'email' => $email, 'password' => $password], $datosCorreo),
                 $email, 'cajeros.aviso_enviado');
 
         } elseif ($action === 'editar') {
@@ -257,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!enviarAvisoPrivacidad($pdo, $id, $empleado, $datosCorreo)) {
                 throw new RuntimeException(t('cajeros.notificacion_fallo', ['email' => $empleado['email']]));
             }
-            $mensajeExito = t('cajeros.aviso_enviado', ['email' => $empleado['email']]);
+            $mensajeExito = t('cajeros.aviso_reenviado', ['email' => $empleado['email']]);
 
         } elseif ($action === 'restablecer_password') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
@@ -289,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $flashPassword = $temporal;
 
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            $avisar(enviarAvisoPasswordRestablecida($empleado, $datosCorreo), $empleado['email']);
+            $avisar(enviarAvisoPasswordRestablecida($empleado, $datosCorreo, $temporal), $empleado['email']);
         }
 
         // PRG: tras guardar, redirigir para que F5 no reenvíe el formulario

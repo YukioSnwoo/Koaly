@@ -1,27 +1,47 @@
 <?php
 /**
- * Envío de correo para la recuperación de contraseña.
+ * Envío de correo del sitio (recuperación de contraseña, avisos al empleado,
+ * constancias del aviso de privacidad).
  *
- * Usa SMTP con la cuenta de login/config_correo.php (por ejemplo Gmail con una
- * contraseña de aplicación). Si ese archivo no existe, intenta con mail() del
- * servidor, que en Hostinger solo funciona con un buzón del propio dominio.
+ * Usa SMTP con la cuenta de login/config_correo.php (un buzón de Hostinger del
+ * dominio o Gmail con una contraseña de aplicación). Si ese archivo no existe,
+ * intenta con mail() del servidor, que en Hostinger solo funciona con un buzón
+ * del propio dominio.
  *
  * Es un cliente SMTP mínimo (SSL implícito, AUTH LOGIN, texto plano en UTF-8)
  * para no depender de librerías externas.
  */
 
-function enviarCorreo(string $para, string $asunto, string $texto): bool
+/** Datos de login/config_correo.php, o null si no existe o está incompleto. */
+function configCorreo(): ?array
 {
-    $archivo = __DIR__ . '/config_correo.php';
-    $cfg = is_file($archivo) ? require $archivo : null;
+    static $cfg = false;
+    if ($cfg === false) {
+        $archivo = __DIR__ . '/config_correo.php';
+        $leido = is_file($archivo) ? require $archivo : null;
+        $cfg = is_array($leido) && !empty($leido['usuario']) && !empty($leido['contrasena']) ? $leido : null;
+    }
+    return $cfg;
+}
 
-    if (!is_array($cfg) || empty($cfg['usuario']) || empty($cfg['contrasena'])) {
-        $headers = "Content-Type: text/plain; charset=UTF-8\r\n";
+/**
+ * @param string|null $responderA a dónde llegan las respuestas (Reply-To); sin él, al remitente
+ */
+function enviarCorreo(string $para, string $asunto, string $texto, ?string $responderA = null): bool
+{
+    $cfg = configCorreo();
+    $responderA = $responderA ?: (($cfg['responder_a'] ?? '') ?: null);
+    if ($responderA !== null && (preg_match('/[\r\n]/', $responderA) || !filter_var($responderA, FILTER_VALIDATE_EMAIL))) {
+        $responderA = null;
+    }
+
+    if ($cfg === null) {
+        $headers = "Content-Type: text/plain; charset=UTF-8\r\n" . ($responderA ? "Reply-To: <{$responderA}>\r\n" : '');
         return @mail($para, mb_encode_mimeheader($asunto, 'UTF-8'), $texto, $headers);
     }
 
     try {
-        smtpEnviar($cfg, $para, $asunto, $texto);
+        smtpEnviar($cfg, $para, $asunto, $texto, $responderA);
         return true;
     } catch (RuntimeException $e) {
         // Nunca se registra la contraseña: los mensajes solo traen la respuesta del servidor
@@ -31,7 +51,7 @@ function enviarCorreo(string $para, string $asunto, string $texto): bool
 }
 
 /** @throws RuntimeException si la conexión o algún paso del diálogo SMTP falla */
-function smtpEnviar(array $cfg, string $para, string $asunto, string $texto): void
+function smtpEnviar(array $cfg, string $para, string $asunto, string $texto, ?string $responderA = null): void
 {
     // Evita inyectar cabeceras o comandos SMTP con saltos de línea
     if (preg_match('/[\r\n]/', $para . $asunto) || !filter_var($para, FILTER_VALIDATE_EMAIL)) {
@@ -80,6 +100,7 @@ function smtpEnviar(array $cfg, string $para, string $asunto, string $texto): vo
             'Date: ' . date(DATE_RFC2822),
             'From: ' . mb_encode_mimeheader($remitente, 'UTF-8') . " <{$usuario}>",
             "To: <{$para}>",
+            ...($responderA ? ["Reply-To: <{$responderA}>"] : []),
             'Subject: ' . mb_encode_mimeheader($asunto, 'UTF-8'),
             'Message-ID: <' . bin2hex(random_bytes(16)) . '@' . substr(strrchr($usuario, '@'), 1) . '>',
             'MIME-Version: 1.0',

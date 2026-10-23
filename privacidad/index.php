@@ -7,12 +7,15 @@
  *                            le pide aceptar el aviso. El enlace sirve una sola vez.
  *
  * Al aceptar se guarda la constancia (fecha, versión, IP y navegador) en
- * avisos_privacidad. Un cajero no puede iniciar sesión sin aceptar la versión vigente.
+ * avisos_privacidad, se envía por correo al empleado con un folio y el texto
+ * aceptado (con copia al buzón de la empresa) y la página la muestra para
+ * imprimirla y firmarla. Un cajero no puede iniciar sesión sin aceptar la versión vigente.
  */
 session_start();
 header('Cache-Control: no-store');
 require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/aviso.php';
+require_once __DIR__ . '/../login/correo.php';
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // Hora de México, como el panel del gerente (las fechas de la tabla son TIMESTAMP)
@@ -54,8 +57,14 @@ function buscarEnlace(PDO $pdo, string $token): ?array
 $token   = (string) ($_POST['token'] ?? $_GET['token'] ?? '');
 $enlace  = $token !== '' ? buscarEnlace($pdo, $token) : null;
 $error   = '';
-$aceptado = $_SESSION['privacidad_aceptado'] ?? null; // PRG: nombre y fecha tras aceptar
+$aceptado = $_SESSION['privacidad_aceptado'] ?? null; // PRG: la constancia tras aceptar
 unset($_SESSION['privacidad_aceptado']);
+
+$contacto = $enlace
+    ? (trim((string) $enlace['email_contacto']) ?: ($enlace['gerente_email'] ?: 'el correo de contacto de tu sucursal'))
+    : 'el correo de contacto de tu sucursal';
+$sucursalAviso = $enlace && $enlace['sucursal'] ? ['nombre' => $enlace['sucursal'], 'direccion' => $enlace['direccion']] : null;
+$secciones = $aceptado['secciones'] ?? seccionesAvisoPrivacidad($sucursalAviso, $contacto);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['privacidad_csrf'], (string) ($_POST['csrf'] ?? ''))) {
@@ -66,27 +75,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Marca la casilla para confirmar que leíste y aceptas el aviso.';
     } else {
         // Constancia de la aceptación. El token se borra: el enlace ya no sirve.
+        $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
         $pdo->prepare("
             UPDATE avisos_privacidad
             SET aceptado_en = NOW(), version = ?, ip = ?, agente = ?, token_hash = NULL
             WHERE id = ? AND aceptado_en IS NULL
         ")->execute([
             AVISO_PRIVACIDAD_VERSION,
-            substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
+            $ip,
             substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
             $enlace['id'],
         ]);
-        $_SESSION['privacidad_aceptado'] = ['nombre' => $enlace['nombre'], 'fecha' => date('d/m/Y H:i')];
+
+        $constancia = [
+            'folio'    => folioAviso((int) $enlace['id']),
+            'nombre'   => $enlace['nombre'],
+            'email'    => $enlace['email'],
+            'puesto'   => $enlace['nombre_rol'],
+            'sucursal' => $enlace['sucursal'] ?? '—',
+            'fecha'    => date('d/m/Y H:i'),
+            'ip'       => $ip,
+        ];
+        // Copia al buzón de constancias (config_correo.php) o, si no hay, al contacto de la sucursal
+        $buzon = (configCorreo()['buzon_constancias'] ?? '') ?: (str_contains($contacto, '@') ? $contacto : '');
+        $constancia['correo_enviado'] = enviarConstanciaAviso($constancia, $secciones, $buzon);
+        $constancia['huella']    = hash('sha256', textoPlanoAviso($secciones));
+        $constancia['secciones'] = $secciones;
+
+        $_SESSION['privacidad_aceptado'] = $constancia;
         header('Location: ./');
         exit;
     }
 }
 
-$contacto = $enlace
-    ? (trim((string) $enlace['email_contacto']) ?: ($enlace['gerente_email'] ?: 'el correo de contacto de tu sucursal'))
-    : 'el correo de contacto de tu sucursal';
-$sucursalAviso = $enlace ? ['nombre' => $enlace['sucursal'], 'direccion' => $enlace['direccion']] : null;
-$secciones = seccionesAvisoPrivacidad($enlace && $enlace['sucursal'] ? $sucursalAviso : null, $contacto);
 $enlaceInvalido = $token !== '' && !$enlace && !$aceptado;
 $verCss = filemtime(__DIR__ . '/privacidad.css');
 ?>
@@ -108,10 +129,31 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
     </header>
 
     <?php if ($aceptado): ?>
-        <section class="aviso aviso--ok" role="status">
+        <section class="aviso aviso--ok no-imprimir" role="status">
             <h2>¡Gracias, <?= $e($aceptado['nombre']) ?>!</h2>
             <p>Registramos tu aceptación el <?= $e($aceptado['fecha']) ?>. Ya puedes iniciar sesión en el sistema.</p>
+            <p><?= $aceptado['correo_enviado']
+                ? 'Te enviamos la constancia a <strong>' . $e($aceptado['email']) . '</strong>. Respóndela con la frase «Acepto el aviso de privacidad» para dejar tu confirmación por escrito.'
+                : 'No pudimos enviarte la constancia por correo: imprímela o guárdala desde aquí.' ?></p>
             <a class="boton" href="../">Ir a iniciar sesión</a>
+            <button type="button" class="boton boton--secundario" onclick="window.print()">Imprimir constancia</button>
+        </section>
+
+        <section class="constancia" aria-labelledby="titulo-constancia">
+            <h2 id="titulo-constancia">Constancia de aceptación · Folio <?= $e($aceptado['folio']) ?></h2>
+            <dl>
+                <div><dt>Nombre</dt><dd><?= $e($aceptado['nombre']) ?></dd></div>
+                <div><dt>Correo</dt><dd><?= $e($aceptado['email']) ?></dd></div>
+                <div><dt>Puesto</dt><dd><?= $e($aceptado['puesto']) ?></dd></div>
+                <div><dt>Sucursal</dt><dd><?= $e($aceptado['sucursal']) ?></dd></div>
+                <div><dt>Fecha y hora</dt><dd><?= $e($aceptado['fecha']) ?></dd></div>
+                <div><dt>Dirección IP</dt><dd><?= $e($aceptado['ip']) ?></dd></div>
+            </dl>
+            <p class="huella">Huella del texto (SHA-256): <code><?= $e($aceptado['huella']) ?></code></p>
+            <div class="firmas solo-imprimir">
+                <p>Firma del empleado</p>
+                <p>Nombre y firma de quien recibe</p>
+            </div>
         </section>
     <?php elseif ($enlaceInvalido): ?>
         <section class="aviso aviso--error" role="alert">
@@ -143,7 +185,15 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
             <section>
                 <h2><?= $e($titulo) ?></h2>
                 <?php foreach ($parrafos as $p): ?>
-                    <p><?= $e($p) ?></p>
+                    <?php if (is_string($p)): ?>
+                        <p><?= $e($p) ?></p>
+                    <?php elseif (array_is_list($p)): ?>
+                        <ul><?php foreach ($p as $item): ?><li><?= $e($item) ?></li><?php endforeach; ?></ul>
+                    <?php else: ?>
+                        <dl class="datos"><?php foreach ($p as $termino => $texto): ?>
+                            <div><dt><?= $e($termino) ?></dt><dd><?= $e($texto) ?></dd></div>
+                        <?php endforeach; ?></dl>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </section>
         <?php endforeach; ?>
@@ -161,7 +211,7 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
                 <span>Leí el aviso de privacidad y acepto el tratamiento de mis datos personales en los términos descritos.</span>
             </label>
             <button type="submit" class="boton">Aceptar el aviso</button>
-            <p class="nota">Necesitas aceptarlo para usar el sistema de caja. Guardaremos la fecha, la versión del aviso y la dirección IP como constancia.</p>
+            <p class="nota">Necesitas aceptarlo para usar el sistema de caja. Guardaremos la fecha, la versión del aviso y la dirección IP, y te enviaremos la constancia por correo.</p>
         </form>
     <?php endif; ?>
 </main>
