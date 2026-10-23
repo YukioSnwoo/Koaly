@@ -56,7 +56,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             </button>
             <?= menuPerfil($pdo, (int) $_SESSION['id_usuario'], [
                 'idioma_accion' => 'idioma.php',
-                'salir'         => ['onclick' => "abrirModal('modalSalir')"],
+                'salir'         => ['onclick' => "pedirSalir()"],
             ]) ?>
         </div>
     </header>
@@ -129,20 +129,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             </div>
             <h2 id="cajaCerradaTitulo"><?= e(t('caja.revisando')) ?></h2>
             <p id="cajaCerradaTexto"></p>
-            <button type="button" class="btn btn-primary btn-abrir-caja" id="btnAbrirCaja" onclick="abrirModalApertura()" data-i18n="caja.abrir" hidden><?= e(t('caja.abrir')) ?></button>
+            <button type="button" class="btn btn-primary btn-abrir-caja" id="btnAbrirCaja" onclick="abrirApertura()" data-i18n="caja.abrir" hidden><?= e(t('caja.abrir')) ?></button>
             <button type="button" class="btn btn-ghost" id="btnReintentarCaja" onclick="cargarTurno()" data-i18n="caja.reintentar" hidden><?= e(t('caja.reintentar')) ?></button>
-        </div>
-    </div>
-
-    <!-- Modal: cerrar sesión -->
-    <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
-        <div class="modal-box">
-            <h2 id="tituloSalir" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></h2>
-            <p class="modal-mensaje" data-i18n="sesion.pregunta"><?= e(t('sesion.pregunta')) ?></p>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')" data-i18n="sesion.quedarme"><?= e(t('sesion.quedarme')) ?></button>
-                <button type="button" class="btn btn-danger-solid" onclick="logout()" data-i18n="sesion.confirmar"><?= e(t('sesion.confirmar')) ?></button>
-            </div>
         </div>
     </div>
 
@@ -176,31 +164,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         </div>
     </div>
 
-    <!-- Turno de caja. Orden de apilamiento: apertura < conteo < cierre < resultado,
+    <!-- Turno de caja. Orden de apilamiento: conteo < cierre < resultado < cerrar sesión,
          y todos antes de la confirmación y los avisos para que esos queden encima. -->
 
-    <!-- Modal: abrir caja (viene lleno con lo que dejó el turno anterior) -->
-    <div class="modal-overlay" id="modalApertura" role="dialog" aria-modal="true" aria-labelledby="tituloApertura">
-        <div class="modal-box">
-            <h2 id="tituloApertura"></h2>
-            <div class="apertura-anterior" id="aperturaAnterior"></div>
-            <div class="form-group">
-                <label for="inputApertura" data-i18n="apertura.cuanto_hay"><?= e(t('apertura.cuanto_hay')) ?></label>
-                <div class="input-dinero">
-                    <span>$</span>
-                    <input type="number" id="inputApertura" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="aperturaAviso">
-                </div>
-                <div class="apertura-aviso" id="aperturaAviso" aria-live="polite"></div>
-            </div>
-            <button type="button" class="btn-enlace" onclick="contarApertura()" data-i18n="apertura.contar"><?= e(t('apertura.contar')) ?></button>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalApertura')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
-                <button type="button" class="btn btn-primary" id="btnConfirmarApertura" onclick="confirmarApertura()" data-i18n="caja.abrir"><?= e(t('caja.abrir')) ?></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: conteo de billetes y monedas. Sirve para abrir caja y para el corte (cierre). -->
+    <!-- Modal: conteo de billetes y monedas. Sirve para abrir caja (obligatorio, sin
+         Cancelar: solo se abre la caja o se cierra sesión) y para el corte (cierre). -->
     <div class="modal-overlay" id="modalCorte" role="dialog" aria-modal="true" aria-labelledby="tituloCorte">
         <div class="modal-box modal-corte">
             <div class="corte-encabezado">
@@ -212,6 +180,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     <small id="cortePlantillaTotal"></small>
                 </button>
             </div>
+            <!-- Solo al abrir: lo que dejó el turno anterior -->
+            <div class="apertura-anterior" id="aperturaAnterior" hidden></div>
             <p class="atajo-hint" id="corteAyuda"></p>
 
             <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
@@ -251,11 +221,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     <span data-i18n="corte.total_efectivo"><?= e(t('corte.total_efectivo')) ?></span>
                     <strong id="corteTotal">$0.00</strong>
                 </div>
+                <!-- Solo al abrir: si no coincide con lo que dejó el turno anterior -->
+                <div class="apertura-aviso" id="aperturaAviso"></div>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost corte-limpiar" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
                 <button type="button" class="btn btn-ghost" id="btnCorteCancelar" onclick="cerrarModal('modalCorte')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
-                <button type="button" class="btn btn-primary" id="btnCorteUsar" onclick="usarConteoApertura()" data-i18n="corte.usar_total"><?= e(t('corte.usar_total')) ?></button>
+                <button type="button" class="btn btn-ghost" id="btnCorteSalir" onclick="pedirSalir()" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnCorteAbrir" onclick="confirmarApertura()" data-i18n="caja.abrir"><?= e(t('caja.abrir')) ?></button>
                 <button type="button" class="btn btn-primary" id="btnCorteContinuar" onclick="continuarCierre()" data-i18n="corte.continuar"><?= e(t('corte.continuar')) ?></button>
             </div>
         </div>
@@ -302,6 +275,21 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="imprimirCorte()">🧾 <span data-i18n="resultado.imprimir"><?= e(t('resultado.imprimir')) ?></span></button>
                 <button type="button" class="btn btn-primary" id="btnAceptarCorte" onclick="aceptarCorte()" data-i18n="comun.aceptar"><?= e(t('comun.aceptar')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: cerrar sesión. Con la caja abierta no deja salir sin corte (pedirSalir).
+         Va después del conteo para quedar encima cuando se pide desde "Abrir caja". -->
+    <div class="modal-overlay" id="modalSalir" role="dialog" aria-modal="true" aria-labelledby="tituloSalir">
+        <div class="modal-box">
+            <h2 id="tituloSalir" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></h2>
+            <p class="modal-mensaje" id="salirPregunta" data-i18n="sesion.pregunta"><?= e(t('sesion.pregunta')) ?></p>
+            <p class="modal-mensaje" id="salirCorteAviso" data-i18n="sesion.corte_primero" hidden><?= e(t('sesion.corte_primero')) ?></p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalSalir')" data-i18n="sesion.quedarme"><?= e(t('sesion.quedarme')) ?></button>
+                <button type="button" class="btn btn-danger-solid" id="btnSalirConfirmar" onclick="logout()" data-i18n="sesion.confirmar"><?= e(t('sesion.confirmar')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnSalirCorte" onclick="corteParaSalir()" data-i18n="sesion.hacer_corte" hidden><?= e(t('sesion.hacer_corte')) ?></button>
             </div>
         </div>
     </div>
@@ -478,12 +466,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         const MODALES_SIN_ESCAPE = ['modalVenta', 'modalCorteResultado'];
+        // El conteo para abrir caja tampoco: es obligatorio (se sale con "Cerrar sesión")
+        const sinEscape = (overlay) => MODALES_SIN_ESCAPE.includes(overlay.id)
+            || (overlay.id === 'modalCorte' && modoCorte === 'apertura');
 
         // Clic fuera de la caja o Escape cierra el modal, excepto el de venta
         // completada: la venta solo se cierra con "Aceptar".
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay && !MODALES_SIN_ESCAPE.includes(overlay.id)) cerrarModal(overlay.id);
+                if (e.target === overlay && !sinEscape(overlay)) cerrarModal(overlay.id);
             });
         });
 
@@ -496,7 +487,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             const abierto = modalSuperior();
-            if (abierto && !MODALES_SIN_ESCAPE.includes(abierto.id)) cerrarModal(abierto.id);
+            if (abierto && !sinEscape(abierto)) cerrarModal(abierto.id);
         });
 
         /* ---------- Idioma ---------- */
@@ -1932,12 +1923,18 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (modoConteo !== modo) limpiarConteo();
             modoCorte = modoConteo = modo;
             const cierre = modo === 'cierre';
-            document.getElementById('tituloCorte').textContent = tr(cierre ? 'corte.titulo' : 'corte.titulo_apertura');
-            document.getElementById('corteAyuda').textContent = tr(cierre ? 'corte.ayuda_cierre' : 'corte.ayuda');
+            document.getElementById('tituloCorte').textContent = cierre ? tr('corte.titulo') : tr('apertura.titulo', { n: cajaActual.numero });
+            document.getElementById('corteAyuda').textContent = cierre
+                ? tr('corte.ayuda_cierre') + (salirTrasCorte ? ' ' + tr('corte.ayuda_salir') : '')
+                : tr('corte.ayuda');
+            const anterior = document.getElementById('aperturaAnterior');
+            anterior.hidden = cierre;
+            if (!cierre) anterior.textContent = textoTurnoAnterior();
             document.getElementById('corteTarjeta').hidden = !cierre;
             document.getElementById('btnCorteCancelar').hidden = !cierre;
             document.getElementById('btnCorteContinuar').hidden = !cierre;
-            document.getElementById('btnCorteUsar').hidden = cierre;
+            document.getElementById('btnCorteSalir').hidden = cierre;
+            document.getElementById('btnCorteAbrir').hidden = cierre;
             document.getElementById('errorVouchers').textContent = '';
             renderCorte();
             abrirModal('modalCorte');
@@ -1945,12 +1942,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         // Botón "Corte" de la barra: cerrar caja. No con una venta a medias.
-        function abrirCorte() {
+        // paraSalir: lo pidió "Cerrar sesión"; al aceptar el resultado se sale.
+        function abrirCorte(paraSalir = false) {
             if (estadoCaja !== 'abierta') return;
             if (carrito.length > 0) {
                 mostrarAviso({ tipo: 'aviso', titulo: tr('cierre.venta_en_curso_titulo'), mensaje: tr('cierre.venta_en_curso') });
                 return;
             }
+            salirTrasCorte = paraSalir;
             mostrarCorte('cierre');
         }
 
@@ -2085,6 +2084,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             document.getElementById('cortePiezasBilletes').textContent = billetes.piezas > 0 ? `(${trn('corte.n_billetes', billetes.piezas)})` : '';
             document.getElementById('cortePiezasMonedas').textContent = monedas.piezas > 0 ? `(${trn('corte.n_monedas', monedas.piezas)})` : '';
             document.getElementById('corteTotal').textContent = formatoDinero((billetes.centavos + monedas.centavos) / 100);
+            actualizarAvisoApertura();
         }
 
         function pedirLimpiarCorte() {
@@ -2099,18 +2099,18 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* ---------- Turno de caja: abrir y cerrar ---------- */
-        // Sin turno abierto todo se ve en gris y solo queda "Abrir caja". Al
-        // abrir se confirma lo que dejó el turno anterior; al cerrar se cuenta a
-        // ciegas (lo esperado llega hasta guardar), se decide cuánto se deja y el
-        // corte queda pendiente para el gerente.
+        // Sin turno abierto todo se ve en gris y al cargar la página se pide abrir
+        // la caja contando billetes y monedas (no se puede vender sin eso). Al cerrar
+        // se cuenta a ciegas (lo esperado llega hasta guardar), se decide cuánto se
+        // deja y el corte queda pendiente para el gerente. No se sale sin corte.
         let cajaActual = null;
         let turnoActual = null;
         let turnoAnterior = null;
         let estadoCaja = 'cargando';    // cargando | abierta | cerrada | sin_caja | error
         let mensajeErrorCaja = '';
         let ultimoCorte = null;
-        let desgloseApertura = null;    // piezas, si la apertura se contó con billetes y monedas
         let guardandoTurno = false;
+        let salirTrasCorte = false;     // el corte lo pidió "Cerrar sesión"
 
         const centavosDeTexto = (texto) => {
             const valor = String(texto ?? '').trim();
@@ -2135,6 +2135,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 turnoActual = datos.turno;
                 turnoAnterior = datos.anterior;
                 pintarEstadoCaja(!cajaActual ? 'sin_caja' : (turnoActual ? 'abierta' : 'cerrada'));
+                if (estadoCaja === 'cerrada') abrirApertura();
             } catch (error) {
                 mensajeErrorCaja = error.message || tr('buscar.sin_conexion');
                 pintarEstadoCaja('error');
@@ -2166,61 +2167,17 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             } else if (estado === 'cerrada') {
                 titulo.textContent = tr('caja.cerrada_titulo', { n: cajaActual.numero });
                 texto.textContent = tr('caja.cerrada_texto');
-                document.getElementById('btnAbrirCaja').focus();
+                if (!modalSuperior()) document.getElementById('btnAbrirCaja').focus();
             } else if (abierta && !modalSuperior()) {
                 inputBuscar.focus();
             }
         }
 
         /* --- Abrir caja --- */
-        const inputApertura = document.getElementById('inputApertura');
-
-        function abrirModalApertura() {
-            if (!cajaActual) return;
-            const dejado = turnoAnterior?.efectivo_dejado;
-            document.getElementById('tituloApertura').textContent = tr('apertura.titulo', { n: cajaActual.numero });
-            document.getElementById('aperturaAnterior').textContent = dejado != null
-                ? tr('apertura.anterior', {
-                    cajero: turnoAnterior.cajero || tr('apertura.turno_anterior'),
-                    monto: formatoDinero(dejado),
-                    fecha: fechaHoraCorta(turnoAnterior.fecha_cierre)
-                })
-                : tr('apertura.primer_turno', { monto: formatoDinero(cajaActual.fondo_fijo) });
-            inputApertura.value = Number(dejado ?? cajaActual.fondo_fijo).toFixed(2);
-            desgloseApertura = null;
-            actualizarAvisoApertura();
-            abrirModal('modalApertura');
-            inputApertura.focus();
-            inputApertura.select();
-        }
-
-        // Si no coincide con lo que se dejó, se avisa (y queda registrado para el gerente)
-        function actualizarAvisoApertura() {
-            const aviso = document.getElementById('aperturaAviso');
-            const centavos = centavosDeTexto(inputApertura.value);
-            const dejado = turnoAnterior?.efectivo_dejado;
-            document.getElementById('btnConfirmarApertura').disabled = centavos === null || guardandoTurno;
-            aviso.textContent = '';
-            if (centavos === null || dejado == null) return;
-            const diferencia = centavos - aCentavos(dejado);
-            if (diferencia !== 0) {
-                aviso.textContent = tr(diferencia < 0 ? 'apertura.faltan' : 'apertura.sobran', { monto: formatoDinero(Math.abs(diferencia) / 100) })
-                    + ' ' + tr('apertura.registrado');
-            }
-        }
-
-        inputApertura.addEventListener('input', () => {
-            desgloseApertura = null;    // lo escrito a mano reemplaza el conteo
-            actualizarAvisoApertura();
-        });
-        inputApertura.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !document.getElementById('btnConfirmarApertura').disabled) confirmarApertura();
-        });
-
-        // Contar con billetes y monedas: el conteo se abre encima de la apertura
-        // Contar con billetes y monedas. Si el turno anterior dejó el fondo regular
-        // (lo normal), el conteo ya viene con esas piezas: solo se confirma.
-        function contarApertura() {
+        // Siempre contando billetes y monedas. Si el turno anterior dejó el fondo
+        // regular (lo normal), el conteo ya viene con esas piezas: se revisa y se confirma.
+        function abrirApertura() {
+            if (!cajaActual || estadoCaja !== 'cerrada') return;
             if (modoConteo !== 'apertura') {
                 limpiarConteo();
                 modoConteo = 'apertura';
@@ -2230,27 +2187,39 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             mostrarCorte('apertura');
         }
 
-        function usarConteoApertura() {
-            desgloseApertura = Object.fromEntries(conteoCorte);
-            inputApertura.value = (sumarCorte().centavos / 100).toFixed(2);
-            cerrarModal('modalCorte');
-            actualizarAvisoApertura();
-            inputApertura.focus();
+        function textoTurnoAnterior() {
+            const dejado = turnoAnterior?.efectivo_dejado;
+            return dejado != null
+                ? tr('apertura.anterior', {
+                    cajero: turnoAnterior.cajero || tr('apertura.turno_anterior'),
+                    monto: formatoDinero(dejado),
+                    fecha: fechaHoraCorta(turnoAnterior.fecha_cierre)
+                })
+                : tr('apertura.primer_turno', { monto: formatoDinero(cajaActual.fondo_fijo) });
+        }
+
+        // Si no coincide con lo que se dejó, se avisa (y queda registrado para el gerente)
+        function actualizarAvisoApertura() {
+            const aviso = document.getElementById('aperturaAviso');
+            aviso.textContent = '';
+            if (modoCorte !== 'apertura') return;
+            const dejado = turnoAnterior?.efectivo_dejado;
+            if (dejado == null) return;
+            const diferencia = sumarCorte().centavos - aCentavos(dejado);
+            if (diferencia !== 0) {
+                aviso.textContent = tr(diferencia < 0 ? 'apertura.faltan' : 'apertura.sobran', { monto: formatoDinero(Math.abs(diferencia) / 100) })
+                    + ' ' + tr('apertura.registrado');
+            }
         }
 
         async function confirmarApertura() {
-            const centavos = centavosDeTexto(inputApertura.value);
-            if (centavos === null || guardandoTurno) return;
+            if (guardandoTurno) return;
 
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
-            datos.append('efectivo', (centavos / 100).toFixed(2));
-            // El desglose solo vale si sigue sumando lo que dice el campo
-            if (desgloseApertura && sumarCorte().centavos === centavos) {
-                datos.append('desglose', JSON.stringify(desgloseApertura));
-            }
+            datos.append('desglose', JSON.stringify(Object.fromEntries(conteoCorte)));
 
-            const boton = document.getElementById('btnConfirmarApertura');
+            const boton = document.getElementById('btnCorteAbrir');
             guardandoTurno = true;
             boton.disabled = true;
             boton.textContent = tr('apertura.abriendo');
@@ -2262,15 +2231,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 respuesta = { success: false, message: tr('buscar.sin_conexion') };
             }
             guardandoTurno = false;
+            boton.disabled = false;
             boton.textContent = tr('caja.abrir');
-            actualizarAvisoApertura();
 
             if (!respuesta.success) {
                 mostrarAviso({ tipo: 'peligro', titulo: tr('apertura.error_titulo'), mensaje: respuesta.message || tr('error.registrar') });
                 return;
             }
             turnoActual = respuesta.turno;
-            cerrarModal('modalApertura');
+            cerrarModal('modalCorte');
             limpiarConteo();
             modoConteo = null;
             pintarEstadoCaja('abierta');
@@ -2414,7 +2383,29 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function aceptarCorte() {
             cerrarModal('modalCorteResultado');
+            if (salirTrasCorte) {
+                logout();
+                return;
+            }
             pintarEstadoCaja();
+        }
+
+        /* --- Cerrar sesión --- */
+        // Con la caja abierta no se sale sin corte: el botón lleva al corte y al
+        // aceptar el resultado se cierra la sesión. Con la caja cerrada sale normal.
+        function pedirSalir() {
+            const abierta = estadoCaja === 'abierta';
+            document.getElementById('salirPregunta').hidden = abierta;
+            document.getElementById('salirCorteAviso').hidden = !abierta;
+            document.getElementById('btnSalirConfirmar').hidden = abierta;
+            document.getElementById('btnSalirCorte').hidden = !abierta;
+            abrirModal('modalSalir');
+            document.getElementById(abierta ? 'btnSalirCorte' : 'btnSalirConfirmar').focus();
+        }
+
+        function corteParaSalir() {
+            cerrarModal('modalSalir');
+            abrirCorte(true);
         }
 
         /* ---------- Ticket ---------- */
