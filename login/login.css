@@ -1,8 +1,16 @@
+/* Colores, fuentes y modo oscuro vienen de ../estilos/koaly.css (el mismo de los
+   paneles), que index.php enlaza después de esta hoja. Aquí solo va el layout del
+   login y sus animaciones. */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+input,
+button {
+    font-family: inherit;
 }
 
 body {
@@ -12,7 +20,8 @@ body {
     justify-content: center;
     align-items: center;
     padding: 20px;
-    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #dbeafe 100%);
+    background: var(--fondo);
+    color: var(--texto);
     /* Solo se recorta en horizontal: en pantallas bajas el formulario debe poder desplazarse */
     overflow-x: hidden;
 }
@@ -32,7 +41,7 @@ body::after {
 body::before {
     width: 320px;
     height: 320px;
-    background: #93c5fd;
+    background: var(--acento-borde);
     top: -80px;
     left: -80px;
 }
@@ -40,7 +49,7 @@ body::before {
 body::after {
     width: 280px;
     height: 280px;
-    background: #60a5fa;
+    background: var(--acento-medio);
     bottom: -60px;
     right: -40px;
 }
@@ -52,13 +61,10 @@ body::after {
     max-width: 400px;
     margin: auto; /* centra sin cortar arriba cuando es más alto que la pantalla */
     padding: 2.4rem 2rem;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--superficie);
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.12),
-                0 8px 20px rgba(0, 0, 0, 0.06);
+    border: 2px solid var(--tinta);
+    box-shadow: var(--sombra-tactil-max);
     animation: fadeIn 0.5s ease;
 }
 
@@ -73,16 +79,54 @@ body::after {
     }
 }
 
+/* ===== Tema claro / oscuro (arriba a la derecha) =====
+   Borde, sombra y el hundirse al presionar vienen de .tema-boton en koaly.css */
+.tema-boton {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 12px;
+    background: var(--superficie);
+    color: var(--acento-texto);
+    cursor: pointer;
+}
+
+.tema-boton:hover {
+    background: var(--acento-suave);
+}
+
+.tema-boton svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* En claro se ve la luna (pasar a oscuro); en oscuro, el sol */
+.icono-sol,
+:root[data-tema="oscuro"] .icono-luna {
+    display: none;
+}
+
+:root[data-tema="oscuro"] .icono-sol {
+    display: block;
+}
+
 .logo {
     width: 56px;
     height: 56px;
     margin: 0 auto 1.2rem;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    background: var(--acento);
+    border: 2px solid var(--tinta);
     border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+    box-shadow: var(--sombra-tactil);
 }
 
 .logo svg {
@@ -93,7 +137,7 @@ body::after {
 
 h1 {
     margin-bottom: 0.4rem;
-    color: #1e293b;
+    color: var(--texto);
     text-align: center;
     font-size: 1.55rem;
     font-weight: 700;
@@ -101,7 +145,7 @@ h1 {
 
 .subtitle {
     margin-bottom: 1.5rem;
-    color: #64748b;
+    color: var(--texto-3);
     text-align: center;
     font-size: 0.9rem;
     line-height: 1.4;
@@ -109,7 +153,7 @@ h1 {
 }
 
 .subtitle strong {
-    color: #334155;
+    color: var(--texto);
 }
 
 .form-group {
@@ -119,7 +163,7 @@ h1 {
 label {
     display: block;
     margin-bottom: 0.35rem;
-    color: #334155;
+    color: var(--texto-2);
     font-weight: 600;
     font-size: 0.9rem;
 }
@@ -129,23 +173,23 @@ input[type="password"],
 input[type="text"] {
     width: 100%;
     padding: 0.85rem 1rem;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
+    border: 2px solid var(--tinta);
+    border-radius: 10px;
     font-size: 1rem; /* 16px: evita que iPhone haga zoom al escribir */
-    background: #f8fafc;
-    color: #1e293b;
+    background: var(--superficie-2);
+    color: var(--texto);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 input::placeholder {
-    color: #94a3b8;
+    color: var(--texto-4);
 }
 
 input:focus {
-    border-color: #2563eb;
-    background: #fff;
+    border-color: var(--tinta);
+    background: var(--superficie);
     outline: none;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    box-shadow: 3px 3px 0 var(--foco);
 }
 
 /* Código de 6 dígitos */
@@ -179,14 +223,14 @@ input:focus {
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: #2563eb;
+    color: var(--acento-texto);
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
 }
 
 .toggle-password:hover {
-    background: #eff6ff;
+    background: var(--acento-suave);
 }
 
 /* Botón principal */
@@ -194,22 +238,22 @@ input:focus {
     width: 100%;
     margin-top: 0.6rem;
     padding: 0.9rem;
-    border: none;
+    border: 2px solid var(--tinta);
     border-radius: 12px;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    background: var(--acento);
     color: #ffffff;
     cursor: pointer;
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: 0.3px;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+    box-shadow: var(--sombra-tactil);
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: var(--acento-hover);
     transform: translateY(-1px);
-    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4);
+    box-shadow: 4px 4px 0 var(--tinta);
 }
 
 .btn-primary:active {
@@ -227,7 +271,7 @@ input:focus {
     padding: 0;
     border: none;
     background: none;
-    color: #2563eb;
+    color: var(--acento-texto);
     font: inherit;
     font-weight: 500;
     text-decoration: none;
@@ -236,19 +280,19 @@ input:focus {
 }
 
 .link-button:hover:not(:disabled) {
-    color: #1d4ed8;
+    color: var(--acento-texto-fuerte);
     text-decoration: underline;
 }
 
 .link-button:disabled {
-    color: #94a3b8;
+    color: var(--texto-4);
     cursor: default;
 }
 
 /* Foco visible al navegar con teclado */
 button:focus-visible,
 a:focus-visible {
-    outline: 3px solid rgba(37, 99, 235, 0.45);
+    outline: 3px solid var(--foco);
     outline-offset: 2px;
 }
 
@@ -264,16 +308,16 @@ a:focus-visible {
 
 .message.error {
     display: block;
-    border: 1px solid #fecaca;
-    background: #fef2f2;
-    color: #b91c1c;
+    border: 1px solid var(--peligro-borde);
+    background: var(--peligro-suave);
+    color: var(--peligro-texto);
 }
 
 .message.success {
     display: block;
-    border: 1px solid #bbf7d0;
-    background: #f0fdf4;
-    color: #15803d;
+    border: 1px solid var(--ok-borde);
+    background: var(--ok-suave);
+    color: var(--ok-texto);
 }
 
 .strength-warning {
@@ -288,15 +332,15 @@ a:focus-visible {
 }
 
 .strength-warning.weak {
-    color: #b91c1c;
+    color: var(--peligro-texto);
 }
 
 .strength-warning.medium {
-    color: #b45309;
+    color: var(--aviso-texto);
 }
 
 .strength-warning.strong {
-    color: #15803d;
+    color: var(--ok-texto);
 }
 
 .hidden {
@@ -307,7 +351,7 @@ a:focus-visible {
     margin-top: 1.6rem;
     text-align: center;
     font-size: 0.8rem;
-    color: #64748b;
+    color: var(--texto-3);
 }
 
 /* ===== Olvidé mi contraseña ===== */
@@ -317,11 +361,50 @@ a:focus-visible {
     font-size: 0.92rem;
 }
 
+/* ===== Acceso rápido (beta) ===== */
+.quick-access {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 2px dashed var(--borde-fuerte);
+}
+
+.quick-access-title {
+    width: 100%;
+    text-align: center;
+    font-family: var(--fuente-dato);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--texto-3);
+}
+
+.quick-access-btn {
+    padding: 0.4rem 0.8rem;
+    border: 2px solid var(--tinta);
+    border-radius: 999px;
+    background: var(--superficie);
+    color: var(--texto);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--tinta);
+    transition: background 0.2s, color 0.2s;
+}
+
+.quick-access-btn:hover {
+    background: var(--acento-suave);
+    color: var(--acento-texto);
+}
+
 /* ===== Reenviar código ===== */
 .resend {
     margin-top: 1.2rem;
     text-align: center;
-    color: #64748b;
+    color: var(--texto-3);
     font-size: 0.86rem;
     line-height: 1.5;
 }
@@ -330,16 +413,17 @@ a:focus-visible {
     font-size: inherit;
 }
 
-/* ===== Volver / Salir ===== */
-.back-link {
+/* ===== Volver / Salir =====
+   No se llama .back-link: koaly.css le pone a esa clase borde y sombra de botón */
+.volver-link {
     display: inline-block;
     margin-bottom: 1.2rem;
-    color: #64748b;
+    color: var(--texto-3);
     font-size: 0.88rem;
 }
 
-.back-link:hover:not(:disabled) {
-    color: #2563eb;
+.volver-link:hover:not(:disabled) {
+    color: var(--acento-texto);
 }
 
 .logout-link {
@@ -361,8 +445,9 @@ a:focus-visible {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #e2e8f0;
-    color: #64748b;
+    border: 2px solid var(--tinta);
+    background: var(--superficie-3);
+    color: var(--texto-3);
     font-weight: 700;
     font-size: 0.9rem;
     display: flex;
@@ -370,21 +455,21 @@ a:focus-visible {
     justify-content: center;
 }
 
-/* Verde oscuro: el blanco sobre #22c55e no se lee (2.3:1); sobre #15803d da 5:1 */
+/* Blanco sobre el morado de acento: 5.7:1 */
 .step.active,
 .step.done {
-    background: #15803d;
+    background: var(--acento);
     color: #fff;
 }
 
 .step-line {
     width: 48px;
     height: 3px;
-    background: #e2e8f0;
+    background: var(--borde-fuerte);
 }
 
 .step-line.done {
-    background: #15803d;
+    background: var(--acento);
 }
 
 /* ===== Pantallas chicas ===== */
@@ -418,9 +503,9 @@ a:focus-visible {
 }
 
 .mascota-imagen {
-    width: 130px;       
-    height: 130px;      
-    object-fit: contain; 
+    width: 130px;
+    height: 130px;
+    object-fit: contain;
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     user-select: none;
 }
@@ -447,10 +532,11 @@ a:focus-visible {
 .mascota-burbuja {
     margin-top: 0.5rem;
     padding: 0.4rem 1rem;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
+    background: var(--acento-suave);
+    border: 2px solid var(--tinta);
     border-radius: 12px;
-    color: #1e40af;
+    box-shadow: 2px 2px 0 var(--tinta);
+    color: var(--acento-texto-fuerte);
     font-size: 0.85rem;
     font-weight: 600;
     min-height: 2.2em;

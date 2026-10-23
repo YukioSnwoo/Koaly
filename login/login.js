@@ -131,6 +131,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (primero) primero.focus();
     }
 
+    // ===== Tema claro / oscuro =====
+    // index.php abre en claro si no hay elección; se guarda con la misma clave que los paneles
+    const botonTema = $('botonTema');
+
+    function pintarBotonTema() {
+        const oscuro = document.documentElement.getAttribute('data-tema') === 'oscuro';
+        botonTema.setAttribute('aria-pressed', oscuro ? 'true' : 'false');
+        botonTema.title = oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+    }
+
+    botonTema.addEventListener('click', () => {
+        const nuevo = document.documentElement.getAttribute('data-tema') === 'oscuro' ? 'claro' : 'oscuro';
+        document.documentElement.setAttribute('data-tema', nuevo);
+        try { localStorage.setItem('koaly-tema', nuevo); } catch (e) { /* modo privado: solo esta página */ }
+        pintarBotonTema();
+    });
+    pintarBotonTema();
+
     // ===== Mostrar / ocultar contraseña =====
     document.querySelectorAll('.toggle-password').forEach((boton) => {
         boton.addEventListener('click', () => {

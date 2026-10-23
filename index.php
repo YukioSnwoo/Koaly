@@ -39,6 +39,7 @@ if (isset($_SESSION['id_usuario'])) {
 // La versión en la URL evita que el navegador use un CSS/JS viejo (Hostinger los guarda 7 días)
 $verCss = filemtime(__DIR__ . '/login/login.css');
 $verJs  = filemtime(__DIR__ . '/login/login.js');
+$verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -46,10 +47,28 @@ $verJs  = filemtime(__DIR__ . '/login/login.js');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión | Koaly</title>
+    <script>
+    // Tema antes de pintar: abre en claro salvo que ya se haya elegido oscuro (aquí o en un panel; la clave es común)
+    try { var tema = localStorage.getItem('koaly-tema'); } catch (e) {}
+    document.documentElement.setAttribute('data-tema', tema === 'oscuro' ? 'oscuro' : 'claro');
+    </script>
     <link rel="stylesheet" href="login/login.css?v=<?= $verCss ?>">
+    <!-- Estilo común de Koaly (colores, fuentes y modo oscuro), igual que en los paneles -->
+    <link rel="stylesheet" href="estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body<?= $debeCambiar ? ' data-debe-cambiar="1"' : '' ?>>
     <main class="container">
+        <!-- Tema claro / oscuro: luna en claro, sol en oscuro -->
+        <button type="button" class="tema-boton" id="botonTema" aria-label="Modo oscuro" aria-pressed="false">
+            <svg class="icono-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg class="icono-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4.5"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+            </svg>
+        </button>
+
         <!-- INICIAR SESIÓN -->
                 <!-- INICIAR SESIÓN -->
         <section id="loginView"<?= $debeCambiar ? ' class="hidden"' : '' ?>>
@@ -103,7 +122,7 @@ $verJs  = filemtime(__DIR__ . '/login/login.js');
 
         <!-- RECUPERAR CONTRASEÑA · PASO 1: CORREO -->
         <section id="recoverStep1" class="hidden">
-            <button type="button" class="link-button back-link" data-volver>← Volver a iniciar sesión</button>
+            <button type="button" class="link-button volver-link" data-volver>← Volver a iniciar sesión</button>
 
             <ol class="steps" aria-label="Paso 1 de 2">
                 <li class="step active">1</li>
@@ -127,7 +146,7 @@ $verJs  = filemtime(__DIR__ . '/login/login.js');
 
         <!-- RECUPERAR CONTRASEÑA · PASO 2: CÓDIGO + NUEVA CONTRASEÑA -->
         <section id="recoverStep2" class="hidden">
-            <button type="button" class="link-button back-link" data-volver>← Volver a iniciar sesión</button>
+            <button type="button" class="link-button volver-link" data-volver>← Volver a iniciar sesión</button>
 
             <ol class="steps" aria-label="Paso 2 de 2">
                 <li class="step done">1</li>
@@ -200,7 +219,7 @@ $verJs  = filemtime(__DIR__ . '/login/login.js');
                 <button type="submit" class="btn-primary">Actualizar contraseña</button>
             </form>
 
-            <a href="logout.php" class="link-button back-link logout-link">Salir sin cambiarla</a>
+            <a href="logout.php" class="link-button volver-link logout-link">Salir sin cambiarla</a>
         </section>
     </main>
 
