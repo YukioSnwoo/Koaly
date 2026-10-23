@@ -210,12 +210,16 @@ if ($action === 'change_password') {
 
     $password = (string) ($data['password'] ?? '');
 
-    $stmt = $pdo->prepare('SELECT id_usuario, nombre, email, id_rol FROM Usuarios WHERE id_usuario = :id LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id_usuario, nombre, email, id_rol, debe_cambiar FROM Usuarios WHERE id_usuario = :id LIMIT 1');
     $stmt->execute([':id' => $_SESSION['id_usuario']]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$usuario) {
         error(404, t('srv.usuario'));
+    }
+    // Solo para el cambio obligatorio: no pide la contraseña actual
+    if ((int) $usuario['debe_cambiar'] !== 1) {
+        error(403, 'Tu contraseña ya está actualizada. Para cambiarla usa «Olvidé mi contraseña».');
     }
 
     $errorPass = passwordIsTooSimple($password, $usuario['email'], $usuario['nombre']);
@@ -224,6 +228,10 @@ if ($action === 'change_password') {
     }
 
     guardarContrasena($pdo, (int) $usuario['id_usuario'], $password);
+
+    // Hasta aquí la sesión no tenía rol (ver el login): ahora sí puede entrar a su panel
+    session_regenerate_id(true);
+    $_SESSION['id_rol'] = (int) $usuario['id_rol'];
 
     responder(200, [
         'success' => true,
@@ -334,15 +342,18 @@ if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
 // Nuevo id de sesión al autenticar (evita la fijación de sesión)
 session_regenerate_id(true);
 
-// Enteros: admin compara con === 1, y PDO devuelve las columnas como texto
-$_SESSION['id_usuario'] = (int) $usuario['id_usuario'];
-$_SESSION['id_rol']     = (int) $usuario['id_rol'];
-$_SESSION['email']      = $usuario['email'];
-
 unset($usuario['contrasena_hash']);
 $usuario['debe_cambiar'] = (int) $usuario['debe_cambiar'];
 
 $debeCambiar = $usuario['debe_cambiar'] === 1;
+
+// Enteros: admin compara con === 1, y PDO devuelve las columnas como texto.
+// Con el cambio de contraseña pendiente la sesión queda con rol 0: ningún panel
+// (admin, gerente, cajero) la deja pasar aunque se escriba la dirección a mano.
+// change_password le pone el rol al guardar la contraseña nueva.
+$_SESSION['id_usuario'] = (int) $usuario['id_usuario'];
+$_SESSION['id_rol']     = $debeCambiar ? 0 : (int) $usuario['id_rol'];
+$_SESSION['email']      = $usuario['email'];
 
 responder(200, [
     'success'      => true,

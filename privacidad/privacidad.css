@@ -80,6 +80,33 @@ h1 { font-size: clamp(1.5rem, 4vw, 1.9rem); line-height: 1.25; }
 .texto-aviso h2 { font-size: 1.05rem; margin-bottom: 0.35rem; }
 .texto-aviso p { color: var(--texto-2); }
 .texto-aviso p + p { margin-top: 0.4rem; }
+.texto-aviso ul { margin: 0.4rem 0 0.4rem 1.25rem; color: var(--texto-2); }
+.texto-aviso li + li { margin-top: 0.25rem; }
+.texto-aviso * + p { margin-top: 0.4rem; }
+
+/* Qué datos tratamos: término a la izquierda, descripción a la derecha */
+.datos { margin: 0.5rem 0 0.6rem; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
+.datos div { display: grid; grid-template-columns: minmax(150px, 30%) 1fr; }
+.datos div + div { border-top: 1px solid var(--borde); }
+.datos dt { padding: 0.6rem 0.9rem; background: #f8fafc; font-weight: 600; font-size: 0.92rem; }
+.datos dd { padding: 0.6rem 0.9rem; color: var(--texto-2); }
+
+/* Constancia de aceptación (también se imprime) */
+.constancia {
+    margin-bottom: 2rem;
+    padding: 1.25rem 1.4rem;
+    border-radius: 14px;
+    border: 2px dashed #bfdbfe;
+}
+.constancia h2 { font-size: 1.05rem; margin-bottom: 0.8rem; }
+.constancia dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem 1.5rem; }
+.constancia dt { color: var(--texto-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+.constancia dd { font-weight: 600; overflow-wrap: anywhere; }
+.huella { margin-top: 0.9rem; color: var(--texto-2); font-size: 0.8rem; overflow-wrap: anywhere; }
+.huella code { font-size: 0.78rem; }
+.firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 4rem; }
+.firmas p { padding-top: 0.4rem; border-top: 1px solid var(--texto); text-align: center; font-size: 0.85rem; }
+.solo-imprimir { display: none; }
 
 /* Aceptación: al final del aviso (primero se lee, luego se acepta) */
 .aceptar {
@@ -113,12 +140,26 @@ h1 { font-size: clamp(1.5rem, 4vw, 1.9rem); line-height: 1.25; }
 .boton:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4); }
 .boton:focus-visible, .casilla input:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.45); outline-offset: 2px; }
 .boton--secundario { background: #fff; color: var(--acento); border: 1px solid #bfdbfe; box-shadow: none; }
+.boton + .boton { margin-left: 0.5rem; }
 
 @media (max-width: 480px) {
     body { padding: 0.75rem; }
     .hoja { border-radius: 14px; }
+    .datos div { grid-template-columns: 1fr; }
+    .datos dt { padding-bottom: 0.2rem; }
+    .boton + .boton { margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .boton { transition: none; }
+}
+
+/* Impresión: la constancia y el aviso en hoja blanca, sin botones */
+@media print {
+    body { padding: 0; background: none; font-size: 11pt; }
+    .hoja { max-width: none; padding: 0; box-shadow: none; border-radius: 0; }
+    .no-imprimir, .aceptar { display: none; }
+    .solo-imprimir { display: grid; }
+    .constancia { border: 1px solid #000; break-inside: avoid; }
+    .texto-aviso section, .datos div { break-inside: avoid; }
 }

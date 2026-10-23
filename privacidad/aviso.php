@@ -5,7 +5,8 @@
  * Lo usan:
  *   - gerente/includes/correos_empleado.php  (correo de alta con el enlace)
  *   - login/login.php                        (un cajero sin aceptarlo no entra)
- *   - privacidad/index.php                   (página para leerlo y aceptarlo)
+ *   - privacidad/index.php                   (página para leerlo y aceptarlo,
+ *                                             y la constancia por correo)
  *
  * Sigue la estructura de la Ley Federal de Protección de Datos Personales en
  * Posesión de los Particulares. Si el texto cambia de fondo, sube la versión:
@@ -13,7 +14,7 @@
  * Tabla: sql/010_aviso_privacidad.sql
  */
 
-const AVISO_PRIVACIDAD_VERSION = '2026-10-15';
+const AVISO_PRIVACIDAD_VERSION = '2026-10-22';
 const AVISO_ENLACE_DIAS        = 7;   // validez del enlace que llega por correo
 const AVISO_ENLACE_LOGIN_HORAS = 1;   // validez del enlace que se crea al iniciar sesión
 
@@ -73,54 +74,196 @@ function crearEnlaceAviso(PDO $pdo, int $idUsuario, int $horasValidez): string
 }
 
 /**
- * Secciones del aviso: [título => [párrafos]]. La misma fuente sirve para la
- * página (HTML) y para el texto plano de los correos.
+ * Secciones del aviso: [título => [bloques]]. Un bloque es un párrafo (texto),
+ * una lista (arreglo de textos) o una tabla de términos ([término => texto]).
+ * La misma fuente sirve para la página (HTML) y para el texto de los correos.
  *
- * @param array $sucursal ['nombre', 'direccion', 'email_contacto'] o null (aviso genérico)
+ * Los datos marcados con * todavía no se piden en el sistema (domicilio,
+ * teléfono, NSS...). Ya están en el aviso para que, cuando se agreguen a
+ * Usuarios, el empleado los haya aceptado. Si se agrega un dato que no está
+ * aquí, se escribe en este aviso y se sube la versión.
+ *
+ * @param array $sucursal ['nombre', 'direccion'] o null (aviso genérico)
  * @param string $contacto correo para dudas y derechos ARCO
  */
 function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
 {
     $domicilio   = trim((string) ($sucursal['direccion'] ?? ''));
-    $responsable = 'Koaly' . ($sucursal ? ', a través de ' . $sucursal['nombre'] . ($domicilio !== '' ? " ({$domicilio})" : '') : '');
+    $responsable = 'Koaly' . ($sucursal ? ', a través de ' . $sucursal['nombre'] : '');
 
     return [
-        '1. Responsable' => [
-            "{$responsable} es responsable del tratamiento de tus datos personales, conforme a la "
+        '1. Quién es responsable de tus datos' => [
+            "{$responsable}" . ($domicilio !== '' ? ", con domicilio en {$domicilio}," : '')
+            . ' es responsable del tratamiento de tus datos personales como empleado, conforme a la '
             . 'Ley Federal de Protección de Datos Personales en Posesión de los Particulares.',
+            "Para cualquier duda sobre este aviso escribe a {$contacto}.",
         ],
-        '2. Datos que tratamos' => [
-            'Nombre completo, correo electrónico, fecha de contratación, sucursal y caja asignadas, '
-            . 'situación laboral (activo, vacaciones, incapacidad, licencia o baja) y el registro de las '
-            . 'ventas y movimientos de inventario que realices en el sistema.',
-            'Por seguridad también registramos la dirección IP y la fecha de los intentos fallidos de '
-            . 'inicio de sesión y de la aceptación de este aviso.',
-            'No tratamos datos personales sensibles.',
+        '2. Qué datos tratamos' => [
+            [
+                'Identificación y contacto' => 'Nombre completo y correo electrónico. '
+                    . '*Domicilio, teléfono, fecha de nacimiento, CURP y RFC.',
+                'Laborales' => 'Puesto, sucursal y caja asignadas, fecha de contratación y situación '
+                    . 'laboral (activo, vacaciones, incapacidad, licencia o baja, con su motivo). '
+                    . '*Número de seguridad social (NSS).',
+                '*Contacto de emergencia' => 'Nombre, parentesco y teléfono de la persona a quien avisar '
+                    . 'en una emergencia. Son datos de otra persona: antes de dárnoslos, avísale y '
+                    . 'compártele este aviso.',
+                'Uso del sistema' => 'Ventas, cobros, turnos y cortes de caja, y movimientos de '
+                    . 'inventario que registres con tu cuenta.',
+                'Seguridad' => 'Dirección IP, navegador y fecha de los inicios de sesión fallidos, de '
+                    . 'los cambios de contraseña y de la aceptación de este aviso.',
+            ],
+            'Los datos marcados con * todavía no se piden en el sistema. Cuando se agreguen, tu gerente '
+            . 'te los pedirá y solo los usaremos para lo que dice este aviso.',
+            'No te pedimos datos sensibles (salud, religión, afiliación sindical, origen étnico, etc.). '
+            . 'De una incapacidad solo registramos que estás incapacitado y las fechas, nunca el diagnóstico.',
         ],
         '3. Para qué los usamos' => [
-            'a) Darte acceso al sistema de punto de venta e inventario.',
-            'b) Asignarte una caja y administrar tu situación laboral (altas, bajas, vacaciones, incapacidades y licencias).',
-            'c) Registrar y supervisar las ventas, para la operación de la tienda y el control interno.',
-            'd) Proteger tu cuenta y avisarte por correo de los cambios en ella.',
+            'Solo para finalidades necesarias para tu trabajo:',
+            [
+                'Darte acceso al sistema de punto de venta e inventario y proteger tu cuenta.',
+                'Administrar tu relación laboral: altas, bajas, vacaciones, incapacidades, licencias y asignación de caja.',
+                'Registrar, supervisar y revisar las ventas, los cortes de caja y el inventario.',
+                'Avisarte por correo de los cambios en tu cuenta.',
+                '*Integrar tu expediente laboral y cumplir obligaciones ante el IMSS y el SAT (domicilio, CURP, RFC y NSS).',
+                '*Comunicarnos con tu contacto de emergencia si te pasa algo durante el trabajo.',
+            ],
+            'No usamos tus datos para publicidad, mercadotecnia ni ninguna otra finalidad secundaria.',
         ],
         '4. Con quién los compartimos' => [
-            'No vendemos ni compartimos tus datos con terceros. Solo los conocen el personal autorizado '
-            . 'de la empresa, los proveedores de correo y alojamiento que trabajan por nuestra cuenta y, '
-            . 'cuando la ley lo exija, las autoridades competentes.',
+            'No vendemos tus datos. Solo los conocen el personal autorizado de la empresa y:',
+            [
+                'Los proveedores de alojamiento web y correo electrónico que trabajan por nuestra cuenta y '
+                . 'están obligados a protegerlos.',
+                'Las autoridades que la ley indique (por ejemplo IMSS, SAT o autoridades laborales y '
+                . 'judiciales), solo cuando estemos obligados.',
+            ],
+            'Estas transferencias no requieren tu consentimiento porque son necesarias para la relación '
+            . 'laboral o las exige la ley.',
         ],
-        '5. Cuánto tiempo los conservamos' => [
-            'Mientras dure la relación laboral y después, solo el tiempo que exijan las obligaciones legales y fiscales.',
+        '5. Cómo los protegemos' => [
+            [
+                'Tu contraseña se guarda cifrada: nadie, ni tu gerente, puede verla.',
+                'Cada persona ve solo lo que necesita: tu gerente, los datos de su sucursal.',
+                'Los enlaces que te enviamos son personales, vencen y sirven una sola vez.',
+                'Registramos los intentos de inicio de sesión para detectar accesos indebidos.',
+            ],
         ],
-        '6. Tus derechos (ARCO)' => [
-            'Puedes acceder a tus datos, rectificarlos, cancelarlos u oponerte a su uso, así como revocar '
-            . "tu consentimiento. Escribe a {$contacto} con tu nombre, el derecho que quieres ejercer y una "
-            . 'copia de tu identificación. Te responderemos en un máximo de 20 días hábiles.',
+        '6. Cuánto tiempo los conservamos' => [
+            'Mientras dure tu relación laboral. Después de tu baja, solo el tiempo que exijan las '
+            . 'obligaciones laborales, fiscales y legales; luego se eliminan. Las ventas que registraste '
+            . 'se conservan como parte de la contabilidad de la tienda.',
         ],
-        '7. Cambios a este aviso' => [
-            'Si este aviso cambia, te lo haremos saber por correo y te pediremos aceptarlo de nuevo antes '
-            . 'de seguir usando el sistema.',
+        '7. Tus derechos (ARCO) y cómo revocar tu consentimiento' => [
+            'Puedes acceder a tus datos, rectificarlos si están mal, cancelarlos u oponerte a su uso, y '
+            . "revocar tu consentimiento. Escribe a {$contacto} con tu nombre, el derecho que quieres "
+            . 'ejercer y una copia de tu identificación. Te responderemos en un máximo de 20 días hábiles.',
+            'Si no te respondemos o no estás de acuerdo con la respuesta, puedes acudir a la autoridad '
+            . 'de protección de datos personales.',
+        ],
+        '8. Cookies y datos del navegador' => [
+            'El sistema usa solo una cookie de sesión, necesaria para mantenerte conectado, y guarda en '
+            . 'tu navegador si prefieres el tema claro u oscuro. No usamos cookies de publicidad ni de rastreo.',
+        ],
+        '9. Cambios a este aviso' => [
+            'Si este aviso cambia, te lo enviaremos por correo y te pediremos aceptarlo de nuevo antes de '
+            . 'seguir usando el sistema. La fecha de la versión vigente está al inicio del aviso.',
+        ],
+        '10. Constancia de tu aceptación' => [
+            'Al aceptar guardamos la fecha y hora, la versión del aviso, tu dirección IP y tu navegador. '
+            . 'Te enviamos por correo una constancia con un folio y el texto completo que aceptaste, y una '
+            . 'copia queda en el buzón de la empresa.',
         ],
     ];
+}
+
+/** Las secciones como texto plano, para los correos. */
+function textoPlanoAviso(array $secciones): string
+{
+    $texto = '';
+    foreach ($secciones as $titulo => $bloques) {
+        $texto .= mb_strtoupper($titulo) . "\n";
+        foreach ($bloques as $bloque) {
+            if (is_string($bloque)) {
+                $texto .= wordwrap($bloque, 76) . "\n";
+            } elseif (array_is_list($bloque)) {
+                foreach ($bloque as $item) {
+                    $texto .= '  - ' . wordwrap($item, 72, "\n    ") . "\n";
+                }
+            } else {
+                foreach ($bloque as $termino => $descripcion) {
+                    $texto .= "  {$termino}:\n    " . wordwrap($descripcion, 72, "\n    ") . "\n";
+                }
+            }
+        }
+        $texto .= "\n";
+    }
+    return $texto;
+}
+
+/** Folio de una aceptación: el id del registro en avisos_privacidad ("AP-000042"). */
+function folioAviso(int $id): string
+{
+    return 'AP-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Constancia de aceptación por correo: al empleado (las respuestas llegan a
+ * $buzon) y una copia a $buzon, que queda como el registro escrito de la empresa.
+ * La huella (SHA-256 del texto aceptado) prueba qué texto exacto se aceptó.
+ *
+ * @param array $c ['folio', 'nombre', 'email', 'puesto', 'sucursal', 'fecha', 'ip']
+ * @return bool si salió el correo al empleado
+ */
+function enviarConstanciaAviso(array $c, array $secciones, string $buzon): bool
+{
+    require_once __DIR__ . '/../login/correo.php';
+
+    $textoAviso = textoPlanoAviso($secciones);
+    $huella     = hash('sha256', $textoAviso);
+    $version    = fechaVersionAviso();
+    $sitio      = urlSitio();
+
+    $cuerpo = <<<TXT
+    Registramos que aceptaste el aviso de privacidad de Koaly. Guarda este
+    correo: es tu constancia.
+
+        Folio:            {$c['folio']}
+        Nombre:           {$c['nombre']}
+        Correo:           {$c['email']}
+        Puesto:           {$c['puesto']}
+        Sucursal:         {$c['sucursal']}
+        Fecha y hora:     {$c['fecha']} (hora del centro de México)
+        Versión:          {$version}
+        Dirección IP:     {$c['ip']}
+        Huella del texto: {$huella}
+
+    PARA DEJAR TU CONFIRMACIÓN POR ESCRITO
+    Responde a este correo con la frase: "Acepto el aviso de privacidad".
+    Tu respuesta llega al buzón de la empresa y se guarda junto con esta
+    constancia.
+
+    Si tú no aceptaste este aviso, responde a este correo para avisarnos.
+
+    Puedes consultar el aviso cuando quieras en: {$sitio}privacidad/
+
+    ----------------------------------------------------------------------
+    TEXTO DEL AVISO QUE ACEPTASTE
+    ----------------------------------------------------------------------
+
+
+    TXT;
+
+    $asunto = "Constancia del aviso de privacidad · Folio {$c['folio']}";
+    $enviado = enviarCorreo($c['email'], $asunto, "Hola {$c['nombre']}:\n\n{$cuerpo}{$textoAviso}", $buzon);
+
+    if (filter_var($buzon, FILTER_VALIDATE_EMAIL) && strcasecmp($buzon, $c['email']) !== 0) {
+        $copia = "Copia para el expediente de {$c['nombre']}. "
+            . ($enviado ? 'La constancia se envió a su correo.' : 'ATENCIÓN: no se pudo enviar a su correo.')
+            . "\n\n{$cuerpo}{$textoAviso}";
+        enviarCorreo($buzon, "[Copia] {$asunto} · {$c['nombre']}", $copia, $c['email']);
+    }
+    return $enviado;
 }
 
 /** Fecha de la versión vigente, para mostrarla ("15/10/2026"). */

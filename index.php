@@ -31,6 +31,8 @@ if (isset($_SESSION['id_usuario'])) {
     } elseif ((int) $sesion['debe_cambiar'] === 1) {
         $debeCambiar = true;
     } else {
+        // La sesión pudo quedar con rol 0 si cambió la contraseña por otro lado (recuperación)
+        $_SESSION['id_rol'] = (int) $sesion['id_rol'];
         header('Location: ' . $rutasPorRol[(int) $sesion['id_rol']]);
         exit;
     }

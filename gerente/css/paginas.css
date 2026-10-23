@@ -939,10 +939,30 @@
  *  ============================================================ */
 .catalogo-barra {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 0.75rem; margin-bottom: 1.25rem;
+    gap: 0.75rem; margin-bottom: 0.9rem;
 }
-.catalogo-filtros { margin-bottom: 0; flex: 1 1 320px; justify-content: flex-end; }
-.catalogo-filtros input { max-width: 320px; }
+
+/* Barra de filtros de Productos: la de Ventas (componentes.css), con búsqueda en vez de periodo */
+.filtros--productos .filtros-campo[hidden] { display: none; }
+.filtros-campo--busqueda { flex: 2 1 16rem; }
+.filtros-busqueda {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.2rem 0.35rem; border-radius: 8px;
+}
+.filtros-busqueda svg { flex-shrink: 0; color: var(--acento-texto); }
+.filtros-busqueda input,
+.filtros-busqueda input:focus {
+    flex: 1; min-width: 0; width: 100%;
+    padding: 0; border: 0; border-radius: 0; box-shadow: none; outline: none;
+    background: transparent; font: inherit; font-weight: 600; color: var(--texto);
+}
+.filtros-busqueda input::placeholder { font-weight: 500; color: var(--texto-3); }
+.filtros-busqueda:hover { background: var(--acento-suave); }
+.filtros-busqueda:focus-within { background: var(--acento-suave); box-shadow: 0 0 0 2px var(--acento-borde); }
+.filtros-conteo { margin: 0; font-size: 0.82rem; font-weight: 600; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+/* En Productos el pie siempre está: muestra cuántos productos hay */
+.filtros--productos .filtros-pie { display: flex; }
+.filtros--productos .filtros-limpiar[hidden] { display: none; }
 
 /* .segmentado también acepta <button> (antes solo <a>) */
 .segmentado button {
@@ -1096,8 +1116,6 @@
 
 @media (max-width: 640px) {
     .solicitud-estado { align-items: flex-start; text-align: left; }
-    .catalogo-filtros { justify-content: stretch; }
-    .catalogo-filtros input { max-width: none; }
     .ficha-cuerpo, .ficha-proveedor { grid-template-columns: 1fr; }
     .ficha-imagen { max-width: 220px; }
 }
