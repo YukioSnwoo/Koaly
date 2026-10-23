@@ -451,25 +451,33 @@ function initScrollInfinito() {
 
 
 /* ============================================================
- * ██ PRODUCTOS — Pestañas (grupo), búsqueda, categoría, stock y orden
- * El filtro de stock solo aplica a "En mi sucursal": en las demás
+ * ██ PRODUCTOS — Pestañas (grupo) y barra de filtros: búsqueda,
+ * categoría, existencias y orden.
+ * El filtro de existencias solo aplica a "En mi sucursal": en las demás
  * pestañas se oculta, porque esos productos no tienen stock.
+ * Cada categoría dice cuántos productos tiene en la pestaña actual y se
+ * desactiva si no tiene ninguno (como las facetas de Ventas).
  * Al ordenar por stock, los que no tienen (fuera de la sucursal) van al final.
+ * El estado queda en la URL (?grupo=&buscar=&categoria=&stock=&orden=) para
+ * que recargar, volver atrás o compartir el enlace muestre lo mismo.
  * ============================================================ */
 function initFiltrosProductos() {
     const grid = document.getElementById('gridProductos');
     if (!grid) return;
 
+    const form      = document.getElementById('filtrosProductos');
     const pestanas  = document.querySelectorAll('#pestanasProductos [data-grupo]');
     const buscador  = document.getElementById('buscarProducto');
     const categoria = document.getElementById('filtroCategoria');
     const filtro    = document.getElementById('filtroStock');
     const orden     = document.getElementById('ordenProductos');
+    const campoStock = document.getElementById('campoStock');
+    const conteo    = document.getElementById('conteoProductos');
+    const limpiar   = document.getElementById('limpiarFiltrosProductos');
+    const inGrupo   = form ? form.querySelector('[data-filtro-grupo]') : null;
     const vacio     = document.getElementById('productosSinResultados');
     const marcada   = document.querySelector('#pestanasProductos .is-activo');
     const umbral    = (filtro && parseInt(filtro.dataset.umbral, 10)) || 10;
-    // El select de stock puede estar envuelto por el select personalizado
-    const cajaStock = filtro ? (filtro.closest('.select-custom') || filtro) : null;
     let grupo = marcada ? marcada.dataset.grupo : 'con';
     // El servidor las manda por nombre: ese es el orden base y el desempate
     const tarjetas = Array.from(grid.querySelectorAll('[data-grupo]'));
@@ -482,16 +490,48 @@ function initFiltrosProductos() {
         if (tipo === 'alerta')  return stock < umbral;
         return true;
     };
+    const enPestana = card => grupo === 'todos' || card.dataset.grupo === grupo;
+
+    // Cuántos productos de cada categoría hay en la pestaña actual
+    const contarCategorias = () => {
+        if (!categoria) return;
+        const porCategoria = {};
+        tarjetas.forEach(card => {
+            if (enPestana(card)) porCategoria[card.dataset.categoria] = (porCategoria[card.dataset.categoria] || 0) + 1;
+        });
+        Array.from(categoria.options).forEach(opt => {
+            if (!opt.value) return;
+            const n = porCategoria[opt.value] || 0;
+            opt.dataset.detalle = n === 0 ? tj('prods_ninguno_pestana')
+                : tj(n === 1 ? 'prods_en_pestana_uno' : 'prods_en_pestana', { n });
+            // La elegida no se desactiva aunque quede vacía: así se ve por qué no hay resultados
+            opt.disabled = n === 0 && !opt.selected;
+        });
+    };
+
+    const guardarEnUrl = () => {
+        const params = new URLSearchParams();
+        params.set('grupo', grupo);
+        if (buscador && buscador.value.trim()) params.set('buscar', buscador.value.trim());
+        if (categoria && categoria.value) params.set('categoria', categoria.value);
+        if (filtro && grupo === 'con' && filtro.value !== 'todos') params.set('stock', filtro.value);
+        if (orden && orden.value !== 'nombre') params.set('orden', orden.value);
+        history.replaceState(null, '', location.pathname + '?' + params.toString() + location.hash);
+        if (inGrupo) inGrupo.value = grupo;
+        if (limpiar) limpiar.href = 'productos.php?grupo=' + encodeURIComponent(grupo);
+    };
 
     const aplicar = () => {
         const q    = buscador ? buscador.value.trim().toLowerCase() : '';
         const cat  = categoria ? categoria.value : '';
         const tipo = filtro && grupo === 'con' ? filtro.value : 'todos';
-        if (cajaStock) cajaStock.hidden = grupo !== 'con';
+        if (campoStock) campoStock.hidden = grupo !== 'con';
 
-        let visibles = 0;
-        grid.querySelectorAll('[data-grupo]').forEach(card => {
-            const visible = (grupo === 'todos' || card.dataset.grupo === grupo)
+        let visibles = 0, total = 0;
+        tarjetas.forEach(card => {
+            const deLaPestana = enPestana(card);
+            if (deLaPestana) total++;
+            const visible = deLaPestana
                 && (!cat || card.dataset.categoria === cat)
                 && card.dataset.nombre.includes(q)
                 && (tipo === 'todos' || cumpleStock(parseInt(card.dataset.stock, 10), tipo));
@@ -499,6 +539,15 @@ function initFiltrosProductos() {
             if (visible) visibles++;
         });
         if (vacio) vacio.hidden = visibles > 0;
+
+        const hayFiltros = q !== '' || cat !== '' || tipo !== 'todos';
+        if (conteo) {
+            conteo.textContent = hayFiltros
+                ? tj('prods_mostrando', { n: visibles, total })
+                : tj(total === 1 ? 'prods_total_uno' : 'prods_total', { n: total });
+        }
+        if (limpiar) limpiar.hidden = !hayFiltros;
+        guardarEnUrl();
     };
 
     const ordenar = () => {
@@ -521,6 +570,7 @@ function initFiltrosProductos() {
             });
         }
         grid.append(...lista);
+        guardarEnUrl();
     };
 
     pestanas.forEach(btn => btn.addEventListener('click', () => {
@@ -529,12 +579,28 @@ function initFiltrosProductos() {
             b.classList.toggle('is-activo', b === btn);
             b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
         });
+        contarCategorias();
         aplicar();
     }));
+    // Con JavaScript se filtra al momento: el envío (Enter en la búsqueda) no recarga
+    if (form) form.addEventListener('submit', e => e.preventDefault());
     if (buscador)  buscador.addEventListener('input', aplicar);
-    if (categoria) categoria.addEventListener('change', aplicar);
+    if (categoria) categoria.addEventListener('change', () => { contarCategorias(); aplicar(); });
     if (filtro)    filtro.addEventListener('change', aplicar);
     if (orden)     orden.addEventListener('change', ordenar);
+    if (limpiar)   limpiar.addEventListener('click', e => {
+        e.preventDefault();
+        if (buscador)  buscador.value = '';
+        [categoria, filtro].forEach(sel => {
+            if (!sel) return;
+            sel.selectedIndex = 0;
+            sel.dispatchEvent(new Event('select-custom:sincronizar'));
+        });
+        contarCategorias();
+        aplicar();
+        if (buscador) buscador.focus();
+    });
+    contarCategorias();
     ordenar(); // el orden también puede venir de la URL (?orden=stock_asc)
-    aplicar(); // pestaña, búsqueda y stock pueden venir de la URL (?stock=alerta)
+    aplicar(); // pestaña, búsqueda, categoría y stock pueden venir de la URL (?stock=alerta)
 }

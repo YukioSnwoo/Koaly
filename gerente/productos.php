@@ -271,6 +271,8 @@ $filtroInicial   = in_array($_GET['stock'] ?? '', $filtrosStock, true) ? $_GET['
 $busquedaInicial = trim((string) ($_GET['buscar'] ?? ''));
 $ordenes         = ['nombre', 'stock_asc', 'stock_desc', 'precio_asc', 'precio_desc'];
 $ordenInicial    = in_array($_GET['orden'] ?? '', $ordenes, true) ? $_GET['orden'] : 'nombre';
+$categoriaInicial = (int) ($_GET['categoria'] ?? 0);
+if (!isset(array_column($categorias, 'id_categoria', 'id_categoria')[$categoriaInicial])) $categoriaInicial = 0;
 // Sin productos en la sucursal se abre en "Por agregar" para empezar por ahí
 $grupoInicial = isset($pestanas[$_GET['grupo'] ?? '']) ? $_GET['grupo'] : ($conteos['con'] > 0 ? 'con' : 'agregar');
 
@@ -341,20 +343,39 @@ require __DIR__ . '/header.php';
                 </button>
             <?php endforeach; ?>
         </div>
-        <div class="toolbar catalogo-filtros">
-            <input type="search" id="buscarProducto" placeholder="<?= e(t('exist.buscar')) ?>"
-                   value="<?= e($busquedaInicial) ?>" aria-label="<?= e(t('exist.buscar')) ?>">
-            <select id="filtroCategoria" aria-label="<?= e(t('cat.col_categoria')) ?>">
+    </div>
+
+    <?php
+    // Misma barra que Ventas y Movimientos, pero sin periodo: el catálogo no depende de fechas.
+    // El filtrado es inmediato en el navegador (js/paginas.js) y queda en la URL.
+    // Sin JavaScript, el formulario envía los mismos parámetros que lee la página.
+    ?>
+    <form method="GET" action="productos.php" class="filtros filtros--productos" id="filtrosProductos" role="search">
+        <input type="hidden" name="grupo" value="<?= e($grupoInicial) ?>" data-filtro-grupo>
+        <div class="filtros-campo filtros-campo--busqueda">
+            <label class="filtros-etiqueta" for="buscarProducto"><?= e(t('prods.filtro_buscar')) ?></label>
+            <div class="filtros-busqueda">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="buscarProducto" name="buscar" placeholder="<?= e(t('exist.buscar')) ?>"
+                       value="<?= e($busquedaInicial) ?>" autocomplete="off">
+            </div>
+        </div>
+        <div class="filtros-campo">
+            <label class="filtros-etiqueta" for="filtroCategoria"><?= e(t('prods.filtro_categoria')) ?></label>
+            <select id="filtroCategoria" name="categoria">
                 <option value=""><?= e(t('cat.filtro_categorias')) ?></option>
                 <?php foreach ($categorias as $c): ?>
-                    <option value="<?= (int) $c['id_categoria'] ?>"><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
+                    <option value="<?= (int) $c['id_categoria'] ?>"<?= (int) $c['id_categoria'] === $categoriaInicial ? ' selected' : '' ?>><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
                 <?php endforeach; ?>
             </select>
-            <?php // El stock solo existe en la sucursal: el filtro se oculta en las otras pestañas ?>
-            <select id="filtroStock" aria-label="<?= e(t('exist.filtro_stock')) ?>" data-umbral="<?= STOCK_UMBRAL_BAJO ?>">
+        </div>
+        <?php // El stock solo existe en la sucursal: el campo se oculta en las otras pestañas ?>
+        <div class="filtros-campo" id="campoStock">
+            <label class="filtros-etiqueta" for="filtroStock"><?= e(t('prods.filtro_existencias')) ?></label>
+            <select id="filtroStock" name="stock" data-umbral="<?= STOCK_UMBRAL_BAJO ?>">
                 <?php
                 $opcionesStock = [
-                    'todos'   => t('exist.filtro_todos'),
+                    'todos'   => t('prods.filtro_stock_todos'),
                     'normal'  => t('exist.filtro_normal', ['n' => STOCK_UMBRAL_BAJO]),
                     'bajo'    => t('exist.filtro_bajo', ['n' => STOCK_UMBRAL_BAJO - 1]),
                     'agotado' => t('exist.filtro_agotado'),
@@ -364,14 +385,22 @@ require __DIR__ . '/header.php';
                     <option value="<?= $valor ?>"<?= $valor === $filtroInicial ? ' selected' : '' ?>><?= e($texto) ?></option>
                 <?php endforeach; ?>
             </select>
-            <?php // Sin stock (otras pestañas) quedan al final al ordenar por stock ?>
-            <select id="ordenProductos" aria-label="<?= e(t('prods.ordenar')) ?>">
+        </div>
+        <?php // Sin stock (otras pestañas) quedan al final al ordenar por stock ?>
+        <div class="filtros-campo">
+            <label class="filtros-etiqueta" for="ordenProductos"><?= e(t('prods.filtro_orden')) ?></label>
+            <select id="ordenProductos" name="orden">
                 <?php foreach ($ordenes as $valor): ?>
                     <option value="<?= $valor ?>"<?= $valor === $ordenInicial ? ' selected' : '' ?>><?= e(t('prods.orden_' . $valor)) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-    </div>
+        <div class="filtros-pie">
+            <p class="filtros-conteo" id="conteoProductos" aria-live="polite"></p>
+            <a class="filtros-limpiar" href="productos.php?grupo=<?= e($grupoInicial) ?>" id="limpiarFiltrosProductos" hidden><?= e(t('comun.quitar_filtros')) ?></a>
+            <noscript><button type="submit" class="btn btn-ghost btn-sm"><?= e(t('prods.filtro_aplicar')) ?></button></noscript>
+        </div>
+    </form>
 
     <div class="producto-grid" id="gridProductos">
         <?php foreach ($productos as $p): ?>
