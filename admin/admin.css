@@ -632,6 +632,29 @@ button{font:inherit}
 .ficha-admin__nota .input{width:100%}
 .ficha-admin__acciones{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:18px}
 
+/* Confirmar "Aceptar" o "Aprobar baja" (en lugar del confirm() del navegador) */
+.confirmar-solicitud{width:400px;max-width:100%;padding:1.5rem;background:var(--surface-1);text-align:center}
+/* El PNG trae mucho aire arriba y abajo: se recorta a la cara */
+.confirmar-solicitud__koala{width:112px;height:64px;margin:0 auto 10px;object-fit:cover;object-position:50% 55%}
+.confirmar-solicitud h2{margin:0;font-size:19px}
+.confirmar-solicitud__mensaje{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--texto-2)}
+.confirmar-solicitud__producto{
+  display:flex;align-items:center;gap:12px;margin-top:16px;padding:10px;
+  border:2px solid var(--tinta);border-radius:12px;
+  background:var(--superficie-2);text-align:left;
+}
+.confirmar-solicitud__imagen{
+  flex-shrink:0;display:grid;place-items:center;overflow:hidden;
+  width:56px;height:56px;
+  border:1.5px solid var(--tinta);border-radius:9px;background:var(--marco-imagen);
+}
+.confirmar-solicitud__imagen img{width:100%;height:100%;object-fit:contain;filter:var(--filtro-imagen)}
+.confirmar-solicitud__imagen .solicitud-ficha__iniciales{font-size:18px}
+.confirmar-solicitud__texto{display:flex;flex-direction:column;gap:2px;min-width:0}
+.confirmar-solicitud__texto strong{font-size:15px;overflow-wrap:anywhere}
+.confirmar-solicitud__texto span{font-size:12px;color:var(--text-secondary)}
+.confirmar-solicitud__acciones{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+
 /* ── Modales (abiertos con openModal) ── */
 .modal-backdrop{
   padding:1rem;

@@ -232,6 +232,32 @@ button { font: inherit; }
 }
 .form-group textarea { resize: vertical; min-height: 70px; }
 
+/* Campo sin llenar o inválido: core.js cambia la burbuja del navegador por
+   este aviso morado. El selector es largo para ganarle a la piel de koaly.css. */
+.form-group.campo-invalido input:not([type="checkbox"]):not([type="radio"]),
+.form-group.campo-invalido select,
+.form-group.campo-invalido textarea,
+.form-group.campo-invalido .select-custom-trigger {
+    border-color: var(--acento);
+    background: var(--acento-suave);
+}
+.campo-aviso {
+    display: flex; align-items: center; gap: 0.4rem;
+    margin-top: 0.4rem;
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--acento-texto);
+    animation: fadeInUp 0.15s ease-out both;
+}
+.campo-aviso::before {
+    content: '!';
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    width: 1.1rem; height: 1.1rem;
+    border-radius: 50%;
+    background: var(--acento); color: #fff;
+    font-size: 0.7rem; font-weight: 800;
+}
+
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
 .imagen-preview { margin-top: 0.6rem; display: flex; align-items: center; gap: 0.75rem; }

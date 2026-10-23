@@ -209,6 +209,60 @@ document.addEventListener('submit', async (e) => {
 
 
 /* ============================================================
+ * Avisos de campos sin llenar o con un dato inválido.
+ * En lugar de la burbuja gris del navegador, el aviso sale en
+ * morado debajo del campo (.campo-aviso). El navegador sigue
+ * validando (required, min, pattern, setCustomValidity…); aquí
+ * solo cambia cómo se muestra. Fuera de un .form-group se deja
+ * la burbuja normal.
+ * ============================================================ */
+let avisoCampoEnfocado = false;
+
+function marcarCampoInvalido(campo, grupo) {
+    grupo.classList.add('campo-invalido');
+    let aviso = grupo.querySelector('.campo-aviso');
+    if (!aviso) {
+        aviso = document.createElement('p');
+        aviso.className = 'campo-aviso';
+        aviso.setAttribute('role', 'alert');
+        grupo.appendChild(aviso);
+    }
+    aviso.textContent = campo.validity.valueMissing ? tj('campo_obligatorio') : campo.validationMessage;
+}
+
+// Quita el aviso de los campos que ya quedaron bien (un campo puede arreglar a otro: teléfono o correo)
+function limpiarAvisosCampos(form, todos = false) {
+    form.querySelectorAll('.form-group.campo-invalido').forEach(grupo => {
+        const campos = grupo.querySelectorAll('input, select, textarea');
+        if (todos || [...campos].every(c => !c.willValidate || c.validity.valid)) {
+            grupo.classList.remove('campo-invalido');
+            grupo.querySelector('.campo-aviso')?.remove();
+        }
+    });
+}
+
+// "invalid" no burbujea: se escucha en captura
+document.addEventListener('invalid', (e) => {
+    const campo = e.target;
+    const grupo = campo.closest('.form-group');
+    if (!grupo) return;
+    e.preventDefault();
+    marcarCampoInvalido(campo, grupo);
+
+    // Al enviar llegan juntos los "invalid" de todos los campos: el foco va solo al primero
+    if (avisoCampoEnfocado) return;
+    avisoCampoEnfocado = true;
+    setTimeout(() => { avisoCampoEnfocado = false; });
+    (campo.closest('.select-custom')?.querySelector('.select-custom-trigger') || campo).focus();
+}, true);
+
+['input', 'change'].forEach(tipo => document.addEventListener(tipo, (e) => {
+    if (e.target.form) limpiarAvisosCampos(e.target.form);
+}));
+document.addEventListener('reset', (e) => limpiarAvisosCampos(e.target, true));
+
+
+/* ============================================================
  * Barra lateral en celular: el botón ☰ la abre encima del contenido.
  * Se cierra con el fondo oscuro, con Esc, al elegir una página o
  * al agrandar la ventana (en escritorio siempre está visible).

@@ -548,6 +548,7 @@ return [
     'js.estado_ayuda_baja' => 'No podrá iniciar sesión y su caja quedará sin asignar e inactiva.',
     'js.nueva_caja' => 'Nueva caja',
     'js.editar_caja' => 'Editar caja',
+    'js.campo_obligatorio' => 'Este campo es obligatorio.',
     'js.sol_contacto' => 'Escribe al menos un contacto: teléfono o correo.',
     'js.sol_imagen_grande' => 'La imagen no debe pasar de 5 MB.',
     'js.reasignar_aviso' => 'El cajero ya está asignado a la caja {caja}. Al guardar, se moverá a esta caja y la anterior quedará inactiva.',
