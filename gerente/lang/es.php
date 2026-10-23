@@ -1,11 +1,18 @@
 <?php
 // Textos del panel del gerente — Español.
-// es.php, en.php y fr.php deben tener exactamente las mismas claves.
+// es.php y en.php deben tener exactamente las mismas claves.
 // Plurales: [singular, plural]. Variables: {nombre}.
 return [
 
     // panel
     'panel.titulo' => 'Panel de gerencia',
+
+    // nav (barra lateral)
+    'nav.productos' => 'Productos',
+    'nav.movimientos' => 'Movimientos',
+    'nav.cajeros' => 'Cajeros',
+    'nav.cajas' => 'Cajas',
+    'nav.ventas' => 'Ventas',
 
     // menu (barra lateral en celular)
     'menu.abrir' => 'Abrir menú',
@@ -62,9 +69,11 @@ return [
     'metodo_pago.Varios' => 'Varios (efectivo y tarjeta)',
 
     // categoria (valores de la tabla Categorias)
+    'categoria.Abarrotes' => 'Abarrotes',
     'categoria.Bebidas' => 'Bebidas',
     'categoria.Electronica' => 'Electrónica',
     'categoria.Hogar' => 'Hogar',
+    'categoria.Cuidado Personal' => 'Cuidado Personal',
     'categoria.Ropa' => 'Ropa',
     'categoria.Electrónica' => 'Electrónica',
     'categoria.Botanas y dulces' => 'Botanas y dulces',
@@ -435,6 +444,7 @@ return [
     'cajas.titulo' => 'Cajas',
     'cajas.caja_n' => 'Caja {n}',
     'cajas.resumen' => '{activas} activas de {total} registradas',
+    'cajas.vacio' => 'Aún no hay cajas registradas en su sucursal. Use «+ {nueva}» para agregar la primera.',
     'cajas.nueva' => 'Nueva caja',
     'cajas.creada' => 'Caja registrada.',
     'cajas.actualizada' => 'Caja actualizada.',

@@ -372,7 +372,7 @@ require __DIR__ . '/header.php';
 <?php if (empty($cajas)): ?>
     <div class="panel">
         <div class="empty-state">
-            Aún no hay cajas registradas en tu sucursal. Usa "+ Nueva caja" para agregar la primera.
+            <?= e(t('cajas.vacio', ['nueva' => t('cajas.nueva')])) ?>
         </div>
     </div>
 <?php else: ?>

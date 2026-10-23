@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if (!csrfValido()) {
-            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
+            throw new RuntimeException(t('error.formulario_expirado'));
         }
 
         $nombre = trim($_POST['nombre'] ?? '');
@@ -27,11 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'crear') {
             if ($nombre === '' || $direccion === '') {
-                throw new RuntimeException('Nombre y dirección son obligatorios.');
+                throw new RuntimeException(t('suc.error_obligatorios'));
             }
-            rechazarSiProfano($nombre);
+            try {
+                rechazarSiProfano($nombre);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.profano'));
+            }
             if ($idGerenteNuevo > 0 && !gerenteAsignable($pdo, $idGerenteNuevo)) {
-                throw new RuntimeException('El gerente seleccionado no está disponible.');
+                throw new RuntimeException(t('error.gerente_no_disponible'));
             }
 
             $pdo->beginTransaction();
@@ -69,20 +73,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $actual = $stmt->fetch();
 
             if (!$actual) {
-                throw new RuntimeException('La sucursal no existe.');
+                throw new RuntimeException(t('suc.error_no_existe'));
             }
             if ($nombre === '' || $direccion === '') {
-                throw new RuntimeException('Nombre y dirección son obligatorios.');
+                throw new RuntimeException(t('suc.error_obligatorios'));
             }
             if ($idGerenteNuevo > 0 && !gerenteAsignable($pdo, $idGerenteNuevo, $idSucursal)) {
-                throw new RuntimeException('El gerente seleccionado no está disponible.');
+                throw new RuntimeException(t('error.gerente_no_disponible'));
             }
 
             $idGerenteActual = (int) ($actual['id_gerente'] ?? 0);
 
             if ($idGerenteNuevo === 0) {
                 if ($actual['estado'] !== SUCURSAL_ACTIVA && $estadoSolicitado === SUCURSAL_ACTIVA) {
-                    throw new RuntimeException('Asigna un gerente para poder activar la sucursal.');
+                    throw new RuntimeException(t('suc.error_activar_sin_gerente'));
                 }
                 $estadoFinal = SUCURSAL_INACTIVA;
             } elseif ($idGerenteNuevo !== $idGerenteActual) {
@@ -123,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
         }
         error_log('sucursales.php: ' . $e->getMessage());
-        $error = 'No se pudo guardar. Inténtalo de nuevo.';
+        $error = t('error.guardar');
     }
 }
 
@@ -170,10 +174,10 @@ if ($sucursalSeleccionada) {
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['sucursales']) ?></h1>
-        <p>Administra las sedes de la empresa</p>
+        <h1><?= e(t('nav.sucursales')) ?></h1>
+        <p><?= e(t('suc.subtitulo')) ?></p>
     </div>
-    <button class="btn btn--primary" onclick="openModal('modalSucursal')"><i class="ti ti-plus"></i>Nueva sucursal</button>
+    <button class="btn btn--primary" onclick="openModal('modalSucursal')"><i class="ti ti-plus"></i><?= e(t('suc.nueva')) ?></button>
 </div>
 
 <?php if ($error !== ''): ?>
@@ -183,33 +187,33 @@ if ($sucursalSeleccionada) {
 <?php if ($sucursalSeleccionada): ?>
     <div class="page-header" style="margin-top:1rem">
         <div>
-            <h2 style="font-size:16px;font-weight:500">Detalle de <?= htmlspecialchars($sucursalSeleccionada['nombre']) ?></h2>
-            <p>Los indicadores de esta ficha son de solo lectura.</p>
+            <h2 style="font-size:16px;font-weight:500"><?= e(t('suc.detalle', ['nombre' => $sucursalSeleccionada['nombre']])) ?></h2>
+            <p><?= e(t('suc.detalle_ayuda')) ?></p>
         </div>
-        <a href="sucursales.php" class="btn btn--ghost btn--sm">Volver a sucursales</a>
+        <a href="sucursales.php" class="btn btn--ghost btn--sm"><?= e(t('suc.volver')) ?></a>
     </div>
 
     <div class="stats-grid stats-grid--3">
         <div class="stat-card">
-            <p class="stat-card__label">Inventario propio</p>
-            <p class="stat-card__value"><?= number_format((int) $sucursalSeleccionada['inventario_total']) ?> unidades</p>
+            <p class="stat-card__label"><?= e(t('suc.inventario')) ?></p>
+            <p class="stat-card__value"><?= e(tn('comun.n_unidades', (int) $sucursalSeleccionada['inventario_total'])) ?></p>
         </div>
         <div class="stat-card">
-            <p class="stat-card__label">Cajeros asignados</p>
+            <p class="stat-card__label"><?= e(t('suc.cajeros')) ?></p>
             <p class="stat-card__value"><?= (int) $sucursalSeleccionada['num_cajeros'] ?></p>
         </div>
         <div class="stat-card">
-            <p class="stat-card__label">Ventas totales</p>
+            <p class="stat-card__label"><?= e(t('suc.ventas_totales')) ?></p>
             <p class="stat-card__value">$<?= number_format((float) $sucursalSeleccionada['ventas_totales'], 2, '.', ',') ?></p>
         </div>
     </div>
 
     <div class="table-wrap" style="margin-bottom:1rem">
         <table class="table">
-            <thead><tr><th>Cajero asignado</th></tr></thead>
+            <thead><tr><th><?= e(t('suc.col_cajero')) ?></th></tr></thead>
             <tbody>
                 <?php if (!$cajeros): ?>
-                    <tr><td style="color:var(--text-muted)">No hay cajeros asignados.</td></tr>
+                    <tr><td style="color:var(--text-muted)"><?= e(t('suc.sin_cajeros')) ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($cajeros as $cajero): ?>
                         <tr><td><?= htmlspecialchars($cajero['nombre']) ?></td></tr>
@@ -224,69 +228,69 @@ if ($sucursalSeleccionada) {
             <input type="hidden" name="action" value="editar">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_sucursal" value="<?= $sucursalSeleccionada['id_sucursal'] ?>">
-            <h3 style="font-size:15px;font-weight:500;margin-bottom:1rem">Editar sucursal</h3>
+            <h3 style="font-size:15px;font-weight:500;margin-bottom:1rem"><?= e(t('suc.editar')) ?></h3>
             <div class="grid-2">
-                <label>Nombre<input type="text" name="nombre" class="input" value="<?= htmlspecialchars($sucursalSeleccionada['nombre']) ?>" required></label>
-                <label>Dirección<input type="text" name="direccion" class="input" value="<?= htmlspecialchars($sucursalSeleccionada['direccion'] ?? '') ?>" required></label>
-                <label>Teléfono<input type="tel" name="telefono" class="input" value="<?= htmlspecialchars($sucursalSeleccionada['telefono'] ?? '') ?>"></label>
-                <label>Estado
+                <label><?= e(t('comun.nombre')) ?><input type="text" name="nombre" class="input" value="<?= htmlspecialchars($sucursalSeleccionada['nombre']) ?>" required></label>
+                <label><?= e(t('comun.direccion')) ?><input type="text" name="direccion" class="input" value="<?= htmlspecialchars($sucursalSeleccionada['direccion'] ?? '') ?>" required></label>
+                <label><?= e(t('comun.telefono')) ?><input type="tel" name="telefono" class="input" value="<?= htmlspecialchars($sucursalSeleccionada['telefono'] ?? '') ?>"></label>
+                <label><?= e(t('comun.estado')) ?>
                     <select name="estado" class="select">
-                        <option value="Activa" <?= $sucursalSeleccionada['estado'] === 'Activa' ? 'selected' : '' ?>>Activa</option>
-                        <option value="Inactiva" <?= $sucursalSeleccionada['estado'] !== 'Activa' ? 'selected' : '' ?>>Inactiva</option>
+                        <option value="Activa" <?= $sucursalSeleccionada['estado'] === 'Activa' ? 'selected' : '' ?>><?= e(t('estado_sucursal.Activa')) ?></option>
+                        <option value="Inactiva" <?= $sucursalSeleccionada['estado'] !== 'Activa' ? 'selected' : '' ?>><?= e(t('estado_sucursal.Inactiva')) ?></option>
                     </select>
                 </label>
-                <label>Gerente responsable
+                <label><?= e(t('suc.gerente_responsable')) ?>
                     <select name="id_gerente" class="select">
-                        <option value="">Sin asignar</option>
+                        <option value=""><?= e(t('comun.sin_asignar')) ?></option>
                         <?php foreach ($gerentes as $gerente): ?>
                             <option value="<?= $gerente['id_usuario'] ?>" <?= (int) $sucursalSeleccionada['id_gerente'] === (int) $gerente['id_usuario'] ? 'selected' : '' ?>><?= htmlspecialchars($gerente['nombre']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
             </div>
-            <p style="color:var(--text-muted);font-size:13px;margin-top:8px">Una sucursal solo puede estar activa si tiene un gerente asignado. Si la dejas sin gerente, pasa a Inactiva.</p>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:8px"><?= e(t('suc.regla_gerente')) ?></p>
             <div style="display:flex;justify-content:flex-end;margin-top:1rem">
-                <button type="submit" class="btn btn--primary">Guardar cambios</button>
+                <button type="submit" class="btn btn--primary"><?= e(t('suc.guardar_cambios')) ?></button>
             </div>
         </form>
     </div>
 <?php endif; ?>
 
 <div class="filters" style="margin-top:1rem">
-    <input type="text" class="input" placeholder="Buscar sucursal" id="searchSucursal">
+    <input type="text" class="input" placeholder="<?= e(t('suc.buscar')) ?>" id="searchSucursal">
     <select class="select" id="filterEstado">
-        <option value="">Todos los estados</option>
-        <option value="Activa">Activa</option>
-        <option value="Inactiva">Inactiva</option>
+        <option value=""><?= e(t('suc.todos_estados')) ?></option>
+        <option value="Activa"><?= e(t('estado_sucursal.Activa')) ?></option>
+        <option value="Inactiva"><?= e(t('estado_sucursal.Inactiva')) ?></option>
     </select>
 </div>
 
 <div class="lista" id="tblSucursales">
     <?php if (empty($sucursales)): ?>
-        <p style="color:var(--text-muted)">No hay sucursales registradas.</p>
+        <p style="color:var(--text-muted)"><?= e(t('suc.vacio')) ?></p>
     <?php else: ?>
         <?php foreach ($sucursales as $s): ?>
             <?php
             $estadoVisual = $s['estado'] === 'Activa' ? 'Activa' : 'Inactiva';
             $sinGerente = !$s['gerente_nombre'];
             // Franja y etiqueta: verde activa, ámbar sin gerente, roja inactiva con gerente.
-            if ($estadoVisual === 'Activa') { $clase = ''; $badge = 'badge--success'; $texto = 'Activa'; }
-            elseif ($sinGerente)            { $clase = ' suc--warn'; $badge = 'badge--warning'; $texto = 'Sin gerente'; }
-            else                            { $clase = ' suc--bad'; $badge = 'badge--danger'; $texto = 'Inactiva'; }
+            if ($estadoVisual === 'Activa') { $clase = ''; $badge = 'badge--success'; $texto = t('estado_sucursal.Activa'); }
+            elseif ($sinGerente)            { $clase = ' suc--warn'; $badge = 'badge--warning'; $texto = t('suc.sin_gerente'); }
+            else                            { $clase = ' suc--bad'; $badge = 'badge--danger'; $texto = t('estado_sucursal.Inactiva'); }
             ?>
             <div class="suc<?= $clase ?>" data-nombre="<?= htmlspecialchars(strtolower($s['nombre'])) ?>" data-estado="<?= $estadoVisual ?>">
                 <span class="suc__tab"></span>
                 <div class="suc__nombre">
                     <b><?= htmlspecialchars($s['nombre']) ?></b>
-                    <small><?= htmlspecialchars($s['direccion'] ?? 'Sin dirección') ?> · <?= (int) $s['num_cajeros'] ?> cajero<?= $s['num_cajeros'] != 1 ? 's' : '' ?></small>
+                    <small><?= htmlspecialchars($s['direccion'] ?? t('suc.sin_direccion')) ?> · <?= e(tn('suc.n_cajeros', (int) $s['num_cajeros'])) ?></small>
                 </div>
                 <div class="suc__gerente">
-                    Gerente
-                    <b><?= $s['gerente_nombre'] ? htmlspecialchars($s['gerente_nombre']) : 'Sin asignar' ?></b>
+                    <?= e(t('comun.gerente')) ?>
+                    <b><?= e($s['gerente_nombre'] ?: t('comun.sin_asignar')) ?></b>
                 </div>
-                <span class="badge <?= $badge ?>"><?= $texto ?></span>
+                <span class="badge <?= $badge ?>"><?= e($texto) ?></span>
                 <div class="suc__acc">
-                    <a href="sucursales.php?id=<?= $s['id_sucursal'] ?>" class="btn btn--sm<?= $sinGerente ? ' btn--primary' : '' ?>"><?= $sinGerente ? 'Asignar gerente' : 'Ver y editar' ?></a>
+                    <a href="sucursales.php?id=<?= $s['id_sucursal'] ?>" class="btn btn--sm<?= $sinGerente ? ' btn--primary' : '' ?>"><?= e(t($sinGerente ? 'suc.asignar_gerente' : 'suc.ver_editar')) ?></a>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -296,23 +300,23 @@ if ($sucursalSeleccionada) {
 <!-- Modal: Nueva sucursal -->
 <div id="modalSucursal" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
-        <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem">Nueva sucursal</h2>
+        <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem"><?= e(t('suc.nueva')) ?></h2>
         <form method="POST" action="sucursales.php">
             <input type="hidden" name="action" value="crear">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-            <label style="display:block;margin-bottom:10px">Nombre<input type="text" name="nombre" class="input" style="width:100%" required></label>
-            <label style="display:block;margin-bottom:10px">Dirección<input type="text" name="direccion" class="input" style="width:100%" required></label>
-            <label style="display:block;margin-bottom:10px">Teléfono<input type="tel" name="telefono" class="input" style="width:100%"></label>
-            <label style="display:block;margin-bottom:1rem">Gerente
+            <label style="display:block;margin-bottom:10px"><?= e(t('comun.nombre')) ?><input type="text" name="nombre" class="input" style="width:100%" required></label>
+            <label style="display:block;margin-bottom:10px"><?= e(t('comun.direccion')) ?><input type="text" name="direccion" class="input" style="width:100%" required></label>
+            <label style="display:block;margin-bottom:10px"><?= e(t('comun.telefono')) ?><input type="tel" name="telefono" class="input" style="width:100%"></label>
+            <label style="display:block;margin-bottom:1rem"><?= e(t('comun.gerente')) ?>
                 <select name="id_gerente" class="select" style="width:100%">
-                    <option value="">Sin asignar</option>
+                    <option value=""><?= e(t('comun.sin_asignar')) ?></option>
                     <?php foreach ($gerentes as $g): ?><option value="<?= $g['id_usuario'] ?>"><?= htmlspecialchars($g['nombre']) ?></option><?php endforeach; ?>
                 </select>
-                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px">Sin gerente, la sucursal queda Inactiva hasta que se asigne uno.</span>
+                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px"><?= e(t('suc.nueva_sin_gerente')) ?></span>
             </label>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button type="button" class="btn btn--ghost" onclick="closeModal('modalSucursal')">Cancelar</button>
-                <button type="submit" class="btn btn--primary">Guardar</button>
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalSucursal')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--primary"><?= e(t('comun.guardar')) ?></button>
             </div>
         </form>
     </div>

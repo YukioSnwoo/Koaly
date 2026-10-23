@@ -53,19 +53,19 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['reportes']) ?></h1>
-        <p>Comparativo de desempeño entre sucursales</p>
+        <h1><?= e(t('nav.reportes')) ?></h1>
+        <p><?= e(t('rep.subtitulo')) ?></p>
     </div>
     <form method="GET" style="display:flex;gap:8px;align-items:center">
         <select name="periodo" class="select" onchange="this.form.submit()">
-            <option value="7" <?= $periodo === '7' ? 'selected' : '' ?>>Últimos 7 días</option>
-            <option value="30" <?= $periodo === '30' ? 'selected' : '' ?>>Últimos 30 días</option>
-            <option value="mes" <?= $periodo === 'mes' ? 'selected' : '' ?>>Este mes</option>
+            <option value="7" <?= $periodo === '7' ? 'selected' : '' ?>><?= e(t('rep.ultimos_7')) ?></option>
+            <option value="30" <?= $periodo === '30' ? 'selected' : '' ?>><?= e(t('rep.ultimos_30')) ?></option>
+            <option value="mes" <?= $periodo === 'mes' ? 'selected' : '' ?>><?= e(t('rep.este_mes')) ?></option>
         </select>
     </form>
 </div>
 
-<p class="section-title" style="margin-top:1.25rem">Ventas por sucursal</p>
+<p class="section-title" style="margin-top:1.25rem"><?= e(t('rep.ventas_sucursal')) ?></p>
 <div class="chart-bars">
     <?php foreach ($ventasSucursal as $vs):
         $altura = $maxVentas > 0 ? round(($vs['total_ventas'] / $maxVentas) * 110) : 0;
@@ -80,17 +80,17 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
 
 <div class="grid-2">
     <div>
-        <p class="section-title">Productos más vendidos</p>
+        <p class="section-title"><?= e(t('rep.mas_vendidos')) ?></p>
         <div class="table-wrap">
             <table class="table table--compact">
                 <tbody>
                     <?php if (empty($productosTop)): ?>
-                        <tr><td style="color:var(--text-muted);text-align:center">Sin datos</td></tr>
+                        <tr><td style="color:var(--text-muted);text-align:center"><?= e(t('comun.sin_datos')) ?></td></tr>
                     <?php else: ?>
                         <?php foreach ($productosTop as $p): ?>
                             <tr>
                                 <td><?= htmlspecialchars($p['nombre']) ?></td>
-                                <td style="text-align:right;color:var(--text-secondary)"><?= $p['total_unidades'] ?> uds</td>
+                                <td style="text-align:right;color:var(--text-secondary)"><?= e(tn('rep.n_unidades', (int) $p['total_unidades'])) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -99,18 +99,18 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
         </div>
     </div>
     <div>
-        <p class="section-title">Métodos de pago</p>
+        <p class="section-title"><?= e(t('rep.metodos_pago')) ?></p>
         <div class="table-wrap">
             <table class="table table--compact">
                 <tbody>
                     <?php if (empty($metodosPago)): ?>
-                        <tr><td style="color:var(--text-muted);text-align:center">Sin datos</td></tr>
+                        <tr><td style="color:var(--text-muted);text-align:center"><?= e(t('comun.sin_datos')) ?></td></tr>
                     <?php else: ?>
                         <?php foreach ($metodosPago as $mp):
                             $pct = $totalVentasMetodo > 0 ? round(($mp['num_ventas'] / $totalVentasMetodo) * 100) : 0;
                         ?>
                             <tr>
-                                <td><?= htmlspecialchars($mp['nombre_metodo']) ?></td>
+                                <td><?= e(tValor('metodo_pago', $mp['nombre_metodo'])) ?></td>
                                 <td style="text-align:right;color:var(--text-secondary)"><?= $pct ?>%</td>
                             </tr>
                         <?php endforeach; ?>
