@@ -90,6 +90,16 @@ window.closeModal = (id) => {
   if (m) m.style.display = 'none';
 };
 
+/* ── Ver / ocultar contraseña ──
+   <div class="campo-contrasena"><input type="password"><button class="ver-contrasena"></div> */
+document.addEventListener('click', (e) => {
+  const boton = e.target.closest('.ver-contrasena');
+  if (!boton) return;
+  const visible = boton.getAttribute('aria-pressed') !== 'true';
+  boton.previousElementSibling.type = visible ? 'text' : 'password';
+  boton.setAttribute('aria-pressed', visible ? 'true' : 'false');
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   document.querySelectorAll('.modal-backdrop').forEach(m => {

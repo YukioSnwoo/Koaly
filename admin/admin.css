@@ -327,6 +327,20 @@ button{font:inherit}
 .btn--danger{background:var(--peligro);color:#fff}
 .btn--danger:hover:not(:disabled){background:var(--peligro-hover)}
 .btn--sm{padding:4px 10px;font-size:12px}
+
+/* ── Contraseña con ojo para verla (admin.js) ── */
+.campo-contrasena{position:relative}
+.campo-contrasena .input{padding-right:40px}
+.ver-contrasena{
+  position:absolute;top:50%;right:5px;transform:translateY(-50%);
+  display:grid;place-items:center;width:30px;height:30px;padding:0;
+  border:none;border-radius:8px;background:transparent;color:var(--acento-texto);cursor:pointer;
+}
+.ver-contrasena:hover{background:var(--acento-suave)}
+.ver-contrasena i{font-size:18px}
+.ver-contrasena .ti-eye-off,
+.ver-contrasena[aria-pressed="true"] .ti-eye{display:none}
+.ver-contrasena[aria-pressed="true"] .ti-eye-off{display:block}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 
 /* ── Inputs & Selects ── */

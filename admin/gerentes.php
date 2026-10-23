@@ -328,7 +328,12 @@ $todasSucursales = $pdo->query("
             </div>
             <div style="margin-bottom:10px">
                 <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.password')) ?></label>
-                <input type="password" name="password" class="input" style="width:100%" placeholder="<?= e(t('ger.password_ej')) ?>" minlength="8" required>
+                <div class="campo-contrasena">
+                    <input type="password" name="password" class="input" style="width:100%" placeholder="<?= e(t('ger.password_ej')) ?>" minlength="8" required>
+                    <button type="button" class="ver-contrasena" aria-pressed="false" aria-label="<?= e(t('comun.ver_contrasena')) ?>" title="<?= e(t('comun.ver_contrasena')) ?>">
+                        <i class="ti ti-eye" aria-hidden="true"></i><i class="ti ti-eye-off" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
             <div style="margin-bottom:1rem">
                 <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('comun.sucursal')) ?></label>

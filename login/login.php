@@ -5,12 +5,14 @@
  *   change_password      cambio obligatorio del primer ingreso (requiere sesión)
  *   send_recover_code    envía un código de 6 dígitos al correo
  *   reset_password       correo + código + contraseña nueva
- * Responde {success, message, ...}. Las tablas están en sql/004_login.sql
- * y sql/010_aviso_privacidad.sql.
+ * Responde {success, message, ...}; message va en el idioma elegido (login/i18n.php).
+ * Las tablas están en sql/004_login.sql y sql/010_aviso_privacidad.sql.
  */
 session_start();
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
+
+require_once __DIR__ . '/i18n.php';
 
 // Recuperación de contraseña
 const CODIGO_MINUTOS_VALIDEZ = 15;
@@ -37,7 +39,7 @@ function error(int $estado, string $mensaje): never
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    error(405, 'Método no permitido');
+    error(405, t('srv.metodo'));
 }
 
 // Misma conexión que usan admin y gerente (admin/database.php no se sube a git)
@@ -45,14 +47,14 @@ try {
     require_once __DIR__ . '/../admin/database.php';
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    error(500, 'Error de conexión a la base de datos');
+    error(500, t('srv.bd'));
 }
 require_once __DIR__ . '/correo.php';
 require_once __DIR__ . '/../privacidad/aviso.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 if (!is_array($data)) {
-    error(400, 'Solicitud inválida');
+    error(400, t('srv.solicitud'));
 }
 
 $action = (string) ($data['action'] ?? 'login');
@@ -67,6 +69,12 @@ function buscarUsuarioPorCorreo(PDO $pdo, string $email): ?array
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
+/** Motivo de passwordIsTooSimple() (viene en español); en otro idioma, la regla completa. */
+function motivoContrasena(string $motivo): string
+{
+    return $GLOBALS['LOGIN_IDIOMA'] === 'es' ? $motivo : t('srv.contrasena_debil');
+}
+
 function guardarContrasena(PDO $pdo, int $idUsuario, string $password): void
 {
     $pdo->prepare('UPDATE Usuarios SET contrasena_hash = :hash, debe_cambiar = 0 WHERE id_usuario = :id')
@@ -76,13 +84,13 @@ function guardarContrasena(PDO $pdo, int $idUsuario, string $password): void
 // ========== ENVIAR CÓDIGO DE RECUPERACIÓN ==========
 if ($action === 'send_recover_code') {
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        error(400, 'Ingresa un correo válido');
+        error(400, t('srv.correo_valido'));
     }
 
     // La misma respuesta exista o no el correo, para no revelar qué cuentas hay
     $respuestaGenerica = [
         'success' => true,
-        'message' => 'Si el correo está registrado, recibirás un código en unos minutos.'
+        'message' => t('srv.codigo_enviado')
     ];
 
     $usuario = buscarUsuarioPorCorreo($pdo, $email);
@@ -117,17 +125,12 @@ if ($action === 'send_recover_code') {
     ]);
     $idReset = $pdo->lastInsertId();
 
-    $cuerpo = "Hola {$usuario['nombre']},\n\n"
-            . "Tu código para restablecer la contraseña de Koaly es:\n\n"
-            . "    {$codigo}\n\n"
-            . 'Es válido por ' . CODIGO_MINUTOS_VALIDEZ . " minutos.\n"
-            . "Si no lo pediste, ignora este mensaje: tu contraseña no cambiará.\n\n"
-            . "— Equipo Koaly";
+    $cuerpo = t('correo.cuerpo', ['nombre' => $usuario['nombre'], 'codigo' => $codigo, 'minutos' => CODIGO_MINUTOS_VALIDEZ]);
 
     // El código nunca se devuelve en la respuesta: si el correo no sale, no hay recuperación
-    if (!enviarCorreo($usuario['email'], 'Código de recuperación - Koaly', $cuerpo)) {
+    if (!enviarCorreo($usuario['email'], t('correo.asunto'), $cuerpo)) {
         $pdo->prepare('DELETE FROM password_resets WHERE id = :id')->execute([':id' => $idReset]);
-        error(500, 'No se pudo enviar el correo. Intenta más tarde o contacta al administrador.');
+        error(500, t('srv.correo_no_salio'));
     }
 
     responder(200, $respuestaGenerica);
@@ -139,7 +142,7 @@ if ($action === 'reset_password') {
     $password = (string) ($data['password'] ?? '');
 
     if ($email === '' || $codigo === '' || $password === '') {
-        error(400, 'Completa todos los campos');
+        error(400, t('srv.completa'));
     }
 
     // Código vigente más reciente de ese correo
@@ -152,7 +155,7 @@ if ($action === 'reset_password') {
     $reset = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$reset) {
-        error(400, 'Código inválido o expirado');
+        error(400, t('srv.codigo_invalido'));
     }
 
     if (!password_verify($codigo, $reset['codigo_hash'])) {
@@ -163,18 +166,18 @@ if ($action === 'reset_password') {
              SET usado = IF(intentos + 1 >= ' . CODIGO_MAX_INTENTOS . ', 1, usado), intentos = intentos + 1
              WHERE id = :id'
         )->execute([':id' => $reset['id']]);
-        error(400, 'Código inválido o expirado');
+        error(400, t('srv.codigo_invalido'));
     }
 
     $usuario = buscarUsuarioPorCorreo($pdo, $email);
     if (!$usuario) {
-        error(400, 'Código inválido o expirado');
+        error(400, t('srv.codigo_invalido'));
     }
 
     // Después de validar el código: una contraseña débil no consume el código
     $errorPass = passwordIsTooSimple($password, $email, $usuario['nombre']);
     if ($errorPass !== null) {
-        error(400, $errorPass);
+        error(400, motivoContrasena($errorPass));
     }
 
     $pdo->beginTransaction();
@@ -188,12 +191,12 @@ if ($action === 'reset_password') {
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error(500, 'No se pudo actualizar la contraseña');
+        error(500, t('srv.no_actualizar'));
     }
 
     responder(200, [
         'success' => true,
-        'message' => 'Contraseña restablecida. Ya puedes iniciar sesión.'
+        'message' => t('srv.restablecida')
     ]);
 }
 
@@ -202,7 +205,7 @@ if ($action === 'reset_password') {
 // de otra cuenta sabiendo su correo. Quien no tenga sesión usa la recuperación.
 if ($action === 'change_password') {
     if (!isset($_SESSION['id_usuario'])) {
-        error(401, 'Sesión no válida. Vuelve a iniciar sesión.');
+        error(401, t('srv.sesion'));
     }
 
     $password = (string) ($data['password'] ?? '');
@@ -212,19 +215,19 @@ if ($action === 'change_password') {
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$usuario) {
-        error(404, 'Usuario no encontrado');
+        error(404, t('srv.usuario'));
     }
 
     $errorPass = passwordIsTooSimple($password, $usuario['email'], $usuario['nombre']);
     if ($errorPass !== null) {
-        error(400, $errorPass);
+        error(400, motivoContrasena($errorPass));
     }
 
     guardarContrasena($pdo, (int) $usuario['id_usuario'], $password);
 
     responder(200, [
         'success' => true,
-        'message' => 'Contraseña actualizada correctamente',
+        'message' => t('srv.actualizada'),
         'destino' => RUTAS_POR_ROL[(int) $usuario['id_rol']] ?? 'index.php'
     ]);
 }
@@ -233,7 +236,7 @@ if ($action === 'change_password') {
 $password = (string) ($data['password'] ?? '');
 
 if ($email === '' || $password === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    error(400, 'Ingresa un correo y contraseña válidos');
+    error(400, t('srv.credenciales'));
 }
 
 // Límite de intentos fallidos, por correo y por IP
@@ -246,14 +249,14 @@ $stmt->execute([':email' => $email, ':ip' => $ip, ':email2' => $email, ':ip2' =>
 [$fallosCorreo, $fallosIp] = array_map('intval', $stmt->fetch(PDO::FETCH_NUM));
 
 if ($fallosCorreo >= LOGIN_MAX_FALLOS_CORREO || $fallosIp >= LOGIN_MAX_FALLOS_IP) {
-    error(429, 'Demasiados intentos fallidos. Espera ' . LOGIN_MINUTOS_BLOQUEO . ' minutos o restablece tu contraseña.');
+    error(429, t('srv.bloqueo', ['minutos' => LOGIN_MINUTOS_BLOQUEO]));
 }
 
 $registrarFallo = function () use ($pdo, $email, $ip): never {
     $pdo->prepare('INSERT INTO login_intentos (email, ip) VALUES (:email, :ip)')
         ->execute([':email' => $email, ':ip' => $ip]);
     $pdo->exec('DELETE FROM login_intentos WHERE creado_en < NOW() - INTERVAL 1 DAY');
-    error(401, 'Correo o contraseña incorrectos');
+    error(401, t('srv.incorrectos'));
 };
 
 $stmt = $pdo->prepare(
@@ -290,20 +293,20 @@ if (!$passwordIsValid) {
 
 // El estado se revisa después de la contraseña: así no se revela a quien no la sabe
 if ($usuario['estado'] !== 'Activo') {
-    error(403, "Tu usuario está en estado «{$usuario['estado']}». Consulta con tu gerente o el administrador.");
+    error(403, t('srv.estado', ['estado' => $usuario['estado']]));
 }
 
 if ((int) $usuario['id_rol'] !== 1 && $usuario['id_sucursal'] === null) {
-    error(403, 'La cuenta no tiene una sucursal asignada');
+    error(403, t('srv.sin_sucursal'));
 }
 
 if ($usuario['id_sucursal'] !== null && $usuario['sucursal_estado'] !== 'Activa') {
-    error(403, 'La sucursal no está disponible');
+    error(403, t('srv.sucursal'));
 }
 
 $destino = RUTAS_POR_ROL[(int) $usuario['id_rol']] ?? null;
 if ($destino === null) {
-    error(403, 'La cuenta no tiene un rol válido configurado');
+    error(403, t('srv.rol'));
 }
 
 $pdo->prepare('DELETE FROM login_intentos WHERE email = :email')->execute([':email' => $email]);
@@ -316,14 +319,14 @@ if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
         $aceptado = avisoAceptado($pdo, (int) $usuario['id_usuario']);
     } catch (PDOException $e) {
         error_log('login.php: falta la tabla avisos_privacidad (sql/010_aviso_privacidad.sql)');
-        error(500, 'El sistema no está listo para cajeros. Avisa al administrador.');
+        error(500, t('srv.cajeros'));
     }
     if (!$aceptado) {
         responder(403, [
             'success'        => false,
             'requiere_aviso' => true,
             'enlace'         => crearEnlaceAviso($pdo, (int) $usuario['id_usuario'], AVISO_ENLACE_LOGIN_HORAS),
-            'message'        => 'Antes de entrar debes leer y aceptar el aviso de privacidad. Te llevamos a él…',
+            'message'        => t('srv.aviso'),
         ]);
     }
 }
@@ -343,7 +346,7 @@ $debeCambiar = $usuario['debe_cambiar'] === 1;
 
 responder(200, [
     'success'      => true,
-    'message'      => $debeCambiar ? 'Debes cambiar tu contraseña' : 'Inicio de sesión exitoso',
+    'message'      => t($debeCambiar ? 'srv.debe_cambiar' : 'srv.exito'),
     'debe_cambiar' => $debeCambiar,
     'destino'      => $destino,
     'user'         => $usuario

@@ -1,7 +1,7 @@
 <?php
 /**
  * Cambia el idioma de la caja y regresa a ella.
- * Usa la misma clave de sesión que el gerente y el admin ($_SESSION['idioma']).
+ * El idioma es el mismo en todo el sitio (admin/preferencia_idioma.php).
  */
 session_start();
 
@@ -15,7 +15,7 @@ require_once __DIR__ . '/includes/i18n.php';
 
 $valido = $_SERVER['REQUEST_METHOD'] === 'POST' && csrfValido() && isset(IDIOMAS[$_POST['idioma'] ?? '']);
 if ($valido) {
-    $_SESSION['idioma'] = $_POST['idioma'];
+    guardarIdioma($_POST['idioma']);
 }
 
 // La caja lo llama con fetch y cambia los textos sin recargar, para no perder

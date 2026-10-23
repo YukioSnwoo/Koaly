@@ -1,8 +1,9 @@
 <?php
 /**
- * Abrir caja: el cajero confirma o corrige cuánto hay (lo que dejó el turno
- * anterior viene prellenado). Si no coincide, queda la diferencia de apertura
- * y, si pasa del umbral, el turno se marca para que lo revise el gerente.
+ * Abrir caja: el cajero cuenta los billetes y monedas que hay (obligatorio; si el
+ * turno anterior dejó el fondo regular, el conteo viene lleno). Si no coincide con
+ * lo que se dejó, queda la diferencia de apertura y, si pasa del umbral, el turno
+ * se marca para que lo revise el gerente.
  */
 session_start();
 
@@ -46,16 +47,8 @@ try {
         responder(409, ['success' => false, 'message' => t('servidor.caja_no_activa')]);
     }
 
-    // Cuánto hay: con el conteo de piezas (si se contó) o el monto escrito
-    $desglose = null;
-    if (!empty($_POST['desglose'])) {
-        [$desglose, $aperturaCentavos] = leerDesglose($_POST['desglose']);
-    } else {
-        $aperturaCentavos = montoEnCentavos($_POST['efectivo'] ?? '');
-        if ($aperturaCentavos === null) {
-            throw new DomainException(t('servidor.monto_invalido'));
-        }
-    }
+    // Cuánto hay: siempre con el conteo de billetes y monedas (ya no se acepta un monto escrito)
+    [$desglose, $aperturaCentavos] = leerDesglose($_POST['desglose'] ?? '');
 
     $idCaja = (int) $cajero['id_caja'];
     $pdo->beginTransaction();
@@ -80,7 +73,7 @@ try {
             (int) $cajero['id_usuario'],
             $anteriorCentavos !== null ? centavosABd($anteriorCentavos) : null,
             centavosABd($aperturaCentavos),
-            $desglose !== null ? json_encode($desglose) : null,
+            json_encode($desglose),
             $diferenciaCentavos !== null ? centavosABd($diferenciaCentavos) : null,
             ($diferenciaCentavos !== null && abs($diferenciaCentavos) > UMBRAL_REVISION_CENTAVOS) ? 1 : 0,
         ]);

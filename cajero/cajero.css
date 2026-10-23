@@ -1071,18 +1071,12 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 }
 .apertura-aviso { margin-top: 0.35rem; font-size: 0.85rem; font-weight: 600; color: var(--aviso-texto); }
 .apertura-aviso:empty { display: none; }
-.btn-enlace {
-    padding: 0; border: none; background: none;
-    color: var(--acento-texto); font-weight: 600; font-size: 0.9rem;
-    text-decoration: underline; text-underline-offset: 3px;
-    cursor: pointer;
-}
-.btn-enlace:hover { color: var(--acento-texto-fuerte); }
 
 /* Conteo en modo corte: vouchers de tarjeta */
 .corte-tarjeta[hidden] { display: none; }
 .corte-tarjeta .form-group { max-width: 320px; }
-.modal-corte .modal-actions [hidden] { display: none; }
+/* Botones que cambian según el uso (conteo: abrir o corte; cerrar sesión: salir o corte) */
+.modal-actions [hidden] { display: none; }
 .modal-corte .corte-limpiar { margin-right: auto; }
 
 /* Cerrar caja */
