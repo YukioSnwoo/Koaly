@@ -37,3 +37,11 @@ ALTER TABLE Turnos_Caja
 -- Verificación
 SELECT id_caja, numero_caja, nombre, fondo_fijo, limite_efectivo FROM Cajas ORDER BY id_sucursal, numero_caja;
 SHOW CREATE TABLE Retiros_Caja;
+-- Las cajas nuevas nacen con $5,000
+ALTER TABLE Cajas ALTER limite_efectivo SET DEFAULT 5000.00;
+
+-- Las cajas que ya existen pasan a $5,000 (si el fondo es mayor, el límite queda $4,000 arriba del fondo)
+UPDATE Cajas SET limite_efectivo = GREATEST(5000.00, fondo_fijo + 4000.00);
+
+-- Verificación
+SELECT id_caja, numero_caja, nombre, fondo_fijo, limite_efectivo FROM Cajas ORDER BY id_sucursal, numero_caja;
