@@ -448,7 +448,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <script src="../auth.js"></script>
     <script src="../perfil/perfil.js?v=<?= filemtime(__DIR__ . '/../perfil/perfil.js') ?>"></script>
     <script>
-        requireRol(3);
+        // Sin requireRol(3): el acceso ya lo revisa el servidor al inicio de esta página.
+        // requireRol mira sessionStorage, que se vacía en cada pestaña nueva aunque la
+        // sesión de PHP siga viva: mandaba a ../index.php, que regresaba aquí, y así sin
+        // parar (la página "parpadeaba"). auth.js se queda por logout().
 
         let carrito = [];
         let indiceSeleccionado = null;
