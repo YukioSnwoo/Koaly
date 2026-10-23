@@ -3,10 +3,15 @@ require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/turnos.php';
 
 /*
- * Cortes de caja de la sucursal (Turnos_Caja, sql/008).
- * Cada cajero cierra su caja con un corte a ciegas; aquí el gerente ve lo
- * esperado, lo contado y la diferencia, y confirma que recibió el efectivo.
+ * Cortes de caja de la sucursal (Turnos_Caja, sql/008 y sql/012).
+ * Cada cajero cierra su caja con un corte; aquí el gerente ve lo esperado, lo
+ * contado y la diferencia, y confirma que recibió el efectivo: el retiro final
+ * más los retiros parciales que el cajero metió a la tómbola durante el turno.
+ * De las cajas abiertas ve el arqueo al momento (lo que debería haber en caja).
  */
+
+// Lo que el cajero entrega al cerrar: el retiro final más lo que ya está en la tómbola
+const SQL_TOTAL_ENTREGA = 't.efectivo_retirado + COALESCE(t.retiros_parciales, 0)';
 
 $errores = [];
 $exito   = '';
@@ -36,15 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'recib
 
         // IDOR: solo cortes cerrados y pendientes de esta sucursal
         $stmt = $pdo->prepare("
-            SELECT efectivo_retirado FROM Turnos_Caja
-            WHERE id_turno = ? AND id_sucursal = ? AND estado = 'Cerrado' AND estado_revision = 'Pendiente'
+            SELECT " . SQL_TOTAL_ENTREGA . " FROM Turnos_Caja t
+            WHERE t.id_turno = ? AND t.id_sucursal = ? AND t.estado = 'Cerrado' AND t.estado_revision = 'Pendiente'
         ");
         $stmt->execute([$idTurno, $idSucursalGerente]);
-        $retirado = $stmt->fetchColumn();
-        if ($retirado === false) {
+        $porEntregar = $stmt->fetchColumn();
+        if ($porEntregar === false) {
             throw new RuntimeException(t('turnos.error_corte'));
         }
-        $coincide = $recibidoCentavos === (int) round((float) $retirado * 100);
+        $coincide = $recibidoCentavos === (int) round((float) $porEntregar * 100);
         if (!$coincide && $nota === '') {
             throw new RuntimeException(t('turnos.error_nota'));
         }
@@ -94,7 +99,7 @@ if (!isset($filtros[$ver])) {
 $stmt = $pdo->prepare("
     SELECT
         COALESCE(SUM(t.estado_revision = 'Pendiente'), 0)                                   AS pendientes,
-        COALESCE(SUM(IF(t.estado_revision = 'Pendiente', t.efectivo_retirado, 0)), 0)        AS por_recibir,
+        COALESCE(SUM(IF(t.estado_revision = 'Pendiente', " . SQL_TOTAL_ENTREGA . ", 0)), 0) AS por_recibir,
         COALESCE(SUM(t.estado = 'Cerrado' AND t.requiere_revision = 1), 0)                   AS diferencias,
         COALESCE(SUM(t.estado = 'Abierto'), 0)                                              AS abiertas
     FROM Turnos_Caja t
@@ -103,10 +108,13 @@ $stmt = $pdo->prepare("
 $stmt->execute([$idSucursalGerente]);
 $resumen = $stmt->fetch();
 
-// Cajas abiertas ahora
+// Cajas abiertas ahora, con su arqueo: apertura + efectivo de las ventas − retiros parciales
 $stmt = $pdo->prepare("
     SELECT t.id_turno, t.fecha_apertura, t.efectivo_apertura, t.diferencia_apertura,
-           c.numero_caja, c.nombre AS caja_nombre, u.nombre AS cajero
+           c.numero_caja, c.nombre AS caja_nombre, c.limite_efectivo, u.nombre AS cajero,
+           (SELECT COALESCE(SUM(v.monto_efectivo), 0) FROM Ventas v WHERE v.id_turno = t.id_turno) AS ventas_efectivo,
+           (SELECT COUNT(*) FROM Retiros_Caja r WHERE r.id_turno = t.id_turno) AS num_retiros,
+           (SELECT COALESCE(SUM(r.monto), 0) FROM Retiros_Caja r WHERE r.id_turno = t.id_turno) AS retiros
     FROM Turnos_Caja t
     JOIN Cajas c ON c.id_caja = t.id_caja
     LEFT JOIN Usuarios u ON u.id_usuario = t.id_cajero_apertura
@@ -115,10 +123,14 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$idSucursalGerente]);
 $abiertas = $stmt->fetchAll();
+foreach ($abiertas as &$a) {
+    $a['esperado'] = (float) $a['efectivo_apertura'] + (float) $a['ventas_efectivo'] - (float) $a['retiros'];
+}
+unset($a);
 
 // Cortes (turnos cerrados)
 $stmt = $pdo->prepare("
-    SELECT t.*, c.numero_caja, c.nombre AS caja_nombre,
+    SELECT t.*, " . SQL_TOTAL_ENTREGA . " AS total_entrega, c.numero_caja, c.nombre AS caja_nombre,
            uc.nombre AS cajero, ug.nombre AS gerente_revision
     FROM Turnos_Caja t
     JOIN Cajas c ON c.id_caja = t.id_caja
@@ -194,6 +206,9 @@ require __DIR__ . '/header.php';
                         <th><?= e(t('turnos.col_cajero')) ?></th>
                         <th><?= e(t('turnos.desde')) ?></th>
                         <th class="num"><?= e(t('turnos.inicio_con')) ?></th>
+                        <th class="num"><?= e(t('turnos.col_ventas_efectivo')) ?></th>
+                        <th class="num"><?= e(t('turnos.col_retiros')) ?></th>
+                        <th class="num"><?= e(t('turnos.col_esperado_ahora')) ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -206,6 +221,17 @@ require __DIR__ . '/header.php';
                                 <?= dinero($a['efectivo_apertura']) ?>
                                 <?php if ((float) $a['diferencia_apertura'] != 0): ?>
                                     <span class="corte-sub texto-peligro"><?= e(t('turnos.al_abrir', ['monto' => dineroConSigno($a['diferencia_apertura'])])) ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="num"><?= dinero($a['ventas_efectivo']) ?></td>
+                            <td class="num">
+                                <?= dinero($a['retiros']) ?>
+                                <span class="corte-sub"><?= e(tn('turnos.n_retiros', (int) $a['num_retiros'])) ?></span>
+                            </td>
+                            <td class="num">
+                                <strong><?= dinero($a['esperado']) ?></strong>
+                                <?php if ($a['esperado'] > (float) $a['limite_efectivo']): ?>
+                                    <span class="corte-sub"><span class="badge badge-warning"><?= e(t('turnos.excedente')) ?></span></span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -272,7 +298,10 @@ require __DIR__ . '/header.php';
                             <?php endif; ?>
                         </td>
                         <td class="num">
-                            <strong><?= dinero($c['efectivo_retirado']) ?></strong>
+                            <strong><?= dinero($c['total_entrega']) ?></strong>
+                            <?php if ((float) $c['retiros_parciales'] > 0): ?>
+                                <span class="corte-sub"><?= e(t('turnos.incluye_retiros', ['monto' => dinero($c['retiros_parciales'])])) ?></span>
+                            <?php endif; ?>
                             <span class="corte-sub"><?= e(t('turnos.col_dejado')) ?>: <?= dinero($c['efectivo_dejado']) ?></span>
                         </td>
                         <td>
@@ -280,14 +309,14 @@ require __DIR__ . '/header.php';
                                 <button type="button" class="btn btn-primary btn-sm"
                                     onclick="abrirRecibirCorte(this)"
                                     data-id="<?= (int) $c['id_turno'] ?>"
-                                    data-monto="<?= e(number_format((float) $c['efectivo_retirado'], 2, '.', '')) ?>"
+                                    data-monto="<?= e(number_format((float) $c['total_entrega'], 2, '.', '')) ?>"
                                     data-cajero="<?= e($c['cajero'] ?? '—') ?>"
                                     data-caja="<?= e($c['numero_caja']) ?>"
                                 ><?= e(t('turnos.recibir')) ?></button>
                             <?php else: ?>
                                 <span class="badge badge-activo"><?= e(t('revision.Recibido')) ?></span>
                                 <span class="corte-sub"><?= e(t('turnos.recibido_por', ['gerente' => $c['gerente_revision'] ?? '—', 'fecha' => $c['fecha_revision'] ? fecha($c['fecha_revision']) : ''])) ?></span>
-                                <?php if ((float) $c['monto_recibido'] != (float) $c['efectivo_retirado']): ?>
+                                <?php if (round((float) $c['monto_recibido'], 2) != round((float) $c['total_entrega'], 2)): ?>
                                     <span class="corte-sub texto-peligro"><?= e(t('turnos.recibido_distinto', ['monto' => dinero($c['monto_recibido'])])) ?></span>
                                 <?php endif; ?>
                                 <?php if ($c['nota_revision']): ?>

@@ -1,12 +1,13 @@
 <?php
 /**
- * Cerrar caja (corte a ciegas): recibe las piezas contadas, los vouchers y
- * cuánto se deja en caja. Lo esperado se calcula aquí con las ventas del turno,
- * se guarda el resultado y el corte queda "Pendiente" para el gerente.
+ * Cerrar caja (corte): recibe las piezas contadas, los vouchers y cuánto se deja
+ * en caja. Lo esperado se calcula aquí con las ventas y los retiros parciales del
+ * turno, se guarda el resultado y el corte queda "Pendiente" para el gerente.
  *
- *   esperado efectivo = efectivo de apertura + Σ Ventas.monto_efectivo del turno
+ *   esperado efectivo = apertura + Σ Ventas.monto_efectivo − Σ Retiros_Caja.monto del turno
  *   diferencia        = (contado - esperado efectivo) + (vouchers - Σ monto_tarjeta)
- *   retiro            = contado - lo que se deja (se entrega al gerente)
+ *   retiro            = contado - lo que se deja
+ *   se entrega        = retiro + retiros parciales (lo que ya está en la tómbola)
  */
 session_start();
 
@@ -70,20 +71,13 @@ try {
     }
     $idTurno = (int) $turno['id_turno'];
 
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) AS num_ventas,
-               COALESCE(SUM(monto_efectivo), 0) AS efectivo,
-               COALESCE(SUM(monto_tarjeta), 0) AS tarjeta
-        FROM Ventas
-        WHERE id_turno = ?
-    ");
-    $stmt->execute([$idTurno]);
-    $ventas = $stmt->fetch(PDO::FETCH_ASSOC);
+    $arqueo = arqueoTurno($pdo, $turno);
 
-    $aperturaCentavos      = bdACentavos($turno['efectivo_apertura']);
-    $teoricoEfectivo       = bdACentavos($ventas['efectivo']);
-    $teoricoTarjeta        = bdACentavos($ventas['tarjeta']);
-    $esperadoCentavos      = $aperturaCentavos + $teoricoEfectivo;
+    $aperturaCentavos      = $arqueo['apertura'];
+    $teoricoEfectivo       = $arqueo['ventas_efectivo'];
+    $teoricoTarjeta        = $arqueo['ventas_tarjeta'];
+    $parcialesCentavos     = $arqueo['retiros'];
+    $esperadoCentavos      = $arqueo['esperado'];
     $diferenciaEfectivo    = $contadoCentavos - $esperadoCentavos;
     $diferenciaTarjeta     = $voucherCentavos - $teoricoTarjeta;
     $diferencia            = $diferenciaEfectivo + $diferenciaTarjeta;
@@ -98,7 +92,7 @@ try {
     $stmt = $pdo->prepare("
         UPDATE Turnos_Caja SET
             estado = 'Cerrado', id_cajero_cierre = ?, fecha_cierre = NOW(),
-            num_ventas = ?, teorico_efectivo = ?, teorico_tarjeta = ?,
+            num_ventas = ?, teorico_efectivo = ?, teorico_tarjeta = ?, retiros_parciales = ?,
             desglose_cierre = ?, efectivo_contado = ?, vouchers = ?,
             efectivo_esperado = ?, diferencia_efectivo = ?, diferencia_tarjeta = ?, diferencia = ?,
             resultado = ?, requiere_revision = ?,
@@ -108,9 +102,10 @@ try {
     ");
     $stmt->execute([
         (int) $cajero['id_usuario'],
-        (int) $ventas['num_ventas'],
+        $arqueo['num_ventas'],
         centavosABd($teoricoEfectivo),
         centavosABd($teoricoTarjeta),
+        centavosABd($parcialesCentavos),
         json_encode($desglose),
         centavosABd($contadoCentavos),
         centavosABd($voucherCentavos),
@@ -139,14 +134,16 @@ try {
         'success' => true,
         'corte' => [
             'folio'               => $idTurno,
-            'caja'                => t('ticket.caja_n', ['n' => $cajero['numero_caja']]) . ($cajero['caja_nombre'] ? ' · ' . $cajero['caja_nombre'] : ''),
+            'caja'                => nombreCaja($cajero),
             'cajero'              => $cajero['nombre'],
             'fecha_apertura'      => $fechas['fecha_apertura'],
             'fecha_cierre'        => $fechas['fecha_cierre'],
-            'num_ventas'          => (int) $ventas['num_ventas'],
+            'num_ventas'          => $arqueo['num_ventas'],
             'efectivo_apertura'   => $c($aperturaCentavos),
             'teorico_efectivo'    => $c($teoricoEfectivo),
             'teorico_tarjeta'     => $c($teoricoTarjeta),
+            'num_retiros'         => $arqueo['num_retiros'],
+            'retiros_parciales'   => $c($parcialesCentavos),
             'efectivo_esperado'   => $c($esperadoCentavos),
             'efectivo_contado'    => $c($contadoCentavos),
             'vouchers'            => $c($voucherCentavos),
@@ -157,6 +154,7 @@ try {
             'requiere_revision'   => $requiereRevision,
             'dejado'              => $c($dejadoCentavos),
             'retirado'            => $c($retiroCentavos),
+            'total_entregado'     => $c($retiroCentavos + $parcialesCentavos),
             'desglose'            => $desglose,
         ],
     ]);

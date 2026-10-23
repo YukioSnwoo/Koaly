@@ -1,6 +1,6 @@
 <?php
 /**
- * Caja y turno del cajero (sql/008_turnos_caja.sql).
+ * Caja y turno del cajero (sql/008_turnos_caja.sql y sql/012_retiros_caja.sql).
  * Lo usan registrar_venta.php y los endpoints turno_*.php.
  */
 
@@ -42,7 +42,7 @@ function cajeroConCaja(PDO $pdo, int $idUsuario): ?array
 {
     $stmt = $pdo->prepare("
         SELECT u.id_usuario, u.nombre, u.estado, u.id_sucursal, s.estado AS sucursal_estado,
-               c.id_caja, c.numero_caja, c.nombre AS caja_nombre, c.estado AS caja_estado, c.fondo_fijo
+               c.id_caja, c.numero_caja, c.nombre AS caja_nombre, c.estado AS caja_estado, c.fondo_fijo, c.limite_efectivo
         FROM Usuarios u
         LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
         LEFT JOIN Cajas c ON c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal
@@ -82,6 +82,92 @@ function ultimoTurnoCerrado(PDO $pdo, int $idCaja): ?array
     ");
     $stmt->execute([$idCaja]);
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+/** "Caja 1 · Mostrador", como sale en los tickets. */
+function nombreCaja(array $cajero): string
+{
+    return t('ticket.caja_n', ['n' => $cajero['numero_caja']]) . ($cajero['caja_nombre'] ? ' · ' . $cajero['caja_nombre'] : '');
+}
+
+/**
+ * Arqueo del turno en centavos: lo que debería haber en la caja en este momento.
+ *   esperado = efectivo de apertura + efectivo neto de las ventas − retiros parciales
+ */
+function arqueoTurno(PDO $pdo, array $turno): array
+{
+    $idTurno = (int) $turno['id_turno'];
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) AS num_ventas,
+               COALESCE(SUM(monto_efectivo), 0) AS efectivo,
+               COALESCE(SUM(monto_tarjeta), 0) AS tarjeta
+        FROM Ventas
+        WHERE id_turno = ?
+    ");
+    $stmt->execute([$idTurno]);
+    $ventas = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) AS num_retiros, COALESCE(SUM(monto), 0) AS total FROM Retiros_Caja WHERE id_turno = ?");
+    $stmt->execute([$idTurno]);
+    $retiros = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $apertura = bdACentavos($turno['efectivo_apertura']);
+    $efectivo = bdACentavos($ventas['efectivo']);
+    $retirado = bdACentavos($retiros['total']);
+    return [
+        'num_ventas'      => (int) $ventas['num_ventas'],
+        'apertura'        => $apertura,
+        'ventas_efectivo' => $efectivo,
+        'ventas_tarjeta'  => bdACentavos($ventas['tarjeta']),
+        'num_retiros'     => (int) $retiros['num_retiros'],
+        'retiros'         => $retirado,
+        'esperado'        => $apertura + $efectivo - $retirado,
+    ];
+}
+
+/**
+ * Excedente de efectivo: si la caja pasa del límite, lo que conviene meter a la
+ * tómbola para quedarse con el fondo base (en múltiplos de $100). null si no pasa.
+ */
+function retiroSugerido(int $esperado, int $fondo, int $limite): ?int
+{
+    if ($esperado <= $limite) {
+        return null;
+    }
+    $sugerido = intdiv(max(0, $esperado - $fondo), 10000) * 10000;
+    return $sugerido > 0 ? $sugerido : null;
+}
+
+/** El arqueo en pesos para el navegador, con el límite de la caja y el retiro sugerido. */
+function arqueoEnPesos(array $arqueo, array $caja): array
+{
+    $fondo    = bdACentavos($caja['fondo_fijo']);
+    $limite   = bdACentavos($caja['limite_efectivo']);
+    $sugerido = retiroSugerido($arqueo['esperado'], $fondo, $limite);
+    return [
+        'num_ventas'      => $arqueo['num_ventas'],
+        'apertura'        => $arqueo['apertura'] / 100,
+        'ventas_efectivo' => $arqueo['ventas_efectivo'] / 100,
+        'ventas_tarjeta'  => $arqueo['ventas_tarjeta'] / 100,
+        'num_retiros'     => $arqueo['num_retiros'],
+        'retiros'         => $arqueo['retiros'] / 100,
+        'esperado'        => $arqueo['esperado'] / 100,
+        'limite'          => $limite / 100,
+        'sugerido'        => $sugerido !== null ? $sugerido / 100 : null,
+    ];
+}
+
+/** Retiros parciales del turno, del primero al último (para el arqueo impreso). */
+function retirosDelTurno(PDO $pdo, int $idTurno): array
+{
+    $stmt = $pdo->prepare("SELECT id_retiro, fecha, monto FROM Retiros_Caja WHERE id_turno = ? ORDER BY fecha, id_retiro");
+    $stmt->execute([$idTurno]);
+    return array_map(fn($r) => [
+        'folio' => (int) $r['id_retiro'],
+        'fecha' => $r['fecha'],
+        'monto' => (float) $r['monto'],
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
 /**

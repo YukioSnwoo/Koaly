@@ -247,7 +247,8 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
             }
 
             $filas = perfilConsultar($pdo, "
-                SELECT t.resultado, t.diferencia, t.requiere_revision, t.estado_revision, t.efectivo_retirado,
+                SELECT t.resultado, t.diferencia, t.requiere_revision, t.estado_revision,
+                       t.efectivo_retirado + COALESCE(t.retiros_parciales, 0) AS por_entregar,
                        t.fecha_cierre AS fecha, c.numero_caja, c.nombre AS caja_nombre, u.nombre AS cajero
                 FROM Turnos_Caja t
                 INNER JOIN Cajas c ON c.id_caja = t.id_caja
@@ -260,7 +261,7 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
                     'texto'   => perfilT('notif.corte_cerrado', [
                         'cajero' => $f['cajero'] ?? '—', 'caja' => perfilCaja($f), 'resultado' => perfilResultado($f),
                     ]),
-                    'detalle' => $porRecibir ? perfilT('notif.corte_por_recibir', ['monto' => perfilDinero($f['efectivo_retirado'])]) : null,
+                    'detalle' => $porRecibir ? perfilT('notif.corte_por_recibir', ['monto' => perfilDinero($f['por_entregar'])]) : null,
                     'tono'    => perfilTonoCorte($f),
                     'enlace'  => $porRecibir ? 'cortes.php?ver=pendientes' : 'cortes.php?ver=todos',
                     'fecha'   => $f['fecha'],

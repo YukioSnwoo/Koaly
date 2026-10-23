@@ -134,13 +134,14 @@ try {
     /* --- Caja y turno: solo se vende con la caja abierta (sql/008) ---
        El turno queda bloqueado hasta el commit: si en ese momento se está
        cerrando la caja, el corte espera a que termine esta venta. */
-    $stmt = $pdo->prepare("SELECT id_caja FROM Cajas WHERE id_cajero_asignado = ? AND id_sucursal = ? ORDER BY numero_caja LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id_caja, fondo_fijo, limite_efectivo FROM Cajas WHERE id_cajero_asignado = ? AND id_sucursal = ? ORDER BY numero_caja LIMIT 1");
     $stmt->execute([$idCajero, $idSucursal]);
-    $idCaja = $stmt->fetchColumn() ?: null;
-    if ($idCaja === null) {
+    $cajaTurno = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($cajaTurno === null) {
         throw new CajaCerradaException(t('servidor.sin_caja'));
     }
-    $turno = turnoAbierto($pdo, (int) $idCaja, true);
+    $idCaja = (int) $cajaTurno['id_caja'];
+    $turno = turnoAbierto($pdo, $idCaja, true);
     if (!$turno) {
         throw new CajaCerradaException(t('servidor.caja_cerrada'));
     }
@@ -232,13 +233,10 @@ try {
     $tarjetaTicket = $metodo === 'Varios' ? $tarjetaCentavos / 100 : null;
 
     /* --- El cambio sale del efectivo que ya hay en la caja ---
-       En caja: lo de la apertura + el efectivo neto de las ventas del turno.
-       El monto no se manda al navegador (el corte es a ciegas). */
+       En caja: lo de la apertura + el efectivo neto de las ventas del turno
+       − lo que ya se metió a la tómbola con retiros parciales. */
     if ($cambioCentavos !== null && $cambioCentavos > 0) {
-        $stmt = $pdo->prepare("SELECT COALESCE(SUM(monto_efectivo), 0) FROM Ventas WHERE id_turno = ?");
-        $stmt->execute([$idTurno]);
-        $enCajaCentavos = bdACentavos($turno['efectivo_apertura']) + bdACentavos($stmt->fetchColumn());
-        if ($cambioCentavos > $enCajaCentavos) {
+        if ($cambioCentavos > arqueoTurno($pdo, $turno)['esperado']) {
             throw new SinCambioException(t('servidor.sin_cambio'));
         }
     }
@@ -255,7 +253,7 @@ try {
         // Desglose del cobro (sql/006): efectivo neto, sin el cambio
         'monto_efectivo'    => $centavosADinero($efectivoCentavos),
         'monto_tarjeta'     => $centavosADinero($tarjetaCentavos),
-        'id_caja'           => (int) $idCaja,
+        'id_caja'           => $idCaja,
         // Turno en que se cobró: con esto se calcula lo esperado en el corte
         'id_turno'          => $idTurno,
     ];
@@ -423,6 +421,14 @@ try {
     error_log('registrar_venta (ticket): ' . $e->getMessage());
 }
 
+// Arqueo después de la venta: si la caja pasó del límite, la caja avisa del excedente
+$arqueo = null;
+try {
+    $arqueo = arqueoEnPesos(arqueoTurno($pdo, $turno), $cajaTurno);
+} catch (Throwable $e) {
+    error_log('registrar_venta (arqueo): ' . $e->getMessage());
+}
+
 responder(200, [
     'success'  => true,
     'id_venta' => $idVenta,
@@ -432,4 +438,5 @@ responder(200, [
     'recibido' => $recibidoCentavos !== null ? $recibidoCentavos / 100 : null,
     'cambio'   => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
     'ticket'   => $ticket,
+    'arqueo'   => $arqueo,
 ]);
