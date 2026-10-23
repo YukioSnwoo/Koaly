@@ -209,51 +209,57 @@ document.addEventListener('submit', async (e) => {
 
 
 /* ============================================================
- * Menú de idioma (<details class="idioma">): cerrar al hacer clic
- * fuera o con Escape.
+ * Avisos de campos sin llenar o con un dato inválido.
+ * En lugar de la burbuja gris del navegador, el aviso sale en
+ * morado debajo del campo (.campo-aviso). El navegador sigue
+ * validando (required, min, pattern, setCustomValidity…); aquí
+ * solo cambia cómo se muestra. Fuera de un .form-group se deja
+ * la burbuja normal.
  * ============================================================ */
-document.addEventListener('click', (e) => {
-    document.querySelectorAll('details.idioma[open]').forEach(d => {
-        if (!d.contains(e.target)) d.removeAttribute('open');
+let avisoCampoEnfocado = false;
+
+function marcarCampoInvalido(campo, grupo) {
+    grupo.classList.add('campo-invalido');
+    let aviso = grupo.querySelector('.campo-aviso');
+    if (!aviso) {
+        aviso = document.createElement('p');
+        aviso.className = 'campo-aviso';
+        aviso.setAttribute('role', 'alert');
+        grupo.appendChild(aviso);
+    }
+    aviso.textContent = campo.validity.valueMissing ? tj('campo_obligatorio') : campo.validationMessage;
+}
+
+// Quita el aviso de los campos que ya quedaron bien (un campo puede arreglar a otro: teléfono o correo)
+function limpiarAvisosCampos(form, todos = false) {
+    form.querySelectorAll('.form-group.campo-invalido').forEach(grupo => {
+        const campos = grupo.querySelectorAll('input, select, textarea');
+        if (todos || [...campos].every(c => !c.willValidate || c.validity.valid)) {
+            grupo.classList.remove('campo-invalido');
+            grupo.querySelector('.campo-aviso')?.remove();
+        }
     });
-});
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
-});
-
-
-/* ============================================================
- * Tema claro / oscuro
- * <html data-tema="claro|oscuro"> si el usuario eligió; si no, sigue
- * al sistema (prefers-color-scheme). La elección se guarda por navegador.
- * ============================================================ */
-// Común con el cajero: el tema elegido se mantiene al pasar de un módulo a otro
-const CLAVE_TEMA = 'koaly-tema';
-
-function temaActual() {
-    const elegido = document.documentElement.getAttribute('data-tema');
-    if (elegido) return elegido;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
 }
 
-function actualizarBotonTema() {
-    const boton = document.getElementById('botonTema');
-    if (!boton) return;
-    const etiqueta = temaActual() === 'oscuro' ? tj('tema_a_claro') : tj('tema_a_oscuro');
-    boton.setAttribute('aria-label', etiqueta);
-    boton.title = etiqueta;
-}
+// "invalid" no burbujea: se escucha en captura
+document.addEventListener('invalid', (e) => {
+    const campo = e.target;
+    const grupo = campo.closest('.form-group');
+    if (!grupo) return;
+    e.preventDefault();
+    marcarCampoInvalido(campo, grupo);
 
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('#botonTema')) return;
-    const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
-    document.documentElement.setAttribute('data-tema', nuevo);
-    try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
-    actualizarBotonTema();
-});
+    // Al enviar llegan juntos los "invalid" de todos los campos: el foco va solo al primero
+    if (avisoCampoEnfocado) return;
+    avisoCampoEnfocado = true;
+    setTimeout(() => { avisoCampoEnfocado = false; });
+    (campo.closest('.select-custom')?.querySelector('.select-custom-trigger') || campo).focus();
+}, true);
 
-document.addEventListener('DOMContentLoaded', actualizarBotonTema);
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
+['input', 'change'].forEach(tipo => document.addEventListener(tipo, (e) => {
+    if (e.target.form) limpiarAvisosCampos(e.target.form);
+}));
+document.addEventListener('reset', (e) => limpiarAvisosCampos(e.target, true));
 
 
 /* ============================================================

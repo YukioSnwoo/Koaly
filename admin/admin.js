@@ -2,34 +2,14 @@
    Koaly Admin — JavaScript
    ═══════════════════════════════════════════════════ */
 
-/* ── Tema claro / oscuro ──
-   <html data-tema="claro|oscuro"> si el usuario eligió; si no, sigue al
-   sistema. La clave es común con gerente y cajero: el tema se conserva
-   al pasar de un módulo a otro. */
-const CLAVE_TEMA = 'koaly-tema';
-
-function temaActual() {
-  const elegido = document.documentElement.getAttribute('data-tema');
-  if (elegido) return elegido;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+/* ── Traducciones ──
+   header.php deja en window.I18N las claves "js.*" de admin/lang/{idioma}.php.
+   tj('clave', {n: 3}) reemplaza {n}. */
+function tj(clave, vars = {}) {
+  let texto = (window.I18N && window.I18N[clave]) || clave;
+  for (const [k, v] of Object.entries(vars)) texto = texto.split('{' + k + '}').join(String(v));
+  return texto;
 }
-
-function actualizarBotonTema() {
-  const boton = document.getElementById('botonTema');
-  if (!boton) return;
-  const etiqueta = temaActual() === 'oscuro' ? boton.dataset.aClaro : boton.dataset.aOscuro;
-  boton.setAttribute('aria-label', etiqueta);
-  boton.title = etiqueta;
-}
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#botonTema')) return;
-  const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
-  document.documentElement.setAttribute('data-tema', nuevo);
-  try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
-  actualizarBotonTema();
-});
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
 
 
 /* ── Cursor personalizado ──
@@ -59,7 +39,7 @@ function initCustomCursor() {
     if (!raf) raf = requestAnimationFrame(render);
   });
 
-  const interactivo = 'a, button, input, select, textarea, label, summary, [role="button"]';
+  const interactivo = 'a, button, input, select, textarea, label, summary, [role="button"], [data-abrir-ficha]';
   document.addEventListener('mouseover', (e) => {
     if (e.target.closest(interactivo)) dot.classList.add('is-hover');
   });
@@ -100,14 +80,6 @@ function initBarraLateral() {
 }
 
 
-/* ── Menú de idioma (<details class="idioma">): cerrar al hacer clic fuera o con Esc ── */
-document.addEventListener('click', (e) => {
-  document.querySelectorAll('details.idioma[open]').forEach(d => {
-    if (!d.contains(e.target)) d.removeAttribute('open');
-  });
-});
-
-
 /* ── Modal helpers (generic) ── */
 window.openModal = (id) => {
   const m = document.getElementById(id);
@@ -120,7 +92,6 @@ window.closeModal = (id) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
   document.querySelectorAll('.modal-backdrop').forEach(m => {
     if (m.style.display === 'flex') m.style.display = 'none';
   });
@@ -128,7 +99,6 @@ document.addEventListener('keydown', (e) => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-  actualizarBotonTema();
   initCustomCursor();
   initBarraLateral();
 

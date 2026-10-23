@@ -8,6 +8,14 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 
 require_once __DIR__ . '/../admin/csrf.php';
 require_once __DIR__ . '/includes/i18n.php';
+require_once __DIR__ . '/../perfil/perfil.php';
+
+// Solo para el menú de perfil: sin base de datos la caja abre igual (el menú sale sin nombre)
+try {
+    require_once __DIR__ . '/../admin/database.php';
+} catch (PDOException $e) {
+    $pdo = null;
+}
 
 // Textos de todos los idiomas (con respaldo en español): el idioma se cambia en
 // el navegador sin recargar, para no perder la venta que se está cobrando
@@ -34,6 +42,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <link rel="stylesheet" href="cajero.css?v=<?= $verCajeroCss ?>">
     <!-- Estilo común de Koaly (colores claro/oscuro, fuentes y piel táctil); va al final para que gane -->
     <link rel="stylesheet" href="../estilos/koaly.css?v=<?= filemtime(__DIR__ . '/../estilos/koaly.css') ?>">
+    <link rel="stylesheet" href="../perfil/perfil.css?v=<?= filemtime(__DIR__ . '/../perfil/perfil.css') ?>">
 </head>
 <body class="caja-bloqueada">
 
@@ -45,31 +54,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
                 <span data-i18n="corte.boton"><?= e(t('corte.boton')) ?></span>
             </button>
-            <details class="idioma">
-                <summary aria-label="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-title="idioma.cambiar">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    <span><?= strtoupper(idiomaActual()) ?></span>
-                    <svg class="idioma-flecha" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-                </summary>
-                <form method="POST" action="idioma.php" class="idioma-menu">
-                    <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-                    <?php foreach (IDIOMAS as $codigo => $nombre): ?>
-                        <button type="submit" name="idioma" value="<?= $codigo ?>" lang="<?= $codigo ?>"
-                                <?= $codigo === idiomaActual() ? 'aria-current="true" class="is-activo"' : '' ?>>
-                            <span class="idioma-codigo"><?= strtoupper($codigo) ?></span> <?= e($nombre) ?>
-                        </button>
-                    <?php endforeach; ?>
-                </form>
-            </details>
-            <button type="button" class="tema-boton" id="botonTema" aria-label="<?= e(t('tema.a_oscuro')) ?>" title="<?= e(t('tema.a_oscuro')) ?>">
-                <svg class="tema-luna" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg class="tema-sol" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            </button>
-            <div class="user-datos">
-                <span class="user-nombre" id="userName"><?= e(t('caja.cajero')) ?></span>
-                <span class="user-sucursal"><span data-i18n="caja.sucursal"><?= e(t('caja.sucursal')) ?></span>: <span id="sucursalName">-</span></span>
-            </div>
-            <button type="button" class="btn-salir" onclick="abrirModal('modalSalir')" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
+            <?= menuPerfil($pdo, (int) $_SESSION['id_usuario'], [
+                'idioma_accion' => 'idioma.php',
+                'salir'         => ['onclick' => "abrirModal('modalSalir')"],
+            ]) ?>
         </div>
     </header>
 
@@ -83,9 +71,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     <div class="input-buscar">
                         <svg class="icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                         <input type="text" id="inputBuscar" placeholder="<?= e(t('buscar.placeholder')) ?>" data-i18n-placeholder="buscar.placeholder" autocomplete="off"
-                               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="resultadosBusqueda">
+                               aria-controls="catalogo" enterkeyhint="search">
                         <span class="spinner" aria-hidden="true"></span>
-                        <div id="resultadosBusqueda" class="search-results" role="listbox" style="display:none;"></div>
                     </div>
                 </div>
             </div>
@@ -459,14 +446,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     }
     </script>
     <script src="../auth.js"></script>
+    <script src="../perfil/perfil.js?v=<?= filemtime(__DIR__ . '/../perfil/perfil.js') ?>"></script>
     <script>
-        const usuario = requireRol(3);
-        function pintarUsuario() {
-            if (!usuario) return;
-            document.getElementById('userName').textContent = usuario.nombre || tr('caja.cajero');
-            document.getElementById('sucursalName').textContent = usuario.sucursal_nombre || usuario.id_sucursal || tr('caja.sin_asignar');
-        }
-        pintarUsuario();
+        requireRol(3);
 
         let carrito = [];
         let indiceSeleccionado = null;
@@ -476,7 +458,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
         const inputBuscar = document.getElementById('inputBuscar');
-        const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const inputRecibido = document.getElementById('inputRecibido');
 
         // Precios con separador de miles y dos decimales: $1,249.90 (también en el ticket)
@@ -515,55 +496,17 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (abierto && !MODALES_SIN_ESCAPE.includes(abierto.id)) cerrarModal(abierto.id);
         });
 
-        /* ---------- Tema claro / oscuro ---------- */
-        // Igual que en el panel de gerente: <html data-tema="claro|oscuro"> si el
-        // cajero eligió; si no, sigue al sistema. La elección se guarda por navegador.
-        // Común con el gerente: el tema elegido se mantiene al pasar de un módulo a otro
-        const CLAVE_TEMA = 'koaly-tema';
-        const botonTema = document.getElementById('botonTema');
-
-        function temaActual() {
-            const elegido = document.documentElement.getAttribute('data-tema');
-            if (elegido) return elegido;
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
-        }
-
-        function actualizarBotonTema() {
-            const etiqueta = temaActual() === 'oscuro' ? tr('tema.a_claro') : tr('tema.a_oscuro');
-            botonTema.setAttribute('aria-label', etiqueta);
-            botonTema.title = etiqueta;
-        }
-
-        botonTema.addEventListener('click', () => {
-            const nuevo = temaActual() === 'oscuro' ? 'claro' : 'oscuro';
-            document.documentElement.setAttribute('data-tema', nuevo);
-            try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch (err) { /* modo privado: solo esta página */ }
-            actualizarBotonTema();
-        });
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', actualizarBotonTema);
-        actualizarBotonTema();
-
-        /* ---------- Selector de idioma ---------- */
-        // El menú se cierra al hacer clic fuera o con Escape (igual que en el gerente)
-        document.addEventListener('click', (e) => {
-            document.querySelectorAll('details.idioma[open]').forEach(d => {
-                if (!d.contains(e.target)) d.removeAttribute('open');
-            });
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') document.querySelectorAll('details.idioma[open]').forEach(d => d.removeAttribute('open'));
-        });
-
-        // Igual que el tema, el idioma cambia aquí mismo sin recargar: si se está
+        /* ---------- Idioma ---------- */
+        // El tema claro/oscuro y el menú los maneja ../perfil/perfil.js.
+        // El idioma (en el menú de perfil) cambia aquí mismo sin recargar: si se está
         // cobrando, la venta (carrito, búsqueda, categoría elegida) sigue intacta.
         // En segundo plano se guarda en la sesión, para que los mensajes del
         // servidor al cobrar y la fecha del ticket salgan en el mismo idioma.
-        const menuIdioma = document.querySelector('.idioma-menu');
+        const menuIdioma = document.querySelector('[data-perfil-idioma]');
 
         menuIdioma.addEventListener('submit', (e) => {
             e.preventDefault();
             const codigo = e.submitter?.value;
-            menuIdioma.closest('details').removeAttribute('open');
             if (!codigo || codigo === window.IDIOMA) return;
 
             aplicarIdioma(codigo);
@@ -589,18 +532,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 });
             });
             pintarAyudaLista();
-            pintarUsuario();
-            actualizarBotonTema();
             pintarEstadoCaja();
-
-            // Botón y menú de idioma
-            document.querySelector('.idioma > summary > span').textContent = codigo.toUpperCase();
-            menuIdioma.querySelectorAll('button[name="idioma"]').forEach(boton => {
-                const activo = boton.value === codigo;
-                boton.classList.toggle('is-activo', activo);
-                if (activo) boton.setAttribute('aria-current', 'true');
-                else boton.removeAttribute('aria-current');
-            });
+            window.perfilAplicarIdioma?.(codigo);   // menú de perfil (perfil/perfil.js)
 
             // Lo que dibuja el JS: catálogo (conserva la categoría elegida), lista de venta y panel derecho
             if (catalogo.length || categorias.length) {
@@ -666,96 +599,91 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         initCustomCursor();
 
         /* ---------- Búsqueda ---------- */
-        // Sugerencias en vivo mientras se escribe; Enter (o un lector de código de
-        // barras) agrega el producto resaltado o la coincidencia exacta de clave.
-        const MIN_CARACTERES = 2;
-        const ESPERA_MS = 250;
-        let temporizadorBusqueda = null;
-        let numeroBusqueda = 0;        // descarta respuestas que llegan fuera de orden
-        let resultadosActuales = [];
-        let consultaMostrada = null;   // consulta a la que pertenecen los resultados visibles
-        let indiceActivo = -1;
+        // Lo que se escribe filtra el catálogo por nombre o clave (código de
+        // barras), en todas las categorías y sin distinguir mayúsculas ni acentos.
+        // Enter (o el lector de código de barras) agrega la clave exacta o el único
+        // producto que queda; si no está en el catálogo cargado se pregunta al
+        // servidor (puede ser un producto dado de alta después de abrir la caja).
+        let textoBusqueda = '';        // lo que escribió el cajero, para los mensajes
+        let filtroBusqueda = '';       // el mismo texto normalizado; '' = sin búsqueda
+        let numeroBusqueda = 0;        // descarta respuestas del servidor que llegan tarde
+        let cuadroBusqueda = null;
 
-        async function consultarProductos(q) {
-            const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(q)}`);
-            const productos = await res.json();
-            return Array.isArray(productos) ? productos : [];
+        // Sin acentos ni mayúsculas: "Café" y "cafe" coinciden
+        function normalizar(texto) {
+            return String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
         }
 
         inputBuscar.addEventListener('input', () => {
-            clearTimeout(temporizadorBusqueda);
-            const q = inputBuscar.value.trim();
-            if (q.length < MIN_CARACTERES) {
-                numeroBusqueda++;
-                ocultarResultados();
-                return;
-            }
-            temporizadorBusqueda = setTimeout(() => sugerir(q), ESPERA_MS);
-        });
-
-        inputBuscar.addEventListener('focus', () => {
-            const q = inputBuscar.value.trim();
-            if (q.length >= MIN_CARACTERES && q === consultaMostrada) mostrarResultados();
+            // Un lector de código de barras escribe muy rápido: se filtra una vez por cuadro
+            if (cuadroBusqueda) return;
+            cuadroBusqueda = requestAnimationFrame(() => {
+                cuadroBusqueda = null;
+                filtrarCatalogo(inputBuscar.value);
+            });
         });
 
         inputBuscar.addEventListener('keydown', (e) => {
-            const abiertos = resultadosBusqueda.style.display !== 'none' && resultadosActuales.length > 0;
-            if (e.key === 'ArrowDown' && abiertos) {
+            if (e.key === 'Enter') {
                 e.preventDefault();
-                activarResultado((indiceActivo + 1) % resultadosActuales.length);
-            } else if (e.key === 'ArrowUp' && abiertos) {
-                e.preventDefault();
-                activarResultado((indiceActivo - 1 + resultadosActuales.length) % resultadosActuales.length);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                buscarProducto();
-            } else if (e.key === 'Escape') {
-                ocultarResultados();
+                agregarDesdeBusqueda();
+            } else if (e.key === 'Escape' && inputBuscar.value !== '') {
+                limpiarBusqueda();
             }
         });
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-box')) ocultarResultados();
-        });
-
-        async function sugerir(q) {
-            const numero = ++numeroBusqueda;
-            buscando(true);
-            let productos;
-            try {
-                productos = await consultarProductos(q);
-            } catch (error) {
-                if (numero !== numeroBusqueda) return;
-                buscando(false);
-                pintarMensaje(tr('buscar.sin_conexion'));
-                return;
-            }
-            if (numero !== numeroBusqueda) return;
-            buscando(false);
-            pintarResultados(q, productos);
+        function filtrarCatalogo(texto) {
+            const filtro = normalizar(texto);
+            textoBusqueda = texto.trim();
+            if (filtro === filtroBusqueda) return;
+            filtroBusqueda = filtro;
+            aplicarFiltros();
+            document.getElementById('catalogo').scrollTop = 0;
         }
 
-        // Enter en el buscador
-        async function buscarProducto() {
-            clearTimeout(temporizadorBusqueda);
-            const q = inputBuscar.value.trim();
-            if (!q) {
-                inputBuscar.focus();
-                return;
-            }
+        // Cada palabra debe estar en el nombre o en la clave, en cualquier orden:
+        // "coca lata" encuentra "Coca-Cola Lata 355ml"
+        function palabrasDe(filtro) {
+            return filtro.split(/\s+/).filter(Boolean);
+        }
 
-            // Si la lista visible corresponde a lo escrito, se agrega el resaltado
-            if (q === consultaMostrada && resultadosActuales[indiceActivo]) {
-                seleccionarResultado(resultadosActuales[indiceActivo]);
+        // nombreBusqueda y claveBusqueda se calculan al cargar el catálogo
+        function coincideBusqueda(p, palabras) {
+            return palabras.every(w => p.nombreBusqueda.includes(w) || p.claveBusqueda.includes(w));
+        }
+
+        // El producto que agrega Enter: la clave exacta, o el único que coincide
+        function productoDeBusqueda(filtro) {
+            const exacto = catalogo.find(p => p.claveBusqueda === filtro);
+            if (exacto) return exacto;
+            const palabras = palabrasDe(filtro);
+            const coincidencias = catalogo.filter(p => coincideBusqueda(p, palabras));
+            return coincidencias.length === 1 ? coincidencias[0] : null;
+        }
+
+        async function agregarDesdeBusqueda() {
+            const texto = inputBuscar.value.trim();
+            if (!texto) return;
+            filtrarCatalogo(texto);
+
+            const producto = productoDeBusqueda(filtroBusqueda);
+            if (producto) {
+                agregarYLimpiar(producto);
                 return;
             }
+            // Varias coincidencias: el cajero elige la tarjeta
+            const palabras = palabrasDe(filtroBusqueda);
+            if (catalogo.some(p => coincideBusqueda(p, palabras))) return;
 
             const numero = ++numeroBusqueda;
             buscando(true);
             let productos;
             try {
-                productos = await consultarProductos(q);
+                const res = await fetch(`buscar_producto.php?q=${encodeURIComponent(texto)}`);
+                productos = await res.json();
+                if (!Array.isArray(productos)) productos = [];
             } catch (error) {
+                if (numero !== numeroBusqueda) return;
                 buscando(false);
                 alert(tr('buscar.sin_conexion_alerta'));
                 return;
@@ -763,138 +691,33 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (numero !== numeroBusqueda) return;
             buscando(false);
 
-            const exacto = productos.find(p => String(p.codigo).toLowerCase() === q.toLowerCase());
-            if (productos.length === 1 || exacto) {
-                seleccionarResultado(exacto || productos[0]);
-                return;
-            }
-            pintarResultados(q, productos);
-        }
-
-        function pintarResultados(q, productos) {
-            resultadosActuales = productos;
-            consultaMostrada = q;
-
-            if (productos.length === 0) {
-                pintarMensaje(tr('buscar.sin_resultados', { q }));
-                return;
-            }
-
-            resultadosBusqueda.innerHTML = '';
-            productos.forEach((p, i) => {
-                const item = document.createElement('div');
-                item.className = 'result-item';
-                item.id = `resultado-${i}`;
-                item.setAttribute('role', 'option');
-
-                const thumb = document.createElement('img');
-                thumb.className = 'result-thumb';
-                thumb.alt = '';
-                if (p.imagen) thumb.src = `../${p.imagen}`;
-                else thumb.style.visibility = 'hidden';
-
-                const info = document.createElement('div');
-                info.className = 'result-info';
-                const nombre = document.createElement('div');
-                nombre.className = 'result-nombre';
-                nombre.appendChild(resaltarCoincidencia(p.nombre, q));
-                const detalle = document.createElement('small');
-                detalle.append(tr('buscar.clave') + ': ', resaltarCoincidencia(String(p.codigo), q), ' · ');
-                const stock = document.createElement('span');
-                if (Number(p.stock) > 0) {
-                    stock.textContent = tr('buscar.existencias', { n: p.stock });
-                } else {
-                    stock.className = 'agotado';
-                    stock.textContent = tr('comun.agotado');
-                }
-                detalle.appendChild(stock);
-                info.append(nombre, detalle);
-
-                const precio = document.createElement('div');
-                precio.className = 'result-precio';
-                precio.textContent = formatoDinero(Number(p.precio) || 0);
-
-                item.append(thumb, info, precio);
-                item.addEventListener('mousedown', (e) => e.preventDefault()); // no quitar el foco del input
-                item.addEventListener('mouseenter', () => activarResultado(i, false));
-                item.addEventListener('click', () => seleccionarResultado(p));
-                resultadosBusqueda.appendChild(item);
-            });
-
-            // Resalta la clave exacta si la hay; si no, el primero
-            const exacto = productos.findIndex(p => String(p.codigo).toLowerCase() === q.toLowerCase());
-            activarResultado(exacto >= 0 ? exacto : 0);
-            mostrarResultados();
-        }
-
-        function pintarMensaje(texto) {
-            resultadosActuales = [];
-            indiceActivo = -1;
-            const div = document.createElement('div');
-            div.className = 'no-results';
-            div.textContent = texto;
-            resultadosBusqueda.replaceChildren(div);
-            mostrarResultados();
-        }
-
-        // Devuelve el texto con la parte que coincide envuelta en <mark>
-        function resaltarCoincidencia(texto, q) {
-            const fragmento = document.createDocumentFragment();
-            const pos = texto.toLowerCase().indexOf(q.toLowerCase());
-            if (pos === -1) {
-                fragmento.append(texto);
-                return fragmento;
-            }
-            const mark = document.createElement('mark');
-            mark.textContent = texto.slice(pos, pos + q.length);
-            fragmento.append(texto.slice(0, pos), mark, texto.slice(pos + q.length));
-            return fragmento;
-        }
-
-        function activarResultado(i, desplazar = true) {
-            indiceActivo = i;
-            resultadosBusqueda.querySelectorAll('.result-item').forEach((el, j) => {
-                el.classList.toggle('active', j === i);
-                el.setAttribute('aria-selected', j === i ? 'true' : 'false');
-            });
-            const activo = document.getElementById(`resultado-${i}`);
-            if (activo) {
-                inputBuscar.setAttribute('aria-activedescendant', activo.id);
-                if (desplazar) activo.scrollIntoView({ block: 'nearest' });
+            const exacto = productos.find(p => normalizar(p.codigo) === normalizar(texto));
+            if (exacto || productos.length === 1) {
+                agregarYLimpiar(exacto || productos[0]);
+                cargarCatalogo();   // para que su tarjeta aparezca
             }
         }
 
-        function seleccionarResultado(producto) {
+        function agregarYLimpiar(producto) {
+            const antes = cantidadDeProducto(producto.id_producto);
             agregarAlCarrito(producto);
-            cerrarResultados();
+            limpiarBusqueda();
+            const datos = tarjetasCatalogo.get(producto.id_producto);
+            if (datos && cantidadDeProducto(producto.id_producto) > antes) animarTarjeta(datos.tarjeta);
         }
 
         function buscando(activo) {
             document.querySelector('.search-box').classList.toggle('cargando', activo);
         }
 
-        function mostrarResultados() {
-            resultadosBusqueda.style.display = 'block';
-            inputBuscar.setAttribute('aria-expanded', 'true');
-        }
-
-        function ocultarResultados() {
-            resultadosBusqueda.style.display = 'none';
-            inputBuscar.setAttribute('aria-expanded', 'false');
-        }
-
-        function cerrarResultados() {
+        // Vacía el buscador y vuelve a mostrar todo el catálogo
+        function limpiarBusqueda({ enfocar = true } = {}) {
             numeroBusqueda++;
             buscando(false);
-            ocultarResultados();
-            resultadosBusqueda.innerHTML = '';
-            resultadosActuales = [];
-            consultaMostrada = null;
-            indiceActivo = -1;
-            inputBuscar.removeAttribute('aria-activedescendant');
             inputBuscar.value = '';
+            filtrarCatalogo('');
             // Si se abrió un aviso (p. ej. producto agotado), el foco se queda en él
-            if (!document.querySelector('.modal-overlay.open')) inputBuscar.focus();
+            if (enfocar && !document.querySelector('.modal-overlay.open')) inputBuscar.focus();
         }
 
         /* ---------- Carrito ---------- */
@@ -1019,8 +842,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const ICONO_PRODUCTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>';
         let catalogo = [];
         let categorias = [];                  // { id, nombre } en el orden en que se muestran
-        let categoriaActiva = 'todas';        // 'todas' o el id de una categoría
+        let categoriaActiva = 'todas';        // 'todas', el id de una categoría o AGOTADOS
         const SIN_CATEGORIA = 0;              // productos sin categoría asignada
+        const AGOTADOS = 'agotados';          // sección y chip de los productos sin existencias, al final
         const tarjetasCatalogo = new Map();   // id_producto -> elementos de su tarjeta
 
         async function cargarCatalogo() {
@@ -1044,11 +868,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             catalogo.forEach(p => {
                 p.id_categoria = Number(p.id_categoria) || SIN_CATEGORIA;
                 if (!idsCategorias.has(p.id_categoria)) p.id_categoria = SIN_CATEGORIA;
+                // Para el buscador, una vez por carga y no en cada tecla
+                p.nombreBusqueda = normalizar(p.nombre);
+                p.claveBusqueda = normalizar(p.codigo);
             });
             if (catalogo.some(p => p.id_categoria === SIN_CATEGORIA)) {
                 categorias.push({ id: SIN_CATEGORIA, nombreBd: null });
             }
-            if (categoriaActiva !== 'todas' && !categorias.some(c => c.id === categoriaActiva)) {
+            if (categoriaActiva !== 'todas' && categoriaActiva !== AGOTADOS && !categorias.some(c => c.id === categoriaActiva)) {
                 categoriaActiva = 'todas';
             }
 
@@ -1068,8 +895,41 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             return div;
         }
 
-        // Una sección por categoría (las vacías también, con su aviso);
-        // el filtro solo muestra u oculta secciones
+        const estaAgotado = (p) => (Number(p.stock) || 0) <= 0;
+
+        // Productos de una categoría que sí se pueden vender (los agotados van a su propia sección)
+        const disponiblesDe = (idCategoria) => catalogo.filter(p => p.id_categoria === idCategoria && !estaAgotado(p));
+
+        function crearSeccion(valor, nombre, productos, mensajeVacia, clase = '') {
+            const seccion = document.createElement('section');
+            seccion.className = ('catalogo-seccion ' + clase).trim();
+            seccion.dataset.categoria = valor;
+            seccion.dataset.vacia = productos.length === 0 ? '1' : '';
+
+            const titulo = document.createElement('h3');
+            titulo.className = 'catalogo-seccion-titulo';
+            titulo.textContent = nombre;
+            const conteo = document.createElement('span');
+            conteo.className = 'catalogo-seccion-conteo';
+            conteo.dataset.total = productos.length;
+            conteo.textContent = productos.length;
+            titulo.appendChild(conteo);
+
+            const grid = document.createElement('div');
+            grid.className = 'catalogo-grid';
+            if (productos.length === 0) {
+                grid.appendChild(mensajeCatalogo(mensajeVacia));
+            } else {
+                grid.append(...productos.map(crearTarjeta));
+            }
+
+            seccion.append(titulo, grid);
+            return seccion;
+        }
+
+        // Una sección por categoría (las vacías también, con su aviso) con los
+        // productos que hay, y al final "Agotados" con todos los que no tienen
+        // existencias. Los filtros solo muestran u ocultan secciones y tarjetas.
         function renderCatalogo() {
             const contenedor = document.getElementById('catalogo');
             tarjetasCatalogo.clear();
@@ -1080,46 +940,33 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 return;
             }
 
+            // Así actualizarCatalogo() sabe si un producto cambió de sección
+            catalogo.forEach(p => { p.enAgotados = estaAgotado(p); });
+
             const secciones = categorias.map(c => {
-                const productos = catalogo.filter(p => p.id_categoria === c.id);
-
-                const seccion = document.createElement('section');
-                seccion.className = 'catalogo-seccion';
-                seccion.dataset.categoria = c.id;
-                seccion.dataset.vacia = productos.length === 0 ? '1' : '';
-
-                const titulo = document.createElement('h3');
-                titulo.className = 'catalogo-seccion-titulo';
-                titulo.textContent = nombreCategoria(c);
-                const conteo = document.createElement('span');
-                conteo.className = 'catalogo-seccion-conteo';
-                conteo.textContent = productos.length;
-                titulo.appendChild(conteo);
-
-                const grid = document.createElement('div');
-                grid.className = 'catalogo-grid';
-                if (productos.length === 0) {
-                    grid.appendChild(mensajeCatalogo(tr('categorias.vacia')));
-                } else {
-                    grid.append(...productos.map(crearTarjeta));
-                }
-
-                seccion.append(titulo, grid);
-                return seccion;
+                const hayAgotados = catalogo.some(p => p.id_categoria === c.id && p.enAgotados);
+                return crearSeccion(c.id, nombreCategoria(c), disponiblesDe(c.id),
+                    tr(hayAgotados ? 'categorias.todos_agotados' : 'categorias.vacia'));
             });
+            secciones.push(crearSeccion(AGOTADOS, tr('categorias.agotados'), catalogo.filter(estaAgotado),
+                tr('categorias.sin_agotados'), 'catalogo-seccion--agotados'));
 
-            contenedor.replaceChildren(...secciones);
+            const sinResultados = mensajeCatalogo('');
+            sinResultados.id = 'catalogoSinResultados';
+            sinResultados.setAttribute('role', 'status');
+
+            contenedor.replaceChildren(...secciones, sinResultados);
             renderFiltroCategorias();
-            aplicarFiltroCategoria();
+            aplicarFiltros();
             actualizarCatalogo();
         }
 
         function renderFiltroCategorias() {
             const filtro = document.getElementById('filtroCategorias');
-            const chip = (valor, nombre, cantidad) => {
+            const chip = (valor, nombre, cantidad, clase = '') => {
                 const boton = document.createElement('button');
                 boton.type = 'button';
-                boton.className = 'categoria-chip';
+                boton.className = ('categoria-chip ' + clase).trim();
                 boton.dataset.valor = valor;
                 boton.classList.toggle('vacia', cantidad === 0);
                 boton.textContent = nombre;
@@ -1129,7 +976,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 boton.appendChild(conteo);
                 boton.addEventListener('click', () => {
                     categoriaActiva = valor;
-                    aplicarFiltroCategoria();
+                    // Elegir una categoría deja la búsqueda
+                    if (filtroBusqueda) limpiarBusqueda({ enfocar: false });
+                    aplicarFiltros();
                     document.getElementById('catalogo').scrollTop = 0;
                 });
                 return boton;
@@ -1137,23 +986,60 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
             filtro.replaceChildren(
                 chip('todas', tr('categorias.todas'), catalogo.length),
-                ...categorias.map(c => chip(c.id, nombreCategoria(c), catalogo.filter(p => p.id_categoria === c.id).length))
+                ...categorias.map(c => chip(c.id, nombreCategoria(c), disponiblesDe(c.id).length)),
+                chip(AGOTADOS, tr('categorias.agotados'), catalogo.filter(estaAgotado).length, 'categoria-chip--agotados')
             );
         }
 
-        // "Todas" muestra solo las secciones con productos, para no llenar de avisos;
-        // al elegir una categoría vacía se ve su sección con el aviso
-        function aplicarFiltroCategoria() {
+        // Sin búsqueda: "Todas" muestra solo las secciones con productos, para no
+        // llenar de avisos; al elegir una categoría vacía se ve su sección con el aviso.
+        // Con búsqueda: se busca en todas las categorías (ninguna queda marcada) y
+        // solo se ven las tarjetas que coinciden, con su conteo por sección.
+        function aplicarFiltros() {
+            const conBusqueda = filtroBusqueda !== '';
             document.querySelectorAll('#filtroCategorias .categoria-chip').forEach(boton => {
-                const activo = String(boton.dataset.valor) === String(categoriaActiva);
+                const activo = !conBusqueda && String(boton.dataset.valor) === String(categoriaActiva);
                 boton.classList.toggle('activo', activo);
                 boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
             });
-            document.querySelectorAll('#catalogo .catalogo-seccion').forEach(seccion => {
-                seccion.hidden = categoriaActiva === 'todas'
-                    ? seccion.dataset.vacia === '1'
-                    : Number(seccion.dataset.categoria) !== categoriaActiva;
+
+            // La tarjeta que agregaría Enter se marca
+            const objetivo = conBusqueda ? productoDeBusqueda(filtroBusqueda) : null;
+            const palabras = palabrasDe(filtroBusqueda);
+            let visibles = 0;
+            tarjetasCatalogo.forEach(({ producto, tarjeta }) => {
+                const ver = !conBusqueda || coincideBusqueda(producto, palabras);
+                tarjeta.hidden = !ver;
+                tarjeta.classList.toggle('objetivo-enter', ver && producto === objetivo);
+                if (ver) visibles++;
             });
+
+            document.querySelectorAll('#catalogo .catalogo-seccion').forEach(seccion => {
+                const conteo = seccion.querySelector('.catalogo-seccion-conteo');
+                if (conBusqueda) {
+                    const enSeccion = seccion.querySelectorAll('.producto-card:not([hidden])').length;
+                    seccion.hidden = enSeccion === 0;
+                    conteo.textContent = enSeccion;
+                } else {
+                    seccion.hidden = categoriaActiva === 'todas'
+                        ? seccion.dataset.vacia === '1'
+                        : seccion.dataset.categoria !== String(categoriaActiva);
+                    conteo.textContent = conteo.dataset.total;
+                }
+            });
+
+            // Línea que separa los agotados, solo si hay otras secciones arriba
+            const agotados = document.querySelector('#catalogo .catalogo-seccion--agotados');
+            if (agotados) {
+                const hayArriba = [...document.querySelectorAll('#catalogo .catalogo-seccion:not(.catalogo-seccion--agotados)')].some(sec => !sec.hidden);
+                agotados.classList.toggle('separada', hayArriba);
+            }
+
+            const sinResultados = document.getElementById('catalogoSinResultados');
+            if (sinResultados) {
+                sinResultados.hidden = !conBusqueda || visibles > 0;
+                sinResultados.textContent = conBusqueda && visibles === 0 ? tr('buscar.sin_resultados', { q: textoBusqueda }) : '';
+            }
         }
 
         function crearTarjeta(p) {
@@ -1238,6 +1124,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         // Cantidad en la venta y existencias de cada tarjeta
         function actualizarCatalogo() {
+            // Si al revisar existencias un producto se agotó (o volvió a haber), cambia
+            // de sección: se arma de nuevo sin mover el scroll. renderCatalogo() vuelve
+            // a llamar aquí, ya con todo en su lugar.
+            if (catalogo.some(p => p.enAgotados !== undefined && p.enAgotados !== estaAgotado(p))) {
+                const contenedor = document.getElementById('catalogo');
+                const scroll = contenedor.scrollTop;
+                renderCatalogo();
+                contenedor.scrollTop = scroll;
+                return;
+            }
             tarjetasCatalogo.forEach(({ producto, tarjeta, agregar, enVenta, existencias }) => {
                 const stock = Number(producto.stock) || 0;
                 const cantidad = cantidadDeProducto(producto.id_producto);

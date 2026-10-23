@@ -1,21 +1,21 @@
 <?php
 // Textos del panel del gerente — English.
-// es.php, en.php y fr.php deben tener exactamente las mismas claves.
+// es.php y en.php deben tener exactamente las mismas claves.
 // Plurales: [singular, plural]. Variables: {nombre}.
 return [
 
     // panel
     'panel.titulo' => 'Manager panel',
 
-    // sesion
-    'sesion.cerrar' => 'Log out',
+    // nav (barra lateral)
+    'nav.productos' => 'Products',
+    'nav.movimientos' => 'Movements',
+    'nav.cajeros' => 'Cashiers',
+    'nav.cajas' => 'Registers',
+    'nav.ventas' => 'Sales',
 
-    // tema
+    // menu (barra lateral en celular)
     'menu.abrir' => 'Open menu',
-    'tema.cambiar' => 'Change theme',
-
-    // idioma
-    'idioma.cambiar' => 'Change language',
 
     // comun
     'comun.agregar' => 'Add',
@@ -69,9 +69,11 @@ return [
     'metodo_pago.Varios' => 'Mixed (cash and card)',
 
     // categoria (valores de la tabla Categorias)
+    'categoria.Abarrotes' => 'Groceries',
     'categoria.Bebidas' => 'Beverages',
     'categoria.Electronica' => 'Electronics',
     'categoria.Hogar' => 'Home',
+    'categoria.Cuidado Personal' => 'Personal Care',
     'categoria.Ropa' => 'Clothing',
     'categoria.Electrónica' => 'Electronics',
     'categoria.Botanas y dulces' => 'Snacks and sweets',
@@ -442,6 +444,7 @@ return [
     'cajas.titulo' => 'Registers',
     'cajas.caja_n' => 'Register {n}',
     'cajas.resumen' => '{activas} active of {total} registered',
+    'cajas.vacio' => 'There are no registers in your branch yet. Use “+ {nueva}” to add the first one.',
     'cajas.nueva' => 'New register',
     'cajas.creada' => 'Register created.',
     'cajas.actualizada' => 'Register updated.',
@@ -527,8 +530,6 @@ return [
     'cajeros.generar' => 'Generate',
 
     // js
-    'js.tema_a_oscuro' => 'Switch to dark mode',
-    'js.tema_a_claro' => 'Switch to light mode',
     'js.aceptar' => 'OK',
     'js.cancelar' => 'Cancel',
     'js.confirmar_titulo' => 'Confirm action',
@@ -548,6 +549,7 @@ return [
     'js.estado_ayuda_baja' => 'They will not be able to sign in, and their register will be unassigned and deactivated.',
     'js.nueva_caja' => 'New register',
     'js.editar_caja' => 'Edit register',
+    'js.campo_obligatorio' => 'This field is required.',
     'js.sol_contacto' => 'Enter at least one contact: phone or email.',
     'js.sol_imagen_grande' => 'The image must not exceed 5 MB.',
     'js.reasignar_aviso' => 'The cashier is already assigned to register {caja}. On save, they will move here and the previous register will become inactive.',

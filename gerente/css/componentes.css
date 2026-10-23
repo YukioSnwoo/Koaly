@@ -888,9 +888,6 @@ table.tabla-productos tbody tr:hover { background: var(--superficie-2); }
     .header .sidebar-toggle { display: inline-grid; flex-shrink: 0; }
     .main-wrapper { margin-left: 0; width: 100%; }
 }
-@media (max-width: 400px) {
-    .header .user-info { gap: 0.4rem; }
-}
 @media (prefers-reduced-motion: reduce) {
     .sidebar, .sidebar-fondo { transition: none; }
 }

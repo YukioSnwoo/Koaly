@@ -1,6 +1,6 @@
 <?php
 // Reglas compartidas entre sucursales.php y gerentes.php.
-// Requiere que la sesión ya esté iniciada (header.php lo hace).
+// Requiere que la sesión ya esté iniciada y los textos cargados (header.php hace ambas cosas).
 
 require_once __DIR__ . '/csrf.php';
 
@@ -44,10 +44,10 @@ function asignarSucursalAGerente(PDO $pdo, int $idGerente, int $idSucursalNueva)
     $fila = $stmt->fetch();
 
     if (!$fila) {
-        throw new RuntimeException('El gerente no existe.');
+        throw new RuntimeException(t('error.gerente_no_existe'));
     }
     if ($idSucursalNueva > 0 && $fila['estado'] === 'Baja') {
-        throw new RuntimeException('El gerente está dado de baja. Reactívalo antes de asignarle una sucursal.');
+        throw new RuntimeException(t('error.gerente_de_baja'));
     }
 
     $idSucursalAnterior = (int) ($fila['id_sucursal'] ?? 0);
@@ -55,7 +55,7 @@ function asignarSucursalAGerente(PDO $pdo, int $idGerente, int $idSucursalNueva)
         return;
     }
     if ($idSucursalNueva > 0 && !sucursalSinGerente($pdo, $idSucursalNueva)) {
-        throw new RuntimeException('La sucursal seleccionada no existe o ya tiene gerente.');
+        throw new RuntimeException(t('error.sucursal_ocupada'));
     }
 
     $hoy = date('Y-m-d');

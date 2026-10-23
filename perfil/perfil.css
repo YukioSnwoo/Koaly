@@ -1,0 +1,261 @@
+/* ============================================================
+ *  perfil.css — Menú de perfil común (admin, gerente y cajero)
+ *  ------------------------------------------------------------
+ *  Usa los colores de estilos/koaly.css, así se ve igual en los
+ *  tres paneles y en modo claro y oscuro. Todas las clases llevan
+ *  el prefijo perfil- para no chocar con las de cada panel.
+ *  ============================================================ */
+
+.perfil { position: relative; flex-shrink: 0; }
+.perfil *, .perfil *::before, .perfil *::after { box-sizing: border-box; }
+.perfil [hidden] { display: none !important; }
+
+/* ---------- Botón: nombre + engranaje ---------- */
+.perfil-boton {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+    border: 2px solid var(--tinta); border-radius: 999px;
+    background: var(--superficie); color: var(--texto);
+    font: inherit; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--sombra-tactil);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s;
+}
+.perfil-boton:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--tinta); background: var(--acento-suave); }
+.perfil-boton:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--tinta); }
+.perfil-boton[aria-expanded="true"] { background: var(--acento-suave); }
+.perfil-boton__nombre { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Íconos PNG de Imagenes/iconos usados como máscara: toman el color del texto en claro y oscuro */
+.perfil-icono {
+    display: inline-block; width: 18px; height: 18px; flex-shrink: 0;
+    background-color: currentColor;
+    -webkit-mask: var(--perfil-icono) center / contain no-repeat;
+            mask: var(--perfil-icono) center / contain no-repeat;
+}
+.perfil-icono--engranaje    { --perfil-icono: url('../Imagenes/iconos/icono_engranaje.png'); transition: transform 0.3s ease; }
+.perfil-icono--notificacion { --perfil-icono: url('../Imagenes/iconos/icono-notificacion.png'); color: var(--texto-3); }
+.perfil-boton[aria-expanded="true"] .perfil-icono--engranaje { transform: rotate(90deg); }
+
+/* Punto rojo: hay notificaciones sin leer */
+.perfil-punto {
+    position: absolute; top: -4px; right: -4px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--peligro); border: 2px solid var(--superficie);
+}
+
+/* ---------- Foto o iniciales ---------- */
+.perfil-avatar {
+    display: inline-grid; place-items: center; flex-shrink: 0;
+    border-radius: 50%; overflow: hidden;
+    background: var(--acento-suave-2); color: var(--acento-texto-fuerte);
+    font-family: var(--fuente-titulo); font-weight: 800; line-height: 1;
+}
+.perfil-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.perfil-avatar--mini   { width: 28px; height: 28px; font-size: 0.72rem; }
+.perfil-avatar--grande { width: 56px; height: 56px; font-size: 1.2rem; border: 2px solid var(--tinta); }
+.perfil-avatar--foto   { width: 88px; height: 88px; font-size: 1.8rem; border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
+
+/* ---------- Menú desplegable ---------- */
+.perfil-menu {
+    position: absolute; right: 0; top: calc(100% + 10px); z-index: 100;
+    width: min(20rem, calc(100vw - 1.5rem));
+    padding: 0.5rem;
+    background: var(--superficie); color: var(--texto);
+    border: 2px solid var(--tinta); border-radius: 14px;
+    box-shadow: var(--sombra-tactil-alta);
+    text-align: left;
+    animation: perfil-abrir 0.16s ease-out both;
+}
+@keyframes perfil-abrir { from { opacity: 0; transform: translateY(-6px); } }
+
+.perfil-tarjeta {
+    display: flex; align-items: center; gap: 0.8rem;
+    padding: 0.6rem 0.5rem 0.85rem;
+    border-bottom: 2px dashed var(--borde-fuerte);
+}
+.perfil-tarjeta__datos { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.perfil-tarjeta__nombre { font-family: var(--fuente-titulo); font-size: 1.05rem; overflow-wrap: anywhere; }
+.perfil-tarjeta__puesto { font-size: 0.8rem; font-weight: 600; color: var(--acento-texto); }
+.perfil-tarjeta__email  { font-size: 0.75rem; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.perfil-lista { display: flex; flex-direction: column; gap: 2px; padding: 0.4rem 0; }
+.perfil-lista--salir { border-top: 1px solid var(--borde); padding-bottom: 0; }
+
+.perfil-item {
+    display: flex; align-items: center; gap: 0.7rem;
+    width: 100%; margin: 0; padding: 0.6rem 0.65rem;
+    border: 0; border-radius: 8px;
+    background: transparent; color: var(--texto);
+    font: inherit; font-size: 0.9rem; font-weight: 500; text-align: left; text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.perfil-item > svg { flex-shrink: 0; color: var(--texto-3); }
+.perfil-item > [data-perfil-t] { flex: 1; }
+button.perfil-item:hover, a.perfil-item:hover { background: var(--acento-suave); }
+.perfil-item__flecha { color: var(--texto-4); }
+.perfil-item--salir, .perfil-item--salir > svg { color: var(--peligro-texto); }
+a.perfil-item--salir:hover, button.perfil-item--salir:hover { background: var(--peligro-suave); }
+.perfil-item--idioma { cursor: default; }
+
+.perfil-contador {
+    min-width: 1.4rem; padding: 0.1rem 0.4rem;
+    border-radius: 999px; background: var(--peligro); color: #fff;
+    font-size: 0.72rem; font-weight: 700; text-align: center;
+}
+
+/* Interruptor de modo oscuro */
+.perfil-switch {
+    position: relative; flex-shrink: 0;
+    width: 38px; height: 22px; border-radius: 999px;
+    background: var(--superficie-3); border: 2px solid var(--tinta);
+    transition: background 0.15s;
+}
+.perfil-switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--tinta);
+    transition: transform 0.15s ease, background 0.15s;
+}
+[aria-checked="true"] > .perfil-switch { background: var(--acento); }
+[aria-checked="true"] > .perfil-switch::after { transform: translateX(16px); background: #fff; }
+
+/* ES | EN */
+.perfil-segmentado { display: inline-flex; border: 2px solid var(--tinta); border-radius: 8px; overflow: hidden; }
+.perfil-segmentado button {
+    padding: 0.2rem 0.6rem; border: 0;
+    background: var(--superficie); color: var(--texto-2);
+    font: inherit; font-size: 0.75rem; font-weight: 700;
+    cursor: pointer;
+}
+.perfil-segmentado button + button { border-left: 2px solid var(--tinta); }
+.perfil-segmentado button:hover { background: var(--acento-suave); }
+.perfil-segmentado button[aria-pressed="true"] { background: var(--acento); color: #fff; }
+
+/* ---------- Notificaciones ---------- */
+.perfil-menu__cabecera {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.3rem 0.3rem 0.6rem;
+    border-bottom: 1px solid var(--borde);
+}
+.perfil-menu__cabecera strong { font-family: var(--fuente-titulo); font-size: 1rem; }
+.perfil-volver {
+    display: inline-grid; place-items: center;
+    width: 30px; height: 30px; padding: 0;
+    border: 2px solid var(--tinta); border-radius: 8px;
+    background: var(--superficie); color: var(--texto);
+    cursor: pointer;
+}
+.perfil-volver:hover { background: var(--acento-suave); }
+
+.perfil-notificaciones {
+    list-style: none; margin: 0; padding: 0.4rem 0 0;
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: min(60vh, 26rem); overflow-y: auto;
+}
+.perfil-notif__cuerpo {
+    display: flex; flex-direction: column; gap: 0.15rem;
+    padding: 0.55rem 0.65rem 0.55rem 0.8rem;
+    border-left: 4px solid var(--perfil-tono, var(--acento-medio)); border-radius: 6px 8px 8px 6px;
+    color: inherit; text-decoration: none;
+}
+a.perfil-notif__cuerpo:hover { background: var(--superficie-2); }
+.perfil-notif--ok      { --perfil-tono: var(--ok); }
+.perfil-notif--peligro { --perfil-tono: var(--peligro); }
+.perfil-notif--aviso   { --perfil-tono: var(--aviso); }
+.perfil-notif.is-nueva .perfil-notif__cuerpo { background: var(--acento-suave); }
+.perfil-notif.is-nueva .perfil-notif__texto { font-weight: 600; }
+.perfil-notif__texto   { font-size: 0.85rem; overflow-wrap: anywhere; }
+.perfil-notif__detalle {
+    font-size: 0.78rem; font-style: italic; color: var(--texto-3);
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.perfil-notif__fecha   { font-family: var(--fuente-dato); font-size: 0.7rem; color: var(--texto-4); }
+.perfil-notif-vacio    { padding: 1.4rem 0.5rem; text-align: center; font-size: 0.85rem; color: var(--texto-3); }
+
+/* ---------- Mi perfil (diálogo) ---------- */
+.perfil-dialogo {
+    width: min(28rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem);
+    padding: 0;
+    background: var(--superficie); color: var(--texto);
+    border: 2px solid var(--tinta); border-radius: 14px;
+    box-shadow: var(--sombra-tactil-max);
+}
+.perfil-dialogo::backdrop { background: rgba(15, 10, 30, 0.45); backdrop-filter: blur(2px); }
+.perfil-form { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.4rem; text-align: left; }
+.perfil-form h2 { margin: 0; font-size: 1.25rem; }
+
+.perfil-foto { display: flex; align-items: center; gap: 1rem; }
+.perfil-foto__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.perfil-foto__acciones small { flex-basis: 100%; font-size: 0.75rem; color: var(--texto-4); }
+
+.perfil-campo { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 600; color: var(--texto-2); }
+.perfil-campo small { font-weight: 400; font-size: 0.75rem; color: var(--texto-4); }
+.perfil-campo input {
+    width: 100%; padding: 0.6rem 0.75rem;
+    border: 2px solid var(--tinta); border-radius: 10px;
+    background: var(--superficie); color: var(--texto);
+    font: inherit; font-weight: 400; font-size: 0.95rem;
+}
+.perfil-campo input:focus { outline: none; box-shadow: 3px 3px 0 var(--foco); }
+
+.perfil-grupo {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    margin: 0; padding: 0.8rem 1rem 1rem;
+    border: 2px dashed var(--borde-fuerte); border-radius: 12px;
+}
+.perfil-grupo legend { padding: 0 0.4rem; font-size: 0.85rem; font-weight: 700; color: var(--texto); }
+
+.perfil-btn {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    border: 2px solid var(--tinta); border-radius: 10px;
+    background: var(--superficie); color: var(--texto);
+    font: inherit; font-size: 0.85rem; font-weight: 600;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--tinta);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s;
+}
+.perfil-btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--tinta); }
+.perfil-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--tinta); }
+.perfil-btn:disabled { opacity: 0.6; cursor: progress; }
+.perfil-btn--primario { background: var(--acento); color: #fff; }
+.perfil-btn--primario:hover:not(:disabled) { background: var(--acento-hover); }
+.perfil-btn--plano { background: transparent; }
+.perfil-btn:focus-within { outline: 2px solid var(--foco); outline-offset: 2px; }
+/* El input de archivo queda dentro del botón, invisible pero enfocable */
+.perfil-oculto { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+.perfil-mensaje { padding: 0.6rem 0.8rem; border: 2px solid; border-radius: 10px; font-size: 0.85rem; }
+.perfil-mensaje--error { background: var(--peligro-suave); color: var(--peligro-texto); border-color: var(--peligro-borde); }
+.perfil-mensaje--ok    { background: var(--ok-suave); color: var(--ok-texto); border-color: var(--ok-borde); }
+
+.perfil-form__acciones { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.2rem; }
+
+/* ---------- Foco visible ---------- */
+.perfil-boton:focus-visible, .perfil-item:focus-visible, .perfil-volver:focus-visible,
+.perfil-segmentado button:focus-visible, .perfil-btn:focus-visible, .perfil-notif__cuerpo:focus-visible {
+    outline: 2px solid var(--foco); outline-offset: 2px;
+}
+
+/* El diálogo queda encima de todo, también del cursor personalizado de los
+   paneles: dentro de él vuelve el cursor normal */
+body.cursor-custom .perfil-dialogo,
+body.cursor-custom .perfil-dialogo * { cursor: auto !important; }
+body.cursor-custom .perfil-dialogo :is(button, label.perfil-btn) { cursor: pointer !important; }
+
+/* ---------- Celular: solo foto y engranaje ---------- */
+@media (max-width: 640px) {
+    .perfil-boton { padding-right: 0.45rem; gap: 0.35rem; }
+    .perfil-boton__nombre { display: none; }
+    .perfil-form { padding: 1.1rem; }
+    .perfil-foto { flex-direction: column; align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .perfil-menu { animation: none; }
+    .perfil-boton, .perfil-btn, .perfil-icono--engranaje, .perfil-switch, .perfil-switch::after { transition: none; }
+}

@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if (!csrfValido()) {
-            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
+            throw new RuntimeException(t('error.formulario_expirado'));
         }
 
         if ($action === 'crear') {
@@ -47,23 +47,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
 
             if ($nombre === '') {
-                throw new RuntimeException('El nombre es obligatorio.');
+                throw new RuntimeException(t('ger.error_nombre'));
             }
-            rechazarSiProfano($nombre);
+            try {
+                rechazarSiProfano($nombre);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.profano'));
+            }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new RuntimeException('Ingresa un correo electrónico válido.');
+                throw new RuntimeException(t('ger.error_email'));
             }
             if (strlen($password) < 8) {
-                throw new RuntimeException('La contraseña debe tener al menos 8 caracteres.');
+                throw new RuntimeException(t('ger.error_password'));
             }
             if ($idSucursal > 0 && !sucursalSinGerente($pdo, $idSucursal)) {
-                throw new RuntimeException('La sucursal seleccionada no existe o ya tiene gerente.');
+                throw new RuntimeException(t('error.sucursal_ocupada'));
             }
 
             $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ?");
             $check->execute([$email]);
             if ($check->fetch() !== false) {
-                throw new RuntimeException('Ya existe un usuario con ese correo.');
+                throw new RuntimeException(t('ger.error_email_duplicado'));
             }
 
             $hoy = date('Y-m-d');
@@ -96,22 +100,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim($_POST['email'] ?? '');
 
             if ($nombre === '') {
-                throw new RuntimeException('El nombre es obligatorio.');
+                throw new RuntimeException(t('ger.error_nombre'));
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new RuntimeException('Ingresa un correo electrónico válido.');
+                throw new RuntimeException(t('ger.error_email'));
             }
 
             $existe = $pdo->prepare("SELECT 1 FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
             $existe->execute([$idGerente]);
             if ($existe->fetch() === false) {
-                throw new RuntimeException('El gerente no existe.');
+                throw new RuntimeException(t('error.gerente_no_existe'));
             }
 
             $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ? AND id_usuario <> ?");
             $check->execute([$email, $idGerente]);
             if ($check->fetch() !== false) {
-                throw new RuntimeException('Ya existe un usuario con ese correo.');
+                throw new RuntimeException(t('ger.error_email_duplicado'));
             }
 
             $pdo->prepare("UPDATE Usuarios SET nombre = ?, email = ? WHERE id_usuario = ? AND id_rol = 2")
@@ -126,13 +130,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estado = (string) ($_POST['estado'] ?? '');
 
             if (!isset(ESTADOS_GERENTE[$estado])) {
-                throw new RuntimeException('Estado no válido.');
+                throw new RuntimeException(t('ger.error_estado'));
             }
             $stmt = $pdo->prepare("SELECT estado FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
             $stmt->execute([$idGerente]);
             $estadoActual = $stmt->fetchColumn();
             if ($estadoActual === false) {
-                throw new RuntimeException('El gerente no existe.');
+                throw new RuntimeException(t('error.gerente_no_existe'));
             }
 
             if ($estado !== $estadoActual) {
@@ -173,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
         }
         error_log('gerentes.php: ' . $e->getMessage());
-        $error = 'No se pudo guardar. Inténtalo de nuevo.';
+        $error = t('error.guardar');
     }
 }
 
@@ -202,7 +206,7 @@ try {
         $historial[(int) $h['id_gerente']][] = [
             'anterior' => $h['estado_anterior'],
             'nuevo'    => $h['estado_nuevo'],
-            'fecha'    => date('d/m/Y H:i', strtotime((string) $h['fecha_cambio'])),
+            'fecha'    => fecha((string) $h['fecha_cambio']),
             'admin'    => $h['admin_nombre'],
         ];
     }
@@ -231,10 +235,10 @@ $todasSucursales = $pdo->query("
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['gerentes']) ?></h1>
-        <p>Registra gerentes y asígnalos a una sucursal</p>
+        <h1><?= e(t('nav.gerentes')) ?></h1>
+        <p><?= e(t('ger.subtitulo')) ?></p>
     </div>
-    <button class="btn btn--primary" onclick="openModal('modalGerente')"><i class="ti ti-user-plus"></i>Registrar gerente</button>
+    <button class="btn btn--primary" onclick="openModal('modalGerente')"><i class="ti ti-user-plus"></i><?= e(t('ger.registrar')) ?></button>
 </div>
 
 <?php if ($error !== ''): ?>
@@ -244,11 +248,11 @@ $todasSucursales = $pdo->query("
 <div class="table-wrap" style="margin-top:1rem">
     <table class="table" id="tblGerentes">
         <thead><tr>
-            <th>Nombre</th><th>Correo</th><th>Sucursal asignada</th><th>Estado</th><th>Acciones</th>
+            <th><?= e(t('comun.nombre')) ?></th><th><?= e(t('comun.correo')) ?></th><th><?= e(t('ger.col_sucursal')) ?></th><th><?= e(t('comun.estado')) ?></th><th><?= e(t('ger.col_acciones')) ?></th>
         </tr></thead>
         <tbody>
             <?php if (empty($gerentes)): ?>
-                <tr><td colspan="5" style="color:var(--text-muted);text-align:center">No hay gerentes registrados.</td></tr>
+                <tr><td colspan="5" style="color:var(--text-muted);text-align:center"><?= e(t('ger.vacio')) ?></td></tr>
             <?php else: ?>
                 <?php foreach ($gerentes as $g):
                     $palabras = explode(' ', $g['nombre']);
@@ -262,25 +266,25 @@ $todasSucursales = $pdo->query("
                             <?= htmlspecialchars($g['nombre']) ?>
                         </td>
                         <td style="color:var(--text-secondary)"><?= htmlspecialchars($g['email']) ?></td>
-                        <td><?= $g['sucursal_nombre'] ? htmlspecialchars($g['sucursal_nombre']) : '<span style="color:var(--text-muted)">Sin asignar</span>' ?></td>
+                        <td><?= $g['sucursal_nombre'] ? htmlspecialchars($g['sucursal_nombre']) : '<span style="color:var(--text-muted)">' . e(t('comun.sin_asignar')) . '</span>' ?></td>
                         <td>
                             <span class="badge <?= ESTADOS_GERENTE[(string) $g['estado']]['badge'] ?? 'badge--warning' ?>">
-                                <?= htmlspecialchars($g['estado'] !== '' && $g['estado'] !== null ? $g['estado'] : 'Sin estado') ?>
+                                <?= e(tValor('estado_usuario', $g['estado'], t('ger.sin_estado'))) ?>
                             </span>
                         </td>
                         <td>
-                            <button class="icon-btn" title="Editar" onclick="editarGerente(this)"
+                            <button class="icon-btn" title="<?= e(t('comun.editar')) ?>" onclick="editarGerente(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                 data-email="<?= htmlspecialchars($g['email'], ENT_QUOTES) ?>"><i class="ti ti-edit"></i></button>
-                            <button class="icon-btn" title="Asignar sucursal" onclick="asignarSucursal(this)"
+                            <button class="icon-btn" title="<?= e(t('ger.asignar_sucursal')) ?>" onclick="asignarSucursal(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                 data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
-                            <button class="icon-btn" title="Historial de estados" onclick="verHistorial(this)"
+                            <button class="icon-btn" title="<?= e(t('ger.historial')) ?>" onclick="verHistorial(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"><i class="ti ti-history"></i></button>
-                            <button class="icon-btn" title="Cambiar estado" aria-haspopup="menu" aria-expanded="false"
+                            <button class="icon-btn" title="<?= e(t('ger.cambiar_estado')) ?>" aria-haspopup="menu" aria-expanded="false"
                                 onclick="abrirMenuEstado(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
@@ -298,11 +302,11 @@ $todasSucursales = $pdo->query("
 <div id="modalHistorial" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="historialTitulo"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:460px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column">
-        <h2 id="historialTitulo" style="font-size:16px;font-weight:500;margin:0 0 .25rem">Historial de estados</h2>
+        <h2 id="historialTitulo" style="font-size:16px;font-weight:500;margin:0 0 .25rem"><?= e(t('ger.historial')) ?></h2>
         <p id="historialNombre" style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem"></p>
         <div id="historialLista" style="overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
         <div style="display:flex;justify-content:flex-end;margin-top:1.25rem">
-            <button type="button" class="btn btn--ghost" onclick="closeModal('modalHistorial')">Cerrar</button>
+            <button type="button" class="btn btn--ghost" onclick="closeModal('modalHistorial')"><?= e(t('comun.cerrar')) ?></button>
         </div>
     </div>
 </div>
@@ -310,35 +314,35 @@ $todasSucursales = $pdo->query("
 <!-- Modal: Registrar Gerente -->
 <div id="modalGerente" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
-        <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem">Registrar gerente</h2>
+        <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem"><?= e(t('ger.registrar')) ?></h2>
         <form method="POST" action="gerentes.php">
             <input type="hidden" name="action" value="crear">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Nombre completo</label>
-                <input type="text" name="nombre" class="input" style="width:100%" placeholder="Nombre y apellidos" required>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.nombre_completo')) ?></label>
+                <input type="text" name="nombre" class="input" style="width:100%" placeholder="<?= e(t('ger.nombre_ej')) ?>" required>
             </div>
             <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Correo electrónico</label>
-                <input type="email" name="email" class="input" style="width:100%" placeholder="correo@koalicius.com" required>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.email')) ?></label>
+                <input type="email" name="email" class="input" style="width:100%" placeholder="<?= e(t('ger.email_ej')) ?>" required>
             </div>
             <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Contraseña</label>
-                <input type="password" name="password" class="input" style="width:100%" placeholder="Mínimo 8 caracteres" minlength="8" required>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.password')) ?></label>
+                <input type="password" name="password" class="input" style="width:100%" placeholder="<?= e(t('ger.password_ej')) ?>" minlength="8" required>
             </div>
             <div style="margin-bottom:1rem">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Sucursal</label>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('comun.sucursal')) ?></label>
                 <select name="id_sucursal" class="select" style="width:100%">
-                    <option value="">Sin asignar</option>
+                    <option value=""><?= e(t('comun.sin_asignar')) ?></option>
                     <?php foreach ($sucursales as $s): ?>
                         <option value="<?= $s['id_sucursal'] ?>"><?= htmlspecialchars($s['nombre']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px">Al asignar una sucursal, esta pasa a Activa.</span>
+                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px"><?= e(t('ger.registrar_ayuda')) ?></span>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button type="button" class="btn btn--ghost" onclick="closeModal('modalGerente')">Cancelar</button>
-                <button type="submit" class="btn btn--primary">Registrar</button>
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalGerente')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--primary"><?= e(t('ger.registrar_boton')) ?></button>
             </div>
         </form>
     </div>
@@ -347,22 +351,22 @@ $todasSucursales = $pdo->query("
 <!-- Modal: Editar Gerente -->
 <div id="modalEditarGerente" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
-        <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem">Editar gerente</h2>
+        <h2 style="font-size:16px;font-weight:500;margin:0 0 1rem"><?= e(t('ger.editar')) ?></h2>
         <form method="POST" action="gerentes.php" id="formEditarGerente">
             <input type="hidden" name="action" value="editar">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_usuario" value="">
             <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Nombre completo</label>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.nombre_completo')) ?></label>
                 <input type="text" name="nombre" class="input" style="width:100%" required>
             </div>
             <div style="margin-bottom:1rem">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Correo electrónico</label>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.email')) ?></label>
                 <input type="email" name="email" class="input" style="width:100%" required>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button type="button" class="btn btn--ghost" onclick="closeModal('modalEditarGerente')">Cancelar</button>
-                <button type="submit" class="btn btn--primary">Guardar</button>
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalEditarGerente')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--primary"><?= e(t('comun.guardar')) ?></button>
             </div>
         </form>
     </div>
@@ -371,25 +375,25 @@ $todasSucursales = $pdo->query("
 <!-- Modal: Asignar sucursal -->
 <div id="modalAsignarSucursal" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
-        <h2 style="font-size:16px;font-weight:500;margin:0 0 .5rem">Asignar sucursal</h2>
-        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 1rem">Gerente: <strong id="asignarNombreGerente"></strong></p>
+        <h2 style="font-size:16px;font-weight:500;margin:0 0 .5rem"><?= e(t('ger.asignar_sucursal')) ?></h2>
+        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 1rem"><?= e(t('ger.asignar_gerente')) ?> <strong id="asignarNombreGerente"></strong></p>
         <form method="POST" action="gerentes.php" id="formAsignarSucursal">
             <input type="hidden" name="action" value="asignar">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_usuario" value="">
             <div style="margin-bottom:1rem">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Sucursal</label>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('comun.sucursal')) ?></label>
                 <select name="id_sucursal" class="select" style="width:100%">
-                    <option value="">Sin asignar</option>
+                    <option value=""><?= e(t('comun.sin_asignar')) ?></option>
                     <?php foreach ($todasSucursales as $s): ?>
                         <option value="<?= (int) $s['id_sucursal'] ?>" data-gerente="<?= $s['id_gerente'] !== null ? (int) $s['id_gerente'] : '' ?>"><?= htmlspecialchars($s['nombre']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px">La sucursal elegida pasa a Activa. Si el gerente tenía otra, esa queda Inactiva.</span>
+                <span style="display:block;color:var(--text-muted);font-size:12px;margin-top:4px"><?= e(t('ger.asignar_ayuda')) ?></span>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button type="button" class="btn btn--ghost" onclick="closeModal('modalAsignarSucursal')">Cancelar</button>
-                <button type="submit" class="btn btn--primary">Guardar</button>
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalAsignarSucursal')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--primary"><?= e(t('comun.guardar')) ?></button>
             </div>
         </form>
     </div>
@@ -397,12 +401,12 @@ $todasSucursales = $pdo->query("
 
 <!-- Menú: cambiar estado del gerente (uno solo, se coloca junto al botón ⋮ de la fila) -->
 <div class="menu-estado" id="menuEstado" role="menu" hidden>
-    <div class="menu-estado__titulo">Cambiar estado</div>
+    <div class="menu-estado__titulo"><?= e(t('ger.cambiar_estado')) ?></div>
     <?php foreach (ESTADOS_GERENTE as $estado => $info): ?>
         <?php if ($estado === 'Baja'): ?><div class="menu-estado__sep"></div><?php endif; ?>
         <button type="button" role="menuitem" data-estado="<?= $estado ?>"
                 class="menu-estado__item<?= $estado === 'Baja' ? ' menu-estado__item--peligro' : '' ?>">
-            <i class="ti ti-<?= $info['icono'] ?>"></i><?= $estado === 'Baja' ? 'Dar de baja' : $estado ?>
+            <i class="ti ti-<?= $info['icono'] ?>"></i><?= e($estado === 'Baja' ? t('ger.dar_baja') : tValor('estado_usuario', $estado)) ?>
         </button>
     <?php endforeach; ?>
 </div>
@@ -421,7 +425,7 @@ $todasSucursales = $pdo->query("
         <h2 id="confirmarEstadoTitulo" style="font-size:16px;font-weight:500;margin:0 0 .5rem"></h2>
         <p class="confirmar-estado__texto" id="confirmarEstadoTexto"></p>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-            <button type="button" class="btn btn--ghost" onclick="closeModal('modalConfirmarEstado')">Cancelar</button>
+            <button type="button" class="btn btn--ghost" onclick="closeModal('modalConfirmarEstado')"><?= e(t('comun.cancelar')) ?></button>
             <button type="button" class="btn btn--primary" id="confirmarEstadoAceptar"></button>
         </div>
     </div>
@@ -435,13 +439,15 @@ $todasSucursales = $pdo->query("
     const aceptar = document.getElementById('confirmarEstadoAceptar');
     let boton = null;
 
-    // Texto sin innerHTML: el nombre y la sucursal vienen de la base
-    function parrafo(partes) {
+    // Texto sin innerHTML: el nombre y la sucursal vienen de la base.
+    // Cada {variable} de la plantilla traducida se pinta en negritas.
+    function parrafo(plantilla, vars) {
         const p = document.getElementById('confirmarEstadoTexto');
-        p.replaceChildren(...partes.map(([texto, fuerte]) => {
-            if (!fuerte) return document.createTextNode(texto);
+        p.replaceChildren(...plantilla.split(/(\{\w+\})/).map(parte => {
+            const clave = parte.match(/^\{(\w+)\}$/);
+            if (!clave || !(clave[1] in vars)) return document.createTextNode(parte);
             const b = document.createElement('strong');
-            b.textContent = texto;
+            b.textContent = vars[clave[1]];
             return b;
         }));
     }
@@ -449,29 +455,27 @@ $todasSucursales = $pdo->query("
     function confirmarCambio(btn, estado, icono) {
         const nombre = btn.dataset.nombre;
         const sucursal = btn.dataset.sucursal;
+        const nombreEstado = NOMBRES_ESTADO[estado] || estado;
         const baja = estado === 'Baja';
         let titulo, texto;
         if (baja) {
-            titulo = 'Dar de baja al gerente';
-            texto = [['Se dará de baja a '], [nombre, true], ['. Ya no podrá iniciar sesión.']];
-            if (sucursal) texto.push([' Dejará '], [sucursal, true], [', que queda inactiva hasta que le asignes otro gerente.']);
+            titulo = tj('baja_titulo');
+            texto = tj('baja_texto') + (sucursal ? ' ' + tj('baja_sucursal') : '');
         } else if (estado === 'Activo') {
-            titulo = 'Activar gerente';
-            texto = [[nombre, true], [' podrá volver a iniciar sesión.']];
-            if (!sucursal) texto.push([' No tiene sucursal: asígnale una para que pueda trabajar.']);
+            titulo = tj('activar_titulo');
+            texto = tj('activar_texto') + (sucursal ? '' : ' ' + tj('activar_sin_sucursal'));
         } else {
-            titulo = 'Cambiar a ' + estado;
-            texto = [[nombre, true], [' quedará en '], [estado.toLowerCase(), true],
-                ['. No podrá iniciar sesión mientras tanto' + (sucursal ? ', pero conserva su sucursal.' : '.')]];
+            titulo = tj('estado_titulo', { estado: nombreEstado });
+            texto = tj(sucursal ? 'estado_texto_sucursal' : 'estado_texto');
         }
 
         document.getElementById('confirmarEstadoTitulo').textContent = titulo;
-        parrafo(texto);
+        parrafo(texto, { nombre, sucursal, estado: nombreEstado.toLowerCase() });
         const caja = document.getElementById('confirmarEstadoIcono');
         caja.classList.toggle('confirmar-estado__icono--peligro', baja);
         caja.firstElementChild.className = 'ti ti-' + icono;
         aceptar.className = 'btn ' + (baja ? 'btn--danger' : 'btn--primary');
-        aceptar.textContent = baja ? 'Dar de baja' : 'Confirmar';
+        aceptar.textContent = tj(baja ? 'dar_baja' : 'confirmar');
         aceptar.onclick = () => {
             aceptar.disabled = true;
             form.id_usuario.value = btn.dataset.id;
@@ -540,6 +544,7 @@ function editarGerente(btn) {
 
 const HISTORIAL_ESTADOS = <?= json_encode($historial, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
 const BADGES_ESTADO = <?= json_encode(array_map(fn($i) => $i['badge'], ESTADOS_GERENTE)) ?>;
+const NOMBRES_ESTADO = <?= json_encode(array_combine(array_keys(ESTADOS_GERENTE), array_map(fn($estado) => tValor('estado_usuario', $estado), array_keys(ESTADOS_GERENTE))), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 
 function verHistorial(btn) {
     const lista = document.getElementById('historialLista');
@@ -550,7 +555,7 @@ function verHistorial(btn) {
     if (registros.length === 0) {
         const vacio = document.createElement('p');
         vacio.style.cssText = 'color:var(--text-muted);font-size:13px';
-        vacio.textContent = 'Aún no hay cambios de estado registrados.';
+        vacio.textContent = tj('historial_vacio');
         lista.appendChild(vacio);
     }
 
@@ -563,7 +568,7 @@ function verHistorial(btn) {
         const etiqueta = (estado) => {
             const b = document.createElement('span');
             b.className = 'badge ' + (BADGES_ESTADO[estado] || 'badge--warning');
-            b.textContent = estado;
+            b.textContent = NOMBRES_ESTADO[estado] || estado;
             return b;
         };
         if (r.anterior) {
@@ -575,14 +580,14 @@ function verHistorial(btn) {
         } else {
             const inicio = document.createElement('span');
             inicio.style.cssText = 'font-size:12px;color:var(--text-secondary)';
-            inicio.textContent = 'Estado inicial:';
+            inicio.textContent = tj('historial_inicial');
             cambio.appendChild(inicio);
         }
         cambio.appendChild(etiqueta(r.nuevo));
 
         const detalle = document.createElement('div');
         detalle.style.cssText = 'font-size:12px;color:var(--text-secondary)';
-        detalle.textContent = r.fecha + (r.admin ? ' · por ' + r.admin : '');
+        detalle.textContent = r.fecha + (r.admin ? ' · ' + tj('historial_por', { admin: r.admin }) : '');
 
         fila.append(cambio, detalle);
         lista.appendChild(fila);

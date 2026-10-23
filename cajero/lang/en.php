@@ -7,11 +7,6 @@ return [
     // página y encabezado
     'caja.titulo' => 'Checkout',
     'caja.cajero' => 'Cashier',
-    'caja.sucursal' => 'Branch',
-    'caja.sin_asignar' => 'Unassigned',
-    'tema.a_claro' => 'Switch to light mode',
-    'tema.a_oscuro' => 'Switch to dark mode',
-    'idioma.cambiar' => 'Change language',
     'sesion.cerrar' => 'Log out',
     'sesion.pregunta' => 'Do you want to log out?',
     'sesion.quedarme' => 'No, stay',
@@ -33,8 +28,6 @@ return [
 
     // buscador
     'buscar.placeholder' => 'Search by name or code...',
-    'buscar.clave' => 'Code',
-    'buscar.existencias' => 'In stock: {n}',
     'buscar.sin_resultados' => 'No results for "{q}".',
     'buscar.sin_conexion' => 'Could not connect to the server.',
     'buscar.sin_conexion_alerta' => 'Could not connect to the server to search for the product.',
@@ -55,6 +48,9 @@ return [
     'categorias.todas' => 'All',
     'categorias.sin_categoria' => 'Uncategorized',
     'categorias.vacia' => 'No products in this category yet.',
+    'categorias.todos_agotados' => 'Every product in this category is out of stock.',
+    'categorias.agotados' => 'Out of stock',
+    'categorias.sin_agotados' => 'No products are out of stock.',
     // names from the Categorias table (the key is the exact name in the DB)
     'categoria.Abarrotes' => 'Groceries',
     'categoria.Bebidas' => 'Drinks',

@@ -12,7 +12,7 @@ const CONTRASENAS_COMUNES = [
 
 const $ = (id) => document.getElementById(id);
 
-/** Mismas reglas que passwordIsTooSimple() en login.php (salvo el nombre, que solo conoce el servidor). */
+/** Mismas reglas que passwordIsTooSimple() en reglas_contrasena.php (salvo el nombre, que solo conoce el servidor). */
 function problemaContrasena(password, email) {
     if (password.length < 8) return 'Debe tener mínimo 8 caracteres';
     if (/^[a-zA-Z]+$/.test(password)) return 'No puede ser solo letras';

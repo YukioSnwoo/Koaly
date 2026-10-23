@@ -8,11 +8,6 @@ return [
     // página y encabezado
     'caja.titulo' => 'Caja',
     'caja.cajero' => 'Cajero',
-    'caja.sucursal' => 'Sucursal',
-    'caja.sin_asignar' => 'Sin asignar',
-    'tema.a_claro' => 'Cambiar a modo claro',
-    'tema.a_oscuro' => 'Cambiar a modo oscuro',
-    'idioma.cambiar' => 'Cambiar idioma',
     'sesion.cerrar' => 'Cerrar sesión',
     'sesion.pregunta' => '¿Deseas cerrar sesión?',
     'sesion.quedarme' => 'No, me quedo',
@@ -34,8 +29,6 @@ return [
 
     // buscador
     'buscar.placeholder' => 'Buscar por nombre o clave...',
-    'buscar.clave' => 'Clave',
-    'buscar.existencias' => 'Existencias: {n}',
     'buscar.sin_resultados' => 'Sin resultados para "{q}".',
     'buscar.sin_conexion' => 'No se pudo conectar con el servidor.',
     'buscar.sin_conexion_alerta' => 'No se pudo conectar con el servidor para buscar el producto.',
@@ -56,6 +49,9 @@ return [
     'categorias.todas' => 'Todas',
     'categorias.sin_categoria' => 'Sin categoría',
     'categorias.vacia' => 'Todavía no hay productos en esta categoría.',
+    'categorias.todos_agotados' => 'Todos los productos de esta categoría están agotados.',
+    'categorias.agotados' => 'Agotados',
+    'categorias.sin_agotados' => 'No hay productos agotados.',
     // nombres de la tabla Categorias (la clave es el nombre exacto en la BD)
     'categoria.Abarrotes' => 'Abarrotes',
     'categoria.Bebidas' => 'Bebidas',

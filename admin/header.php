@@ -22,40 +22,17 @@ if (!$admin) {
     exit;
 }
 
-// Idioma
-if (!isset($_SESSION['idioma'])) $_SESSION['idioma'] = 'es';
-$idioma = $_SESSION['idioma'];
-
-$textos = [
-    'es' => [
-        'panel_general' => 'Panel general', 'sucursales' => 'Sucursales',
-        'gerentes' => 'Gerentes', 'inventario' => 'Inventario global',
-        'ventas' => 'Ventas', 'reportes' => 'Reportes',
-        'cerrar_sesion' => 'Cerrar sesión', 'administracion' => 'Administración',
-        'tema_a_claro' => 'Cambiar a modo claro', 'tema_a_oscuro' => 'Cambiar a modo oscuro',
-        'menu_abrir' => 'Abrir menú', 'idioma_cambiar' => 'Cambiar idioma',
-        'solicitudes_por_revisar' => 'solicitudes de producto por revisar',
-    ],
-    'en' => [
-        'panel_general' => 'Dashboard', 'sucursales' => 'Branches',
-        'gerentes' => 'Managers', 'inventario' => 'Global inventory',
-        'ventas' => 'Sales', 'reportes' => 'Reports',
-        'cerrar_sesion' => 'Log out', 'administracion' => 'Administration',
-        'tema_a_claro' => 'Switch to light mode', 'tema_a_oscuro' => 'Switch to dark mode',
-        'menu_abrir' => 'Open menu', 'idioma_cambiar' => 'Change language',
-        'solicitudes_por_revisar' => 'product requests to review',
-    ],
-];
-$idiomas = ['es' => 'Español', 'en' => 'English'];
-$t = $textos[$idioma] ?? $textos['es'];
+// Idioma: textos en admin/lang/{es,en}.php
+require_once __DIR__ . '/i18n.php';
 
 $pagina_actual = basename($_SERVER['PHP_SELF']);
 
 $verAdminCss = filemtime(__DIR__ . '/admin.css');
 $verKoaly    = filemtime(__DIR__ . '/../estilos/koaly.css');
+$verPerfil   = filemtime(__DIR__ . '/../perfil/perfil.css');
 ?>
 <!DOCTYPE html>
-<html lang="<?= $idioma ?>">
+<html lang="<?= idiomaActual() ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -68,10 +45,13 @@ $verKoaly    = filemtime(__DIR__ . '/../estilos/koaly.css');
         if (!tema && localStorage.getItem('koalicius-admin-theme') === 'light') tema = 'claro';
         if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema);
     } catch (e) {}
+    // Textos traducidos para el JavaScript de las páginas (admin.js define tj())
+    window.I18N = <?= i18nParaJs() ?>;
     </script>
     <link rel="stylesheet" href="admin.css?v=<?= $verAdminCss ?>">
     <!-- Estilo común de Koaly (colores, fuentes y piel táctil); va al final para que gane -->
     <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
+    <link rel="stylesheet" href="../perfil/perfil.css?v=<?= $verPerfil ?>">
 </head>
 <body>
 <div class="admin-layout">

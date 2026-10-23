@@ -151,7 +151,7 @@
 }
 
 /* Fotos de producto: en oscuro se atenúan un poco para no deslumbrar */
-.producto-card-img img, .producto-thumb, .result-thumb, .eliminar-producto img { filter: var(--filtro-imagen); }
+.producto-card-img img, .producto-thumb, .eliminar-producto img { filter: var(--filtro-imagen); }
 
 /* ============================================================
    Reset & base
@@ -201,11 +201,8 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 }
 .header-sub { font-weight: 500; color: var(--texto-3); font-size: 0.95rem; }
 .header .user-info { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-.user-datos { text-align: right; line-height: 1.3; }
-.user-nombre { display: block; font-size: 0.9rem; font-weight: 500; color: var(--texto-2); }
-.user-sucursal { display: block; font-size: 0.78rem; color: var(--texto-3); }
 
-/* Botón de corte de caja (junto al idioma) */
+/* Botón de corte de caja (junto al menú de perfil) */
 .corte-boton {
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.4rem 0.7rem;
@@ -216,113 +213,21 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 }
 .corte-boton:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
 
-/* Selector de idioma (mismo que el panel de gerente) */
-.idioma { position: relative; }
-.idioma > summary {
-    list-style: none;
-    display: inline-flex; align-items: center; gap: 0.35rem;
-    padding: 0.4rem 0.65rem;
-    border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie);
-    color: var(--texto-2); font-weight: 600; font-size: 0.85rem;
-    cursor: pointer; user-select: none;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.idioma > summary::-webkit-details-marker { display: none; }
-.idioma > summary:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
-.idioma[open] .idioma-flecha { transform: rotate(180deg); }
-.idioma-flecha { transition: transform 0.15s; }
-.idioma-menu {
-    position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
-    min-width: 11rem;
-    background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px;
-    box-shadow: 0 12px 32px rgba(15,23,42,0.12);
-    padding: 0.35rem;
-    display: flex; flex-direction: column;
-    animation: fadeInUp 0.15s ease-out both;
-}
-.idioma-menu button {
-    display: flex; align-items: center; gap: 0.6rem;
-    width: 100%; text-align: left;
-    padding: 0.55rem 0.7rem; border: 0; border-radius: 7px;
-    background: transparent; color: var(--texto); font-size: 0.9rem; cursor: pointer;
-}
-.idioma-menu button:hover { background: var(--acento-suave); }
-.idioma-menu button.is-activo { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); font-weight: 600; }
-.idioma-codigo {
-    font-size: 0.7rem; font-weight: 700; color: var(--acento-texto);
-    background: var(--acento-suave); border-radius: 4px; padding: 0.1rem 0.3rem;
-}
-
-/* Botones de la barra con relieve (idioma, tema, cerrar sesión), igual que el
-   gerente: se elevan al pasar el cursor y se hunden al presionar */
-.header .corte-boton,
-.header .idioma > summary,
-.header .tema-boton,
-.header .btn-salir {
+/* Botón de corte con relieve, igual que los del gerente: se eleva al pasar
+   el cursor y se hunde al presionar */
+.header .corte-boton {
     border: 2px solid var(--tinta);
     box-shadow: 3px 3px 0 var(--tinta);
     transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s, color 0.15s;
 }
-.header .corte-boton:hover,
-.header .idioma > summary:hover,
-.header .tema-boton:hover,
-.header .btn-salir:hover {
+.header .corte-boton:hover {
     border-color: var(--tinta);
     transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0 var(--tinta);
 }
-.header .corte-boton:active,
-.header .idioma > summary:active,
-.header .tema-boton:active,
-.header .btn-salir:active {
+.header .corte-boton:active {
     transform: translate(3px, 3px);
     box-shadow: 0 0 0 var(--tinta);
-}
-/* Mientras el menú está abierto, el botón se queda hundido */
-.header .idioma[open] > summary {
-    transform: translate(3px, 3px);
-    box-shadow: 0 0 0 var(--tinta);
-    background: var(--acento-suave); color: var(--acento-texto);
-}
-.header .idioma-menu {
-    top: calc(100% + 10px);
-    border: 2px solid var(--tinta);
-    border-radius: 14px;
-    box-shadow: 5px 5px 0 var(--tinta);
-}
-.header .tema-boton { width: 36px; height: 36px; }
-
-/* Botón de tema: luna en claro, sol en oscuro */
-.tema-boton {
-    display: inline-grid; place-items: center;
-    width: 34px; height: 34px; padding: 0;
-    border: 1px solid var(--borde); border-radius: 8px;
-    background: var(--superficie); color: var(--texto-2);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.tema-boton:hover { background: var(--acento-suave); border-color: var(--acento-suave-2); color: var(--acento-texto); }
-.tema-sol { display: none; }
-:root[data-tema="oscuro"] .tema-sol { display: block; }
-:root[data-tema="oscuro"] .tema-luna { display: none; }
-@media (prefers-color-scheme: dark) {
-    :root:not([data-tema="claro"]) .tema-sol { display: block; }
-    :root:not([data-tema="claro"]) .tema-luna { display: none; }
-}
-
-.btn-salir {
-    padding: 0.45rem 0.9rem;
-    border: 1px solid var(--borde);
-    border-radius: 8px;
-    background: var(--superficie);
-    color: var(--texto-2); cursor: pointer;
-    font-weight: 600; font-size: 0.85rem;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.btn-salir:hover {
-    background: var(--peligro-suave);
-    border-color: var(--peligro-borde);
-    color: var(--peligro-texto);
 }
 
 /* ============================================================
@@ -396,39 +301,6 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
     outline: none;
 }
-
-.search-results {
-    position: absolute;
-    top: calc(100% + 4px); left: 0; right: 0;
-    background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: 10px;
-    box-shadow: 0 12px 32px rgba(15,23,42,0.12);
-    z-index: 10;
-    max-height: 280px;
-    overflow-y: auto;
-    animation: fadeInUp 0.15s ease-out both;
-}
-.search-results .result-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 0.6rem 0.8rem;
-    cursor: pointer;
-    border-bottom: 1px solid var(--superficie-3);
-    font-size: 0.9rem;
-}
-.search-results .result-item:last-child { border-bottom: none; }
-.search-results .result-item.active { background: var(--acento-suave); box-shadow: inset 3px 0 0 var(--acento); }
-.search-results .result-info { flex: 1; min-width: 0; }
-.search-results .result-nombre { font-weight: 600; line-height: 1.3; }
-.search-results .result-item small { display: block; color: var(--texto-3); font-size: 0.78rem; }
-.search-results .result-precio { font-weight: 700; color: var(--acento-texto); white-space: nowrap; font-size: 0.85rem; }
-.search-results mark { background: var(--acento-suave-2); color: var(--acento-texto-fuerte); border-radius: 3px; padding: 0 1px; }
-.search-results .agotado { color: var(--peligro-texto); font-weight: 700; }
-.search-results .result-thumb {
-    width: 36px; height: 36px; border-radius: 6px;
-    object-fit: contain; background: var(--marco-imagen); flex-shrink: 0;
-}
-.search-results .no-results { padding: 0.7rem 0.8rem; color: var(--texto-3); font-size: 0.85rem; }
 
 /* ============================================================
    Botones
@@ -519,6 +391,17 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 }
 .categoria-chip.activo .categoria-chip-conteo { background: rgba(255,255,255,0.22); color: #fff; }
 
+/* "Agotados": al final, separada de las categorías por una línea y en rojo */
+.categoria-chip--agotados { position: relative; margin-top: 0.7rem; }
+.categoria-chip--agotados::before {
+    content: ''; position: absolute; left: 0.3rem; right: 0.3rem; top: calc(-0.45rem - 1px);
+    border-top: 1px dashed var(--borde-fuerte);
+}
+.categoria-chip--agotados .categoria-chip-conteo { background: var(--peligro-suave); color: var(--peligro-texto); }
+.categoria-chip--agotados:hover { background: var(--peligro-suave); border-color: var(--peligro-borde); color: var(--peligro-texto); }
+.categoria-chip--agotados.activo,
+.categoria-chip--agotados.activo:hover { background: var(--peligro); border-color: var(--peligro); color: #fff; box-shadow: 0 1px 2px rgba(220,38,38,0.3); }
+
 .catalogo-contenido {
     flex: 1; min-height: 0;
     overflow-y: auto;
@@ -538,6 +421,10 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
     background: var(--acento-suave-2); color: var(--acento-texto);
     font-size: 0.72rem; line-height: 1.6;
 }
+/* Agotados: siempre la última sección; con otras arriba, una línea la separa */
+.catalogo-seccion--agotados.separada { margin-top: 2rem; padding-top: 1.2rem; border-top: 2px dashed var(--borde-fuerte); }
+.catalogo-seccion--agotados .catalogo-seccion-titulo { color: var(--peligro-texto); }
+.catalogo-seccion--agotados .catalogo-seccion-conteo { background: var(--peligro-suave); color: var(--peligro-texto); }
 
 .catalogo-grid {
     display: grid;
@@ -588,6 +475,9 @@ table, .resumen-total, .modal-total, .cambio-monto, .producto-card-precio { font
 .producto-card.agotado { opacity: 0.55; }
 .producto-card.agotado:hover { transform: none; box-shadow: none; border-color: var(--borde); }
 .producto-card.bump { animation: tarjetaPulso 0.3s ease-out; }
+.producto-card[hidden] { display: none; }   /* fuera de la búsqueda */
+/* La que agrega Enter en el buscador (clave exacta o única coincidencia) */
+.producto-card.objetivo-enter { outline: 3px dashed var(--acento); outline-offset: 3px; }
 
 .producto-card-img {
     aspect-ratio: 4 / 3;
@@ -1343,6 +1233,8 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
     .categorias-filtro { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
     .categoria-chip { width: auto; border-color: var(--borde); border-radius: 999px; padding: 0.4rem 0.75rem; }
     .categoria-chip:hover, .categoria-chip:active { transform: none; }
+    .categoria-chip--agotados { margin-top: 0; }
+    .categoria-chip--agotados::before { display: none; }
     .catalogo-panel { max-height: 70vh; }
     .resumen-lista { max-height: 40vh; }
 }
@@ -1350,7 +1242,6 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 @media (max-width: 640px) {
     .header { padding: 0.85rem 1rem; }
     .header h1 { font-size: 1.05rem; }
-    .user-datos { display: none; }
     .pos-layout { padding: 1rem; gap: 1rem; }
     .modal-box { padding: 1.25rem; }
 }
@@ -1412,12 +1303,11 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 .form-group .input-dinero input:focus { box-shadow: none; }
 .cambio-resultado { border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
 
-/* Resultados de búsqueda y avisos breves */
-.search-results { border: 2px solid var(--tinta); border-radius: 12px; box-shadow: var(--sombra-tactil-alta); }
+/* Avisos breves */
 .toast { border: 2px solid var(--tinta); border-left-width: 6px; border-radius: 12px; box-shadow: var(--sombra-tactil); }
 
 /* Barras de desplazamiento con los colores del tema (en oscuro no quedan blancas) */
-.catalogo-grid, .resumen-lista, .tabla-scroll, .search-results, .modal-box, .lista-faltantes {
+.catalogo-grid, .resumen-lista, .tabla-scroll, .modal-box, .lista-faltantes {
     scrollbar-color: var(--borde-fuerte) transparent;
 }
 

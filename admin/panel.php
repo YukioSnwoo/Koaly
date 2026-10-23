@@ -33,8 +33,8 @@ $listaSucursales = $sucursales->fetchAll();
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['panel_general']) ?></h1>
-        <p>Vista consolidada de todas las sucursales</p>
+        <h1><?= e(t('nav.panel')) ?></h1>
+        <p><?= e(t('panel.subtitulo')) ?></p>
     </div>
 </div>
 
@@ -52,57 +52,57 @@ $pendientes = $bajoStock + $sinGerente;
 <div class="hero">
     <div class="ticket">
         <div class="ticket__top">
-            <b>Corte de la red</b>
-            <span><?= date('d/m/Y H:i') ?></span>
+            <b><?= e(t('panel.corte')) ?></b>
+            <span><?= fecha(time()) ?></span>
         </div>
         <?php if (empty($listaSucursales)): ?>
-            <p class="ticket__vacio">Aún no hay sucursales registradas.</p>
+            <p class="ticket__vacio"><?= e(t('panel.sin_sucursales')) ?></p>
         <?php else: ?>
             <?php foreach ($lineasTicket as $s): ?>
                 <div class="ticket__row"><?= htmlspecialchars($s['nombre']) ?><i></i><em>$<?= number_format((float) $s['ventas_hoy'], 0, '.', ',') ?></em></div>
             <?php endforeach; ?>
             <?php if ($restantes): ?>
-                <div class="ticket__row">Otras <?= count($restantes) ?><i></i><em>$<?= number_format(array_sum(array_column($restantes, 'ventas_hoy')), 0, '.', ',') ?></em></div>
+                <div class="ticket__row"><?= e(tn('panel.otras', count($restantes))) ?><i></i><em>$<?= number_format(array_sum(array_column($restantes, 'ventas_hoy')), 0, '.', ',') ?></em></div>
             <?php endif; ?>
         <?php endif; ?>
         <div class="ticket__total">
-            <span>Total del día</span>
+            <span><?= e(t('panel.total_dia')) ?></span>
             <b>$<?= number_format((float) $totalVentas, 0, '.', ',') ?></b>
         </div>
     </div>
 
     <div class="pend">
-        <p class="section-title">Para atender</p>
+        <p class="section-title"><?= e(t('panel.para_atender')) ?></p>
         <?php if ($bajoStock > 0): ?>
             <a class="pend__it" href="inventario.php">
                 <span class="pend__ic pend__ic--danger"><i class="ti ti-alert-triangle"></i></span>
-                <span class="pend__txt"><b><?= (int) $bajoStock ?> producto<?= $bajoStock != 1 ? 's' : '' ?> con stock bajo</b><small>Cinco unidades o menos en alguna sucursal</small></span>
-                <span class="btn btn--sm">Ver</span>
+                <span class="pend__txt"><b><?= e(tn('panel.bajo_stock', (int) $bajoStock)) ?></b><small><?= e(t('panel.bajo_stock_ayuda')) ?></small></span>
+                <span class="btn btn--sm"><?= e(t('panel.ver')) ?></span>
             </a>
         <?php endif; ?>
         <?php if ($sinGerente > 0): ?>
             <a class="pend__it" href="gerentes.php">
                 <span class="pend__ic pend__ic--warn"><i class="ti ti-user-off"></i></span>
-                <span class="pend__txt"><b><?= $sinGerente ?> sucursal<?= $sinGerente != 1 ? 'es' : '' ?> sin gerente</b><small>Asigna a alguien para activarla<?= $inactivas > 0 ? ' · ' . $inactivas . ' inactiva' . ($inactivas != 1 ? 's' : '') : '' ?></small></span>
-                <span class="btn btn--primary btn--sm">Asignar</span>
+                <span class="pend__txt"><b><?= e(tn('panel.sin_gerente', $sinGerente)) ?></b><small><?= e(tn('panel.sin_gerente_ayuda', $sinGerente)) ?><?= $inactivas > 0 ? ' · ' . e(tn('panel.n_inactivas', $inactivas)) : '' ?></small></span>
+                <span class="btn btn--primary btn--sm"><?= e(t('panel.asignar')) ?></span>
             </a>
         <?php endif; ?>
         <?php if ($pendientes === 0): ?>
             <div class="pend__it pend__it--ok">
                 <span class="pend__ic pend__ic--ok"><i class="ti ti-check"></i></span>
-                <span class="pend__txt"><b>Todo en orden</b><small>No hay nada pendiente por ahora</small></span>
+                <span class="pend__txt"><b><?= e(t('panel.en_orden')) ?></b><small><?= e(t('panel.en_orden_ayuda')) ?></small></span>
             </div>
         <?php endif; ?>
         <div class="pend__mini">
-            <div class="stat-card"><p class="stat-card__label">Sucursales activas</p><p class="stat-card__value"><?= $numSucursales ?></p></div>
-            <div class="stat-card"><p class="stat-card__label">Gerentes registrados</p><p class="stat-card__value"><?= $numGerentes ?></p></div>
+            <div class="stat-card"><p class="stat-card__label"><?= e(t('panel.sucursales_activas')) ?></p><p class="stat-card__value"><?= $numSucursales ?></p></div>
+            <div class="stat-card"><p class="stat-card__label"><?= e(t('panel.gerentes_registrados')) ?></p><p class="stat-card__value"><?= $numGerentes ?></p></div>
         </div>
     </div>
 </div>
 
 <div style="margin-top:1rem;display:flex;gap:8px">
-    <a href="sucursales.php" class="btn btn--primary"><i class="ti ti-plus"></i>Nueva sucursal</a>
-    <a href="gerentes.php" class="btn btn--primary"><i class="ti ti-user-plus"></i>Registrar gerente</a>
+    <a href="sucursales.php" class="btn btn--primary"><i class="ti ti-plus"></i><?= e(t('suc.nueva')) ?></a>
+    <a href="gerentes.php" class="btn btn--primary"><i class="ti ti-user-plus"></i><?= e(t('ger.registrar')) ?></a>
 </div>
 
 <?php require 'footer.php'; ?>

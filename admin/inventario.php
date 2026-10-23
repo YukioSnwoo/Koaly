@@ -8,6 +8,7 @@ if ($esAjax) {
         exit;
     }
     require_once __DIR__ . '/database.php';
+    require_once __DIR__ . '/i18n.php';
 } else {
     ob_start();
     require 'header.php';
@@ -27,22 +28,8 @@ $reabrir = null; // tras un error: reabre el modal con lo que el admin había es
    edita, la solicitud vuelve al gerente (estado Devuelta) con los
    cambios marcados; la lógica común está en solicitudes_comun.php.
    ------------------------------------------------------------ */
-// Claves de error de solicitudes_comun.php → texto para el admin
-$mensajesSolicitud = [
-    'no_existe'      => 'La solicitud no existe.',
-    'turno'          => 'La solicitud ya no espera tu revisión (ya se resolvió o está con el gerente). Recarga la página.',
-    'nombre'         => 'El nombre del producto es obligatorio (máx. 100 caracteres).',
-    'descripcion'    => 'La descripción es muy larga (máx. 255 caracteres).',
-    'precio'         => 'El precio debe ser mayor a 0.',
-    'categoria'      => 'Elige una categoría válida.',
-    'duplicado'      => 'Ya existe un producto activo con ese nombre. Cambia el nombre con «Editar» o rechaza la solicitud.',
-    'imagen_tamano'  => 'La imagen no debe pasar de 5 MB.',
-    'imagen_formato' => 'Formato de imagen no permitido. Usa PNG, JPG o WEBP.',
-    'imagen_subida'  => 'Ocurrió un error al subir la imagen.',
-    'imagen_guardar' => 'No se pudo guardar la imagen en el servidor.',
-    'nota'           => 'Escribe una nota para el gerente explicando los cambios.',
-    'sin_cambios'    => 'No cambiaste nada. Si la solicitud está bien, acéptala.',
-];
+// Los errores se lanzan con una clave corta (las de solicitudes_comun.php y las
+// de aquí); el texto para el admin está en lang/*.php como sol_error.<clave>.
 
 if (!$esAjax && !empty($_SESSION['flash_inv'])) {
     $exito = $_SESSION['flash_inv'];
@@ -57,17 +44,17 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if (!csrfValido()) {
-            throw new RuntimeException('El formulario expiró. Recarga la página e inténtalo de nuevo.');
+            throw new RuntimeException(t('error.formulario_expirado'));
         }
         if (!in_array($action, ['aprobar_agregar', 'aprobar_eliminar', 'rechazar', 'editar_devolver'], true)) {
-            throw new RuntimeException('Acción no válida.');
+            throw new RuntimeException('accion');
         }
 
         // Lo que escribe el admin se valida antes de bloquear la solicitud
         if ($action === 'rechazar') {
             $motivo = trim($_POST['motivo_rechazo'] ?? '');
             if ($motivo === '') {
-                throw new RuntimeException('Escribe el motivo del rechazo.');
+                throw new RuntimeException('motivo');
             }
         } elseif ($action === 'editar_devolver') {
             // El proveedor es del gerente: el admin no lo cambia
@@ -90,11 +77,11 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE Solicitudes_Productos SET estado = 'Rechazada', motivo_rechazo = ?, resuelto_en = NOW(), resuelto_por = ?, actualizado_en = NOW() WHERE id_solicitud = ?");
             $stmt->execute([$motivo, $idAdmin, $idSolicitud]);
             registrarHistorialSolicitud($pdo, $idSolicitud, $idAdmin, 'Admin', 'Rechazada', [], $motivo);
-            $mensaje = 'Solicitud rechazada.';
+            $mensaje = t('sol.ok.rechazada');
 
         } elseif ($action === 'aprobar_eliminar') {
             if (!$esEliminar || empty($sol['id_producto'])) {
-                throw new RuntimeException('Esta solicitud no es de eliminación.');
+                throw new RuntimeException('no_es_eliminar');
             }
             // Baja lógica: conserva ventas e inventario históricos.
             $pdo->prepare("UPDATE Productos SET estado = 'Descontinuado', modificado_en = NOW() WHERE id_producto = ?")
@@ -102,22 +89,20 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE Solicitudes_Productos SET estado = 'Aprobada', resuelto_en = NOW(), resuelto_por = ?, actualizado_en = NOW() WHERE id_solicitud = ?");
             $stmt->execute([$idAdmin, $idSolicitud]);
             registrarHistorialSolicitud($pdo, $idSolicitud, $idAdmin, 'Admin', 'Aprobada');
-            $mensaje = 'Producto dado de baja del catálogo.';
+            $mensaje = t('sol.ok.baja');
 
         } elseif ($action === 'aprobar_agregar') { // el admin acepta la solicitud tal como está
             if ($esEliminar) {
-                throw new RuntimeException('Esta solicitud no es de alta de producto.');
+                throw new RuntimeException('no_es_agregar');
             }
             [$idCreado, $reactivado] = crearProductoDesdeSolicitud($pdo, $sol);
             marcarSolicitudAprobada($pdo, $idSolicitud, $idCreado, $idAdmin);
             registrarHistorialSolicitud($pdo, $idSolicitud, $idAdmin, 'Admin', 'Aprobada');
-            $mensaje = $reactivado
-                ? 'Producto descontinuado reactivado en el catálogo (ID ' . $idCreado . ').'
-                : 'Producto agregado al catálogo (ID ' . $idCreado . ').';
+            $mensaje = t($reactivado ? 'sol.ok.reactivado' : 'sol.ok.agregado', ['id' => $idCreado]);
 
         } else { // editar_devolver: los cambios regresan al gerente para que los apruebe
             if ($esEliminar) {
-                throw new RuntimeException('Las solicitudes de eliminación no se editan.');
+                throw new RuntimeException('editar_eliminar');
             }
             $imagenNueva = guardarImagenSolicitud($_FILES['imagen'] ?? []);
             if ($imagenNueva !== null) {
@@ -129,7 +114,7 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             actualizarSolicitud($pdo, $idSolicitud, $cambios, 'Devuelta');
             registrarHistorialSolicitud($pdo, $idSolicitud, $idAdmin, 'Admin', 'Editada', $cambios, $nota);
-            $mensaje = 'Cambios enviados al gerente. Si los aprueba, el producto se agrega al catálogo.';
+            $mensaje = t('sol.ok.devuelta');
         }
 
         $pdo->commit();
@@ -139,12 +124,16 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (RuntimeException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         borrarImagenSolicitud($imagenNueva);
-        $error = $mensajesSolicitud[$e->getMessage()] ?? $e->getMessage();
+        $clave = 'sol_error.' . $e->getMessage();
+        $error = t($clave);
+        if ($error === $clave) { // no era una clave: el mensaje ya viene traducido
+            $error = $e->getMessage();
+        }
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         borrarImagenSolicitud($imagenNueva);
         error_log('inventario.php: ' . $e->getMessage());
-        $error = 'No se pudo guardar. Inténtalo de nuevo.';
+        $error = t('error.guardar');
     }
 
     if ($error !== '') {
@@ -205,21 +194,21 @@ function obtenerInventario(PDO $pdo, string $fSucursal, string $fCategoria, stri
 function renderFilasInventario(array $productos): string
 {
     if (empty($productos)) {
-        return '<tr><td colspan="5" style="color:var(--text-muted);text-align:center">No hay productos en inventario.</td></tr>';
+        return '<tr><td colspan="5" style="color:var(--text-muted);text-align:center">' . e(t('inv.vacio')) . '</td></tr>';
     }
 
     $html = '';
     foreach ($productos as $p) {
         $estadoBadge = $p['estado'] === 'Bajo stock'
-            ? '<span class="badge badge--danger">Bajo stock</span>'
-            : '<span class="badge badge--success">Suficiente</span>';
+            ? '<span class="badge badge--danger">' . e(t('inv.bajo_stock')) . '</span>'
+            : '<span class="badge badge--success">' . e(t('inv.suficiente')) . '</span>';
         $estiloCantidad = $p['cantidad_disponible'] <= 5 ? 'color:var(--text-danger);font-weight:500' : '';
 
         $html .= '<tr>'
             . '<td>' . htmlspecialchars($p['producto'])
-            . ($p['estado_producto'] === 'Descontinuado' ? ' <span class="badge badge--danger">Descontinuado</span>' : '')
+            . ($p['estado_producto'] === 'Descontinuado' ? ' <span class="badge badge--danger">' . e(t('inv.descontinuado')) . '</span>' : '')
             . '</td>'
-            . '<td style="color:var(--text-secondary)">' . htmlspecialchars($p['categoria']) . '</td>'
+            . '<td style="color:var(--text-secondary)">' . e(tValor('categoria', $p['categoria'])) . '</td>'
             . '<td style="color:var(--text-secondary)">' . htmlspecialchars($p['sucursal']) . '</td>'
             . '<td style="text-align:right;' . $estiloCantidad . '">' . (int) $p['cantidad_disponible'] . '</td>'
             . '<td>' . $estadoBadge . '</td>'
@@ -251,11 +240,11 @@ $claseAvisoSolicitudes = [
 ][nivelAvisoSolicitudes($totalPendientes)] ?? '';
 
 $estadosSolicitud = [
-    'Pendiente' => ['Por revisar', 'badge--warning'],
-    'Devuelta'  => ['Esperando al gerente', 'badge--muted'],
-    'Aprobada'  => ['Aprobada', 'badge--success'],
-    'Rechazada' => ['Rechazada', 'badge--danger'],
-    'Cancelada' => ['Cancelada por el gerente', 'badge--muted'],
+    'Pendiente' => [t('sol.estado.Pendiente'), 'badge--warning'],
+    'Devuelta'  => [t('sol.estado.Devuelta'), 'badge--muted'],
+    'Aprobada'  => [t('sol.estado.Aprobada'), 'badge--success'],
+    'Rechazada' => [t('sol.estado.Rechazada'), 'badge--danger'],
+    'Cancelada' => [t('sol.estado.Cancelada'), 'badge--muted'],
 ];
 
 // Bandeja de solicitudes (filtros por estado, tipo y sucursal)
@@ -291,29 +280,15 @@ if ($vista === 'solicitudes') {
             return '—';
         }
         return match ($campo) {
-            'id_categoria'    => $nombresCategoria[(int) $valor] ?? 'Sin categoría',
+            'id_categoria'    => tValor('categoria', $nombresCategoria[(int) $valor] ?? null, t('comun.sin_categoria')),
             'precio_sugerido' => '$' . number_format((float) $valor, 2),
             default           => (string) $valor,
         };
     };
-    $etiquetasCampo = [
-        'nombre_producto'    => 'Nombre',
-        'descripcion'        => 'Descripción',
-        'id_categoria'       => 'Categoría',
-        'precio_sugerido'    => 'Precio',
-        'imagen'             => 'Imagen',
-        'proveedor_sugerido' => 'Proveedor',
-        'proveedor_empresa'  => 'Empresa',
-        'proveedor_telefono' => 'Teléfono',
-        'proveedor_correo'   => 'Correo',
-    ];
-    $accionesHistorial = [
-        'Enviada'   => 'envió la solicitud',
-        'Editada'   => 'hizo cambios',
-        'Aprobada'  => 'aprobó',
-        'Rechazada' => 'rechazó',
-        'Cancelada' => 'canceló',
-    ];
+    $etiquetasCampo = [];
+    foreach (array_merge(CAMPOS_FICHA_SOLICITUD, CAMPOS_PROVEEDOR_SOLICITUD) as $campo) {
+        $etiquetasCampo[$campo] = t('sol.campo.' . $campo);
+    }
     $inicialesProducto = static function (string $nombre): string {
         $ini = '';
         foreach (array_slice(preg_split('/\s+/', trim($nombre)), 0, 2) as $palabra) {
@@ -336,23 +311,23 @@ if ($vista === 'solicitudes') {
 
 <div class="page-header">
     <div>
-        <h1><?= htmlspecialchars($t['inventario']) ?></h1>
+        <h1><?= e(t('nav.inventario')) ?></h1>
         <?php if ($vista === 'existencias'): ?>
-            <p>Consulta de solo lectura entre todas las sucursales <span id="inventarioActualizado" style="color:var(--text-muted);font-size:.85em"></span></p>
+            <p><?= e(t('inv.subtitulo')) ?> <span id="inventarioActualizado" style="color:var(--text-muted);font-size:.85em"></span></p>
         <?php else: ?>
-            <p>Solicitudes de los gerentes para agregar o eliminar productos del catálogo</p>
+            <p><?= e(t('inv.subtitulo_solicitudes')) ?></p>
         <?php endif; ?>
     </div>
 </div>
 
 <div class="vista-tabs">
     <a href="inventario.php" class="btn btn--sm <?= $vista === 'existencias' ? 'btn--primary is-activo' : 'btn--ghost' ?>">
-        <i class="ti ti-package"></i>Existencias
+        <i class="ti ti-package"></i><?= e(t('inv.tab_existencias')) ?>
     </a>
     <a href="inventario.php?vista=solicitudes"
        class="btn btn--sm <?= $claseAvisoSolicitudes ?: ($vista === 'solicitudes' ? 'btn--primary' : 'btn--ghost') ?> <?= $vista === 'solicitudes' ? 'is-activo' : '' ?>"
-       <?= $totalPendientes > 0 ? 'title="' . $totalPendientes . ' por revisar"' : '' ?>>
-        <i class="ti ti-inbox"></i>Solicitudes
+       <?= $totalPendientes > 0 ? 'title="' . e(tn('inv.n_por_revisar', $totalPendientes)) . '"' : '' ?>>
+        <i class="ti ti-inbox"></i><?= e(t('inv.tab_solicitudes')) ?>
         <?php if ($totalPendientes > 0): ?><span class="btn__conteo"><?= $totalPendientes ?></span><?php endif; ?>
     </a>
 </div>
@@ -367,27 +342,27 @@ if ($vista === 'solicitudes') {
 <?php if ($vista === 'existencias'): ?>
 <div class="filters" style="margin-top:1rem">
     <form method="GET" id="formFiltrosInventario" style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
-        <input type="text" name="buscar" class="input" placeholder="Buscar producto" value="<?= htmlspecialchars($fBuscar) ?>" style="flex:1;min-width:160px">
+        <input type="text" name="buscar" class="input" placeholder="<?= e(t('inv.buscar')) ?>" value="<?= htmlspecialchars($fBuscar) ?>" style="flex:1;min-width:160px">
         <select name="sucursal" class="select">
-            <option value="">Todas las sucursales</option>
+            <option value=""><?= e(t('comun.todas_sucursales')) ?></option>
             <?php foreach ($sucursales as $s): ?>
                 <option value="<?= $s['id_sucursal'] ?>" <?= $fSucursal == $s['id_sucursal'] ? 'selected' : '' ?>><?= htmlspecialchars($s['nombre']) ?></option>
             <?php endforeach; ?>
         </select>
         <select name="categoria" class="select">
-            <option value="">Todas las categorías</option>
+            <option value=""><?= e(t('inv.todas_categorias')) ?></option>
             <?php foreach ($categorias as $c): ?>
-                <option value="<?= $c['id_categoria'] ?>" <?= $fCategoria == $c['id_categoria'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nombre_categoria']) ?></option>
+                <option value="<?= $c['id_categoria'] ?>" <?= $fCategoria == $c['id_categoria'] ? 'selected' : '' ?>><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
             <?php endforeach; ?>
         </select>
-        <button type="submit" class="btn btn--ghost btn--sm">Filtrar</button>
+        <button type="submit" class="btn btn--ghost btn--sm"><?= e(t('comun.filtrar')) ?></button>
     </form>
 </div>
 
 <div class="table-wrap">
     <table class="table" id="tblInventario">
         <thead><tr>
-            <th>Producto</th><th>Categoría</th><th>Sucursal</th><th>Existencias</th><th>Estado</th>
+            <th><?= e(t('comun.producto')) ?></th><th><?= e(t('comun.categoria')) ?></th><th><?= e(t('comun.sucursal')) ?></th><th><?= e(t('inv.col_existencias')) ?></th><th><?= e(t('comun.estado')) ?></th>
         </tr></thead>
         <tbody id="tblInventarioBody"><?= renderFilasInventario($productos) ?></tbody>
     </table>
@@ -419,7 +394,7 @@ if ($vista === 'solicitudes') {
             tbody.innerHTML = await res.text();
             if (indicador) {
                 const ahora = new Date();
-                indicador.textContent = '· actualizado ' + ahora.toLocaleTimeString();
+                indicador.textContent = '· ' + tj('actualizado', { hora: ahora.toLocaleTimeString(document.documentElement.lang) });
             }
         } catch (e) {
             // Silencioso: se reintenta en el siguiente ciclo
@@ -468,27 +443,27 @@ if ($vista === 'solicitudes') {
         <input type="hidden" name="vista" value="solicitudes">
         <select name="estado" class="select">
             <?php foreach ($estadosSolicitud as $v => [$txt]): ?>
-                <option value="<?= $v ?>" <?= $fEstado === $v ? 'selected' : '' ?>><?= $txt ?></option>
+                <option value="<?= $v ?>" <?= $fEstado === $v ? 'selected' : '' ?>><?= e($txt) ?></option>
             <?php endforeach; ?>
-            <option value="" <?= $fEstado === '' ? 'selected' : '' ?>>Todas</option>
+            <option value="" <?= $fEstado === '' ? 'selected' : '' ?>><?= e(t('sol.filtro_todas')) ?></option>
         </select>
         <select name="tipo" class="select">
-            <option value="">Agregar y eliminar</option>
-            <option value="Agregar" <?= $fTipo === 'Agregar' ? 'selected' : '' ?>>Solo agregar</option>
-            <option value="Eliminar" <?= $fTipo === 'Eliminar' ? 'selected' : '' ?>>Solo eliminar</option>
+            <option value=""><?= e(t('sol.filtro_tipos')) ?></option>
+            <option value="Agregar" <?= $fTipo === 'Agregar' ? 'selected' : '' ?>><?= e(t('sol.filtro_agregar')) ?></option>
+            <option value="Eliminar" <?= $fTipo === 'Eliminar' ? 'selected' : '' ?>><?= e(t('sol.filtro_eliminar')) ?></option>
         </select>
         <select name="sucursal" class="select">
-            <option value="">Todas las sucursales</option>
+            <option value=""><?= e(t('comun.todas_sucursales')) ?></option>
             <?php foreach ($sucursales as $s): ?>
                 <option value="<?= $s['id_sucursal'] ?>" <?= $fSucursal == $s['id_sucursal'] ? 'selected' : '' ?>><?= htmlspecialchars($s['nombre']) ?></option>
             <?php endforeach; ?>
         </select>
-        <button type="submit" class="btn btn--ghost btn--sm">Filtrar</button>
+        <button type="submit" class="btn btn--ghost btn--sm"><?= e(t('comun.filtrar')) ?></button>
     </form>
 </div>
 
 <?php if (empty($solicitudes)): ?>
-    <div class="table-wrap solicitudes-vacio">No hay solicitudes.</div>
+    <div class="table-wrap solicitudes-vacio"><?= e(t('sol.vacio')) ?></div>
 <?php else: ?>
 <div class="solicitudes-grid">
     <?php foreach ($solicitudes as $s):
@@ -499,7 +474,7 @@ if ($vista === 'solicitudes') {
         // Cambios del gerente que el admin aún no revisa: la ficha va en amarillo
         $cambiosGerente = $s['estado'] === 'Pendiente' && $edicion !== null && $edicion['rol'] === 'Gerente';
     ?>
-        <article class="solicitud-ficha <?= $cambiosGerente ? 'solicitud-ficha--cambios' : '' ?>">
+        <article class="solicitud-ficha <?= $cambiosGerente ? 'solicitud-ficha--cambios' : '' ?>" data-abrir-ficha="<?= $id ?>">
             <div class="solicitud-ficha__imagen">
                 <?php if (!empty($s['imagen'])): ?>
                     <img src="../<?= htmlspecialchars($s['imagen']) ?>" alt="" loading="lazy">
@@ -508,27 +483,27 @@ if ($vista === 'solicitudes') {
                 <?php endif; ?>
                 <div class="solicitud-ficha__badges">
                     <span class="badge <?= $claseEstado ?>"><?= htmlspecialchars($textoEstado) ?></span>
-                    <?php if ($esEliminar): ?><span class="badge badge--danger">Eliminar</span><?php endif; ?>
+                    <?php if ($esEliminar): ?><span class="badge badge--danger"><?= e(t('sol.tipo_eliminar')) ?></span><?php endif; ?>
                 </div>
             </div>
             <div class="solicitud-ficha__cuerpo">
                 <h3 class="solicitud-ficha__nombre"><?= htmlspecialchars($s['nombre_producto']) ?></h3>
                 <?php if (!$esEliminar): ?>
                     <p class="solicitud-ficha__meta">
-                        <?= htmlspecialchars($s['nombre_categoria'] ?? 'Sin categoría') ?>
+                        <?= e(tValor('categoria', $s['nombre_categoria'], t('comun.sin_categoria'))) ?>
                         · <strong>$<?= number_format((float) $s['precio_sugerido'], 2) ?></strong>
                     </p>
                 <?php endif; ?>
                 <p class="solicitud-ficha__meta">
                     <i class="ti ti-building-store"></i><?= htmlspecialchars($s['sucursal']) ?> · <?= htmlspecialchars($s['solicitante']) ?>
-                    · <?= htmlspecialchars(date('d/m/Y H:i', strtotime($s['creado_en']))) ?>
+                    · <?= e(fecha($s['creado_en'])) ?>
                 </p>
                 <?php if (!empty($similares[$id])): ?>
-                    <p class="aviso-duplicado"><i class="ti ti-alert-triangle"></i>Posible duplicado: <?= htmlspecialchars(implode(', ', $similares[$id])) ?></p>
+                    <p class="aviso-duplicado"><i class="ti ti-alert-triangle"></i><?= e(t('sol.posible_duplicado', ['nombres' => implode(', ', $similares[$id])])) ?></p>
                 <?php endif; ?>
                 <?php if ($cambiosGerente): ?>
                     <div class="chips-cambio">
-                        <span class="chips-cambio__titulo">El gerente cambió:</span>
+                        <span class="chips-cambio__titulo"><?= e(t('sol.gerente_cambio')) ?></span>
                         <?php foreach (array_keys($edicion['cambios']) as $campo): ?>
                             <span class="chip-cambio"><?= htmlspecialchars($etiquetasCampo[$campo] ?? $campo) ?></span>
                         <?php endforeach; ?>
@@ -539,17 +514,17 @@ if ($vista === 'solicitudes') {
                     <p class="solicitud-ficha__justificacion">“<?= htmlspecialchars($textoNota) ?>”</p>
                 <?php endif; ?>
                 <?php if ($s['estado'] === 'Rechazada' && !empty($s['motivo_rechazo'])): ?>
-                    <p class="solicitud-ficha__meta" style="color:var(--text-danger)">Rechazo: <?= htmlspecialchars($s['motivo_rechazo']) ?></p>
+                    <p class="solicitud-ficha__meta" style="color:var(--text-danger)"><?= e(t('sol.rechazo', ['motivo' => $s['motivo_rechazo']])) ?></p>
                 <?php elseif ($s['estado'] === 'Cancelada' && !empty($s['motivo_rechazo'])): ?>
-                    <p class="solicitud-ficha__meta">Motivo del gerente: <?= htmlspecialchars($s['motivo_rechazo']) ?></p>
+                    <p class="solicitud-ficha__meta"><?= e(t('sol.motivo_gerente', ['motivo' => $s['motivo_rechazo']])) ?></p>
                 <?php elseif ($s['estado'] === 'Aprobada' && !empty($s['id_producto_creado'])): ?>
-                    <p class="solicitud-ficha__meta" style="color:var(--text-success)">Producto en el catálogo (ID <?= (int) $s['id_producto_creado'] ?>)</p>
+                    <p class="solicitud-ficha__meta" style="color:var(--text-success)"><?= e(t('sol.en_catalogo', ['id' => (int) $s['id_producto_creado']])) ?></p>
                 <?php endif; ?>
                 <div class="solicitud-ficha__pie">
                     <?php if ($s['estado'] === 'Pendiente'): ?>
-                        <button type="button" class="btn btn--primary btn--sm" onclick="abrirFicha(<?= $id ?>)"><i class="ti ti-eye-check"></i>Revisar</button>
+                        <button type="button" class="btn btn--primary btn--sm" onclick="abrirFicha(<?= $id ?>)"><i class="ti ti-eye-check"></i><?= e(t('sol.revisar')) ?></button>
                     <?php else: ?>
-                        <button type="button" class="btn btn--ghost btn--sm" onclick="abrirFicha(<?= $id ?>)"><i class="ti ti-eye"></i>Ver ficha</button>
+                        <button type="button" class="btn btn--ghost btn--sm" onclick="abrirFicha(<?= $id ?>)"><i class="ti ti-eye"></i><?= e(t('sol.ver_ficha')) ?></button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -577,7 +552,9 @@ if ($vista === 'solicitudes') {
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
     <div class="ficha-admin" data-modo="ver">
         <form method="POST" action="inventario.php?vista=solicitudes" enctype="multipart/form-data"
-              onsubmit="this.querySelectorAll('[type=submit]').forEach(b => b.disabled = true);">
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <?php // La acción va en un campo oculto: el botón se deshabilita al enviar y un botón deshabilitado no manda su name/value ?>
+            <input type="hidden" name="action" value="editar_devolver">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_solicitud" value="<?= $id ?>">
 
@@ -587,12 +564,12 @@ if ($vista === 'solicitudes') {
             </div>
             <p class="ficha-admin__meta">
                 <?= htmlspecialchars($s['sucursal']) ?> · <?= htmlspecialchars($s['solicitante']) ?>
-                · <?= htmlspecialchars(date('d/m/Y H:i', strtotime($s['creado_en']))) ?>
+                · <?= e(fecha($s['creado_en'])) ?>
             </p>
 
             <?php if ($edicion !== null): ?>
                 <div class="ficha-admin__aviso">
-                    <strong><?= $edicion['rol'] === 'Gerente' ? 'El gerente regresó la solicitud con cambios (en amarillo)' : 'Tus cambios enviados al gerente (en amarillo)' ?></strong>
+                    <strong><?= e(t($edicion['rol'] === 'Gerente' ? 'sol.cambios_gerente' : 'sol.tus_cambios')) ?></strong>
                     <?php if (!empty($edicion['nota'])): ?><p>“<?= htmlspecialchars($edicion['nota']) ?>”</p><?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -608,46 +585,46 @@ if ($vista === 'solicitudes') {
                         <?php endif; ?>
                         <?php if (!empty($cambiados['imagen']['antes'])): ?>
                             <figcaption class="ficha-admin__antes">
-                                <img src="../<?= htmlspecialchars($cambiados['imagen']['antes']) ?>" alt="" loading="lazy">Antes
+                                <img src="../<?= htmlspecialchars($cambiados['imagen']['antes']) ?>" alt="" loading="lazy"><?= e(t('sol.antes')) ?>
                             </figcaption>
                         <?php endif; ?>
                     </figure>
                     <label class="solo-editar ficha-admin__subir">
-                        <i class="ti ti-photo-up"></i>Cambiar imagen
+                        <i class="ti ti-photo-up"></i><?= e(t('sol.cambiar_imagen')) ?>
                         <input type="file" name="imagen" accept="image/png,image/jpeg,image/webp" disabled data-editable>
                     </label>
                 </div>
 
                 <div class="ficha-admin__campos">
                     <label class="ficha-admin__campo <?= $clase('nombre_producto') ?>">
-                        <span>Nombre</span>
+                        <span><?= e(t('comun.nombre')) ?></span>
                         <input type="text" name="nombre_producto" class="input" maxlength="100" required disabled data-editable
                                value="<?= htmlspecialchars($s['nombre_producto']) ?>">
-                        <?php if (isset($cambiados['nombre_producto'])): ?><del>Antes: <?= htmlspecialchars($valorFicha('nombre_producto', $cambiados['nombre_producto']['antes'])) ?></del><?php endif; ?>
+                        <?php if (isset($cambiados['nombre_producto'])): ?><del><?= e(t('sol.antes_valor', ['valor' => $valorFicha('nombre_producto', $cambiados['nombre_producto']['antes'])])) ?></del><?php endif; ?>
                     </label>
                     <?php if (!$esEliminar): ?>
                         <div class="ficha-admin__fila">
                             <label class="ficha-admin__campo <?= $clase('id_categoria') ?>">
-                                <span>Categoría</span>
+                                <span><?= e(t('comun.categoria')) ?></span>
                                 <select name="id_categoria" class="select" required disabled data-editable>
                                     <?php foreach ($categorias as $c): ?>
-                                        <option value="<?= (int) $c['id_categoria'] ?>" <?= (int) $s['id_categoria'] === (int) $c['id_categoria'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nombre_categoria']) ?></option>
+                                        <option value="<?= (int) $c['id_categoria'] ?>" <?= (int) $s['id_categoria'] === (int) $c['id_categoria'] ? 'selected' : '' ?>><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <?php if (isset($cambiados['id_categoria'])): ?><del>Antes: <?= htmlspecialchars($valorFicha('id_categoria', $cambiados['id_categoria']['antes'])) ?></del><?php endif; ?>
+                                <?php if (isset($cambiados['id_categoria'])): ?><del><?= e(t('sol.antes_valor', ['valor' => $valorFicha('id_categoria', $cambiados['id_categoria']['antes'])])) ?></del><?php endif; ?>
                             </label>
                             <label class="ficha-admin__campo <?= $clase('precio_sugerido') ?>">
-                                <span>Precio sugerido</span>
+                                <span><?= e(t('sol.precio_sugerido')) ?></span>
                                 <input type="number" name="precio_sugerido" class="input" min="0.01" step="0.01" required disabled data-editable
                                        value="<?= htmlspecialchars(number_format((float) $s['precio_sugerido'], 2, '.', '')) ?>">
-                                <?php if (isset($cambiados['precio_sugerido'])): ?><del>Antes: <?= htmlspecialchars($valorFicha('precio_sugerido', $cambiados['precio_sugerido']['antes'])) ?></del><?php endif; ?>
+                                <?php if (isset($cambiados['precio_sugerido'])): ?><del><?= e(t('sol.antes_valor', ['valor' => $valorFicha('precio_sugerido', $cambiados['precio_sugerido']['antes'])])) ?></del><?php endif; ?>
                             </label>
                         </div>
                         <label class="ficha-admin__campo <?= $clase('descripcion') ?>">
-                            <span>Descripción</span>
+                            <span><?= e(t('sol.campo.descripcion')) ?></span>
                             <textarea name="descripcion" class="input" maxlength="255" rows="2" disabled data-editable
-                                      placeholder="Sin descripción"><?= htmlspecialchars($s['descripcion'] ?? '') ?></textarea>
-                            <?php if (isset($cambiados['descripcion'])): ?><del>Antes: <?= htmlspecialchars($valorFicha('descripcion', $cambiados['descripcion']['antes'])) ?></del><?php endif; ?>
+                                      placeholder="<?= e(t('sol.sin_descripcion')) ?>"><?= htmlspecialchars($s['descripcion'] ?? '') ?></textarea>
+                            <?php if (isset($cambiados['descripcion'])): ?><del><?= e(t('sol.antes_valor', ['valor' => $valorFicha('descripcion', $cambiados['descripcion']['antes'])])) ?></del><?php endif; ?>
                         </label>
                     <?php endif; ?>
                 </div>
@@ -655,14 +632,14 @@ if ($vista === 'solicitudes') {
 
             <?php if (!$esEliminar): ?>
                 <section class="ficha-admin__seccion">
-                    <h3><i class="ti ti-truck"></i>Proveedor sugerido <small>(solo lo cambia el gerente)</small></h3>
+                    <h3><i class="ti ti-truck"></i><?= e(t('sol.proveedor')) ?> <small><?= e(t('sol.proveedor_solo_gerente')) ?></small></h3>
                     <?php if (empty($s['proveedor_sugerido'])): ?>
-                        <p class="ficha-admin__vacio">El gerente no sugirió proveedor.</p>
+                        <p class="ficha-admin__vacio"><?= e(t('sol.sin_proveedor')) ?></p>
                     <?php else: ?>
                         <dl class="ficha-admin__proveedor">
                             <?php foreach (CAMPOS_PROVEEDOR_SOLICITUD as $campo): ?>
                                 <div class="<?= $clase($campo) ?>">
-                                    <dt><?= $etiquetasCampo[$campo] ?></dt>
+                                    <dt><?= e($etiquetasCampo[$campo]) ?></dt>
                                     <dd><?= htmlspecialchars($valorFicha($campo, $s[$campo] ?? null)) ?></dd>
                                 </div>
                             <?php endforeach; ?>
@@ -672,20 +649,20 @@ if ($vista === 'solicitudes') {
             <?php endif; ?>
 
             <section class="ficha-admin__seccion">
-                <h3><i class="ti ti-message"></i>Justificación del gerente</h3>
+                <h3><i class="ti ti-message"></i><?= e(t('sol.justificacion')) ?></h3>
                 <p><?= htmlspecialchars($s['justificacion'] ?? '') ?></p>
             </section>
 
             <?php if ($pasos): ?>
                 <section class="ficha-admin__seccion">
-                    <h3><i class="ti ti-history"></i>Historial</h3>
+                    <h3><i class="ti ti-history"></i><?= e(t('sol.historial')) ?></h3>
                     <ol class="ficha-admin__historial">
                         <?php foreach ($pasos as $paso): ?>
                             <li>
                                 <strong><?= htmlspecialchars($paso['autor'] ?? $paso['rol']) ?></strong>
-                                <span class="ficha-admin__vacio">(<?= $paso['rol'] === 'Admin' ? 'Administrador' : 'Gerente' ?>)</span>
-                                <?= $accionesHistorial[$paso['accion']] ?? htmlspecialchars($paso['accion']) ?>
-                                · <span class="ficha-admin__vacio"><?= htmlspecialchars(date('d/m/Y H:i', strtotime($paso['creado_en']))) ?></span>
+                                <span class="ficha-admin__vacio">(<?= e(tValor('sol.rol', $paso['rol'])) ?>)</span>
+                                <?= e(tValor('sol.accion', $paso['accion'])) ?>
+                                · <span class="ficha-admin__vacio"><?= e(fecha($paso['creado_en'])) ?></span>
                                 <?php if ($paso['cambios']): ?>
                                     <span class="ficha-admin__vacio">— <?= htmlspecialchars(implode(', ', array_map(static fn ($c) => $etiquetasCampo[$c] ?? $c, array_keys($paso['cambios'])))) ?></span>
                                 <?php endif; ?>
@@ -697,32 +674,33 @@ if ($vista === 'solicitudes') {
             <?php endif; ?>
 
             <label class="solo-editar ficha-admin__nota">
-                <span>Nota para el gerente *</span>
+                <span><?= e(t('sol.nota')) ?></span>
                 <textarea name="nota" class="input" maxlength="500" rows="2" required disabled data-editable
-                          placeholder="Qué cambiaste y por qué. El gerente la verá junto a tus cambios."></textarea>
+                          placeholder="<?= e(t('sol.nota_ej')) ?>"></textarea>
             </label>
 
             <div class="ficha-admin__acciones">
-                <button type="button" class="btn btn--ghost solo-ver" onclick="closeModal('ficha<?= $id ?>')">Cerrar</button>
+                <button type="button" class="btn btn--ghost solo-ver" onclick="closeModal('ficha<?= $id ?>')"><?= e(t('comun.cerrar')) ?></button>
                 <?php if ($pendiente): ?>
                     <button type="button" class="btn btn--danger solo-ver" onclick="rechazarSolicitud(this)"
                             data-id="<?= $id ?>" data-nombre="<?= htmlspecialchars($s['nombre_producto'], ENT_QUOTES) ?>">
-                        <i class="ti ti-x"></i>Rechazar
+                        <i class="ti ti-x"></i><?= e(t('comun.rechazar')) ?>
                     </button>
-                    <?php if ($esEliminar): ?>
-                        <button type="submit" name="action" value="aprobar_eliminar" class="btn btn--primary solo-ver"
-                                onclick="return confirm('¿Dar de baja este producto del catálogo?')">
-                            <i class="ti ti-check"></i>Aprobar baja
-                        </button>
-                    <?php else: ?>
-                        <button type="button" class="btn btn--ghost solo-ver" onclick="editarFicha(<?= $id ?>)"><i class="ti ti-pencil"></i>Editar</button>
-                        <button type="submit" name="action" value="aprobar_agregar" class="btn btn--primary solo-ver"
-                                onclick="return confirm('¿Agregar este producto al catálogo tal como está en la ficha?')">
-                            <i class="ti ti-check"></i>Aceptar
-                        </button>
-                        <button type="button" class="btn btn--ghost solo-editar" onclick="cancelarEdicionFicha(<?= $id ?>)">Cancelar edición</button>
-                        <button type="submit" name="action" value="editar_devolver" class="btn btn--primary solo-editar">
-                            <i class="ti ti-send"></i>Enviar cambios al gerente
+                    <?php if (!$esEliminar): ?>
+                        <button type="button" class="btn btn--ghost solo-ver" onclick="editarFicha(<?= $id ?>)"><i class="ti ti-pencil"></i><?= e(t('comun.editar')) ?></button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn--primary solo-ver" onclick="confirmarSolicitud(this)"
+                            data-id="<?= $id ?>" data-accion="<?= $esEliminar ? 'aprobar_eliminar' : 'aprobar_agregar' ?>"
+                            data-nombre="<?= e($s['nombre_producto']) ?>"
+                            data-detalle="<?= $esEliminar ? '' : e($valorFicha('id_categoria', $s['id_categoria']) . ' · ' . $valorFicha('precio_sugerido', $s['precio_sugerido'])) ?>"
+                            data-imagen="<?= e($s['imagen'] ?? '') ?>"
+                            data-iniciales="<?= e($inicialesProducto($s['nombre_producto'])) ?>">
+                        <i class="ti ti-check"></i><?= e(t($esEliminar ? 'sol.aprobar_baja' : 'sol.aceptar')) ?>
+                    </button>
+                    <?php if (!$esEliminar): ?>
+                        <button type="button" class="btn btn--ghost solo-editar" onclick="cancelarEdicionFicha(<?= $id ?>)"><?= e(t('sol.cancelar_edicion')) ?></button>
+                        <button type="submit" class="btn btn--primary solo-editar">
+                            <i class="ti ti-send"></i><?= e(t('sol.enviar_cambios')) ?>
                         </button>
                     <?php endif; ?>
                 <?php endif; ?>
@@ -735,20 +713,53 @@ if ($vista === 'solicitudes') {
 <!-- Modal: rechazar solicitud -->
 <div id="modalRechazar" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:center;justify-content:center">
     <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:400px;max-width:90vw">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 .5rem">Rechazar solicitud</h2>
-        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 1rem">Producto: <strong id="rechazarNombre"></strong></p>
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 .5rem"><?= e(t('sol.rechazar_titulo')) ?></h2>
+        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 1rem"><?= e(t('sol.rechazar_producto')) ?> <strong id="rechazarNombre"></strong></p>
         <form method="POST" action="inventario.php?vista=solicitudes" id="formRechazar"
               onsubmit="this.querySelector('[type=submit]').disabled = true;">
             <input type="hidden" name="action" value="rechazar">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_solicitud" value="">
             <div style="margin-bottom:1rem">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Motivo del rechazo</label>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('sol.motivo_rechazo')) ?></label>
                 <textarea name="motivo_rechazo" class="input" style="width:100%;min-height:80px" required></textarea>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button type="button" class="btn btn--ghost" onclick="closeModal('modalRechazar')">Cancelar</button>
-                <button type="submit" class="btn btn--danger">Rechazar</button>
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalRechazar')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--danger"><?= e(t('comun.rechazar')) ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: confirmar "Aceptar" (alta al catálogo) o "Aprobar baja". Se abre encima de la
+     ficha y Cancelar regresa a ella; confirmarSolicitud() pone los textos de alta o de baja. -->
+<div id="modalConfirmarSolicitud" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmarTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:110;align-items:center;justify-content:center">
+    <div class="confirmar-solicitud">
+        <img src="../Imagenes/koala/koala-pensando.png" alt="" class="confirmar-solicitud__koala">
+        <h2 id="confirmarTitulo" data-alta="<?= e(t('sol.aceptar_titulo')) ?>" data-baja="<?= e(t('sol.aprobar_baja_titulo')) ?>"></h2>
+        <p class="confirmar-solicitud__mensaje" data-alta="<?= e(t('sol.aceptar_confirmar')) ?>" data-baja="<?= e(t('sol.aprobar_baja_confirmar')) ?>"></p>
+        <div class="confirmar-solicitud__producto">
+            <div class="confirmar-solicitud__imagen">
+                <img src="" alt="" hidden>
+                <span class="solicitud-ficha__iniciales" aria-hidden="true"></span>
+            </div>
+            <div class="confirmar-solicitud__texto">
+                <strong></strong>
+                <span></span>
+            </div>
+        </div>
+        <form method="POST" action="inventario.php?vista=solicitudes"
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <input type="hidden" name="action" value="">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
+            <div class="confirmar-solicitud__acciones">
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalConfirmarSolicitud')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn">
+                    <i class="ti ti-check"></i><span data-alta="<?= e(t('sol.aceptar_boton')) ?>" data-baja="<?= e(t('sol.aprobar_baja')) ?>"></span>
+                </button>
             </div>
         </form>
     </div>
@@ -760,8 +771,8 @@ function modoFicha(id, editar) {
     const caja = document.querySelector('#ficha' + id + ' .ficha-admin');
     caja.dataset.modo = editar ? 'editar' : 'ver';
     caja.querySelectorAll('[data-editable]').forEach(c => { c.disabled = !editar; });
-    // Solo los botones del modo actual: así Enter en un campo no acepta la solicitud mientras se edita
-    caja.querySelectorAll('[type=submit]').forEach(b => { b.disabled = b.classList.contains('solo-ver') === editar; });
+    // El único envío de la ficha es "Enviar cambios"; se reactiva cada vez que se abre
+    caja.querySelectorAll('[type=submit]').forEach(b => { b.disabled = !editar; });
     return caja;
 }
 
@@ -796,6 +807,44 @@ function rechazarSolicitud(btn) {
     closeModal('ficha' + btn.dataset.id);
     openModal('modalRechazar');
 }
+
+// "Aceptar" y "Aprobar baja" se confirman en una modal propia encima de la ficha
+function confirmarSolicitud(btn) {
+    const modal = document.getElementById('modalConfirmarSolicitud');
+    const d = btn.dataset;
+    const tipo = d.accion === 'aprobar_eliminar' ? 'baja' : 'alta';
+    modal.querySelectorAll('[data-alta]').forEach(el => { el.textContent = el.dataset[tipo]; });
+
+    const imagen = modal.querySelector('.confirmar-solicitud__imagen img');
+    const iniciales = modal.querySelector('.confirmar-solicitud__imagen span');
+    imagen.hidden = !d.imagen;
+    imagen.src = d.imagen ? '../' + d.imagen : '';
+    iniciales.hidden = !!d.imagen;
+    iniciales.textContent = d.iniciales;
+    modal.querySelector('.confirmar-solicitud__texto strong').textContent = d.nombre;
+    const detalle = modal.querySelector('.confirmar-solicitud__texto span');
+    detalle.textContent = d.detalle;
+    detalle.hidden = !d.detalle;
+
+    const f = modal.querySelector('form');
+    f.querySelector('[name="action"]').value = d.accion;
+    f.querySelector('[name="id_solicitud"]').value = d.id;
+    const enviar = f.querySelector('[type=submit]');
+    enviar.disabled = false;
+    enviar.classList.toggle('btn--primary', tipo === 'alta');
+    enviar.classList.toggle('btn--danger', tipo === 'baja');
+
+    openModal('modalConfirmarSolicitud');
+    enviar.focus();
+}
+
+// Toda la tarjeta abre la ficha, no solo el botón "Revisar" (que se queda para el teclado)
+document.querySelectorAll('[data-abrir-ficha]').forEach(tarjeta => {
+    tarjeta.addEventListener('click', (e) => {
+        if (e.target.closest('button, a') || window.getSelection().toString() !== '') return;
+        abrirFicha(tarjeta.dataset.abrirFicha);
+    });
+});
 
 // Vista previa de la imagen nueva en la ficha
 document.querySelectorAll('.ficha-admin [name="imagen"]').forEach(input => {
