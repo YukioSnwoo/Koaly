@@ -239,7 +239,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     <label for="inputVouchers" data-i18n="corte.vouchers"><?= e(t('corte.vouchers')) ?></label>
                     <div class="input-dinero">
                         <span>$</span>
-                        <input type="number" id="inputVouchers" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVouchers">
+                        <input type="text" id="inputVouchers" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-describedby="errorVouchers">
                     </div>
                     <div class="campo-error" id="errorVouchers"></div>
                 </div>
@@ -2249,8 +2249,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         let guardandoTurno = false;
         let salirTrasCorte = false;     // el corte lo pidió "Cerrar sesión"
 
+        // "12,500.50" -> 1250050 centavos (las comas de miles se ignoran); null si no es válido
         const centavosDeTexto = (texto) => {
-            const valor = String(texto ?? '').trim();
+            const valor = String(texto ?? '').replace(/,/g, '').trim();
             return /^\d{1,9}(\.\d{1,2})?$/.test(valor) ? Math.round(parseFloat(valor) * 100) : null;
         };
 
@@ -2564,7 +2565,31 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const inputVouchers = document.getElementById('inputVouchers');
         const inputDejado = document.getElementById('inputDejado');
 
+        // Campo de dinero con comas de miles mientras se escribe: 12500.5 -> 12,500.5.
+        // Solo deja dígitos y un punto con hasta 2 decimales; el cursor no se mueve de lugar.
+        function formatearMiles(input) {
+            const antes = input.value;
+            const cursor = input.selectionStart ?? antes.length;
+            // Cuántos dígitos o puntos hay antes del cursor, para dejarlo en el mismo lugar
+            const previos = antes.slice(0, cursor).replace(/[^\d.]/g, '').length;
+
+            const limpio = antes.replace(/[^\d.]/g, '');
+            const punto = limpio.indexOf('.');
+            const entero = (punto === -1 ? limpio : limpio.slice(0, punto)).replace(/^0+(?=\d)/, '');
+            const decimales = punto === -1 ? null : limpio.slice(punto + 1).replace(/\./g, '').slice(0, 2);
+            const nuevo = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decimales !== null ? '.' + decimales : '');
+            if (nuevo === antes) return;
+
+            input.value = nuevo;
+            let pos = 0;
+            for (let vistos = 0; pos < nuevo.length && vistos < previos; pos++) {
+                if (nuevo[pos] !== ',') vistos++;
+            }
+            input.setSelectionRange(pos, pos);
+        }
+
         inputVouchers.addEventListener('input', () => {
+            formatearMiles(inputVouchers);
             document.getElementById('errorVouchers').textContent = '';
         });
         inputVouchers.addEventListener('keydown', (e) => {

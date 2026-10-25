@@ -178,8 +178,8 @@ Método de pago.
 ##  Movimientos de inventario
 <img width="1510" height="786" alt="image" src="https://github.com/user-attachments/assets/e7aeb2b1-fc60-45a1-8c1c-4fe6d4c9955d" />
 
-## Existencias
-<img width="1677" height="938" alt="image" src="https://github.com/user-attachments/assets/da0decd6-f079-4bfc-8115-02206213541c" />
+## Global inventory
+<img width="1506" height="658" alt="image" src="https://github.com/user-attachments/assets/509f481c-62de-4c7b-a051-e75bbcc6d4bd" />
 
 
 #  Link de la pagina
