@@ -358,10 +358,7 @@ if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
 // Nuevo id de sesión al autenticar (evita la fijación de sesión)
 session_regenerate_id(true);
 
-unset($usuario['contrasena_hash']);
-$usuario['debe_cambiar'] = (int) $usuario['debe_cambiar'];
-
-$debeCambiar = $usuario['debe_cambiar'] === 1;
+$debeCambiar = (int) $usuario['debe_cambiar'] === 1;
 
 // Enteros: admin compara con === 1, y PDO devuelve las columnas como texto.
 // Con el cambio de contraseña pendiente la sesión queda con rol 0: ningún panel
@@ -376,5 +373,5 @@ responder(200, [
     'message'      => t($debeCambiar ? 'srv.debe_cambiar' : 'srv.exito'),
     'debe_cambiar' => $debeCambiar,
     'destino'      => $destino,
-    'user'         => $usuario
+    'user'         => ['email' => $usuario['email']] // login.js revisa con él la contraseña nueva
 ]);

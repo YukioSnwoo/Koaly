@@ -111,7 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $enlaceInvalido = $token !== '' && !$enlace && !$aceptado;
-$verCss = filemtime(__DIR__ . '/privacidad.css');
+$verCss   = filemtime(__DIR__ . '/privacidad.css');
+$verKoaly = filemtime(__DIR__ . '/../estilos/koaly.css');
+// Ancla de cada sección para el índice
+$ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -120,12 +123,40 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>Aviso de privacidad | Koaly</title>
+    <script>
+    // Tema elegido en el login o en un panel (misma clave); si no hay, claro como el login
+    try { var tema = localStorage.getItem('koaly-tema'); } catch (e) {}
+    document.documentElement.setAttribute('data-tema', tema === 'oscuro' ? 'oscuro' : 'claro');
+    </script>
     <link rel="stylesheet" href="privacidad.css?v=<?= $verCss ?>">
+    <!-- Colores, fuentes y modo oscuro comunes de Koaly; va después para que gane -->
+    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body>
+<div class="pagina">
+<header class="cabecera no-imprimir">
+    <a class="marca" href="../">
+        <img src="../Imagenes/koala/koala-normal.png" alt="">
+        <span>Koaly</span>
+    </a>
+    <a class="volver" href="../">Ir a iniciar sesión</a>
+</header>
+
+<div class="cuerpo">
+<nav class="indice no-imprimir" aria-label="Contenido del aviso">
+    <p class="indice-titulo">En este aviso</p>
+    <ol>
+        <?php foreach (array_keys($secciones) as $i => $titulo): ?>
+            <li><a href="#<?= $ancla($i) ?>"><?= $e($titulo) ?></a></li>
+        <?php endforeach; ?>
+        <?php if ($enlace): ?>
+            <li class="indice-aceptar"><a href="#aceptar">Aceptar el aviso</a></li>
+        <?php endif; ?>
+    </ol>
+</nav>
+
 <main class="hoja">
     <header class="hoja-cabecera">
-        <span class="marca">Koaly</span>
         <h1>Aviso de privacidad para empleados</h1>
         <p class="version">Versión vigente del <?= $e(fechaVersionAviso()) ?></p>
     </header>
@@ -185,8 +216,8 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
     <?php endif; ?>
 
     <article class="texto-aviso">
-        <?php foreach ($secciones as $titulo => $parrafos): ?>
-            <section>
+        <?php $i = 0; foreach ($secciones as $titulo => $parrafos): ?>
+            <section id="<?= $ancla($i++) ?>">
                 <h2><?= $e($titulo) ?></h2>
                 <?php foreach ($parrafos as $p): ?>
                     <?php if (is_string($p)): ?>
@@ -219,5 +250,7 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
         </form>
     <?php endif; ?>
 </main>
+</div>
+</div>
 </body>
 </html>

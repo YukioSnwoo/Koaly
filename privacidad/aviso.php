@@ -43,17 +43,6 @@ function avisoAceptado(PDO $pdo, int $idUsuario): bool
     return $stmt->fetchColumn() !== false;
 }
 
-/** Fecha en que aceptó la versión vigente, o null. */
-function fechaAceptacionAviso(PDO $pdo, int $idUsuario): ?string
-{
-    $stmt = $pdo->prepare("
-        SELECT MAX(aceptado_en) FROM avisos_privacidad
-        WHERE id_usuario = ? AND version = ? AND aceptado_en IS NOT NULL
-    ");
-    $stmt->execute([$idUsuario, AVISO_PRIVACIDAD_VERSION]);
-    return $stmt->fetchColumn() ?: null;
-}
-
 /**
  * Crea un enlace personal para leer y aceptar el aviso. Devuelve la URL completa.
  * Solo se guarda el hash del token: quien lea la tabla no puede usar los enlaces.
@@ -90,13 +79,15 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
 {
     $domicilio   = trim((string) ($sucursal['direccion'] ?? ''));
     $responsable = 'Koaly' . ($sucursal ? ', a través de ' . $sucursal['nombre'] : '');
+    // "escribe a x@y.com", pero sin correo "escribe al correo de contacto…" (no "a el")
+    $escribeA    = str_contains($contacto, '@') ? "a {$contacto}" : 'al correo de contacto de tu sucursal';
 
     return [
         '1. Quién es responsable de tus datos' => [
             "{$responsable}" . ($domicilio !== '' ? ", con domicilio en {$domicilio}," : '')
             . ' es responsable del tratamiento de tus datos personales como empleado, conforme a la '
             . 'Ley Federal de Protección de Datos Personales en Posesión de los Particulares.',
-            "Para cualquier duda sobre este aviso escribe a {$contacto}.",
+            "Para cualquier duda sobre este aviso escribe {$escribeA}.",
         ],
         '2. Qué datos tratamos' => [
             [
@@ -156,7 +147,7 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
         ],
         '7. Tus derechos (ARCO) y cómo revocar tu consentimiento' => [
             'Puedes acceder a tus datos, rectificarlos si están mal, cancelarlos u oponerte a su uso, y '
-            . "revocar tu consentimiento. Escribe a {$contacto} con tu nombre, el derecho que quieres "
+            . "revocar tu consentimiento. Escribe {$escribeA} con tu nombre, el derecho que quieres "
             . 'ejercer y una copia de tu identificación. Te responderemos en un máximo de 20 días hábiles.',
             'Si no te respondemos o no estás de acuerdo con la respuesta, puedes acudir a la autoridad '
             . 'de protección de datos personales.',

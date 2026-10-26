@@ -198,15 +198,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.toggle-password').forEach((boton) => {
         boton.addEventListener('click', () => verContrasena(boton, boton.getAttribute('aria-pressed') !== 'true'));
     });
+
     // ===== Acceso rápido (BETA) — borrar cuando terminemos de programar =====
-document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-        $('loginEmail').value    = btn.dataset.email;
-        $('loginPassword').value = '123';
-        // requestSubmit dispara el submit real (y su validación + API)
-        $('loginForm').requestSubmit();
+    document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            $('loginEmail').value = btn.dataset.email;
+            $('loginPassword').value = '123';
+            // requestSubmit dispara el submit real (y su validación + API)
+            $('loginForm').requestSubmit();
+        });
     });
-});
 
     // ===== Navegación =====
     $('forgotLink').addEventListener('click', () => {
@@ -251,8 +252,7 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
             return mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_login'));
         }
 
-        usuarioActual = resultado.user;
-        sessionStorage.setItem('usuario', JSON.stringify(usuarioActual)); // lo usa auth.js
+        usuarioActual = resultado.user; // su correo sirve para revisar la contraseña nueva
 
         if (resultado.debe_cambiar) {
             ocupado(boton, false);
@@ -284,10 +284,6 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
             return mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_actualizar'));
         }
 
-        if (usuarioActual) {
-            usuarioActual.debe_cambiar = 0;
-            sessionStorage.setItem('usuario', JSON.stringify(usuarioActual));
-        }
         mostrarMensaje(caja, 'success', tl('msg.actualizada'));
         window.location.href = resultado.destino || 'index.php';
     });
@@ -381,8 +377,7 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
     if (document.body.dataset.debeCambiar === '1') {
         $('newPassword').focus();
     }
-    // ===== Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa =====
-
+    // ===== Koala de la portada: cambia de cara y de mensaje según lo que se escribe =====
     const mascotaCara = $('mascotaCara');
     const mascotaBurbuja = $('mascotaBurbuja');
     const emailInput = $('loginEmail');
@@ -393,28 +388,21 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
         feliz: 'Imagenes/koala/koala-feliz.png',
         pensando: 'Imagenes/koala/koala-pensando.png',
         secreto: 'Imagenes/koala/koala-secreto.png',
-        fiesta: 'Imagenes/koala/koala-fiesta.png' 
+        fiesta: 'Imagenes/koala/koala-fiesta.png'
     };
 
     function animarKoala(estado, mensaje, esFiesta = false) {
         if (!mascotaCara) return;
-
-        
         mascotaCara.src = IMAGENES_KOALA[estado] || IMAGENES_KOALA.normal;
-        
-        
         mascotaCara.classList.remove('saltando', 'emocionada');
-        void mascotaCara.offsetWidth; 
+        void mascotaCara.offsetWidth; // reinicia la animación
         mascotaCara.classList.add(esFiesta ? 'emocionada' : 'saltando');
-
-        if (mensaje !== undefined) {
-            mascotaBurbuja.textContent = mensaje;
-        }
+        if (mensaje !== undefined) mascotaBurbuja.textContent = mensaje;
     }
 
-    if (emailInput && passInput && mascotaCara) {
+    if (mascotaCara) {
         emailInput.addEventListener('focus', () => animarKoala('normal', tl('koala.nombre')));
-        
+
         emailInput.addEventListener('input', () => {
             const email = emailInput.value.trim();
             if (email === '') animarKoala('normal', tl('koala.correo'));
@@ -432,6 +420,6 @@ document.querySelectorAll('#quickAccess .quick-access-btn').forEach((btn) => {
             if (pass.length === 0) animarKoala('normal', tl('koala.contrasena_secreta'));
             else if (pass.length < 8) animarKoala('pensando', tl('koala.mas_segura'));
             else animarKoala('fiesta', tl('koala.listos'), true);
-        }); 
-    } 
-}); 
+        });
+    }
+});

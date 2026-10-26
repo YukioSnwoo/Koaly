@@ -288,11 +288,6 @@
         form.querySelector('[name="nombre"]').defaultValue = u.nombre;
         form.querySelector('[name="email"]').defaultValue = u.email;
         form.querySelectorAll('.perfil-contrasena input').forEach(i => { i.value = ''; }); // también las que se ven
-        // auth.js guarda el usuario del inicio de sesión en sessionStorage
-        try {
-            const guardado = JSON.parse(sessionStorage.getItem('usuario'));
-            if (guardado) sessionStorage.setItem('usuario', JSON.stringify({ ...guardado, nombre: u.nombre, email: u.email }));
-        } catch (err) { /* sin sessionStorage */ }
 
         avisar(r.mensaje, 'ok');
         setTimeout(() => { if (dialogo.open) dialogo.close(); }, 900);

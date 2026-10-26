@@ -21,11 +21,14 @@ return [
     'campo.contrasena_ej' => 'Tu contraseña',
     'login.ingresar' => 'Ingresar',
     'login.olvide' => 'Olvidé mi contraseña',
-    'login.acceso_rapido' => 'Acceso rápido (beta)',
+    'login.acceso_rapido' => 'Entrar como prueba (beta)',
     'login.acceso_admin' => '1 · Admin',
     'login.acceso_gerente' => '2 · Gerente',
     'login.acceso_cajero' => '3 · Cajero',
-    'login.pie' => 'Koaly · Gestión multisucursal',
+
+    // Panel de la izquierda (en celular, la franja de arriba)
+    'portada.lema' => 'Entra para abrir tu caja, revisar el inventario o ver las ventas de tu sucursal.',
+    'portada.privacidad' => 'Aviso de privacidad',
 
     // Recuperar contraseña
     'recuperar.volver' => '← Volver a iniciar sesión',

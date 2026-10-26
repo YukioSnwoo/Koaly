@@ -21,11 +21,14 @@ return [
     'campo.contrasena_ej' => 'Your password',
     'login.ingresar' => 'Log in',
     'login.olvide' => 'I forgot my password',
-    'login.acceso_rapido' => 'Quick access (beta)',
+    'login.acceso_rapido' => 'Log in as a test user (beta)',
     'login.acceso_admin' => '1 · Admin',
     'login.acceso_gerente' => '2 · Manager',
     'login.acceso_cajero' => '3 · Cashier',
-    'login.pie' => 'Koaly · Multi-branch management',
+
+    // Left panel (on phones, the band at the top)
+    'portada.lema' => 'Log in to open your register, check stock or see your branch’s sales.',
+    'portada.privacidad' => 'Privacy notice',
 
     // Password recovery
     'recuperar.volver' => '← Back to log in',
