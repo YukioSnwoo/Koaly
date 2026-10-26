@@ -1,8 +1,8 @@
 <?php
 /**
  * Correos que recibe el empleado por los movimientos de su cuenta:
- *   - alta: bienvenida con la cuenta, la contraseña temporal y el enlace para
- *     leer y aceptar el aviso de privacidad
+ *   - alta y "reenviar acceso": la cuenta, la contraseña temporal (la genera el
+ *     sistema; el gerente nunca la ve) y el enlace para aceptar el aviso de privacidad
  *   - cambio de estado: baja (con motivo: renuncia, jubilación...), vacaciones,
  *     incapacidad, licencia o regreso a activo
  *   - contraseña restablecida por el gerente (con la contraseña temporal)
@@ -59,16 +59,35 @@ function _firma(array $datos): string
 }
 
 /**
- * Bienvenida con la cuenta, la contraseña temporal y el enlace personal para
- * leer y aceptar el aviso de privacidad. Hasta que lo acepte, el cajero no
- * puede iniciar sesión.
- *
- * La contraseña temporal va en el correo porque solo sirve para el primer
- * ingreso: el sistema obliga a cambiarla antes de dejarlo entrar a la caja.
- * @param array $empleado ['nombre', 'email', 'password' (la temporal; sin ella, al reenviar el
- *                        aviso, solo se le recuerda cómo entrar)]
+ * Datos de acceso con la contraseña temporal, para los correos.
+ * @param array $acceso ['password', 'vence' ('Y-m-d H:i:s' o null)] de ponerPasswordTemporal()
  */
-function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos): bool
+function _bloqueAcceso(array $empleado, array $acceso, bool $reenvio): string
+{
+    $vence = $acceso['vence'] ? date('d/m/Y', strtotime($acceso['vence'])) : null;
+    return "    Dirección:            " . urlSitio() . "\n"
+        . "    Correo (usuario):     {$empleado['email']}\n"
+        . "    Contraseña temporal:  {$acceso['password']}\n\n"
+        . "La contraseña temporal solo sirve para tu primer ingreso"
+        . ($vence ? " y vence el {$vence}" : '') . ".\n"
+        . ($reenvio ? "Reemplaza a la que te enviamos antes: esa ya no funciona.\n" : '')
+        . "Al entrar, el sistema te pedirá elegir tu propia contraseña.\n"
+        . "No la compartas con nadie; nadie de Koaly te la pedirá.";
+}
+
+/**
+ * Bienvenida (o reenvío del acceso) con el enlace personal para leer y aceptar
+ * el aviso de privacidad y, si se da, la contraseña temporal. Hasta que acepte
+ * el aviso, el cajero no puede iniciar sesión.
+ *
+ * La contraseña temporal la genera el sistema y solo llega aquí: el gerente
+ * nunca la ve. Sirve para el primer ingreso, vence y el sistema obliga a
+ * cambiarla antes de dejarlo entrar a la caja.
+ * @param array      $empleado ['nombre', 'email']
+ * @param array|null $acceso   de ponerPasswordTemporal(); null: solo se le recuerda cómo entrar
+ * @param bool       $reenvio  true: no es la bienvenida, el gerente le reenvió el acceso
+ */
+function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos, ?array $acceso = null, bool $reenvio = false): bool
 {
     try {
         $enlace = crearEnlaceAviso($pdo, $idUsuario, AVISO_ENLACE_DIAS * 24);
@@ -77,39 +96,35 @@ function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array 
         error_log('correos_empleado.php: no se pudo crear el enlace del aviso: ' . $e->getMessage());
         return false;
     }
-    $dias   = AVISO_ENLACE_DIAS;
-    $sitio  = urlSitio();
-    $acceso = isset($empleado['password'])
-        ? "    Contraseña temporal:  {$empleado['password']}\n\n"
-          . "La contraseña temporal solo sirve para tu primer ingreso: el sistema te\n"
-          . "pedirá elegir una nueva antes de dejarte entrar. No la compartas con\n"
-          . "nadie; nadie de Koaly te la pedirá."
-        : "\nEntra con tu contraseña. Si no la recuerdas, usa «Olvidé mi contraseña».";
+    $dias = AVISO_ENLACE_DIAS;
+    $paso2 = $acceso
+        ? "2. Entra al sistema con estos datos:\n\n" . _bloqueAcceso($empleado, $acceso, $reenvio)
+        : "2. Entra al sistema en " . urlSitio() . " con tu correo ({$empleado['email']})\n"
+          . "   y tu contraseña. Si no la recuerdas, usa «Olvidé mi contraseña».";
+    $saludo = $reenvio
+        ? "Te reenviamos tu acceso al sistema Koaly de {$datos['sucursal']['nombre']}."
+        : "Te damos la bienvenida al equipo de {$datos['sucursal']['nombre']}. Ya tienes una\ncuenta de cajero en el sistema Koaly.";
 
     $texto = <<<TXT
     Hola {$empleado['nombre']}:
 
-    Te damos la bienvenida al equipo de {$datos['sucursal']['nombre']}. Ya tienes una
-    cuenta de cajero en el sistema Koaly.
+    {$saludo}
 
-    Antes de empezar, lee y acepta nuestro aviso de privacidad. Ahí también
-    puedes revisar tus datos en el sistema:
+    1. Lee y acepta nuestro aviso de privacidad. Ahí también puedes revisar
+       tus datos en el sistema:
 
         {$enlace}
 
-    El enlace es personal y vale {$dias} días. Hasta que aceptes el aviso no
-    podrás iniciar sesión en la caja. Si el enlace vence, al iniciar sesión el
-    sistema te dará uno nuevo.
+       El enlace es personal y vale {$dias} días. Hasta que aceptes el aviso no
+       podrás iniciar sesión en la caja.
 
-    Después, para entrar al sistema:
+    {$paso2}
 
-        Dirección:            {$sitio}
-        Correo (usuario):     {$empleado['email']}
-    {$acceso}
 
     TXT;
 
-    return enviarCorreo($empleado['email'], 'Bienvenida a Koaly: acepta tu aviso de privacidad', $texto . "\n" . _firma($datos));
+    $asunto = $reenvio ? 'Tu acceso a Koaly: acepta tu aviso de privacidad' : 'Bienvenida a Koaly: acepta tu aviso de privacidad';
+    return enviarCorreo($empleado['email'], $asunto, $texto . "\n" . _firma($datos));
 }
 
 /**
@@ -161,23 +176,23 @@ function enviarAvisoCambioEstado(array $empleado, array $datos, string $estado, 
 }
 
 /**
- * Aviso de que el gerente restableció la contraseña, con la temporal: igual que
- * en el alta, el sistema obliga a cambiarla al entrar.
+ * Contraseña temporal nueva cuando el aviso ya está aceptado: el gerente la
+ * restableció o le reenvió el acceso. Como en el alta, solo llega por correo y
+ * el sistema obliga a cambiarla al entrar.
+ * @param array $acceso de ponerPasswordTemporal()
  */
-function enviarAvisoPasswordRestablecida(array $empleado, array $datos, string $temporal): bool
+function enviarAvisoPasswordRestablecida(array $empleado, array $datos, array $acceso, bool $reenvio = false): bool
 {
     $fecha = date('d/m/Y H:i');
     $texto = "Hola {$empleado['nombre']}:\n\n"
-        . "El {$fecha}, tu gerente restableció la contraseña de tu cuenta en el sistema\n"
-        . "Koaly. Entra con estos datos:\n\n"
-        . "    Dirección:            " . urlSitio() . "\n"
-        . "    Correo (usuario):     {$empleado['email']}\n"
-        . "    Contraseña temporal:  {$temporal}\n\n"
-        . "El sistema te pedirá elegir una contraseña nueva antes de dejarte entrar.\n\n"
+        . ($reenvio
+            ? "Te reenviamos tu acceso al sistema Koaly. Entra con estos datos:\n\n"
+            : "El {$fecha}, tu gerente restableció la contraseña de tu cuenta en el sistema\nKoaly. Entra con estos datos:\n\n")
+        . _bloqueAcceso($empleado, $acceso, $reenvio) . "\n\n"
         . "Si no pediste este cambio, avísale a tu gerente cuanto antes.\n\n"
         . _firma($datos);
 
-    return enviarCorreo($empleado['email'], 'Se restableció tu contraseña de Koaly', $texto);
+    return enviarCorreo($empleado['email'], $reenvio ? 'Tu acceso a Koaly' : 'Se restableció tu contraseña de Koaly', $texto);
 }
 
 /** Aviso a la dirección anterior cuando cambia el correo con el que se inicia sesión. */

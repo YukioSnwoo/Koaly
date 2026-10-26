@@ -1,165 +1,287 @@
-/* Aviso de privacidad: hoja de lectura, con los colores del inicio de sesión */
-:root {
-    --fondo: #eef4fb;
-    --hoja: #ffffff;
-    --texto: #1e293b;
-    --texto-2: #475569;
-    --borde: #e2e8f0;
-    --acento: #2563eb;
-    --acento-hover: #1d4ed8;
-    --ok: #15803d;
-    --ok-suave: #f0fdf4;
-    --error: #b91c1c;
-    --error-suave: #fef2f2;
-}
+/* Aviso de privacidad: hoja de lectura con la piel táctil de Koaly.
+   Los títulos ya traen su número (son cláusulas, en privacidad/aviso.php).
+   Colores, fuentes y modo oscuro vienen de ../estilos/koaly.css (se enlaza
+   después). En escritorio, índice fijo a la izquierda y la hoja a la derecha;
+   al imprimir solo queda la hoja, en blanco y negro. */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
 
 body {
     min-height: 100vh;
-    padding: 2rem 1rem;
-    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #dbeafe 100%) fixed;
+    background: var(--fondo);
     color: var(--texto);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
+    line-height: 1.65;
 }
 
-.hoja {
-    max-width: 760px;
+.pagina {
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 2.5rem clamp(1.25rem, 5vw, 3rem);
-    background: var(--hoja);
-    border-radius: 20px;
-    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.10), 0 8px 20px rgba(0, 0, 0, 0.05);
+    padding: 1.25rem clamp(1rem, 3vw, 2rem) 3rem;
 }
 
-.hoja-cabecera { margin-bottom: 1.75rem; }
+/* ===== Cabecera ===== */
+.cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+}
+
 .marca {
-    display: inline-block;
-    margin-bottom: 0.6rem;
-    padding: 0.2rem 0.7rem;
-    border-radius: 999px;
-    background: #dbeafe;
-    color: var(--acento-hover);
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: var(--texto);
+    font-family: var(--fuente-titulo);
+    font-size: 1.3rem;
+    font-weight: 800;
+    text-decoration: none;
 }
-h1 { font-size: clamp(1.5rem, 4vw, 1.9rem); line-height: 1.25; }
-.version { color: var(--texto-2); font-size: 0.9rem; margin-top: 0.25rem; }
 
-/* Mensajes */
+.marca img { width: 38px; height: 38px; object-fit: contain; }
+
+.volver {
+    padding: 0.5rem 0.95rem;
+    border: 2px solid var(--tinta);
+    border-radius: 10px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil);
+    color: var(--texto);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.volver:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--tinta); }
+.volver:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--tinta); }
+
+.cuerpo {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+}
+
+/* ===== Índice ===== */
+.indice {
+    position: sticky;
+    top: 1.5rem;
+    padding: 1rem 0.9rem;
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil);
+}
+
+.indice-titulo {
+    margin-bottom: 0.4rem;
+    padding: 0 0.45rem;
+    font-weight: 700;
+    color: var(--texto);
+}
+
+.indice ol { list-style: none; display: grid; gap: 2px; }
+.indice a {
+    display: block;
+    padding: 0.35rem 0.45rem;
+    border-radius: 8px;
+    color: var(--texto-2);
+    font-size: 0.86rem;
+    line-height: 1.35;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+.indice a:hover { background: var(--acento-suave); color: var(--acento-texto); }
+/* Aceptar no es una sección del aviso: va aparte, sin número */
+.indice-aceptar { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--borde); }
+.indice-aceptar a { color: var(--acento-texto); font-weight: 700; }
+
+/* ===== Hoja ===== */
+.hoja {
+    padding: 2.25rem clamp(1.25rem, 4vw, 2.75rem);
+    border: 2px solid var(--tinta);
+    border-radius: 18px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil-max);
+}
+
+.hoja-cabecera {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 2px dashed var(--borde-fuerte);
+}
+
+h1 {
+    font-family: var(--fuente-titulo);
+    font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    text-wrap: balance;
+}
+
+.version { margin-top: 0.35rem; color: var(--texto-3); font-size: 0.92rem; }
+
+/* ===== Mensajes ===== */
 .aviso {
     margin-bottom: 1.5rem;
     padding: 1rem 1.2rem;
-    border-radius: 12px;
-    border: 1px solid;
+    border: 2px solid;
+    border-radius: 14px;
 }
-.aviso h2 { font-size: 1.1rem; margin-bottom: 0.3rem; }
-.aviso p + .boton { margin-top: 0.9rem; }
-.aviso--ok    { background: var(--ok-suave); border-color: #bbf7d0; color: var(--ok); }
-.aviso--error { background: var(--error-suave); border-color: #fecaca; color: var(--error); }
+.aviso h2 { font-family: var(--fuente-titulo); font-size: 1.2rem; margin-bottom: 0.3rem; }
+.aviso p + p { margin-top: 0.4rem; }
+.aviso--ok    { background: var(--ok-suave); border-color: var(--ok-borde); color: var(--ok-texto); box-shadow: 4px 4px 0 var(--ok-borde); }
+.aviso--error { background: var(--peligro-suave); border-color: var(--peligro-borde); color: var(--peligro-texto); }
 .aviso--ok p, .aviso--error p { color: var(--texto); }
+.aviso .boton { margin-top: 0.9rem; }
 
-/* Datos del empleado */
+/* ===== Datos del empleado ===== */
 .ficha {
     margin-bottom: 2rem;
     padding: 1.25rem 1.4rem;
+    border: 2px solid var(--tinta);
     border-radius: 14px;
-    background: #f8fafc;
-    border: 1px solid var(--borde);
+    background: var(--superficie-2);
 }
-.ficha h2 { font-size: 1.05rem; }
-.ficha-ayuda { color: var(--texto-2); font-size: 0.88rem; margin-bottom: 0.9rem; }
-.ficha dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.6rem 1.5rem; }
-.ficha dt { color: var(--texto-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-.ficha dd { font-weight: 600; overflow-wrap: anywhere; }
+.ficha h2 { font-family: var(--fuente-titulo); font-size: 1.15rem; }
+.ficha-ayuda { color: var(--texto-3); font-size: 0.88rem; margin-bottom: 0.9rem; }
 
-/* Texto del aviso */
-.texto-aviso section { margin-bottom: 1.4rem; }
-.texto-aviso h2 { font-size: 1.05rem; margin-bottom: 0.35rem; }
+.ficha dl,
+.constancia dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem 1.5rem;
+}
+.ficha dt,
+.constancia dt {
+    color: var(--texto-3);
+    font-size: 0.82rem;
+}
+.ficha dd,
+.constancia dd { font-weight: 600; overflow-wrap: anywhere; }
+
+/* ===== Texto del aviso ===== */
+.texto-aviso section { margin-bottom: 1.6rem; max-width: 68ch; }
+.texto-aviso h2 {
+    margin-bottom: 0.4rem;
+    font-family: var(--fuente-titulo);
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
 .texto-aviso p { color: var(--texto-2); }
-.texto-aviso p + p { margin-top: 0.4rem; }
-.texto-aviso ul { margin: 0.4rem 0 0.4rem 1.25rem; color: var(--texto-2); }
+.texto-aviso * + p { margin-top: 0.45rem; }
+.texto-aviso ul { margin: 0.45rem 0 0.45rem 1.25rem; color: var(--texto-2); }
 .texto-aviso li + li { margin-top: 0.25rem; }
-.texto-aviso * + p { margin-top: 0.4rem; }
+.texto-aviso li::marker { color: var(--acento-texto); }
 
 /* Qué datos tratamos: término a la izquierda, descripción a la derecha */
-.datos { margin: 0.5rem 0 0.6rem; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
-.datos div { display: grid; grid-template-columns: minmax(150px, 30%) 1fr; }
+.datos {
+    margin: 0.6rem 0;
+    border: 2px solid var(--tinta);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.datos div { display: grid; grid-template-columns: minmax(150px, 32%) 1fr; }
 .datos div + div { border-top: 1px solid var(--borde); }
-.datos dt { padding: 0.6rem 0.9rem; background: #f8fafc; font-weight: 600; font-size: 0.92rem; }
+.datos dt { padding: 0.6rem 0.9rem; background: var(--superficie-3); font-weight: 600; font-size: 0.92rem; }
 .datos dd { padding: 0.6rem 0.9rem; color: var(--texto-2); }
 
-/* Constancia de aceptación (también se imprime) */
+/* ===== Constancia de aceptación (también se imprime) ===== */
 .constancia {
     margin-bottom: 2rem;
     padding: 1.25rem 1.4rem;
+    border: 2px dashed var(--acento-borde);
     border-radius: 14px;
-    border: 2px dashed #bfdbfe;
 }
-.constancia h2 { font-size: 1.05rem; margin-bottom: 0.8rem; }
-.constancia dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem 1.5rem; }
-.constancia dt { color: var(--texto-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-.constancia dd { font-weight: 600; overflow-wrap: anywhere; }
-.huella { margin-top: 0.9rem; color: var(--texto-2); font-size: 0.8rem; overflow-wrap: anywhere; }
-.huella code { font-size: 0.78rem; }
+.constancia h2 { font-family: var(--fuente-titulo); font-size: 1.15rem; margin-bottom: 0.8rem; }
+.huella { margin-top: 0.9rem; color: var(--texto-3); font-size: 0.8rem; overflow-wrap: anywhere; }
+.huella code { font-family: var(--fuente-dato); font-size: 0.76rem; }
 .firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 4rem; }
-.firmas p { padding-top: 0.4rem; border-top: 1px solid var(--texto); text-align: center; font-size: 0.85rem; }
+.firmas p { padding-top: 0.4rem; border-top: 1px solid currentColor; text-align: center; font-size: 0.85rem; }
 .solo-imprimir { display: none; }
 
-/* Aceptación: al final del aviso (primero se lee, luego se acepta) */
+/* ===== Aceptación: al final del aviso (primero se lee, luego se acepta) ===== */
 .aceptar {
     margin-top: 2rem;
-    padding: 1.25rem 1.4rem;
-    border-radius: 14px;
-    background: var(--hoja);
-    border: 2px solid #bfdbfe;
-    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.12);
+    padding: 1.4rem 1.5rem;
+    border: 2px solid var(--tinta);
+    border-radius: 16px;
+    background: var(--acento-suave);
+    box-shadow: var(--sombra-tactil-alta);
 }
 .aceptar .aviso { margin-bottom: 1rem; }
 .casilla { display: flex; gap: 0.75rem; align-items: flex-start; cursor: pointer; font-weight: 600; }
-.casilla input { width: 1.25rem; height: 1.25rem; margin-top: 0.2rem; flex-shrink: 0; accent-color: var(--acento); }
-.nota { margin-top: 0.8rem; color: var(--texto-2); font-size: 0.82rem; }
+.casilla input {
+    width: 1.3rem;
+    height: 1.3rem;
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+    accent-color: var(--acento);
+    cursor: pointer;
+}
+.nota { margin-top: 0.8rem; color: var(--texto-3); font-size: 0.84rem; }
 
+/* ===== Botones (se levantan y se hunden, como en los paneles) ===== */
 .boton {
     display: inline-block;
     margin-top: 1rem;
-    padding: 0.8rem 1.6rem;
-    border: none;
+    padding: 0.8rem 1.5rem;
+    border: 2px solid var(--tinta);
     border-radius: 12px;
-    background: linear-gradient(135deg, #3b82f6, var(--acento));
+    background: var(--acento);
+    box-shadow: var(--sombra-tactil);
     color: #fff;
     font: inherit;
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: none;
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s;
 }
-.boton:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4); }
-.boton:focus-visible, .casilla input:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.45); outline-offset: 2px; }
-.boton--secundario { background: #fff; color: var(--acento); border: 1px solid #bfdbfe; box-shadow: none; }
+.boton:hover { background: var(--acento-hover); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--tinta); }
+.boton:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--tinta); }
+.boton--secundario { background: var(--superficie); color: var(--texto); }
+.boton--secundario:hover { background: var(--acento-suave); }
 .boton + .boton { margin-left: 0.5rem; }
 
+a:focus-visible,
+.boton:focus-visible,
+.casilla input:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+/* ===== Pantallas medianas y chicas: el índice se va arriba como lista corta ===== */
+@media (max-width: 860px) {
+    .cuerpo { grid-template-columns: 1fr; }
+    .indice { position: static; }
+    .indice ol { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+
 @media (max-width: 480px) {
-    body { padding: 0.75rem; }
     .hoja { border-radius: 14px; }
     .datos div { grid-template-columns: 1fr; }
     .datos dt { padding-bottom: 0.2rem; }
     .boton + .boton { margin-left: 0; }
+    .volver { padding: 0.45rem 0.7rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .boton { transition: none; }
+    html { scroll-behavior: auto; }
+    .boton, .volver, .indice a { transition: none; }
 }
 
-/* Impresión: la constancia y el aviso en hoja blanca, sin botones */
+/* ===== Impresión: la constancia y el aviso en hoja blanca, sin botones ni índice ===== */
 @media print {
-    body { padding: 0; background: none; font-size: 11pt; }
-    .hoja { max-width: none; padding: 0; box-shadow: none; border-radius: 0; }
+    body { background: none; color: #000; font-size: 11pt; }
+    .pagina { max-width: none; padding: 0; }
+    .cuerpo { display: block; }
+    .hoja { padding: 0; border: 0; box-shadow: none; border-radius: 0; background: none; }
+    .hoja *, .texto-aviso p, .texto-aviso ul { color: #000 !important; }
     .no-imprimir, .aceptar { display: none; }
     .solo-imprimir { display: grid; }
+    .datos dt { background: none; }
     .constancia { border: 1px solid #000; break-inside: avoid; }
+    .datos { border: 1px solid #000; }
     .texto-aviso section, .datos div { break-inside: avoid; }
 }

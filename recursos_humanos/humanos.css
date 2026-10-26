@@ -5,8 +5,8 @@ body { background: #f4f7fa; }
 .header h1 { font-size: 1.3rem; }
 .header .user-info { display: flex; align-items: center; gap: 1rem; }
 .header .user-info span { font-size: 0.9rem; color: #bbf7d0; }
-.header button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #dc2626; color: #fff; cursor: pointer; font-weight: 600; }
-.header button:hover { background: #b91c1c; }
+.header .boton-salir { text-decoration: none; padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #dc2626; color: #fff; cursor: pointer; font-weight: 600; }
+.header .boton-salir:hover { background: #b91c1c; }
 
 .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
 

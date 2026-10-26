@@ -51,33 +51,8 @@ function initCustomCursor() {
 }
 
 
-/* ── Barra lateral en celular ──
-   El botón ☰ la abre encima del contenido. Se cierra con el fondo oscuro,
-   con Esc, al elegir una página o al agrandar la ventana. */
-function initBarraLateral() {
-  const boton = document.getElementById('botonMenu');
-  const fondo = document.getElementById('barraLateralFondo');
-  const barra = document.getElementById('barraLateral');
-  if (!boton || !barra) return;
-
-  const abierta = () => document.body.classList.contains('sidebar-abierta');
-  const poner = (abrir) => {
-    document.body.classList.toggle('sidebar-abierta', abrir);
-    boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
-    if (abrir) {
-      const actual = barra.querySelector('.sidebar__link--active') || barra.querySelector('.sidebar__link');
-      if (actual) actual.focus();
-    }
-  };
-
-  boton.addEventListener('click', () => poner(!abierta()));
-  if (fondo) fondo.addEventListener('click', () => poner(false));
-  barra.querySelectorAll('.sidebar__link').forEach(a => a.addEventListener('click', () => poner(false)));
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && abierta()) { poner(false); boton.focus(); }
-  });
-  window.matchMedia('(min-width: 901px)').addEventListener('change', (e) => { if (e.matches) poner(false); });
-}
+/* La barra lateral (indicador, contraer y cajón de celular) está en
+   ../estilos/barra-lateral.js, común con el gerente. */
 
 
 /* ── Modal helpers (generic) ── */
@@ -110,7 +85,6 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   initCustomCursor();
-  initBarraLateral();
 
   /* ── Date inputs default to today ── */
   document.querySelectorAll('input[type="date"]').forEach(inp => {

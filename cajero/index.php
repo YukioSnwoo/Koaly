@@ -484,13 +484,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         return trReemplazar(Math.abs(n) === 1 ? formas[0] : formas[1], { n, ...vars });
     }
     </script>
-    <script src="../auth.js"></script>
     <script src="../perfil/perfil.js?v=<?= filemtime(__DIR__ . '/../perfil/perfil.js') ?>"></script>
     <script>
-        // Sin requireRol(3): el acceso ya lo revisa el servidor al inicio de esta página.
-        // requireRol mira sessionStorage, que se vacía en cada pestaña nueva aunque la
-        // sesión de PHP siga viva: mandaba a ../index.php, que regresaba aquí, y así sin
-        // parar (la página "parpadeaba"). auth.js se queda por logout().
+        // El acceso lo revisa el servidor al inicio de esta página.
+        function logout() {
+            window.location.href = '../logout.php';
+        }
 
         let carrito = [];
         let indiceSeleccionado = null;

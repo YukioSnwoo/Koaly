@@ -37,7 +37,7 @@ function buscarEnlace(PDO $pdo, string $token): ?array
     }
     $stmt = $pdo->prepare("
         SELECT a.id, a.id_usuario,
-               u.nombre, u.email, u.estado, u.fecha_contratacion, r.nombre_rol,
+               u.nombre, u.email, u.estado, u.fecha_contratacion, u.debe_cambiar, r.nombre_rol,
                s.nombre AS sucursal, s.direccion, s.email_contacto,
                (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) SEPARATOR ', ')
                 FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario) AS cajas,
@@ -96,11 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'fecha'    => date('d/m/Y H:i'),
             'ip'       => $ip,
         ];
+        $primerIngreso = (int) $enlace['debe_cambiar'] === 1;
         // Copia al buzón de constancias (config_correo.php) o, si no hay, al contacto de la sucursal
         $buzon = (configCorreo()['buzon_constancias'] ?? '') ?: (str_contains($contacto, '@') ? $contacto : '');
         $constancia['correo_enviado'] = enviarConstanciaAviso($constancia, $secciones, $buzon);
         $constancia['huella']    = hash('sha256', textoPlanoAviso($secciones));
         $constancia['secciones'] = $secciones;
+        $constancia['primer_ingreso'] = $primerIngreso;
 
         $_SESSION['privacidad_aceptado'] = $constancia;
         header('Location: ./');
@@ -109,7 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $enlaceInvalido = $token !== '' && !$enlace && !$aceptado;
-$verCss = filemtime(__DIR__ . '/privacidad.css');
+$verCss   = filemtime(__DIR__ . '/privacidad.css');
+$verKoaly = filemtime(__DIR__ . '/../estilos/koaly.css');
+// Ancla de cada sección para el índice
+$ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -118,12 +123,40 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>Aviso de privacidad | Koaly</title>
+    <script>
+    // Tema elegido en el login o en un panel (misma clave); si no hay, claro como el login
+    try { var tema = localStorage.getItem('koaly-tema'); } catch (e) {}
+    document.documentElement.setAttribute('data-tema', tema === 'oscuro' ? 'oscuro' : 'claro');
+    </script>
     <link rel="stylesheet" href="privacidad.css?v=<?= $verCss ?>">
+    <!-- Colores, fuentes y modo oscuro comunes de Koaly; va después para que gane -->
+    <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body>
+<div class="pagina">
+<header class="cabecera no-imprimir">
+    <a class="marca" href="../">
+        <img src="../Imagenes/koala/koala-normal.png" alt="">
+        <span>Koaly</span>
+    </a>
+    <a class="volver" href="../">Ir a iniciar sesión</a>
+</header>
+
+<div class="cuerpo">
+<nav class="indice no-imprimir" aria-label="Contenido del aviso">
+    <p class="indice-titulo">En este aviso</p>
+    <ol>
+        <?php foreach (array_keys($secciones) as $i => $titulo): ?>
+            <li><a href="#<?= $ancla($i) ?>"><?= $e($titulo) ?></a></li>
+        <?php endforeach; ?>
+        <?php if ($enlace): ?>
+            <li class="indice-aceptar"><a href="#aceptar">Aceptar el aviso</a></li>
+        <?php endif; ?>
+    </ol>
+</nav>
+
 <main class="hoja">
     <header class="hoja-cabecera">
-        <span class="marca">Koaly</span>
         <h1>Aviso de privacidad para empleados</h1>
         <p class="version">Versión vigente del <?= $e(fechaVersionAviso()) ?></p>
     </header>
@@ -131,11 +164,13 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
     <?php if ($aceptado): ?>
         <section class="aviso aviso--ok no-imprimir" role="status">
             <h2>¡Gracias, <?= $e($aceptado['nombre']) ?>!</h2>
-            <p>Registramos tu aceptación el <?= $e($aceptado['fecha']) ?>. Ya puedes iniciar sesión en el sistema.</p>
+            <p>Registramos tu aceptación el <?= $e($aceptado['fecha']) ?>. <?= !empty($aceptado['primer_ingreso'])
+                ? 'Ya puedes iniciar sesión con tu correo y la contraseña temporal que te enviamos; el sistema te pedirá elegir la tuya.'
+                : 'Ya puedes iniciar sesión en el sistema.' ?></p>
             <p><?= $aceptado['correo_enviado']
                 ? 'Te enviamos la constancia a <strong>' . $e($aceptado['email']) . '</strong>. Respóndela con la frase «Acepto el aviso de privacidad» para dejar tu confirmación por escrito.'
                 : 'No pudimos enviarte la constancia por correo: imprímela o guárdala desde aquí.' ?></p>
-            <a class="boton" href="../">Ir a iniciar sesión</a>
+            <a class="boton" href="../?correo=<?= $e(rawurlencode($aceptado['email'])) ?>">Ir a iniciar sesión</a>
             <button type="button" class="boton boton--secundario" onclick="window.print()">Imprimir constancia</button>
         </section>
 
@@ -181,8 +216,8 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
     <?php endif; ?>
 
     <article class="texto-aviso">
-        <?php foreach ($secciones as $titulo => $parrafos): ?>
-            <section>
+        <?php $i = 0; foreach ($secciones as $titulo => $parrafos): ?>
+            <section id="<?= $ancla($i++) ?>">
                 <h2><?= $e($titulo) ?></h2>
                 <?php foreach ($parrafos as $p): ?>
                     <?php if (is_string($p)): ?>
@@ -215,5 +250,7 @@ $verCss = filemtime(__DIR__ . '/privacidad.css');
         </form>
     <?php endif; ?>
 </main>
+</div>
+</div>
 </body>
 </html>

@@ -1,0 +1,287 @@
+/* ============================================================
+ *  barra-lateral.css — Barra lateral común del admin y el gerente.
+ *  La maneja estilos/barra-lateral.js; el marcado está en
+ *  admin/sidebar.php y gerente/header.php.
+ *
+ *  - Mismo fondo que la página, con borde de tinta. La página activa
+ *    es un bloque morado (.sidebar-indicador) que se desliza hasta el
+ *    enlace bajo el cursor o con foco y regresa al activo al salir.
+ *  - Escritorio: se contrae a solo íconos (html.barra-contraida, que
+ *    cada header.php pone antes de pintar).
+ *  - Celular: cajón debajo de la barra superior que se abre con ☰.
+ *
+ *  Cada módulo solo recorre su contenido: margin-left con
+ *  var(--ancho-barra) / var(--ancho-barra-contraida).
+ *  ============================================================ */
+:root {
+    --ancho-barra: 250px;
+    --ancho-barra-contraida: 72px;
+    --resorte: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --barra-icono: none; /* los íconos PNG son oscuros: en modo oscuro se invierten */
+}
+:root[data-tema="oscuro"] { --barra-icono: invert(1); }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) { --barra-icono: invert(1); }
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    width: var(--ancho-barra);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--fondo);
+    border-right: 2px solid var(--tinta);
+    color: var(--texto-2);
+    overflow-x: hidden;
+    white-space: nowrap;
+    transition: width 0.35s var(--resorte);
+}
+
+.sidebar-brand {
+    padding: 1rem 16px;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    border-bottom: 1px solid var(--borde);
+    color: var(--texto);
+    font-family: var(--fuente-titulo);
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+.sidebar-brand small {
+    margin-left: 4px;
+    font-family: var(--fuente-texto);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--acento-texto);
+}
+
+.sidebar-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.sidebar-nav {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.75rem 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.sidebar-indicador {
+    position: absolute;
+    top: 0;
+    left: 10px;
+    right: 10px;
+    height: 44px;
+    background: var(--acento);
+    border: 2px solid var(--tinta);
+    border-radius: 10px;
+    box-shadow: var(--sombra-tactil);
+    pointer-events: none;
+    transition: transform 0.4s var(--resorte), height 0.3s ease;
+}
+.sidebar-nav.sin-animacion .sidebar-indicador { transition: none; }
+
+.sidebar-link {
+    position: relative;
+    z-index: 1; /* encima del indicador */
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 10px;
+    padding: 0.7rem 14px;
+    border-radius: 10px;
+    color: var(--texto-2);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+.sidebar-link.active { color: var(--acento-texto); font-weight: 600; }
+.sidebar-link.con-indicador { color: #fff; }
+
+/* Ícono: imagen PNG (gerente) o fuente Tabler (admin) */
+.sidebar-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    font-size: 20px;
+    line-height: 1;
+    text-align: center;
+}
+img.sidebar-icon {
+    object-fit: contain;
+    filter: var(--barra-icono);
+    transition: filter 0.2s ease;
+}
+.sidebar-link.con-indicador img.sidebar-icon { filter: invert(1); }
+
+.sidebar-texto { transition: opacity 0.2s ease; }
+
+/* Pie: botón para contraer y tarjeta de estado (sucursal del gerente o resumen del admin) */
+.sidebar-pie {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--borde);
+}
+.sidebar-contraer {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 0.6rem 14px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--texto-3);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.sidebar-contraer:hover { background: var(--acento-suave); color: var(--acento-texto); }
+.sidebar-contraer svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    transition: transform 0.35s var(--resorte);
+}
+
+.sidebar-sucursal {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.6rem 12px 0.6rem 21px;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    background: var(--superficie);
+    color: var(--texto);
+}
+.sidebar-punto {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px var(--ok-suave);
+}
+.sidebar-sucursal strong {
+    display: block;
+    font-size: 0.88rem;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sidebar-sucursal small {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--ok-texto);
+}
+.sidebar-sucursal .sidebar-texto { min-width: 0; }
+
+/* Nombre del enlace al pasar el cursor con la barra contraída */
+.sidebar-tip {
+    position: fixed;
+    z-index: 200;
+    transform: translateY(-50%);
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: var(--texto);
+    color: var(--fondo);
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Escritorio: barra contraída a solo íconos */
+@media (min-width: 901px) {
+    .barra-contraida .sidebar { width: var(--ancho-barra-contraida); }
+    .barra-contraida .sidebar-texto { opacity: 0; }
+    .barra-contraida .sidebar-contraer svg { transform: rotate(180deg); }
+}
+
+/* Fondo oscuro detrás del cajón: solo en pantallas angostas */
+.sidebar-fondo { display: none; }
+
+/* Celular y tablet: cajón debajo de la barra superior, para que el ☰
+   siga a la vista y se convierta en ✕. El JS mide la barra en --alto-barra. */
+@media (max-width: 900px) {
+    .sidebar {
+        top: var(--alto-barra, 0px);
+        left: -12px;               /* el rebote al abrir no deja ver un hueco */
+        width: calc(var(--ancho-barra) + 12px);
+        height: auto;
+        bottom: 0;
+        padding-left: 12px;
+        border-top: 2px solid var(--tinta);
+        transform: translateX(-105%);
+        visibility: hidden;
+        transition: transform 0.45s var(--resorte), visibility 0s linear 0.45s;
+    }
+    body.sidebar-abierta .sidebar {
+        transform: none;
+        visibility: visible;
+        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.3);
+        transition: transform 0.45s var(--resorte);
+    }
+    body.sidebar-abierta { overflow: hidden; }
+    .sidebar-contraer { display: none; }
+
+    /* Los enlaces entran uno tras otro (el JS les pone --i) */
+    .sidebar-link {
+        opacity: 0;
+        transform: translateX(-14px);
+        transition: color 0.2s ease, opacity 0.25s ease, transform 0.4s var(--resorte);
+    }
+    body.sidebar-abierta .sidebar-link {
+        opacity: 1;
+        transform: none;
+        transition-delay: 0s, calc(var(--i, 0) * 45ms + 120ms), calc(var(--i, 0) * 45ms + 120ms);
+    }
+    .sidebar-indicador { opacity: 0; }
+    body.sidebar-abierta .sidebar-indicador {
+        opacity: 1;
+        transition: transform 0.4s var(--resorte), height 0.3s ease, opacity 0.25s ease 0.3s;
+    }
+
+    .sidebar-fondo {
+        display: block;
+        position: fixed; inset: var(--alto-barra, 0px) 0 0 0; z-index: 99;
+        background: rgba(34, 28, 51, 0.55);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    body.sidebar-abierta .sidebar-fondo { opacity: 1; pointer-events: auto; }
+}
+
+/* ☰ → ✕: las tres líneas del SVG giran sobre su centro */
+.sidebar-toggle line {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform 0.35s var(--resorte), opacity 0.2s ease;
+}
+body.sidebar-abierta .sidebar-toggle line:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+body.sidebar-abierta .sidebar-toggle line:nth-child(2) { opacity: 0; transform: scaleX(0); }
+body.sidebar-abierta .sidebar-toggle line:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar, .sidebar-fondo, .sidebar-indicador, .sidebar-link, .sidebar-texto,
+    .sidebar-contraer svg, .sidebar-toggle line {
+        transition: none !important;
+    }
+}

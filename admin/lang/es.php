@@ -13,6 +13,10 @@ return [
     'nav.reportes' => 'Reportes',
     'nav.administracion' => 'Administración',
     'nav.menu_abrir' => 'Abrir menú',
+    'nav.menu_cerrar' => 'Cerrar menú',
+    'nav.contraer' => 'Contraer',
+    'nav.expandir' => 'Expandir',
+    'nav.sucursales_activas' => ['{n} sucursal activa', '{n} sucursales activas'],
     'nav.solicitudes_por_revisar' => ['{n} solicitud de producto por revisar', '{n} solicitudes de producto por revisar'],
 
     // comun
