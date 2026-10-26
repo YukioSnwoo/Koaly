@@ -25,6 +25,7 @@ return [
     'login.acceso_admin' => '1 · Admin',
     'login.acceso_gerente' => '2 · Gerente',
     'login.acceso_cajero' => '3 · Cajero',
+    'login.acceso_rrhh' => '4 · RRHH',
 
     // Panel de la izquierda (en celular, la franja de arriba)
     'portada.lema' => 'Entra para abrir tu caja, revisar el inventario o ver las ventas de tu sucursal.',

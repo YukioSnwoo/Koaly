@@ -25,6 +25,7 @@ return [
     'login.acceso_admin' => '1 · Admin',
     'login.acceso_gerente' => '2 · Manager',
     'login.acceso_cajero' => '3 · Cashier',
+    'login.acceso_rrhh' => '4 · HR',
 
     // Left panel (on phones, the band at the top)
     'portada.lema' => 'Log in to open your register, check stock or see your branch’s sales.',

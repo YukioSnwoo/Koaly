@@ -163,6 +163,9 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
                 <button type="button" class="quick-access-btn"
                         data-email="aguzman66@ucol.mx"
                         data-rol="3" <?= $txt('login.acceso_cajero') ?></button>
+                <button type="button" class="quick-access-btn"
+                        data-email="rrhh@tienda.com"
+                        data-rol="4" <?= $txt('login.acceso_rrhh') ?></button>
             </div>
         </section>
 
