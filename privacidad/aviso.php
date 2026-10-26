@@ -14,7 +14,7 @@
  * Tabla: sql/010_aviso_privacidad.sql
  */
 
-const AVISO_PRIVACIDAD_VERSION = '2026-10-26';
+const AVISO_PRIVACIDAD_VERSION = '2026-10-22';
 const AVISO_ENLACE_DIAS        = 7;   // validez del enlace que llega por correo
 const AVISO_ENLACE_LOGIN_HORAS = 1;   // validez del enlace que se crea al iniciar sesión
 
@@ -64,14 +64,13 @@ function crearEnlaceAviso(PDO $pdo, int $idUsuario, int $horasValidez): string
 
 /**
  * Secciones del aviso: [título => [bloques]]. Un bloque es un párrafo (texto),
- * una lista (arreglo de textos) o una tabla de términos ([término => texto], o
- * [término => [texto, quién lo ve]]).
+ * una lista (arreglo de textos) o una tabla de términos ([término => texto]).
  * La misma fuente sirve para la página (HTML) y para el texto de los correos.
  *
- * Los datos de identificación, domicilio, NSS y contacto de emergencia están en
- * Empleados_Datos (sql/014_datos_personales.sql). Si se agrega un dato que no
- * está aquí, se escribe en este aviso, se anota en cambiosAvisoPrivacidad() y
- * se sube la versión.
+ * Los datos marcados con * todavía no se piden en el sistema (domicilio,
+ * teléfono, NSS...). Ya están en el aviso para que, cuando se agreguen a
+ * Usuarios, el empleado los haya aceptado. Si se agrega un dato que no está
+ * aquí, se escribe en este aviso y se sube la versión.
  *
  * @param array $sucursal ['nombre', 'direccion'] o null (aviso genérico)
  * @param string $contacto correo para dudas y derechos ARCO
@@ -92,27 +91,21 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
         ],
         '2. Qué datos tratamos' => [
             [
-                'Contacto' => ['Nombre completo, correo electrónico y teléfono.',
-                    'tú, tu gerente y la administración.'],
-                'Identificación y domicilio' => ['Fecha de nacimiento, CURP, RFC, número de seguridad '
-                    . 'social (NSS) y domicilio.',
-                    'tú y la administración; tu gerente no los ve.'],
-                'Laborales' => ['Puesto, sucursal y caja asignadas, fecha de contratación y situación '
-                    . 'laboral (activo, vacaciones, incapacidad, licencia o baja, con su motivo).',
-                    'tú, tu gerente y la administración.'],
-                'Contacto de emergencia' => ['Nombre, parentesco y teléfono de la persona a quien avisar '
+                'Identificación y contacto' => 'Nombre completo y correo electrónico. '
+                    . '*Domicilio, teléfono, fecha de nacimiento, CURP y RFC.',
+                'Laborales' => 'Puesto, sucursal y caja asignadas, fecha de contratación y situación '
+                    . 'laboral (activo, vacaciones, incapacidad, licencia o baja, con su motivo). '
+                    . '*Número de seguridad social (NSS).',
+                '*Contacto de emergencia' => 'Nombre, parentesco y teléfono de la persona a quien avisar '
                     . 'en una emergencia. Son datos de otra persona: antes de dárnoslos, avísale y '
                     . 'compártele este aviso.',
-                    'tú, tu gerente y la administración, para poder avisarle a tiempo.'],
-                'Uso del sistema' => ['Ventas, cobros, turnos y cortes de caja, y movimientos de '
+                'Uso del sistema' => 'Ventas, cobros, turnos y cortes de caja, y movimientos de '
                     . 'inventario que registres con tu cuenta.',
-                    'tú, tu gerente y la administración.'],
-                'Seguridad' => ['Dirección IP, navegador y fecha de los inicios de sesión fallidos, de '
+                'Seguridad' => 'Dirección IP, navegador y fecha de los inicios de sesión fallidos, de '
                     . 'los cambios de contraseña y de la aceptación de este aviso.',
-                    'solo la administración.'],
             ],
-            'La administración captura tus datos de identificación, domicilio y contacto de emergencia '
-            . 'para tu expediente laboral. Si alguno está mal, pide que se corrija.',
+            'Los datos marcados con * todavía no se piden en el sistema. Cuando se agreguen, tu gerente '
+            . 'te los pedirá y solo los usaremos para lo que dice este aviso.',
             'No te pedimos datos sensibles (salud, religión, afiliación sindical, origen étnico, etc.). '
             . 'De una incapacidad solo registramos que estás incapacitado y las fechas, nunca el diagnóstico.',
         ],
@@ -123,8 +116,8 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
                 'Administrar tu relación laboral: altas, bajas, vacaciones, incapacidades, licencias y asignación de caja.',
                 'Registrar, supervisar y revisar las ventas, los cortes de caja y el inventario.',
                 'Avisarte por correo de los cambios en tu cuenta.',
-                'Integrar tu expediente laboral y cumplir obligaciones ante el IMSS y el SAT (domicilio, CURP, RFC y NSS).',
-                'Comunicarnos con tu contacto de emergencia si te pasa algo durante el trabajo.',
+                '*Integrar tu expediente laboral y cumplir obligaciones ante el IMSS y el SAT (domicilio, CURP, RFC y NSS).',
+                '*Comunicarnos con tu contacto de emergencia si te pasa algo durante el trabajo.',
             ],
             'No usamos tus datos para publicidad, mercadotecnia ni ninguna otra finalidad secundaria.',
         ],
@@ -142,9 +135,7 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
         '5. Cómo los protegemos' => [
             [
                 'Tu contraseña se guarda cifrada: nadie, ni tu gerente, puede verla.',
-                'Cada persona ve solo lo que necesita: tu gerente ve tus datos de contacto y laborales, '
-                . 'pero no tu CURP, RFC, NSS ni domicilio.',
-                'El sistema revisa el formato de la CURP, el RFC y el NSS para evitar errores de captura.',
+                'Cada persona ve solo lo que necesita: tu gerente, los datos de su sucursal.',
                 'Los enlaces que te enviamos son personales, vencen y sirven una sola vez.',
                 'Registramos los intentos de inicio de sesión para detectar accesos indebidos.',
             ],
@@ -157,10 +148,9 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
         '7. Tus derechos (ARCO) y cómo revocar tu consentimiento' => [
             'Puedes acceder a tus datos, rectificarlos si están mal, cancelarlos u oponerte a su uso, y '
             . "revocar tu consentimiento. Escribe {$escribeA} con tu nombre, el derecho que quieres "
-            . 'ejercer y una copia de tu identificación. Te responderemos en un máximo de 20 días hábiles '
-            . 'y, si procede, lo haremos efectivo en los 15 días hábiles siguientes.',
-            'Si no te respondemos o no estás de acuerdo con la respuesta, puedes acudir a la Secretaría '
-            . 'Anticorrupción y Buen Gobierno, la autoridad de protección de datos personales.',
+            . 'ejercer y una copia de tu identificación. Te responderemos en un máximo de 20 días hábiles.',
+            'Si no te respondemos o no estás de acuerdo con la respuesta, puedes acudir a la autoridad '
+            . 'de protección de datos personales.',
         ],
         '8. Cookies y datos del navegador' => [
             'El sistema usa solo una cookie de sesión, necesaria para mantenerte conectado, y guarda en '
@@ -175,21 +165,6 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
             . 'Te enviamos por correo una constancia con un folio y el texto completo que aceptaste, y una '
             . 'copia queda en el buzón de la empresa.',
         ],
-    ];
-}
-
-/**
- * Qué cambió en la versión vigente respecto a la anterior. La página lo muestra
- * a quien ya había aceptado otra versión, para que no tenga que releer todo.
- */
-function cambiosAvisoPrivacidad(): array
-{
-    return [
-        'Ahora guardamos tu teléfono, domicilio, fecha de nacimiento, CURP, RFC, NSS y un contacto de '
-        . 'emergencia, para tu expediente laboral y los trámites ante el IMSS y el SAT.',
-        'Cada tipo de dato dice quién lo puede ver. Tu gerente no ve tu CURP, RFC, NSS ni domicilio.',
-        'La autoridad a la que puedes acudir ahora es la Secretaría Anticorrupción y Buen Gobierno, '
-        . 'que tomó las funciones del INAI con la ley de protección de datos de 2025.',
     ];
 }
 
@@ -208,11 +183,7 @@ function textoPlanoAviso(array $secciones): string
                 }
             } else {
                 foreach ($bloque as $termino => $descripcion) {
-                    [$dato, $quienVe] = is_array($descripcion) ? $descripcion : [$descripcion, ''];
-                    $texto .= "  {$termino}:\n    " . wordwrap($dato, 72, "\n    ") . "\n";
-                    if ($quienVe !== '') {
-                        $texto .= '    Lo ven: ' . wordwrap($quienVe, 64, "\n    ") . "\n";
-                    }
+                    $texto .= "  {$termino}:\n    " . wordwrap($descripcion, 72, "\n    ") . "\n";
                 }
             }
         }

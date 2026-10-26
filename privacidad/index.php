@@ -29,21 +29,6 @@ if (empty($_SESSION['privacidad_csrf'])) {
     $_SESSION['privacidad_csrf'] = bin2hex(random_bytes(16));
 }
 
-/**
- * Datos de Empleados_Datos para la ficha; null si aún no se capturan o si
- * todavía no existe la tabla (sql/014_datos_personales.sql).
- */
-function buscarDatosPersonales(PDO $pdo, int $idUsuario): ?array
-{
-    try {
-        $stmt = $pdo->prepare('SELECT * FROM Empleados_Datos WHERE id_usuario = ?');
-        $stmt->execute([$idUsuario]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    } catch (PDOException $ex) {
-        return null;
-    }
-}
-
 /** Enlace vigente y sin usar, con los datos del empleado; null si no sirve. */
 function buscarEnlace(PDO $pdo, string $token): ?array
 {
@@ -57,9 +42,7 @@ function buscarEnlace(PDO $pdo, string $token): ?array
                (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) SEPARATOR ', ')
                 FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario) AS cajas,
                (SELECT g.email FROM Usuarios g
-                WHERE g.id_sucursal = u.id_sucursal AND g.id_rol = 2 AND g.estado = 'Activo' LIMIT 1) AS gerente_email,
-               (SELECT MAX(p.version) FROM avisos_privacidad p
-                WHERE p.id_usuario = u.id_usuario AND p.aceptado_en IS NOT NULL) AS version_anterior
+                WHERE g.id_sucursal = u.id_sucursal AND g.id_rol = 2 AND g.estado = 'Activo' LIMIT 1) AS gerente_email
         FROM avisos_privacidad a
         INNER JOIN Usuarios u   ON u.id_usuario = a.id_usuario
         INNER JOIN Roles r      ON r.id_rol = u.id_rol
@@ -128,21 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $enlaceInvalido = $token !== '' && !$enlace && !$aceptado;
-$datos = $enlace ? buscarDatosPersonales($pdo, (int) $enlace['id_usuario']) : null;
-// Quien ya aceptó otra versión ve qué cambió; un empleado nuevo no (todo es nuevo para él)
-$verCambios = $enlace
-    ? $enlace['version_anterior'] !== null && $enlace['version_anterior'] !== AVISO_PRIVACIDAD_VERSION
-    : !$aceptado;
-// CURP, RFC y NSS a medias: el enlace llega por correo y la página puede verse en la tienda
-$tapar = static fn(?string $v, int $ini, int $fin): string => $v
-    ? substr($v, 0, $ini) . str_repeat('•', max(strlen($v) - $ini - $fin, 0)) . substr($v, -$fin)
-    : 'Sin capturar';
-$domicilio = $datos ? trim(implode(', ', array_filter([
-    trim(($datos['calle'] ?? '') . ' ' . ($datos['numero_exterior'] ?? '') . ($datos['numero_interior'] ? ' int. ' . $datos['numero_interior'] : '')),
-    $datos['colonia'] ? 'col. ' . $datos['colonia'] : '',
-    $datos['codigo_postal'] ? 'C.P. ' . $datos['codigo_postal'] : '',
-    $datos['municipio'], $datos['estado'],
-]))) : '';
 $verCss   = filemtime(__DIR__ . '/privacidad.css');
 $verKoaly = filemtime(__DIR__ . '/../estilos/koaly.css');
 // Ancla de cada sección para el índice
@@ -231,13 +199,6 @@ $ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
         </section>
     <?php endif; ?>
 
-    <?php if ($verCambios): ?>
-        <section class="cambios no-imprimir" aria-labelledby="titulo-cambios">
-            <h2 id="titulo-cambios"><?= $enlace ? 'Qué cambió desde la versión que aceptaste' : 'Qué cambió en esta versión' ?></h2>
-            <ul><?php foreach (cambiosAvisoPrivacidad() as $cambio): ?><li><?= $e($cambio) ?></li><?php endforeach; ?></ul>
-        </section>
-    <?php endif; ?>
-
     <?php if ($enlace): ?>
         <section class="ficha" aria-labelledby="titulo-ficha">
             <h2 id="titulo-ficha">Tus datos en el sistema</h2>
@@ -251,23 +212,6 @@ $ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
                 <div><dt>Fecha de contratación</dt><dd><?= $e($fecha($enlace['fecha_contratacion'])) ?></dd></div>
                 <div><dt>Situación</dt><dd><?= $e($enlace['estado']) ?></dd></div>
             </dl>
-            <?php if ($datos): ?>
-                <h3 class="ficha-subtitulo">Expediente</h3>
-                <dl>
-                    <div><dt>Teléfono</dt><dd><?= $e($datos['telefono'] ?: 'Sin capturar') ?></dd></div>
-                    <div><dt>Fecha de nacimiento</dt><dd><?= $e($datos['fecha_nacimiento'] ? $fecha($datos['fecha_nacimiento']) : 'Sin capturar') ?></dd></div>
-                    <div><dt>CURP</dt><dd class="dato-oculto"><?= $e($tapar($datos['curp'], 4, 2)) ?></dd></div>
-                    <div><dt>RFC</dt><dd class="dato-oculto"><?= $e($tapar($datos['rfc'], 4, 3)) ?></dd></div>
-                    <div><dt>NSS</dt><dd class="dato-oculto"><?= $e($tapar($datos['nss'], 0, 4)) ?></dd></div>
-                    <div class="ficha-ancho"><dt>Domicilio</dt><dd><?= $e($domicilio ?: 'Sin capturar') ?></dd></div>
-                    <div class="ficha-ancho"><dt>Contacto de emergencia</dt><dd><?= $e($datos['contacto_emergencia_nombre']
-                        ? $datos['contacto_emergencia_nombre']
-                          . ($datos['contacto_emergencia_parentesco'] ? " ({$datos['contacto_emergencia_parentesco']})" : '')
-                          . ($datos['contacto_emergencia_telefono'] ? ', ' . $datos['contacto_emergencia_telefono'] : '')
-                        : 'Sin capturar') ?></dd></div>
-                </dl>
-                <p class="ficha-ayuda ficha-nota">Por seguridad, la CURP, el RFC y el NSS se muestran incompletos.</p>
-            <?php endif; ?>
         </section>
     <?php endif; ?>
 
@@ -282,10 +226,7 @@ $ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
                         <ul><?php foreach ($p as $item): ?><li><?= $e($item) ?></li><?php endforeach; ?></ul>
                     <?php else: ?>
                         <dl class="datos"><?php foreach ($p as $termino => $texto): ?>
-                            <?php [$dato, $quienVe] = is_array($texto) ? $texto : [$texto, '']; ?>
-                            <div><dt><?= $e($termino) ?></dt><dd><?= $e($dato) ?>
-                                <?php if ($quienVe !== ''): ?><span class="quien-ve">Lo ven: <?= $e($quienVe) ?></span><?php endif; ?>
-                            </dd></div>
+                            <div><dt><?= $e($termino) ?></dt><dd><?= $e($texto) ?></dd></div>
                         <?php endforeach; ?></dl>
                     <?php endif; ?>
                 <?php endforeach; ?>
