@@ -165,6 +165,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$nombre, $email, $estado, $estado, $id]);
 
+            // Correo nuevo: los enlaces del aviso que no se han usado dejan de servir,
+            // para que un enlace no termine en un buzón que el empleado no confirmó
+            if (strcasecmp($email, $anterior['email']) !== 0) {
+                try {
+                    $pdo->prepare("DELETE FROM avisos_privacidad WHERE id_usuario = ? AND aceptado_en IS NULL")
+                        ->execute([$id]);
+                } catch (PDOException $e) {
+                    // Sin la tabla del aviso (sql/010) no hay enlaces que cancelar
+                }
+            }
+
             $mensajeExito = t('cajeros.actualizado');
             if ($estado === 'Baja' && $estadoAnterior !== 'Baja'
                 && liberarCajasDeCajero($pdo, $id, $idSucursalGerente) > 0) {

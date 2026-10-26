@@ -29,21 +29,6 @@ if (empty($_SESSION['privacidad_csrf'])) {
     $_SESSION['privacidad_csrf'] = bin2hex(random_bytes(16));
 }
 
-/**
- * Datos de Empleados_Datos para la ficha; null si aún no se capturan o si
- * todavía no existe la tabla (sql/014_datos_personales.sql).
- */
-function buscarDatosPersonales(PDO $pdo, int $idUsuario): ?array
-{
-    try {
-        $stmt = $pdo->prepare('SELECT * FROM Empleados_Datos WHERE id_usuario = ?');
-        $stmt->execute([$idUsuario]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    } catch (PDOException $ex) {
-        return null;
-    }
-}
-
 /** Enlace vigente y sin usar, con los datos del empleado; null si no sirve. */
 function buscarEnlace(PDO $pdo, string $token): ?array
 {
@@ -128,21 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $enlaceInvalido = $token !== '' && !$enlace && !$aceptado;
-$datos = $enlace ? buscarDatosPersonales($pdo, (int) $enlace['id_usuario']) : null;
 // Quien ya aceptó otra versión ve qué cambió; un empleado nuevo no (todo es nuevo para él)
 $verCambios = $enlace
     ? $enlace['version_anterior'] !== null && $enlace['version_anterior'] !== AVISO_PRIVACIDAD_VERSION
     : !$aceptado;
-// CURP, RFC y NSS a medias: el enlace llega por correo y la página puede verse en la tienda
-$tapar = static fn(?string $v, int $ini, int $fin): string => $v
-    ? substr($v, 0, $ini) . str_repeat('•', max(strlen($v) - $ini - $fin, 0)) . substr($v, -$fin)
-    : 'Sin capturar';
-$domicilio = $datos ? trim(implode(', ', array_filter([
-    trim(($datos['calle'] ?? '') . ' ' . ($datos['numero_exterior'] ?? '') . ($datos['numero_interior'] ? ' int. ' . $datos['numero_interior'] : '')),
-    $datos['colonia'] ? 'col. ' . $datos['colonia'] : '',
-    $datos['codigo_postal'] ? 'C.P. ' . $datos['codigo_postal'] : '',
-    $datos['municipio'], $datos['estado'],
-]))) : '';
 $verCss   = filemtime(__DIR__ . '/privacidad.css');
 $verKoaly = filemtime(__DIR__ . '/../estilos/koaly.css');
 // Ancla de cada sección para el índice
@@ -251,23 +225,6 @@ $ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
                 <div><dt>Fecha de contratación</dt><dd><?= $e($fecha($enlace['fecha_contratacion'])) ?></dd></div>
                 <div><dt>Situación</dt><dd><?= $e($enlace['estado']) ?></dd></div>
             </dl>
-            <?php if ($datos): ?>
-                <h3 class="ficha-subtitulo">Expediente</h3>
-                <dl>
-                    <div><dt>Teléfono</dt><dd><?= $e($datos['telefono'] ?: 'Sin capturar') ?></dd></div>
-                    <div><dt>Fecha de nacimiento</dt><dd><?= $e($datos['fecha_nacimiento'] ? $fecha($datos['fecha_nacimiento']) : 'Sin capturar') ?></dd></div>
-                    <div><dt>CURP</dt><dd class="dato-oculto"><?= $e($tapar($datos['curp'], 4, 2)) ?></dd></div>
-                    <div><dt>RFC</dt><dd class="dato-oculto"><?= $e($tapar($datos['rfc'], 4, 3)) ?></dd></div>
-                    <div><dt>NSS</dt><dd class="dato-oculto"><?= $e($tapar($datos['nss'], 0, 4)) ?></dd></div>
-                    <div class="ficha-ancho"><dt>Domicilio</dt><dd><?= $e($domicilio ?: 'Sin capturar') ?></dd></div>
-                    <div class="ficha-ancho"><dt>Contacto de emergencia</dt><dd><?= $e($datos['contacto_emergencia_nombre']
-                        ? $datos['contacto_emergencia_nombre']
-                          . ($datos['contacto_emergencia_parentesco'] ? " ({$datos['contacto_emergencia_parentesco']})" : '')
-                          . ($datos['contacto_emergencia_telefono'] ? ', ' . $datos['contacto_emergencia_telefono'] : '')
-                        : 'Sin capturar') ?></dd></div>
-                </dl>
-                <p class="ficha-ayuda ficha-nota">Por seguridad, la CURP, el RFC y el NSS se muestran incompletos.</p>
-            <?php endif; ?>
         </section>
     <?php endif; ?>
 

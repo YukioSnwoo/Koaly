@@ -162,17 +162,6 @@ h1 {
 }
 .ficha dd,
 .constancia dd { font-weight: 600; overflow-wrap: anywhere; }
-.ficha-subtitulo {
-    margin: 1.25rem 0 0.75rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--borde);
-    font-family: var(--fuente-titulo);
-    font-size: 1rem;
-}
-.ficha-ancho { grid-column: 1 / -1; }
-/* CURP, RFC y NSS a medias: en monoespaciada se lee cuántos caracteres faltan */
-.dato-oculto { font-family: var(--fuente-dato); font-size: 0.92rem; letter-spacing: 0.04em; }
-.ficha-nota { margin: 0.9rem 0 0; }
 
 /* ===== Qué cambió: solo para quien ya aceptó otra versión (o en el aviso público) ===== */
 .cambios {
