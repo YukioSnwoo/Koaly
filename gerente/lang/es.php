@@ -14,8 +14,12 @@ return [
     'nav.cajas' => 'Cajas',
     'nav.ventas' => 'Ventas',
 
-    // menu (barra lateral en celular)
+    // menu (barra lateral: ☰ en celular, contraer en escritorio, tarjeta de sucursal)
     'menu.abrir' => 'Abrir menú',
+    'menu.cerrar' => 'Cerrar menú',
+    'menu.contraer' => 'Contraer',
+    'menu.expandir' => 'Expandir',
+    'menu.sucursal_activa' => 'Sucursal activa',
 
     // comun
     'comun.agregar' => 'Agregar',

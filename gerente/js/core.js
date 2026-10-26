@@ -260,35 +260,3 @@ document.addEventListener('invalid', (e) => {
     if (e.target.form) limpiarAvisosCampos(e.target.form);
 }));
 document.addEventListener('reset', (e) => limpiarAvisosCampos(e.target, true));
-
-
-/* ============================================================
- * Barra lateral en celular: el botón ☰ la abre encima del contenido.
- * Se cierra con el fondo oscuro, con Esc, al elegir una página o
- * al agrandar la ventana (en escritorio siempre está visible).
- * ============================================================ */
-function initBarraLateral() {
-    const boton = document.getElementById('botonMenu');
-    const fondo = document.getElementById('barraLateralFondo');
-    const barra = document.getElementById('barraLateral');
-    if (!boton || !barra) return;
-
-    const abierta = () => document.body.classList.contains('sidebar-abierta');
-    const poner = (abrir) => {
-        document.body.classList.toggle('sidebar-abierta', abrir);
-        boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
-        if (abrir) {
-            const actual = barra.querySelector('.sidebar-link.active') || barra.querySelector('.sidebar-link');
-            if (actual) actual.focus();
-        }
-    };
-
-    boton.addEventListener('click', () => poner(!abierta()));
-    if (fondo) fondo.addEventListener('click', () => poner(false));
-    barra.querySelectorAll('.sidebar-link').forEach(a => a.addEventListener('click', () => poner(false)));
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && abierta()) { poner(false); boton.focus(); }
-    });
-    window.matchMedia('(min-width: 901px)').addEventListener('change', (e) => { if (e.matches) poner(false); });
-}
-document.addEventListener('DOMContentLoaded', initBarraLateral);

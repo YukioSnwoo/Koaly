@@ -14,8 +14,12 @@ return [
     'nav.cajas' => 'Registers',
     'nav.ventas' => 'Sales',
 
-    // menu (barra lateral en celular)
+    // menu (barra lateral: ☰ en celular, contraer en escritorio, tarjeta de sucursal)
     'menu.abrir' => 'Open menu',
+    'menu.cerrar' => 'Close menu',
+    'menu.contraer' => 'Collapse',
+    'menu.expandir' => 'Expand',
+    'menu.sucursal_activa' => 'Active branch',
 
     // comun
     'comun.agregar' => 'Add',
