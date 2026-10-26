@@ -162,6 +162,31 @@ h1 {
 }
 .ficha dd,
 .constancia dd { font-weight: 600; overflow-wrap: anywhere; }
+.ficha-subtitulo {
+    margin: 1.25rem 0 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--borde);
+    font-family: var(--fuente-titulo);
+    font-size: 1rem;
+}
+.ficha-ancho { grid-column: 1 / -1; }
+/* CURP, RFC y NSS a medias: en monoespaciada se lee cuántos caracteres faltan */
+.dato-oculto { font-family: var(--fuente-dato); font-size: 0.92rem; letter-spacing: 0.04em; }
+.ficha-nota { margin: 0.9rem 0 0; }
+
+/* ===== Qué cambió: solo para quien ya aceptó otra versión (o en el aviso público) ===== */
+.cambios {
+    margin-bottom: 2rem;
+    padding: 1.1rem 1.3rem;
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    background: var(--indigo-suave);
+    box-shadow: var(--sombra-tactil);
+}
+.cambios h2 { font-family: var(--fuente-titulo); font-size: 1.1rem; margin-bottom: 0.5rem; }
+.cambios ul { margin-left: 1.2rem; display: grid; gap: 0.35rem; }
+.cambios li { color: var(--texto-2); max-width: 68ch; }
+.cambios li::marker { color: var(--indigo-texto); }
 
 /* ===== Texto del aviso ===== */
 .texto-aviso section { margin-bottom: 1.6rem; max-width: 68ch; }
@@ -189,6 +214,14 @@ h1 {
 .datos div + div { border-top: 1px solid var(--borde); }
 .datos dt { padding: 0.6rem 0.9rem; background: var(--superficie-3); font-weight: 600; font-size: 0.92rem; }
 .datos dd { padding: 0.6rem 0.9rem; color: var(--texto-2); }
+/* Quién ve cada tipo de dato: debajo de la descripción, más tenue */
+.quien-ve {
+    display: block;
+    margin-top: 0.3rem;
+    color: var(--acento-texto);
+    font-size: 0.86rem;
+    font-weight: 600;
+}
 
 /* ===== Constancia de aceptación (también se imprime) ===== */
 .constancia {
