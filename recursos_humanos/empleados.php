@@ -1,6 +1,5 @@
 <?php
-session_start();
-require_once __DIR__ . '/../admin/database.php';
+require_once __DIR__ . '/guardia.php';
 $verCss = filemtime(__DIR__ . '/humanos.css');
 ?>
 <!DOCTYPE html>
@@ -14,8 +13,8 @@ $verCss = filemtime(__DIR__ . '/humanos.css');
     <div class="header">
         <h1>Koaly - Empleados</h1>
         <div class="user-info">
-            <span><?= htmlspecialchars($_SESSION['nombre'] ?? 'Usuario') ?></span>
-            <button onclick="logout()">Cerrar sesión</button>
+            <span><?= htmlspecialchars($usuario['nombre']) ?></span>
+            <a href="../logout.php" class="boton-salir">Cerrar sesión</a>
         </div>
     </div>
 
@@ -46,6 +45,5 @@ $verCss = filemtime(__DIR__ . '/humanos.css');
         </div>
     </div>
 
-    <script src="../auth.js"></script>
 </body>
 </html>

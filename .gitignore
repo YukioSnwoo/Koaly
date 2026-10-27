@@ -35,3 +35,6 @@ desktop.ini
 
 # Privado
 private/
+
+# Volcados completos de la base (traen datos personales): solo locales
+sql/respaldos/

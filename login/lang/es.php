@@ -21,11 +21,15 @@ return [
     'campo.contrasena_ej' => 'Tu contraseña',
     'login.ingresar' => 'Ingresar',
     'login.olvide' => 'Olvidé mi contraseña',
-    'login.acceso_rapido' => 'Acceso rápido (beta)',
+    'login.acceso_rapido' => 'Entrar como prueba (beta)',
     'login.acceso_admin' => '1 · Admin',
     'login.acceso_gerente' => '2 · Gerente',
     'login.acceso_cajero' => '3 · Cajero',
-    'login.pie' => 'Koaly · Gestión multisucursal',
+    'login.acceso_rrhh' => '4 · RRHH',
+
+    // Panel de la izquierda (en celular, la franja de arriba)
+    'portada.lema' => 'Entra para abrir tu caja, revisar el inventario o ver las ventas de tu sucursal.',
+    'portada.privacidad' => 'Aviso de privacidad',
 
     // Recuperar contraseña
     'recuperar.volver' => '← Volver a iniciar sesión',
@@ -114,6 +118,8 @@ return [
     'srv.sesion' => 'Sesión no válida. Vuelve a iniciar sesión.',
     'srv.usuario' => 'Usuario no encontrado',
     'srv.actualizada' => 'Contraseña actualizada correctamente',
+    'srv.temporal_vencida' => 'Tu contraseña temporal venció. Pide a tu gerente que te reenvíe el acceso.',
+    'srv.ya_actualizada' => 'Tu contraseña ya está actualizada. Para cambiarla usa «Olvidé mi contraseña».',
     'srv.credenciales' => 'Ingresa un correo y contraseña válidos',
     'srv.bloqueo' => 'Demasiados intentos fallidos. Espera {minutos} minutos o restablece tu contraseña.',
     'srv.incorrectos' => 'Correo o contraseña incorrectos',

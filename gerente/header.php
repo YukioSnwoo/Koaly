@@ -8,6 +8,7 @@ $verBase        = filemtime(__DIR__ . '/css/base.css');
 $verComponentes = filemtime(__DIR__ . '/css/componentes.css');
 $verPaginas     = filemtime(__DIR__ . '/css/paginas.css');
 $verKoaly       = filemtime(__DIR__ . '/../estilos/koaly.css');
+$verBarra       = filemtime(__DIR__ . '/../estilos/barra-lateral.css');
 $verPerfil      = filemtime(__DIR__ . '/../perfil/perfil.css');
 
 // Página actual con su query string, para volver a ella al cambiar de idioma (menú de perfil)
@@ -23,6 +24,8 @@ $paginaActual = basename($_SERVER['PHP_SELF']) . (($_SERVER['QUERY_STRING'] ?? '
 // Tema elegido (claro/oscuro) antes de pintar, para evitar un destello. Sin elección: sigue al sistema.
 // La clave es común con el cajero (koaly-tema); la anterior del gerente queda como respaldo.
 try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koalicius-gerente-tema'); if (tema === 'claro' || tema === 'oscuro') document.documentElement.setAttribute('data-tema', tema); } catch (e) {}
+// Barra lateral contraída a solo íconos (estilos/barra-lateral.js la guarda, común con el admin); antes de pintar, para que no salte
+try { if (localStorage.getItem('koaly-barra') === 'contraida') document.documentElement.classList.add('barra-contraida'); } catch (e) {}
 </script>
 <?php if ($pageDesc !== ''): ?>
 <meta name="description" content="<?= e($pageDesc) ?>">
@@ -32,47 +35,63 @@ try { var tema = localStorage.getItem('koaly-tema') || localStorage.getItem('koa
 <link rel="stylesheet" href="css/paginas.css?v=<?= $verPaginas ?>">
 <!-- Estilo común de Koaly (colores, fuentes y piel táctil); va al final para que gane -->
 <link rel="stylesheet" href="../estilos/koaly.css?v=<?= $verKoaly ?>">
+<link rel="stylesheet" href="../estilos/barra-lateral.css?v=<?= $verBarra ?>">
 <link rel="stylesheet" href="../perfil/perfil.css?v=<?= $verPerfil ?>">
 </head>
 <body>
 <div class="layout">
-    <!-- Barra Lateralllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll -->
+    <!-- Barra lateral (común con el admin): estilos/barra-lateral.css y estilos/barra-lateral.js -->
+<?php
+$paginaNav = basename($_SERVER['PHP_SELF']);
+$enlacesNav = [
+    ['index.php',           'icono-inicio.png',      t('panel.titulo')],
+    ['productos.php',       'icono-inventario.png',  t('nav.productos')],
+    ['movimientos.php',     'icono-movimientos.png', t('nav.movimientos')],
+    ['cajeros.php',         'icono-cajas.png',       t('nav.cajeros')],
+    ['cajas.php',           'icono-caja.png',        t('nav.cajas')],
+    ['ventas_sucursal.php', 'icono-ventas.png',      t('nav.ventas')],
+];
+?>
     <aside class="sidebar" id="barraLateral">
-                <div class="sidebar-brand">
-            <img src="../Imagenes/koala/koala-normal.png" alt="Koaly" class="sidebar-logo">
-            <span>Koaly</span>
+        <div class="sidebar-brand">
+            <img src="../Imagenes/koala/koala-normal.png" alt="" class="sidebar-logo">
+            <span class="sidebar-texto">Koaly</span>
         </div>
-        
-                <nav class="sidebar-nav">
-            <a href="index.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-inicio.png" class="sidebar-icon" alt=""> <?= e(t('panel.titulo')) ?>
+
+        <nav class="sidebar-nav">
+            <span class="sidebar-indicador" aria-hidden="true"></span>
+<?php foreach ($enlacesNav as [$archivo, $icono, $texto]): ?>
+            <a href="<?= $archivo ?>" class="sidebar-link<?= $paginaNav === $archivo ? ' active' : '' ?>" data-titulo="<?= e($texto) ?>"<?= $paginaNav === $archivo ? ' aria-current="page"' : '' ?>>
+                <img src="../Imagenes/iconos/<?= $icono ?>" class="sidebar-icon" alt="">
+                <span class="sidebar-texto"><?= e($texto) ?></span>
             </a>
-            <a href="productos.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'productos.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-inventario.png" class="sidebar-icon" alt=""> <?= e(t('nav.productos')) ?>
-            </a>
-            <a href="movimientos.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'movimientos.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-movimientos.png" class="sidebar-icon" alt=""> <?= e(t('nav.movimientos')) ?>
-            </a>
-            <a href="cajeros.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'cajeros.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-cajas.png" class="sidebar-icon" alt=""> <?= e(t('nav.cajeros')) ?>
-            </a>
-            <a href="cajas.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'cajas.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-caja.png" class="sidebar-icon" alt=""> <?= e(t('nav.cajas')) ?>
-            </a>
-            <a href="ventas_sucursal.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) == 'ventas_sucursal.php' ? 'active' : '' ?>">
-                <img src="../Imagenes/iconos/icono-ventas.png" class="sidebar-icon" alt=""> <?= e(t('nav.ventas')) ?>
-            </a>
+<?php endforeach; ?>
         </nav>
-     </aside> 
+
+        <div class="sidebar-pie">
+            <button type="button" class="sidebar-contraer" id="botonContraer" aria-controls="barraLateral" aria-pressed="false"
+                    data-texto-contraer="<?= e(t('menu.contraer')) ?>" data-texto-expandir="<?= e(t('menu.expandir')) ?>">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"/></svg>
+                <span class="sidebar-texto"><?= e(t('menu.contraer')) ?></span>
+            </button>
+            <div class="sidebar-sucursal" data-titulo="<?= e($gerente['sucursal_nombre'] . ' · ' . t('menu.sucursal_activa')) ?>">
+                <span class="sidebar-punto" aria-hidden="true"></span>
+                <span class="sidebar-texto">
+                    <strong><?= e($gerente['sucursal_nombre']) ?></strong>
+                    <small><?= e(t('menu.sucursal_activa')) ?></small>
+                </span>
+            </div>
+        </div>
+    </aside>
     <div class="sidebar-fondo" id="barraLateralFondo" aria-hidden="true"></div>
-    <!-- Barra Lateralllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll -->
 
     <!-- CONTENIDO PRINCIPAL -->
     <div class="main-wrapper">
         <header class="header">
             <div class="header-izq">
                 <button type="button" class="tema-boton sidebar-toggle" id="botonMenu"
-                        aria-controls="barraLateral" aria-expanded="false" aria-label="<?= e(t('menu.abrir')) ?>" title="<?= e(t('menu.abrir')) ?>">
+                        aria-controls="barraLateral" aria-expanded="false" aria-label="<?= e(t('menu.abrir')) ?>" title="<?= e(t('menu.abrir')) ?>"
+                        data-texto-abrir="<?= e(t('menu.abrir')) ?>" data-texto-cerrar="<?= e(t('menu.cerrar')) ?>">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
                 </button>
             </div>

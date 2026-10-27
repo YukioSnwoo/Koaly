@@ -2,7 +2,7 @@
 
 session_start();
 
-$rutasPorRol = [1 => 'admin/', 2 => 'gerente/', 3 => 'cajero/'];
+$rutasPorRol = [1 => 'admin/', 2 => 'gerente/', 3 => 'cajero/', 4 => 'recursos_humanos/']; // igual que RUTAS_POR_ROL en login/login.php
 $debeCambiar = false;
 
 if (isset($_SESSION['id_usuario'])) {
@@ -42,9 +42,12 @@ if (isset($_SESSION['id_usuario'])) {
 require_once __DIR__ . '/login/i18n.php';
 
 // La versión en la URL evita que el navegador use un CSS/JS viejo (Hostinger los guarda 7 días)
-$verCss = filemtime(__DIR__ . '/login/login.css');
-$verJs  = filemtime(__DIR__ . '/login/login.js');
+$verCss   = filemtime(__DIR__ . '/login/login.css');
+$verJs    = filemtime(__DIR__ . '/login/login.js');
 $verKoaly = filemtime(__DIR__ . '/estilos/koaly.css');
+
+// ?correo= viene de la constancia del aviso de privacidad: el cajero solo escribe la contraseña temporal
+$correoInicial = filter_var((string) ($_GET['correo'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
 
 // Botón de ojo para ver u ocultar la contraseña del campo $id (login.js lo maneja)
 $botonVer = fn (string $id) => '<button type="button" class="toggle-password" data-target="' . $id . '"'
@@ -76,38 +79,56 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
     <link rel="stylesheet" href="estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
 <body<?= $debeCambiar ? ' data-debe-cambiar="1"' : '' ?>>
+<div class="pantalla">
+    <!-- Portada: el koala que reacciona a lo que se escribe (login.js) es lo protagonista.
+         En celular queda solo el koala con su burbuja, en una franja arriba. -->
+    <aside class="portada">
+        <div class="portada-marca">
+            <img src="Imagenes/koala/koala-normal.png" alt="">
+            <span>Koaly</span>
+        </div>
+
+        <div class="portada-centro">
+            <div class="mascota" aria-hidden="true">
+                <div class="mascota-sello">
+                    <img src="Imagenes/koala/koala-normal.png" id="mascotaCara" class="mascota-imagen" alt="">
+                </div>
+                <p class="mascota-burbuja" id="mascotaBurbuja" <?= $txt('koala.saludo') ?></p>
+            </div>
+            <h2 <?= $txt('portada.lema') ?></h2>
+        </div>
+
+        <div class="portada-pie">
+            <a href="privacidad/" <?= $txt('portada.privacidad') ?></a>
+        </div>
+    </aside>
+
+    <div class="lado-formulario">
+        <div class="barra-login">
+            <!-- Idioma: el mismo en todo el sitio, como el tema -->
+            <button type="button" class="tema-boton idioma-boton" id="botonIdioma" aria-label="<?= e(t('idioma.cambiar')) ?>" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" data-i18n-title="idioma.cambiar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <span <?= $txt('idioma.corto') ?></span>
+            </button>
+
+            <!-- Tema claro / oscuro: luna en claro, sol en oscuro -->
+            <button type="button" class="tema-boton" id="botonTema" aria-label="<?= e(t('tema.boton')) ?>" data-i18n-aria-label="tema.boton" aria-pressed="false">
+                <svg class="icono-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                <svg class="icono-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4.5"/>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                </svg>
+            </button>
+        </div>
+
     <main class="container">
-        <!-- Idioma (esquina izquierda): el mismo en todo el sitio, como el tema -->
-        <button type="button" class="tema-boton idioma-boton" id="botonIdioma" aria-label="<?= e(t('idioma.cambiar')) ?>" title="<?= e(t('idioma.cambiar')) ?>" data-i18n-aria-label="idioma.cambiar" data-i18n-title="idioma.cambiar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <span <?= $txt('idioma.corto') ?></span>
-        </button>
-
-        <!-- Tema claro / oscuro (esquina derecha): luna en claro, sol en oscuro -->
-        <button type="button" class="tema-boton" id="botonTema" aria-label="<?= e(t('tema.boton')) ?>" data-i18n-aria-label="tema.boton" aria-pressed="false">
-            <svg class="icono-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-            <svg class="icono-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="4.5"/>
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-            </svg>
-        </button>
-
         <!-- INICIAR SESIÓN -->
         <section id="loginView"<?= $debeCambiar ? ' class="hidden"' : '' ?>>
-            
-            <!-- Mascota  Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
-                        
-            <div class="mascota" id="mascota" aria-hidden="true">
 
-            <img src="Imagenes/koala/koala-normal.png" id="mascotaCara" class="mascota-imagen" alt="Mascota Koala">
-                <div class="mascota-burbuja" id="mascotaBurbuja" <?= $txt('koala.saludo') ?></div>
-            </div>
-            <!-- Mascota  Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
-            
             <h1 <?= $txt('login.titulo') ?></h1>
             <p class="subtitle" <?= $txt('login.subtitulo') ?></p>
 
@@ -116,13 +137,13 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
             <form id="loginForm" novalidate>
                 <div class="form-group">
                     <label for="loginEmail" <?= $txt('campo.correo') ?></label>
-                    <input type="email" id="loginEmail" placeholder="<?= e(t('campo.correo_ej')) ?>" data-i18n-placeholder="campo.correo_ej" autocomplete="username" required autofocus>
+                    <input type="email" id="loginEmail" placeholder="<?= e(t('campo.correo_ej')) ?>" data-i18n-placeholder="campo.correo_ej" autocomplete="username" required<?= $correoInicial !== '' ? ' value="' . e($correoInicial) . '"' : ' autofocus' ?>>
                 </div>
 
                 <div class="form-group">
                     <label for="loginPassword" <?= $txt('campo.contrasena') ?></label>
                     <div class="password-field">
-                        <input type="password" id="loginPassword" placeholder="<?= e(t('campo.contrasena_ej')) ?>" data-i18n-placeholder="campo.contrasena_ej" autocomplete="current-password" required>
+                        <input type="password" id="loginPassword" placeholder="<?= e(t('campo.contrasena_ej')) ?>" data-i18n-placeholder="campo.contrasena_ej" autocomplete="current-password" required<?= $correoInicial !== '' ? ' autofocus' : '' ?>>
                         <?= $botonVer('loginPassword') ?>
                     </div>
                 </div>
@@ -142,8 +163,10 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
                 <button type="button" class="quick-access-btn"
                         data-email="aguzman66@ucol.mx"
                         data-rol="3" <?= $txt('login.acceso_cajero') ?></button>
+                <button type="button" class="quick-access-btn"
+                        data-email="rrhh@tienda.com"
+                        data-rol="4" <?= $txt('login.acceso_rrhh') ?></button>
             </div>
-            <p class="footer-note" <?= $txt('login.pie') ?></p>
         </section>
 
         <!-- RECUPERAR CONTRASEÑA · PASO 1: CORREO -->
@@ -254,6 +277,8 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
             <a href="logout.php" class="link-button volver-link logout-link" <?= $txt('cambiar.salir') ?></a>
         </section>
     </main>
+    </div>
+</div>
 
     <script src="login/login.js?v=<?= $verJs ?>"></script>
 </body>

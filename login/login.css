@@ -1,8 +1,15 @@
-/* Colores, fuentes y modo oscuro vienen de ../estilos/koaly.css (el mismo de los
-   paneles), que index.php enlaza después de esta hoja. Aquí solo va el layout del
-   login y sus animaciones. */
+/* Inicio de sesión: pantalla dividida.
+   - Izquierda: panel morado; el protagonista es el koala, que reacciona a lo
+     que se escribe. Su entrada (sello y luego burbuja) es la única animación
+     al cargar; lo demás solo se mueve cuando la persona hace algo.
+   - Derecha: los botones de idioma y tema y la tarjeta con el formulario.
+   En celular el panel se vuelve una franja arriba con el koala y su burbuja.
+   Colores, fuentes y modo oscuro vienen de ../estilos/koaly.css, que index.php
+   enlaza después de esta hoja; aquí va el layout y las animaciones. */
 
-* {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -16,76 +23,163 @@ button {
 body {
     min-height: 100vh;
     min-height: 100dvh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
     background: var(--fondo);
     color: var(--texto);
-    /* Solo se recorta en horizontal: en pantallas bajas el formulario debe poder desplazarse */
-    overflow-x: hidden;
 }
 
-/* Bolitas decorativas de fondo (fijas, no agrandan la página) */
-body::before,
-body::after {
-    content: '';
-    position: fixed;
+.pantalla {
+    display: grid;
+    grid-template-columns: minmax(340px, 44%) 1fr;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* ===== Panel de la izquierda ===== */
+.portada {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 2.5rem clamp(2rem, 4vw, 3.5rem);
+    background-color: var(--acento);
+    /* Cuadrícula de puntos, como papel de libreta */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1.5px, transparent 1.6px);
+    background-size: 22px 22px;
+    border-right: 2px solid var(--tinta);
+    color: #fff;
+    overflow: hidden;
+}
+
+.portada-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--fuente-titulo);
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.portada-marca img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
+.portada-centro {
+    display: grid;
+    gap: 1.6rem;
+    justify-items: start;
+}
+
+/* Mascota: el koala reacciona a lo que se escribe (login.js) */
+.mascota {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.mascota-sello {
+    display: grid;
+    place-items: center;
+    width: 220px;
+    height: 220px;
+    flex-shrink: 0;
+    border: 2px solid var(--tinta);
     border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.5;
-    z-index: 0;
-    pointer-events: none;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil-max);
+    animation: selloEntrar 0.6s cubic-bezier(0.34, 1.5, 0.64, 1) both;
 }
 
-body::before {
-    width: 320px;
-    height: 320px;
-    background: var(--acento-borde);
-    top: -80px;
-    left: -80px;
+.mascota-imagen {
+    width: 168px;
+    height: 168px;
+    object-fit: contain;
+    user-select: none;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-body::after {
-    width: 280px;
-    height: 280px;
-    background: var(--acento-medio);
-    bottom: -60px;
-    right: -40px;
+.mascota-imagen.saltando {
+    animation: mascotaSaltar 0.5s ease-out;
+}
+
+.mascota-imagen.emocionada {
+    animation: mascotaEmocion 0.6s ease-in-out infinite alternate;
+}
+
+.mascota-burbuja {
+    position: relative;
+    max-width: 15rem;
+    margin-bottom: 2.4rem;
+    padding: 0.6rem 1rem;
+    border: 2px solid var(--tinta);
+    border-radius: 14px 14px 14px 4px;
+    background: var(--superficie);
+    box-shadow: 3px 3px 0 var(--tinta);
+    color: var(--acento-texto-fuerte);
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    transition: opacity 0.3s ease;
+    animation: burbujaEntrar 0.35s cubic-bezier(0.34, 1.5, 0.64, 1) 0.45s both;
+}
+
+.portada h2 {
+    max-width: 30ch;
+    font-family: var(--fuente-texto);
+    font-size: 1.15rem;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: 0;
+    text-wrap: balance;
+}
+
+.portada-pie {
+    font-size: 0.85rem;
+}
+
+.portada-pie a {
+    color: #fff;
+    font-weight: 600;
+    text-underline-offset: 3px;
+}
+
+/* ===== Columna del formulario ===== */
+.lado-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem clamp(1rem, 4vw, 3rem) 2rem;
+    min-width: 0;
+}
+
+.barra-login {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
 }
 
 .container {
-    position: relative;
-    z-index: 1;
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
     margin: auto; /* centra sin cortar arriba cuando es más alto que la pantalla */
-    padding: 2.4rem 2rem;
+    padding: 2.2rem 2rem;
     background: var(--superficie);
-    border-radius: 20px;
     border: 2px solid var(--tinta);
+    border-radius: 20px;
     box-shadow: var(--sombra-tactil-max);
-    animation: fadeIn 0.5s ease;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(16px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* Al cambiar de vista (login.js quita .hidden) entra con un desliz corto: muestra qué cambió */
+.container > section:not(.hidden) {
+    animation: vistaEntrar 0.35s ease both;
 }
 
-/* ===== Tema claro / oscuro (arriba a la derecha) =====
+/* ===== Botones de idioma y tema =====
    Borde, sombra y el hundirse al presionar vienen de .tema-boton en koaly.css */
 .tema-boton {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1;
     display: grid;
     place-items: center;
     width: 40px;
@@ -106,14 +200,11 @@ body::after {
     height: 20px;
 }
 
-/* Idioma: mismo botón, en la esquina izquierda, con el globo y el idioma actual */
 .idioma-boton {
-    right: auto;
-    left: 1rem;
     grid-auto-flow: column;
     gap: 0.35rem;
     width: auto;
-    padding: 0 0.7rem;
+    padding: 0 0.75rem;
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -134,10 +225,11 @@ body::after {
     display: block;
 }
 
+/* Candado del cambio de contraseña */
 .logo {
     width: 56px;
     height: 56px;
-    margin: 0 auto 1.2rem;
+    margin-bottom: 1.2rem;
     background: var(--acento);
     border: 2px solid var(--tinta);
     border-radius: 16px;
@@ -150,23 +242,24 @@ body::after {
 .logo svg {
     width: 28px;
     height: 28px;
-    fill: white;
+    fill: #fff;
 }
 
 h1 {
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.35rem;
     color: var(--texto);
-    text-align: center;
-    font-size: 1.55rem;
-    font-weight: 700;
+    font-family: var(--fuente-titulo);
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
 }
 
 .subtitle {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.6rem;
     color: var(--texto-3);
-    text-align: center;
-    font-size: 0.9rem;
-    line-height: 1.4;
+    font-size: 0.95rem;
+    line-height: 1.45;
     overflow-wrap: anywhere; /* correos largos en el paso 2 */
 }
 
@@ -175,15 +268,15 @@ h1 {
 }
 
 .form-group {
-    margin-bottom: 1.15rem;
+    margin-bottom: 1.1rem;
 }
 
 label {
     display: block;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.4rem;
     color: var(--texto-2);
-    font-weight: 600;
     font-size: 0.9rem;
+    font-weight: 600;
 }
 
 input[type="email"],
@@ -192,29 +285,31 @@ input[type="text"] {
     width: 100%;
     padding: 0.85rem 1rem;
     border: 2px solid var(--tinta);
-    border-radius: 10px;
+    border-radius: 12px;
     font-size: 1rem; /* 16px: evita que iPhone haga zoom al escribir */
     background: var(--superficie-2);
     color: var(--texto);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    transition: box-shadow 0.15s ease, background 0.2s ease, transform 0.15s ease;
 }
 
 input::placeholder {
     color: var(--texto-4);
 }
 
+/* Al escribir, el campo "se levanta" como los botones */
 input:focus {
-    border-color: var(--tinta);
     background: var(--superficie);
     outline: none;
-    box-shadow: 3px 3px 0 var(--foco);
+    box-shadow: 3px 3px 0 var(--acento);
+    transform: translate(-1px, -1px);
 }
 
 /* Código de 6 dígitos */
 .code-input {
     text-align: center;
+    font-family: var(--fuente-dato);
     font-size: 1.4rem !important;
-    font-weight: 700;
+    font-weight: 500;
     letter-spacing: 0.5em;
     font-variant-numeric: tabular-nums;
 }
@@ -268,31 +363,31 @@ input:focus {
     display: block;
 }
 
-/* Botón principal */
+/* Botón principal: se levanta al pasar el cursor y se hunde al presionar */
 .btn-primary {
     width: 100%;
-    margin-top: 0.6rem;
-    padding: 0.9rem;
+    margin-top: 0.5rem;
+    padding: 0.95rem;
     border: 2px solid var(--tinta);
     border-radius: 12px;
     background: var(--acento);
-    color: #ffffff;
+    color: #fff;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
+    font-weight: 700;
     box-shadow: var(--sombra-tactil);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
     background: var(--acento-hover);
-    transform: translateY(-1px);
+    transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0 var(--tinta);
 }
 
-.btn-primary:active {
-    transform: translateY(0);
+.btn-primary:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 var(--tinta);
 }
 
 .btn-primary:disabled {
@@ -308,7 +403,7 @@ input:focus {
     background: none;
     color: var(--acento-texto);
     font: inherit;
-    font-weight: 500;
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
     transition: color 0.2s;
@@ -317,6 +412,7 @@ input:focus {
 .link-button:hover:not(:disabled) {
     color: var(--acento-texto-fuerte);
     text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .link-button:disabled {
@@ -335,22 +431,22 @@ a:focus-visible {
     display: none;
     margin-bottom: 1rem;
     padding: 0.75rem 1rem;
-    border-radius: 10px;
-    text-align: center;
+    border-radius: 12px;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .message.error {
     display: block;
-    border: 1px solid var(--peligro-borde);
+    border: 2px solid var(--peligro-borde);
     background: var(--peligro-suave);
     color: var(--peligro-texto);
+    animation: sacudir 0.35s ease;
 }
 
 .message.success {
     display: block;
-    border: 1px solid var(--ok-borde);
+    border: 2px solid var(--ok-borde);
     background: var(--ok-suave);
     color: var(--ok-texto);
 }
@@ -382,13 +478,6 @@ a:focus-visible {
     display: none !important;
 }
 
-.footer-note {
-    margin-top: 1.6rem;
-    text-align: center;
-    font-size: 0.8rem;
-    color: var(--texto-3);
-}
-
 /* ===== Olvidé mi contraseña ===== */
 .forgot-link {
     display: block;
@@ -402,7 +491,7 @@ a:focus-visible {
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 1.2rem;
+    margin-top: 1.4rem;
     padding-top: 1rem;
     border-top: 2px dashed var(--borde-fuerte);
 }
@@ -410,10 +499,7 @@ a:focus-visible {
 .quick-access-title {
     width: 100%;
     text-align: center;
-    font-family: var(--fuente-dato);
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
     color: var(--texto-3);
 }
 
@@ -449,11 +535,10 @@ a:focus-visible {
 }
 
 /* ===== Volver / Salir =====
-   No se llama .back-link: koaly.css le pone a esa clase borde y sombra de botón.
-   El margen de arriba lo baja de los botones de idioma y tema de las esquinas. */
+   No se llama .back-link: koaly.css le pone a esa clase borde y sombra de botón. */
 .volver-link {
     display: inline-block;
-    margin: 2rem 0 1.2rem;
+    margin-bottom: 1.2rem;
     color: var(--texto-3);
     font-size: 0.88rem;
 }
@@ -472,7 +557,6 @@ a:focus-visible {
 .steps {
     display: flex;
     align-items: center;
-    justify-content: center;
     margin-bottom: 1.4rem;
     list-style: none;
 }
@@ -498,6 +582,10 @@ a:focus-visible {
     color: #fff;
 }
 
+.step.active {
+    box-shadow: 2px 2px 0 var(--tinta);
+}
+
 .step-line {
     width: 48px;
     height: 3px;
@@ -508,15 +596,100 @@ a:focus-visible {
     background: var(--acento);
 }
 
-/* ===== Pantallas chicas ===== */
-@media (max-width: 420px) {
-    body {
-        padding: 12px;
+/* ===== Animaciones ===== */
+@keyframes vistaEntrar {
+    from { opacity: 0; transform: translateX(12px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes burbujaEntrar {
+    from { opacity: 0; transform: scale(0.85) translateX(-8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes selloEntrar {
+    from { transform: scale(0.6) rotate(-12deg); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes sacudir {
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+@keyframes mascotaSaltar {
+    0%, 100% { transform: translateY(0) scale(1); }
+    40%, 60% { transform: translateY(-15px) scale(1.1); }
+}
+
+@keyframes mascotaEmocion {
+    from { transform: rotate(-5deg) scale(1); }
+    to { transform: rotate(5deg) scale(1.1); }
+}
+
+/* ===== Tablet y celular: la portada se vuelve una franja arriba ===== */
+@media (max-width: 900px) {
+    .pantalla {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr; /* la franja mide lo suyo; el resto es del formulario */
+    }
+
+    .portada {
+        flex-direction: row;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-right: 0;
+        border-bottom: 2px solid var(--tinta);
+    }
+
+    .portada-marca,
+    .portada h2,
+    .portada-pie {
+        display: none;
+    }
+
+    .mascota {
+        align-items: center;
+    }
+
+    .mascota-sello {
+        width: 84px;
+        height: 84px;
+        box-shadow: var(--sombra-tactil);
+    }
+
+    .mascota-imagen {
+        width: 64px;
+        height: 64px;
+    }
+
+    .mascota-burbuja {
+        margin-bottom: 0;
+        font-size: 0.86rem;
+    }
+
+    .lado-formulario {
+        padding-top: 1rem;
     }
 
     .container {
-        padding: 1.8rem 1.25rem;
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 420px) {
+    .lado-formulario {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .container {
+        padding: 1.7rem 1.25rem;
         border-radius: 16px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
     }
 }
 
@@ -527,57 +700,4 @@ a:focus-visible {
         animation: none !important;
         transition: none !important;
     }
-}
-
-/* Mascota Koalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-.mascota {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 1rem;
-    text-align: center;
-}
-
-.mascota-imagen {
-    width: 130px;
-    height: 130px;
-    object-fit: contain;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    user-select: none;
-}
-
-.mascota-imagen.saltando {
-    animation: mascotaSaltar 0.5s ease-out;
-}
-
-.mascota-imagen.emocionada {
-    animation: mascotaEmocion 0.6s ease-in-out infinite alternate;
-}
-
-@keyframes mascotaSaltar {
-    0%, 100% { transform: translateY(0) scale(1); }
-    40% { transform: translateY(-15px) scale(1.1); }
-    60% { transform: translateY(-15px) scale(1.1); }
-}
-
-@keyframes mascotaEmocion {
-    from { transform: rotate(-5deg) scale(1); }
-    to { transform: rotate(5deg) scale(1.1); }
-}
-
-.mascota-burbuja {
-    margin-top: 0.5rem;
-    padding: 0.4rem 1rem;
-    background: var(--acento-suave);
-    border: 2px solid var(--tinta);
-    border-radius: 12px;
-    box-shadow: 2px 2px 0 var(--tinta);
-    color: var(--acento-texto-fuerte);
-    font-size: 0.85rem;
-    font-weight: 600;
-    min-height: 2.2em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.3s ease;
 }
