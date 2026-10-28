@@ -3,6 +3,26 @@ require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/correos_empleado.php';
 require_once __DIR__ . '/../login/reglas_contrasena.php';
 require_once __DIR__ . '/includes/vistas.php';
+require_once __DIR__ . '/includes/turnos.php';
+
+/**
+ * ¿El gerente puede cambiar el correo de este cajero? Solo mientras el cajero
+ * nunca ha aceptado el aviso de privacidad: aceptarlo es abrir el enlace que
+ * llegó a su buzón, así que desde ahí el correo es suyo. Después solo él (en
+ * «Mi perfil») o la administración lo cambian; si no, el gerente podría poner
+ * su propio correo, restablecer la contraseña y entrar a la caja como él.
+ * Sin la tabla del aviso (sql/010) se usa "nunca ha entrado" (debe_cambiar).
+ */
+function puedeCambiarCorreo(PDO $pdo, int $idCajero, bool $debeCambiar): bool
+{
+    try {
+        $stmt = $pdo->prepare("SELECT 1 FROM avisos_privacidad WHERE id_usuario = ? AND aceptado_en IS NOT NULL LIMIT 1");
+        $stmt->execute([$idCajero]);
+        return $stmt->fetchColumn() === false;
+    } catch (PDOException $e) {
+        return $debeCambiar;
+    }
+}
 
 /**
  * Calcula las iniciales de un nombre (máx. 2 letras).
@@ -133,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Verificar que el cajero pertenece a esta sucursal y es rol 3 (evita IDOR)
             $check = $pdo->prepare("
-                SELECT estado, email FROM Usuarios
+                SELECT estado, email, debe_cambiar FROM Usuarios
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
@@ -142,6 +162,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
             $estadoAnterior = $anterior['estado'];
+            if (strcasecmp($email, $anterior['email']) !== 0
+                && !puedeCambiarCorreo($pdo, $id, (int) $anterior['debe_cambiar'] === 1)) {
+                throw new RuntimeException(t('error.email_bloqueado'));
+            }
+            // Salir de "Activo" aparta al cajero de su caja: no con un turno abierto
+            if ($estadoAnterior === 'Activo' && $estado !== 'Activo'
+                && ($abierta = cajaConTurnoAbierto($pdo, $idSucursalGerente, null, $id)) !== null) {
+                throw new RuntimeException(t('turnos.error_cajero_abierta', ['nombre' => $nombre, 'caja' => $abierta]));
+            }
             if ($estado === 'Baja' && $estadoAnterior !== 'Baja' && !isset(MOTIVOS_BAJA[$motivoBaja])) {
                 throw new RuntimeException(t('error.motivo_baja'));
             }
@@ -224,6 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $nuevo = $empleado['estado'] === 'Activo' ? 'Baja' : 'Activo';
+            if ($nuevo === 'Baja' && ($abierta = cajaConTurnoAbierto($pdo, $idSucursalGerente, null, $id)) !== null) {
+                throw new RuntimeException(t('turnos.error_cajero_abierta', ['nombre' => $empleado['nombre'], 'caja' => $abierta]));
+            }
             $motivoBaja = (string) ($_POST['motivo_baja'] ?? '');
             if ($nuevo === 'Baja' && !isset(MOTIVOS_BAJA[$motivoBaja])) {
                 throw new RuntimeException(t('error.motivo_baja'));
@@ -333,6 +365,10 @@ $columnaAviso = $hayTablaAviso
     ? "(SELECT MAX(a.aceptado_en) FROM avisos_privacidad a
         WHERE a.id_usuario = u.id_usuario AND a.version = ? AND a.aceptado_en IS NOT NULL)"
     : "NULL";
+// Aceptó alguna versión: el aviso pendiente es solo la versión nueva, y su correo ya es suyo
+$columnaAvisoAntes = $hayTablaAviso
+    ? "EXISTS (SELECT 1 FROM avisos_privacidad a WHERE a.id_usuario = u.id_usuario AND a.aceptado_en IS NOT NULL)"
+    : "0";
 
 // Vencimiento de la contraseña temporal (sql/013); sin la columna no vence
 $hayVencimiento = true;
@@ -351,7 +387,8 @@ $stmt = $pdo->prepare("
            COALESCE(SUM(v.total), 0) AS monto_total,
            (SELECT GROUP_CONCAT(CONCAT_WS(' · ', c.numero_caja, c.nombre) ORDER BY c.numero_caja SEPARATOR ', ')
             FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal) AS cajas,
-           $columnaAviso AS aviso_aceptado
+           $columnaAviso AS aviso_aceptado,
+           $columnaAvisoAntes AS aviso_alguna_vez
     FROM Usuarios u
     LEFT JOIN Ventas v
            ON v.id_cajero = u.id_usuario AND v.id_sucursal = ?
@@ -406,6 +443,7 @@ require __DIR__ . '/header.php';
     </div>
 <?php else: ?>
     <div class="vista-barra"><?= selectorVistas('gridCajeros', 'cajeros') ?></div>
+    <div class="cajeros-marco">
     <div class="cajeros-grid vista-coleccion" id="gridCajeros" data-vista="iconos">
         <?php foreach ($cajeros as $c): ?>
             <?php
@@ -431,12 +469,13 @@ require __DIR__ . '/header.php';
                     <span class="badge <?= $estadoBadge ?>"><?= e(t('estado_usuario.' . $c['estado'])) ?></span>
                 </header>
 
+                <?php // Cada dato con su clase: la vista de lista los pone en columnas fijas ?>
                 <dl class="cajero-datos">
-                    <div>
+                    <div class="dato-caja">
                         <dt><?= e(t('cajeros.caja')) ?></dt>
                         <dd class="<?= $c['cajas'] ? '' : 'texto-tenue' ?>"><?= e($c['cajas'] ?: t('cajeros.sin_caja')) ?></dd>
                     </div>
-                    <div>
+                    <div class="dato-contratado">
                         <dt><?= e(t('cajeros.contratado')) ?></dt>
                         <dd><?= e(fecha($c['fecha_contratacion'], false)) ?></dd>
                     </div>
@@ -452,36 +491,32 @@ require __DIR__ . '/header.php';
                             . '<input type="hidden" name="id_usuario" value="' . $id . '">'
                             . '<button type="submit" class="enlace-boton">' . e(t('cajeros.reenviar_acceso')) . '</button></form>';
                     ?>
-                    <?php if ($hayTablaAviso && $c['estado'] !== 'Baja'): ?>
-                        <div>
-                            <dt><?= e(t('cajeros.aviso')) ?></dt>
-                            <?php if ($c['aviso_aceptado']): ?>
-                                <dd class="texto-ok"><?= e(t('cajeros.aviso_aceptado', ['fecha' => fecha($c['aviso_aceptado'], false)])) ?></dd>
-                            <?php else: ?>
-                                <dd class="cajero-aviso-pendiente">
-                                    <span class="badge badge-warning" title="<?= e(t('cajeros.aviso_pendiente_ayuda')) ?>"><?= e(t('cajeros.aviso_pendiente')) ?></span>
-                                    <?= $sinEntrar ? '' : $botonReenviar() ?>
-                                </dd>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if ($sinEntrar && $c['estado'] !== 'Baja'): ?>
-                        <div>
-                            <dt><?= e(t('cajeros.acceso')) ?></dt>
-                            <dd class="cajero-aviso-pendiente">
-                                <?php if ($vencido): ?>
+                    <?php if ($c['estado'] !== 'Baja' && ($falteAviso || $sinEntrar)): ?>
+                        <?php // Lo que le falta para usar la caja, junto, con un solo «Reenviar acceso» ?>
+                        <div class="dato-acceso cajero-falta">
+                            <dt><?= e(t('cajeros.falta')) ?></dt>
+                            <dd>
+                                <?php if ($falteAviso): ?>
+                                    <span class="badge badge-warning" title="<?= e(t('cajeros.aviso_pendiente_ayuda')) ?>"><?= e(t($c['aviso_alguna_vez'] ? 'cajeros.falta_aviso_nuevo' : 'cajeros.falta_aviso')) ?></span>
+                                <?php endif; ?>
+                                <?php if ($sinEntrar && $vencido): ?>
                                     <span class="badge badge-danger" title="<?= e(t('cajeros.acceso_vencido_ayuda')) ?>"><?= e(t('cajeros.acceso_vencido')) ?></span>
-                                <?php else: ?>
+                                <?php elseif ($sinEntrar): ?>
                                     <span class="badge badge-warning" title="<?= e(t('cajeros.acceso_pendiente_ayuda')) ?>"><?= e($c['temporal_expira_en']
-                                        ? t('cajeros.acceso_vence', ['fecha' => fecha($c['temporal_expira_en'], false)])
-                                        : t('cajeros.acceso_pendiente')) ?></span>
+                                        ? t('cajeros.falta_entrar_vence', ['fecha' => fecha($c['temporal_expira_en'], false)])
+                                        : t('cajeros.falta_entrar')) ?></span>
                                 <?php endif; ?>
                                 <?= $botonReenviar() ?>
                             </dd>
                         </div>
+                    <?php elseif ($hayTablaAviso && $c['aviso_aceptado']): ?>
+                        <div class="dato-acceso">
+                            <dt><?= e(t('cajeros.aviso')) ?></dt>
+                            <dd class="texto-ok"><?= e(t('cajeros.aviso_aceptado', ['fecha' => fecha($c['aviso_aceptado'], false)])) ?></dd>
+                        </div>
                     <?php endif; ?>
                     <?php if (!$esActivo): ?>
-                        <div>
+                        <div class="dato-desde">
                             <dt><?= e(t('cajeros.estado_desde')) ?></dt>
                             <dd><?= e(fecha($c['fecha_inicio_estado'], false)) ?></dd>
                         </div>
@@ -491,7 +526,7 @@ require __DIR__ . '/header.php';
                 <a class="cajero-stats" href="ventas_sucursal.php?periodo=mes&amp;id_cajero=<?= $id ?>">
                     <span class="cajero-stats-titulo">
                         <span><?= e(t('cajeros.este_mes')) ?></span>
-                        <span class="cajero-stats-ir"><?= e(t('cajeros.ver_ventas')) ?> ›</span>
+                        <span class="cajero-stats-ir"><?= e(t('cajeros.ver_ventas')) ?></span>
                     </span>
                     <span class="cajero-stats-valores">
                         <span><strong><?= numero((int) $c['total_ventas']) ?></strong> <?= e(tn('cajeros.n_ventas', (int) $c['total_ventas'])) ?></span>
@@ -506,6 +541,7 @@ require __DIR__ . '/header.php';
                         data-nombre="<?= e($c['nombre']) ?>"
                         data-email="<?= e($c['email']) ?>"
                         data-estado="<?= e($c['estado']) ?>"
+                        data-correo-bloqueado="<?= $c['aviso_alguna_vez'] || (!$hayTablaAviso && (int) $c['debe_cambiar'] === 0) ? '1' : '0' ?>"
                     ><?= e(t('comun.editar')) ?></button>
 
                     <?php if ($c['estado'] !== 'Baja'): ?>
@@ -546,6 +582,7 @@ require __DIR__ . '/header.php';
             </article>
         <?php endforeach; ?>
     </div>
+    </div>
 <?php endif; ?>
 
 <!-- Modal: Nuevo / Editar cajero -->
@@ -569,6 +606,7 @@ require __DIR__ . '/header.php';
                     <input type="email" id="cajeroEmail" name="email" placeholder="<?= e(t('cajeros.campo_email_ej')) ?>"
                            maxlength="100" autocomplete="off" required>
                     <small class="form-ayuda" id="ayudaAviso"><?= e(t('cajeros.email_aviso_ayuda')) ?></small>
+                    <small class="form-ayuda" id="ayudaCorreoBloqueado" hidden><?= e(t('error.email_bloqueado')) ?></small>
                 </div>
             </fieldset>
 

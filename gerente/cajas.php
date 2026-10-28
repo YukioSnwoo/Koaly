@@ -128,14 +128,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // IDOR: verificar que la caja pertenece a la sucursal del gerente
             $check = $pdo->prepare("
-                SELECT 1 FROM Cajas WHERE id_caja = ? AND id_sucursal = ?
+                SELECT estado, id_cajero_asignado FROM Cajas WHERE id_caja = ? AND id_sucursal = ?
             ");
             $check->execute([$id, $idSucursalGerente]);
-            if ($check->fetch() === false) {
+            $cajaAntes = $check->fetch();
+            if ($cajaAntes === false) {
                 throw new RuntimeException(t('error.caja_invalida'));
             }
 
             $idCajero = validarCajeroDeCaja($pdo, $idCajero, $idSucursalGerente, $estado);
+
+            // Con el turno abierto solo se puede cambiar el número o el nombre
+            $cambiaCajero = (int) $cajaAntes['id_cajero_asignado'] !== (int) $idCajero;
+            if (($cambiaCajero || $estado !== 'Activa')
+                && ($abierta = cajaConTurnoAbierto($pdo, $idSucursalGerente, $id)) !== null) {
+                throw new RuntimeException(t('turnos.error_caja_abierta', ['caja' => $abierta]));
+            }
+            // Y el cajero elegido no puede estar a media jornada en otra caja
+            if ($cambiaCajero && $idCajero !== null
+                && ($abierta = cajaConTurnoAbierto($pdo, $idSucursalGerente, null, $idCajero)) !== null) {
+                throw new RuntimeException(t('turnos.error_caja_abierta', ['caja' => $abierta]));
+            }
 
             $check = $pdo->prepare("
                 SELECT 1 FROM Cajas
@@ -203,6 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $nuevo = $caja['estado'] === 'Activa' ? 'Inactiva' : 'Activa';
+            if ($nuevo !== 'Activa' && ($abierta = cajaConTurnoAbierto($pdo, $idSucursalGerente, $id)) !== null) {
+                throw new RuntimeException(t('turnos.error_caja_abierta', ['caja' => $abierta]));
+            }
             if ($nuevo === 'Activa') {
                 validarCajeroDeCaja($pdo, (int) $caja['id_cajero_asignado'], $idSucursalGerente, 'Activa');
             }
@@ -249,6 +265,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$id, $idSucursalGerente]);
             if ($check->fetch() === false) {
                 throw new RuntimeException(t('error.caja_invalida'));
+            }
+
+            if (($abierta = cajaConTurnoAbierto($pdo, $idSucursalGerente, $id)) !== null) {
+                throw new RuntimeException(t('turnos.error_caja_abierta', ['caja' => $abierta]));
             }
 
             // Una caja con ventas no se borra: perdería el historial (y la FK lo impide).

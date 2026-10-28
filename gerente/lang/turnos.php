@@ -77,6 +77,8 @@ return [
         'turnos.error_limite'         => 'El límite debe ser mayor que el fondo base y de máximo $1,000,000.',
         'turnos.caja_abierta'         => 'Abierta por {cajero} desde {hora}',
         'turnos.caja_cerrada'         => 'Caja cerrada',
+        'turnos.error_caja_abierta'   => 'La caja {caja} tiene un turno abierto. Para desactivarla, eliminarla o cambiar su cajero, primero el cajero debe hacer su corte.',
+        'turnos.error_cajero_abierta' => '{nombre} tiene abierta la caja {caja}. Primero debe hacer su corte; después podrá cambiar su estado.',
     ],
     'en' => [
         'turnos.cortes'               => 'Cash counts',
@@ -152,5 +154,7 @@ return [
         'turnos.error_limite'         => 'The limit must be higher than the float and at most $1,000,000.',
         'turnos.caja_abierta'         => 'Opened by {cajero} since {hora}',
         'turnos.caja_cerrada'         => 'Register closed',
+        'turnos.error_caja_abierta'   => 'Register {caja} has an open shift. To deactivate it, delete it or change its cashier, the cashier must close the shift first.',
+        'turnos.error_cajero_abierta' => '{nombre} has register {caja} open. They must close the shift first; then you can change their status.',
     ],
 ];

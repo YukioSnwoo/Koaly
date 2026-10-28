@@ -152,19 +152,35 @@
     display: flex;
     justify-content: space-between;
     gap: 0.5rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--texto-3);
 }
 .cajero-stats-ir {
     color: var(--acento-texto);
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 0.78rem;
     white-space: nowrap;
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
+/* Lo que le falta al cajero: la etiqueta arriba y debajo las insignias con un solo
+   «Reenviar acceso». Así cabe igual en la cuadrícula, la lista, las columnas y la galería. */
+.cajero-datos > .cajero-falta {
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    background: var(--aviso-suave);
+}
+.cajero-falta dt { color: var(--aviso-texto); font-weight: 600; }
+.cajero-datos .cajero-falta dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    text-align: left;
+}
+.cajero-falta .badge { white-space: normal; max-width: 100%; }
+.cajero-falta .cajero-aviso-pendiente { display: inline; }
 .cajero-stats-valores {
     display: flex;
     flex-wrap: wrap;
@@ -570,7 +586,6 @@
 /* "Abierta por … desde …" es larga: se parte en dos líneas en vez de salirse de la tarjeta */
 .caja-ventas--turno { justify-content: center; max-width: 100%; }
 .caja-ventas--turno .badge { white-space: normal; text-align: center; line-height: 1.35; max-width: 100%; }
-.cajero-estado { margin-bottom: 0.85rem; }
 
 .vista-barra { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
 .segmentado--iconos button { padding: 0.45rem 0.75rem; }
@@ -609,22 +624,6 @@
 .vista-coleccion[data-vista="lista"] .caja-ventas--turno { grid-area: turno; }
 .vista-coleccion[data-vista="lista"] .caja-actions { grid-area: acciones; margin: 0; width: auto; flex-wrap: nowrap; }
 
-.vista-coleccion[data-vista="lista"] > .cajero-card {
-    grid-template-columns: 48px minmax(160px, 1.3fr) auto minmax(200px, 1fr) auto auto;
-    grid-template-areas:
-        "avatar nombre estado stats enlace acciones"
-        "avatar email  estado stats enlace acciones";
-}
-.vista-coleccion[data-vista="lista"] .cajero-avatar { grid-area: avatar; }
-.vista-coleccion[data-vista="lista"] .cajero-name { grid-area: nombre; margin: 0; align-self: end; }
-.vista-coleccion[data-vista="lista"] .cajero-email { grid-area: email; margin: 0; align-self: start; }
-.vista-coleccion[data-vista="lista"] .cajero-estado { grid-area: estado; margin: 0; }
-.vista-coleccion[data-vista="lista"] .cajero-stats {
-    grid-area: stats; margin: 0; padding: 0; border: 0; width: auto;
-    grid-template-columns: auto auto; gap: 1.5rem;
-}
-.vista-coleccion[data-vista="lista"] .cajero-ver-ventas { grid-area: enlace; margin: 0; white-space: nowrap; }
-.vista-coleccion[data-vista="lista"] .cajero-actions { grid-area: acciones; margin: 0; width: auto; }
 
 .vista-coleccion[data-vista="lista"] .caja-actions .btn,
 .vista-coleccion[data-vista="lista"] .cajero-actions .btn { flex: 0 0 auto; padding: 0.45rem 0.7rem; }
@@ -637,15 +636,6 @@
             "num      estado   estado"
             "cajero   cajero   cajero"
             "hoy      fondo    turno"
-            "acciones acciones acciones";
-        row-gap: 0.5rem;
-    }
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 48px 1fr auto;
-        grid-template-areas:
-            "avatar   nombre   estado"
-            "avatar   email    estado"
-            "stats    stats    enlace"
             "acciones acciones acciones";
         row-gap: 0.5rem;
     }
@@ -664,16 +654,6 @@
             "hoy      hoy"
             "fondo    fondo"
             "turno    turno"
-            "acciones acciones";
-    }
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 48px 1fr;
-        grid-template-areas:
-            "avatar   nombre"
-            "avatar   email"
-            "estado   estado"
-            "stats    stats"
-            "enlace   enlace"
             "acciones acciones";
     }
 }
@@ -699,12 +679,12 @@
 .vista-columna-titulo {
     display: flex; align-items: center; gap: 0.4rem;
     margin: 0 0 0.1rem;
-    font-size: 0.8rem; font-weight: 700; color: var(--texto-2);
-    text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.9rem; font-weight: 700; color: var(--texto-2);
 }
 @media (max-width: 640px) {
     .vista-coleccion[data-vista="columnas"] { grid-auto-columns: 85%; }
 }
+.vista-coleccion[data-vista="columnas"] .cajero-cabecera .badge { display: none; }
 
 /* ---- Galería: tarjetas grandes en una tira que se desliza ---- */
 .vista-coleccion[data-vista="galeria"] {
@@ -729,13 +709,21 @@
 .vista-coleccion[data-vista="galeria"] .cajero-name { font-size: 1.2rem; }
 
 
-/* ---- Tarjeta de cajero en las vistas ----
-   La tarjeta agrupa sus piezas en bloques (cabecera, datos, ventas del mes,
-   acciones), así que la lista acomoda bloques en vez de piezas sueltas. */
+/* ---- Lista de cajeros ----
+   La forma depende del ancho que tiene la lista (no de la ventana): con la
+   barra lateral abierta o cerrada se acomoda igual. .cajeros-marco es el
+   contenedor que se mide.
+     · angosta (< 640px): todo en una columna
+     · media: cabecera arriba, datos y ventas lado a lado, botones abajo
+     · ancha (≥ 1080px): una tabla; todas las filas comparten las columnas
+       (subgrid) y cada dato tiene su columna fija por su clase, aunque falte
+       alguno en esa fila */
+.cajeros-marco { container-type: inline-size; }
+
 .vista-coleccion[data-vista="lista"] > .cajero-card {
-    grid-template-columns: minmax(220px, 1.3fr) minmax(240px, 1.6fr) minmax(190px, 1fr) auto;
-    grid-template-areas: "cabecera datos stats acciones";
-    column-gap: 1.25rem;
+    grid-template-columns: 1fr;
+    grid-template-areas: "cabecera" "datos" "stats" "acciones";
+    row-gap: 0.6rem;
 }
 .vista-coleccion[data-vista="lista"] .cajero-cabecera { grid-area: cabecera; min-width: 0; }
 .vista-coleccion[data-vista="lista"] .cajero-datos { grid-area: datos; }
@@ -743,22 +731,77 @@
     grid-area: stats; margin: 0; padding: 0.5rem 0.75rem; width: auto;
     display: flex; flex-direction: column; gap: 0.2rem; border: 0;
 }
-.vista-coleccion[data-vista="lista"] .cajero-actions { grid-area: acciones; margin: 0; width: auto; flex-wrap: nowrap; }
-@media (max-width: 1100px) {
+.vista-coleccion[data-vista="lista"] .cajero-actions { grid-area: acciones; margin: 0; width: auto; flex-wrap: wrap; }
+
+@container (min-width: 640px) {
     .vista-coleccion[data-vista="lista"] > .cajero-card {
         grid-template-columns: 1fr 1fr;
         grid-template-areas:
             "cabecera cabecera"
             "datos    stats"
             "acciones acciones";
-        row-gap: 0.6rem;
+        column-gap: 1.25rem;
     }
 }
-@media (max-width: 640px) {
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 1fr;
-        grid-template-areas: "cabecera" "datos" "stats" "acciones";
+
+@container (min-width: 1080px) {
+    .cajeros-grid.vista-coleccion[data-vista="lista"] {
+        display: grid;
+        grid-template-columns:
+            [identidad] minmax(190px, 1.4fr)
+            [caja] minmax(100px, 0.8fr)
+            [fechas] minmax(100px, 0.7fr)
+            [acceso] minmax(200px, 1.4fr)
+            [mes] minmax(170px, 1.1fr)
+            [acciones] auto;
+        column-gap: 1rem;
+        row-gap: 0.6rem;
     }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] > .cajero-card {
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        grid-template-areas: none;
+        align-items: center;
+        row-gap: 0.35rem;
+        padding: 0.8rem 1rem;
+    }
+    /* La tarjeta y sus datos se "abren": cada pieza es una celda de la fila */
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-datos { display: contents; }
+
+    /* Identidad: avatar a la izquierda; nombre, correo y estado apilados junto a él */
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-cabecera {
+        grid-column: identidad;
+        grid-row: 1 / span 2;
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        grid-template-areas: "avatar nombre" "avatar estado";
+        column-gap: 0.7rem;
+        row-gap: 0.25rem;
+        align-items: center;
+    }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-avatar { grid-area: avatar; width: 40px; height: 40px; font-size: 0.9rem; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-identidad { grid-area: nombre; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-cabecera .badge { grid-area: estado; justify-self: start; }
+
+    /* Celdas de datos: etiqueta chica arriba, valor abajo, a la izquierda */
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-datos > div {
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.1rem;
+        min-width: 0;
+    }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-datos dt { font-size: 0.75rem; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-datos dd { text-align: left; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .dato-caja { grid-column: caja; grid-row: 1 / span 2; }
+    /* Con "En este estado desde" las dos fechas se apilan; sin ella, la de contratación va centrada */
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .dato-contratado { grid-column: fechas; grid-row: 1 / span 2; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-card:has(.dato-desde) .dato-contratado { grid-row: 1; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .dato-desde { grid-column: fechas; grid-row: 2; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .dato-acceso { grid-column: acceso; grid-row: 1 / span 2; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-datos > .cajero-falta { padding: 0.45rem 0.6rem; }
+
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-stats { grid-column: mes; grid-row: 1 / span 2; }
+    .cajeros-grid.vista-coleccion[data-vista="lista"] .cajero-actions { grid-column: acciones; grid-row: 1 / span 2; flex-wrap: nowrap; }
 }
 
 
