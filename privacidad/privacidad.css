@@ -57,6 +57,11 @@ body {
 .volver:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--tinta); }
 .volver:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--tinta); }
 
+/* Idioma: mismo botón que "volver", con el globo como en el inicio de sesión */
+.cabecera-acciones { display: flex; align-items: center; gap: 0.6rem; }
+.idioma { display: inline-flex; align-items: center; gap: 0.35rem; }
+.idioma svg { width: 16px; height: 16px; }
+
 .cuerpo {
     display: grid;
     grid-template-columns: 230px minmax(0, 1fr);

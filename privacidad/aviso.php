@@ -12,9 +12,15 @@
  * Posesión de los Particulares. Si el texto cambia de fondo, sube la versión:
  * todos los empleados tendrán que aceptarlo otra vez.
  * Tabla: sql/010_aviso_privacidad.sql
+ *
+ * Idiomas: el aviso en inglés está en aviso_en.php (traducción; prevalece el
+ * español) y los textos de la página y del correo en lang/{es,en}.php.
  */
 
+require_once __DIR__ . '/aviso_en.php';
+
 const AVISO_PRIVACIDAD_VERSION = '2026-10-26';
+const AVISO_IDIOMAS            = ['es', 'en'];
 const AVISO_ENLACE_DIAS        = 7;   // validez del enlace que llega por correo
 const AVISO_ENLACE_LOGIN_HORAS = 1;   // validez del enlace que se crea al iniciar sesión
 
@@ -63,6 +69,24 @@ function crearEnlaceAviso(PDO $pdo, int $idUsuario, int $horasValidez): string
 }
 
 /**
+ * Texto de la página o del correo del aviso en $idioma (si falta, en español);
+ * {nombre} se reemplaza con $vars. Se llama tAviso() y no t() porque este
+ * archivo lo cargan login/ y gerente/, que ya tienen su propio t().
+ */
+function tAviso(string $clave, string $idioma, array $vars = []): string
+{
+    static $textos = [];
+    foreach (array_unique(['es', $idioma]) as $codigo) {
+        $textos[$codigo] ??= require __DIR__ . "/lang/{$codigo}.php";
+    }
+    $texto = $textos[$idioma][$clave] ?? $textos['es'][$clave] ?? $clave;
+    foreach ($vars as $k => $v) {
+        $texto = str_replace('{' . $k . '}', (string) $v, $texto);
+    }
+    return $texto;
+}
+
+/**
  * Secciones del aviso: [título => [bloques]]. Un bloque es un párrafo (texto),
  * una lista (arreglo de textos) o una tabla de términos ([término => texto], o
  * [término => [texto, quién lo ve]]).
@@ -75,9 +99,14 @@ function crearEnlaceAviso(PDO $pdo, int $idUsuario, int $horasValidez): string
  *
  * @param array $sucursal ['nombre', 'direccion'] o null (aviso genérico)
  * @param string $contacto correo para dudas y derechos ARCO
+ * @param string $idioma 'es' o 'en' (la traducción, en aviso_en.php)
  */
-function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
+function seccionesAvisoPrivacidad(?array $sucursal, string $contacto, string $idioma = 'es'): array
 {
+    if ($idioma === 'en') {
+        return seccionesAvisoPrivacidadEn($sucursal, $contacto);
+    }
+
     $domicilio   = trim((string) ($sucursal['direccion'] ?? ''));
     $responsable = 'Koaly' . ($sucursal ? ', a través de ' . $sucursal['nombre'] : '');
     // "escribe a x@y.com", pero sin correo "escribe al correo de contacto…" (no "a el")
@@ -182,8 +211,12 @@ function seccionesAvisoPrivacidad(?array $sucursal, string $contacto): array
  * Qué cambió en la versión vigente respecto a la anterior. La página lo muestra
  * a quien ya había aceptado otra versión, para que no tenga que releer todo.
  */
-function cambiosAvisoPrivacidad(): array
+function cambiosAvisoPrivacidad(string $idioma = 'es'): array
 {
+    if ($idioma === 'en') {
+        return cambiosAvisoPrivacidadEn();
+    }
+
     return [
         'Ahora guardamos tu teléfono, domicilio, fecha de nacimiento, CURP, RFC, NSS y un contacto de '
         . 'emergencia, para tu expediente laboral y los trámites ante el IMSS y el SAT.',
@@ -193,9 +226,10 @@ function cambiosAvisoPrivacidad(): array
     ];
 }
 
-/** Las secciones como texto plano, para los correos. */
-function textoPlanoAviso(array $secciones): string
+/** Las secciones como texto plano, para los correos (y la huella), en el idioma de las secciones. */
+function textoPlanoAviso(array $secciones, string $idioma = 'es'): string
 {
+    $loVen = tAviso('lo_ven', $idioma);
     $texto = '';
     foreach ($secciones as $titulo => $bloques) {
         $texto .= mb_strtoupper($titulo) . "\n";
@@ -211,7 +245,7 @@ function textoPlanoAviso(array $secciones): string
                     [$dato, $quienVe] = is_array($descripcion) ? $descripcion : [$descripcion, ''];
                     $texto .= "  {$termino}:\n    " . wordwrap($dato, 72, "\n    ") . "\n";
                     if ($quienVe !== '') {
-                        $texto .= '    Lo ven: ' . wordwrap($quienVe, 64, "\n    ") . "\n";
+                        $texto .= "    {$loVen} " . wordwrap($quienVe, 64, "\n    ") . "\n";
                     }
                 }
             }
@@ -232,50 +266,49 @@ function folioAviso(int $id): string
  * $buzon) y una copia a $buzon, que queda como el registro escrito de la empresa.
  * La huella (SHA-256 del texto aceptado) prueba qué texto exacto se aceptó.
  *
- * @param array $c ['folio', 'nombre', 'email', 'puesto', 'sucursal', 'fecha', 'ip']
+ * El correo sale en el idioma en que se aceptó ($c['idioma']); la copia al
+ * buzón lleva el encabezado en español para el expediente.
+ *
+ * @param array $c ['folio', 'nombre', 'email', 'puesto', 'sucursal', 'fecha', 'ip', 'idioma']
  * @return bool si salió el correo al empleado
  */
 function enviarConstanciaAviso(array $c, array $secciones, string $buzon): bool
 {
     require_once __DIR__ . '/../login/correo.php';
 
-    $textoAviso = textoPlanoAviso($secciones);
+    $idioma     = $c['idioma'] ?? 'es';
+    $tx         = static fn(string $clave, array $vars = []): string => tAviso($clave, $idioma, $vars);
+    $textoAviso = textoPlanoAviso($secciones, $idioma);
     $huella     = hash('sha256', $textoAviso);
-    $version    = fechaVersionAviso();
-    $sitio      = urlSitio();
 
-    $cuerpo = <<<TXT
-    Registramos que aceptaste el aviso de privacidad de Koaly. Guarda este
-    correo: es tu constancia.
+    // Etiquetas alineadas (con mb_strlen: llevan acentos)
+    $campos = [
+        $tx('campo.folio')    => $c['folio'],
+        $tx('campo.nombre')   => $c['nombre'],
+        $tx('campo.correo')   => $c['email'],
+        $tx('campo.puesto')   => $c['puesto'],
+        $tx('campo.sucursal') => $c['sucursal'],
+        $tx('campo.fecha')    => $c['fecha'] . ' ' . $tx('correo.zona'),
+        $tx('campo.version')  => fechaVersionAviso($idioma),
+        $tx('campo.idioma')   => $tx('idioma.nombre'),
+        $tx('campo.ip')       => $c['ip'],
+        $tx('campo.huella')   => $huella,
+    ];
+    $ancho = max(array_map('mb_strlen', array_keys($campos))) + 1;
+    $tabla = '';
+    foreach ($campos as $etiqueta => $valor) {
+        $tabla .= '    ' . $etiqueta . ':' . str_repeat(' ', $ancho - mb_strlen($etiqueta)) . $valor . "\n";
+    }
+    $linea = str_repeat('-', 70);
 
-        Folio:            {$c['folio']}
-        Nombre:           {$c['nombre']}
-        Correo:           {$c['email']}
-        Puesto:           {$c['puesto']}
-        Sucursal:         {$c['sucursal']}
-        Fecha y hora:     {$c['fecha']} (hora del centro de México)
-        Versión:          {$version}
-        Dirección IP:     {$c['ip']}
-        Huella del texto: {$huella}
+    $cuerpo = $tx('correo.intro') . "\n\n" . $tabla . "\n"
+        . $tx('correo.confirmar_titulo') . "\n" . $tx('correo.confirmar', ['frase' => $tx('frase')]) . "\n\n"
+        . $tx('correo.no_fuiste') . "\n\n"
+        . $tx('correo.consulta', ['url' => urlSitio() . 'privacidad/']) . "\n\n"
+        . "{$linea}\n" . $tx('correo.texto_titulo') . "\n{$linea}\n\n";
 
-    PARA DEJAR TU CONFIRMACIÓN POR ESCRITO
-    Responde a este correo con la frase: "Acepto el aviso de privacidad".
-    Tu respuesta llega al buzón de la empresa y se guarda junto con esta
-    constancia.
-
-    Si tú no aceptaste este aviso, responde a este correo para avisarnos.
-
-    Puedes consultar el aviso cuando quieras en: {$sitio}privacidad/
-
-    ----------------------------------------------------------------------
-    TEXTO DEL AVISO QUE ACEPTASTE
-    ----------------------------------------------------------------------
-
-
-    TXT;
-
-    $asunto = "Constancia del aviso de privacidad · Folio {$c['folio']}";
-    $enviado = enviarCorreo($c['email'], $asunto, "Hola {$c['nombre']}:\n\n{$cuerpo}{$textoAviso}", $buzon);
+    $asunto = $tx('correo.asunto', ['folio' => $c['folio']]);
+    $enviado = enviarCorreo($c['email'], $asunto, $tx('correo.saludo', ['nombre' => $c['nombre']]) . "\n\n{$cuerpo}{$textoAviso}", $buzon);
 
     if (filter_var($buzon, FILTER_VALIDATE_EMAIL) && strcasecmp($buzon, $c['email']) !== 0) {
         $copia = "Copia para el expediente de {$c['nombre']}. "
@@ -286,8 +319,8 @@ function enviarConstanciaAviso(array $c, array $secciones, string $buzon): bool
     return $enviado;
 }
 
-/** Fecha de la versión vigente, para mostrarla ("15/10/2026"). */
-function fechaVersionAviso(): string
+/** Fecha de la versión vigente, para mostrarla ("15/10/2026"; en inglés "10/15/2026"). */
+function fechaVersionAviso(string $idioma = 'es'): string
 {
-    return DateTimeImmutable::createFromFormat('!Y-m-d', AVISO_PRIVACIDAD_VERSION)->format('d/m/Y');
+    return DateTimeImmutable::createFromFormat('!Y-m-d', AVISO_PRIVACIDAD_VERSION)->format(tAviso('formato_fecha', $idioma));
 }
