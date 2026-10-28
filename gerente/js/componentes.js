@@ -301,6 +301,27 @@ function initVistas() {
     });
 }
 
+/* ============================================================
+ * Filas desplegables de la vista de lista (.tabla-tarjetas)
+ * Tocar una fila abre o cierra su detalle (la fila .fila-detalle que
+ * sigue). Los botones, formularios y enlaces de la fila hacen lo suyo
+ * sin abrirla; la flecha (.fila-abrir) es el control para teclado.
+ * ============================================================ */
+function initFilasDesplegables() {
+    document.addEventListener('click', (e) => {
+        const fila = e.target.closest('tr.fila-desplegable');
+        if (!fila) return;
+        if (e.target.closest('a, form, button:not(.fila-abrir), input, select, label')) return;
+        const detalle = fila.nextElementSibling;
+        if (!detalle || !detalle.classList.contains('fila-detalle')) return;
+        const abrir = fila.getAttribute('aria-expanded') !== 'true';
+        fila.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        const flecha = fila.querySelector('.fila-abrir');
+        if (flecha) flecha.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        detalle.hidden = !abrir;
+    });
+}
+
 
 /* ============================================================
  * Barra de filtros unificada (includes/barra_filtros.php)

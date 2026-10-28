@@ -202,8 +202,8 @@
 /* ---------- Tipografía ---------- */
 body { font-family: var(--fuente-texto); }
 h1, h2, h3,
-.kpi-value, .section-title, .caja-numero, .cajero-name,
-.producto-card-pie strong, .catalogo-precio strong, .cajero-stats-valores strong,
+.kpi-value, .section-title,
+.producto-card-pie strong, .catalogo-precio strong,
 .stat-card__value, .branch-card__name {
     font-family: var(--fuente-titulo);
     letter-spacing: -0.01em;
@@ -259,8 +259,6 @@ h1 { font-weight: 800; }
 .kpi,
 .card,
 .producto-card,
-.cajero-card,
-.caja-card,
 .ficha,
 .desglose,
 .catalogo-panel,
@@ -289,12 +287,12 @@ h1 { font-weight: 800; }
 .card { border-left-width: 2px; }
 
 /* Las tarjetas que llevan a otra página se elevan y se hunden como los botones */
-a.producto-card, .card:not(.card--static), .kpi--link, .cajero-card, .caja-card,
+a.producto-card, .card:not(.card--static), .kpi--link,
 .producto-card:has(button), .branch-card {
     transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
 }
 a.producto-card:hover, .card:not(.card--static):hover, .kpi--link:hover,
-.cajero-card:hover, .caja-card:hover, .branch-card:hover {
+.branch-card:hover {
     transform: translate(-2px, -2px);
     box-shadow: var(--sombra-tactil-max);
     border-color: var(--tinta);
@@ -355,18 +353,18 @@ a.producto-card:active, .card:not(.card--static):active, .kpi--link:active {
 .tabla-productos th, .table th { border-bottom: 2px solid var(--tinta); }
 
 /* ---------- Entrada: las tarjetas "caen" en su lugar al cargar ---------- */
-.kpi, .producto-card, .cajero-card, .caja-card, .card, .stat-card, .branch-card {
+.kpi, .producto-card, .card, .stat-card, .branch-card {
     animation: koaly-caer 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both;
 }
-.kpi:nth-child(2), .producto-card:nth-child(2), .cajero-card:nth-child(2), .caja-card:nth-child(2), .card:nth-child(2), .stat-card:nth-child(2), .branch-card:nth-child(2) { animation-delay: 0.04s; }
-.kpi:nth-child(3), .producto-card:nth-child(3), .cajero-card:nth-child(3), .caja-card:nth-child(3), .card:nth-child(3), .stat-card:nth-child(3), .branch-card:nth-child(3) { animation-delay: 0.08s; }
-.kpi:nth-child(4), .producto-card:nth-child(4), .cajero-card:nth-child(4), .caja-card:nth-child(4), .card:nth-child(4), .stat-card:nth-child(4), .branch-card:nth-child(4) { animation-delay: 0.12s; }
+.kpi:nth-child(2), .producto-card:nth-child(2), .card:nth-child(2), .stat-card:nth-child(2), .branch-card:nth-child(2) { animation-delay: 0.04s; }
+.kpi:nth-child(3), .producto-card:nth-child(3), .card:nth-child(3), .stat-card:nth-child(3), .branch-card:nth-child(3) { animation-delay: 0.08s; }
+.kpi:nth-child(4), .producto-card:nth-child(4), .card:nth-child(4), .stat-card:nth-child(4), .branch-card:nth-child(4) { animation-delay: 0.12s; }
 @keyframes koaly-caer {
     from { transform: translateY(12px) scale(0.97); opacity: 0.001; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .kpi, .producto-card, .cajero-card, .caja-card, .card, .stat-card, .branch-card { animation: none; }
+    .kpi, .producto-card, .card, .stat-card, .branch-card { animation: none; }
     .btn, .metodo-btn, .tema-boton, .back-link,
-    a.producto-card, .card, .kpi--link, .cajero-card, .caja-card, .branch-card { transition: none; }
+    a.producto-card, .card, .kpi--link, .branch-card { transition: none; }
 }

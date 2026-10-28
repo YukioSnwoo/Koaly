@@ -67,7 +67,6 @@ return [
         'turnos.error_nota'           => 'El monto no coincide con lo que se debía entregar: escribe una nota.',
 
         'turnos.fondo_base'           => 'Fondo base',
-        'turnos.cambiar'              => 'Cambiar',
         'turnos.fondo_titulo'         => 'Efectivo de la caja {caja}',
         'turnos.fondo_ayuda'          => 'Efectivo que el cajero deja en caja al cerrar, para dar cambio en el siguiente turno. Recomendado: $1,000 en billetes chicos y monedas.',
         'turnos.limite'               => 'Límite de efectivo',
@@ -75,8 +74,6 @@ return [
         'turnos.fondo_guardado'       => 'Efectivo de la caja actualizado.',
         'turnos.error_fondo'          => 'Escribe un fondo válido (entre $0 y $100,000).',
         'turnos.error_limite'         => 'El límite debe ser mayor que el fondo base y de máximo $1,000,000.',
-        'turnos.caja_abierta'         => 'Abierta por {cajero} desde {hora}',
-        'turnos.caja_cerrada'         => 'Caja cerrada',
         'turnos.error_caja_abierta'   => 'La caja {caja} tiene un turno abierto. Para desactivarla, eliminarla o cambiar su cajero, primero el cajero debe hacer su corte.',
         'turnos.error_cajero_abierta' => '{nombre} tiene abierta la caja {caja}. Primero debe hacer su corte; después podrá cambiar su estado.',
     ],
@@ -144,7 +141,6 @@ return [
         'turnos.error_nota'           => 'The amount doesn\'t match what was due: write a note.',
 
         'turnos.fondo_base'           => 'Float',
-        'turnos.cambiar'              => 'Change',
         'turnos.fondo_titulo'         => 'Cash for register {caja}',
         'turnos.fondo_ayuda'          => 'Cash the cashier leaves in the register when closing, to give change on the next shift. Recommended: $1,000 in small bills and coins.',
         'turnos.limite'               => 'Cash limit',
@@ -152,8 +148,6 @@ return [
         'turnos.fondo_guardado'       => 'Register cash updated.',
         'turnos.error_fondo'          => 'Enter a valid float (between $0 and $100,000).',
         'turnos.error_limite'         => 'The limit must be higher than the float and at most $1,000,000.',
-        'turnos.caja_abierta'         => 'Opened by {cajero} since {hora}',
-        'turnos.caja_cerrada'         => 'Register closed',
         'turnos.error_caja_abierta'   => 'Register {caja} has an open shift. To deactivate it, delete it or change its cashier, the cashier must close the shift first.',
         'turnos.error_cajero_abierta' => '{nombre} has register {caja} open. They must close the shift first; then you can change their status.',
     ],

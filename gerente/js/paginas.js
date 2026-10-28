@@ -363,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFiltros();
     initCustomSelects();
     initVistas();
+    initFilasDesplegables();
 
     // Productos — filtros y solicitudes
     initFiltrosProductos();
