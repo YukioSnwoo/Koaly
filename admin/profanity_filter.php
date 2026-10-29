@@ -1,11 +1,19 @@
 <?php
-// profanity_filter.php — Cliente del servicio APIVerve Profanity Filter.
-// Se usa desde los formularios de alta (gerentes.php, sucursales.php) para
-// rechazar nombres con lenguaje ofensivo antes de insertarlos en la BD.
+// profanity_filter.php — Filtro de lenguaje ofensivo en dos pasos.
+// Se usa desde los formularios de alta y edición (gerentes, sucursales,
+// cajeros, cajas y Mi perfil) para rechazar nombres antes de guardarlos.
+//
+// 1. Blasp (admin/lib/blasp/, copia del paquete de GitHub, MIT): corre aquí
+//    mismo, sin internet, y detecta trucos como "p3nd3j0", "p-e-n-d-e-j-o"
+//    o "peeendejo" en español e inglés.
+// 2. APIVerve Profanity Filter: segunda opinión. Si la API falla, cuenta lo
+//    que dijo Blasp.
 //
 // La API key vive fuera del repo, en private/private-API-frofanity.php
 // (agregada a .gitignore), que debe devolver ['APIVERVE_API_KEY' => '...'].
 // Nunca se hardcodea ni se expone al frontend.
+
+require_once __DIR__ . '/lib/blasp/arranque.php';
 
 const APIVERVE_PROFANITY_URL = 'https://api.apiverve.com/v1/profanityfilter';
 
@@ -24,11 +32,14 @@ function obtenerApiVerveKey(): ?string
     return $apiKey !== '' ? $apiKey : null;
 }
 
-// Lanza RuntimeException si el texto es ofensivo o si el servicio no pudo
-// validar la solicitud (errores 400/401/403). Ante un 429 o fallo de red,
-// deja pasar el texto para no bloquear la operación por una caída externa.
+// Lanza RuntimeException si Blasp o APIVerve encuentran lenguaje ofensivo.
+// Si APIVerve no responde (red, 429, key), cuenta solo lo que dijo Blasp.
 function rechazarSiProfano(string $texto): void
 {
+    if (blaspEncuentraProfano($texto)) {
+        throw new RuntimeException('El texto ingresado contiene lenguaje no permitido.');
+    }
+
     $resultado = consultarProfanityFilter($texto);
 
     if ($resultado === null) {
@@ -38,6 +49,26 @@ function rechazarSiProfano(string $texto): void
     if ($resultado['isProfane']) {
         throw new RuntimeException('El texto ingresado contiene lenguaje no permitido.');
     }
+}
+
+// Revisa en español y en inglés. Los diccionarios se arman una vez por
+// petición (~90 ms); cada revisión después tarda unos milisegundos.
+function blaspEncuentraProfano(string $texto): bool
+{
+    static $diccionarios = null;
+    $diccionarios ??= [
+        \Blaspsoft\Blasp\Core\Dictionary::forLanguage('spanish'),
+        \Blaspsoft\Blasp\Core\Dictionary::forLanguage('english'),
+    ];
+
+    $analizador = new \Blaspsoft\Blasp\Core\Analyzer();
+    $driver = new \Blaspsoft\Blasp\Drivers\RegexDriver();
+    foreach ($diccionarios as $diccionario) {
+        if ($analizador->analyze($texto, $driver, $diccionario)->isOffensive()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Devuelve ['isProfane' => bool] o null si el servicio no está disponible

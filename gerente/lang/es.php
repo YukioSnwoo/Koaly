@@ -150,6 +150,7 @@ return [
     'error.caja_con_ventas' => ['La caja tiene {n} venta registrada y no puede eliminarse. Desactívela en su lugar.', 'La caja tiene {n} ventas registradas y no puede eliminarse. Desactívela en su lugar.'],
     'error.cajero_invalido' => 'Cajero inválido.',
     'error.nombre_cajero' => 'El nombre es obligatorio (máx. 100 caracteres).',
+    'error.profano' => 'El texto contiene lenguaje no permitido. Revisa el nombre.',
     'error.email_invalido' => 'El correo electrónico no es válido.',
     'error.email_duplicado' => 'El correo electrónico ya está registrado por otro usuario.',
     'error.email_bloqueado' => 'Este cajero ya confirmó su correo al aceptar el aviso de privacidad. Solo él puede cambiarlo desde «Mi perfil», o la administración.',

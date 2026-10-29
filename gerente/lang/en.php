@@ -150,6 +150,7 @@ return [
     'error.caja_con_ventas' => ['This register has {n} recorded sale and cannot be deleted. Deactivate it instead.', 'This register has {n} recorded sales and cannot be deleted. Deactivate it instead.'],
     'error.cajero_invalido' => 'Invalid cashier.',
     'error.nombre_cajero' => 'The name is required (max. 100 characters).',
+    'error.profano' => 'The text contains inappropriate language. Check the name.',
     'error.email_invalido' => 'The email address is not valid.',
     'error.email_duplicado' => 'The email address is already used by another user.',
     'error.email_bloqueado' => 'This cashier already confirmed their email by accepting the privacy notice. Only they can change it from “My profile”, or the administration.',

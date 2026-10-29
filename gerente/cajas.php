@@ -2,6 +2,7 @@
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/turnos.php';
 require_once __DIR__ . '/includes/vistas.php';
+require_once __DIR__ . '/../admin/profanity_filter.php';
 
 $ESTADOS_VALIDOS = ['Activa', 'Inactiva', 'Mantenimiento'];
 
@@ -66,6 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mb_strlen($nombre) > 50) {
                 throw new RuntimeException(t('error.nombre_caja'));
             }
+            try {
+                rechazarSiProfano(trim($numeroCaja . ' ' . $nombre));
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.profano'));
+            }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));
             }
@@ -121,6 +127,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (mb_strlen($nombre) > 50) {
                 throw new RuntimeException(t('error.nombre_caja'));
+            }
+            try {
+                rechazarSiProfano(trim($numeroCaja . ' ' . $nombre));
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.profano'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));
