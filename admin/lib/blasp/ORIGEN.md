@@ -11,6 +11,7 @@
 ## Lo de Koaly (no es de Blasp)
 - `arranque.php`: autoload y las funciones `config()` y `config_path()` dentro del espacio de nombres `Blaspsoft\Blasp\Core`, para no depender de Laravel.
 - `koaly/languages/*.php`: envuelven las listas originales y agregan las groserías mexicanas que faltaban, la `v` como sustituto de la `u` y los nombres permitidos.
+- `koaly/pegadas.php`: raíces que se buscan dentro de cada palabra ("tuputamadre", "Cajamierda"), porque Blasp ignora a propósito lo que va pegado a otra palabra. La búsqueda está en `tieneGroseriaPegada()` de `admin/profanity_filter.php`, que también corta el texto en cada mayúscula ("TuPutaMadre" → "Tu Puta Madre").
 - `koaly/permitidas.php`: nombres reales que Blasp confundía (Concha, Culiacán, Analí). Solo se permiten escritos tal cual.
 
 ## Para actualizar

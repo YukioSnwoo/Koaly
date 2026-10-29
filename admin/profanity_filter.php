@@ -61,14 +61,52 @@ function blaspEncuentraProfano(string $texto): bool
         \Blaspsoft\Blasp\Core\Dictionary::forLanguage('english'),
     ];
 
+    // "TuPutaMadre" también se revisa como "Tu Puta Madre"
+    $variantes = array_unique([$texto, preg_replace('/(?<=\p{Ll})(?=\p{Lu})/u', ' ', $texto)]);
+
     $analizador = new \Blaspsoft\Blasp\Core\Analyzer();
     $driver = new \Blaspsoft\Blasp\Drivers\RegexDriver();
-    foreach ($diccionarios as $diccionario) {
-        if ($analizador->analyze($texto, $driver, $diccionario)->isOffensive()) {
-            return true;
+    foreach ($variantes as $variante) {
+        foreach ($diccionarios as $diccionario) {
+            if ($analizador->analyze($variante, $driver, $diccionario)->isOffensive()) {
+                return true;
+            }
+        }
+    }
+    return tieneGroseriaPegada($texto);
+}
+
+// Busca las raíces de koaly/pegadas.php dentro de cada palabra, después de
+// quitar acentos, números que hacen de letra ("p3nd3j0"), signos y letras
+// repetidas ("peeendejo"). Así se atrapa "tuputamadre" o "Cajamierda".
+function tieneGroseriaPegada(string $texto): bool
+{
+    static $raices = null;
+    $raices ??= array_map('compactarTexto', require __DIR__ . '/lib/blasp/koaly/pegadas.php');
+
+    foreach (preg_split('/\s+/u', $texto, -1, PREG_SPLIT_NO_EMPTY) as $palabra) {
+        $compacta = compactarTexto($palabra);
+        foreach ($raices as $raiz) {
+            if (str_contains($compacta, $raiz)) {
+                return true;
+            }
         }
     }
     return false;
+}
+
+function compactarTexto(string $texto): string
+{
+    $texto = mb_strtolower($texto, 'UTF-8');
+    $texto = strtr($texto, [
+        'á' => 'a', 'à' => 'a', 'ä' => 'a', 'â' => 'a', 'é' => 'e', 'è' => 'e', 'ë' => 'e', 'ê' => 'e',
+        'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'î' => 'i', 'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ô' => 'o',
+        'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'û' => 'u', 'ñ' => 'n',
+        '4' => 'a', '@' => 'a', '3' => 'e', '1' => 'i', '!' => 'i', '|' => 'i',
+        '0' => 'o', '5' => 's', '$' => 's', '7' => 't',
+    ]);
+    $texto = preg_replace('/[^a-z]/', '', $texto);
+    return preg_replace('/(.)\1+/', '$1', $texto);
 }
 
 // Devuelve ['isProfane' => bool] o null si el servicio no está disponible
