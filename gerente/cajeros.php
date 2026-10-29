@@ -5,6 +5,7 @@ require_once __DIR__ . '/../login/reglas_contrasena.php';
 require_once __DIR__ . '/includes/vistas.php';
 require_once __DIR__ . '/includes/turnos.php';
 require_once __DIR__ . '/../admin/profanity_filter.php';
+require_once __DIR__ . '/../admin/reglas_nombre.php';
 
 /**
  * ¿El gerente puede cambiar el correo de este cajero? Solo mientras el cajero
@@ -92,6 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(t('error.nombre_cajero'));
             }
             try {
+                $nombre = normalizarNombrePersona($nombre);
+            } catch (NombreInvalido $e) {
+                throw new RuntimeException(t('error.nombre_' . $e->regla));
+            }
+            try {
                 rechazarSiProfano($nombre);
             } catch (RuntimeException) {
                 throw new RuntimeException(t('error.profano'));
@@ -149,6 +155,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($nombre === '' || mb_strlen($nombre) > 100) {
                 throw new RuntimeException(t('error.nombre_cajero'));
+            }
+            try {
+                $nombre = normalizarNombrePersona($nombre);
+            } catch (NombreInvalido $e) {
+                throw new RuntimeException(t('error.nombre_' . $e->regla));
             }
             try {
                 rechazarSiProfano($nombre);

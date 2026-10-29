@@ -7,6 +7,7 @@
 require_once __DIR__ . '/api.php';
 require_once __DIR__ . '/../admin/solicitudes_comun.php';   // guardarImagenProducto()
 require_once __DIR__ . '/../admin/profanity_filter.php';
+require_once __DIR__ . '/../admin/reglas_nombre.php';
 require_once __DIR__ . '/../login/reglas_contrasena.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -27,6 +28,11 @@ if ($nombre === '' || mb_strlen($nombre) > 100) {
     perfilError(422, 'nombre');
 }
 if ($nombre !== $usuario['nombre']) {
+    try {
+        $nombre = normalizarNombrePersona($nombre);
+    } catch (NombreInvalido $e) {
+        perfilError(422, 'nombre_' . $e->regla);
+    }
     try {
         rechazarSiProfano($nombre);
     } catch (RuntimeException $e) {

@@ -7,4 +7,6 @@ return [
     'concha', 'conchita',
     'culiacan', 'culiacán',
     'anali', 'analí',
+    // Blasp junta la rr: "Zora" le parece "zorra", "Pera" "perra"
+    'zora', 'pera',
 ];
