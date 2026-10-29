@@ -41,349 +41,6 @@
 
 
 /* ============================================================
- *  ██ CAJEROS — Tarjetas verticales (player card)
- *  ============================================================ */
-.cajeros-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.25rem;
-}
-
-/* Tarjeta: cabecera (avatar, nombre, estado) · datos · ventas del mes · acciones */
-.cajero-card {
-    background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: 14px;
-    padding: 1.1rem 1.2rem;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    animation: fadeInUp 0.3s ease-out both;
-}
-.cajero-card:hover {
-    border-color: var(--acento-borde);
-    box-shadow: 0 8px 20px rgba(15,23,42,0.08);
-}
-.cajero-card.is-inactivo { background: var(--superficie-2); }
-.cajero-card.is-inactivo .cajero-avatar { filter: grayscale(0.8); opacity: 0.75; }
-
-.cajero-cabecera {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-}
-.cajero-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-}
-.cajero-identidad {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1;
-}
-.cajero-name {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--texto);
-    line-height: 1.25;
-    margin: 0;
-    overflow-wrap: anywhere;
-}
-.cajero-email {
-    font-size: 0.8rem;
-    color: var(--texto-3);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.cajero-cabecera .badge { align-self: flex-start; flex-shrink: 0; }
-
-/* Datos: etiqueta a la izquierda, valor a la derecha */
-.cajero-datos {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-}
-.cajero-datos > div {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-}
-.cajero-datos dt { color: var(--texto-3); }
-.cajero-datos dd {
-    margin: 0;
-    color: var(--texto);
-    font-weight: 600;
-    text-align: right;
-    overflow-wrap: anywhere;
-    font-variant-numeric: tabular-nums;
-}
-.cajero-datos dd.texto-tenue { font-weight: 400; }
-
-/* Ventas del mes: toda la franja es el enlace a sus ventas */
-.cajero-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    margin-top: auto; /* alinea la franja y los botones entre tarjetas de distinta altura */
-    padding: 0.65rem 0.85rem;
-    border-radius: 10px;
-    background: var(--acento-suave);
-    text-decoration: none;
-    color: inherit;
-    transition: background 0.15s ease;
-}
-.cajero-stats:hover, .cajero-stats:focus-visible { background: var(--acento-suave-2); }
-.cajero-stats-titulo {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--texto-3);
-}
-.cajero-stats-ir {
-    color: var(--acento-texto);
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 0.78rem;
-    white-space: nowrap;
-}
-.cajero-stats-valores {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: 1.25rem;
-    row-gap: 0.15rem;
-    font-size: 0.82rem;
-    color: var(--texto-3);
-}
-.cajero-stats-valores strong {
-    font-size: 1.1rem;
-    color: var(--acento-texto);
-    font-variant-numeric: tabular-nums;
-}
-
-/* Acciones: Editar ocupa el espacio; contraseña y baja son iconos con nombre en title/aria-label */
-.cajero-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-.cajero-accion { display: contents; }
-.cajero-actions .cajero-editar { flex: 1; }
-.cajero-actions .btn-success { flex: 1; }
-.btn-icono {
-    width: 2.25rem;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-/* Modal de cajero: secciones con título */
-.modal-seccion {
-    border: 0;
-    margin: 0 0 1rem;
-    padding: 0;
-    min-width: 0;
-}
-.modal-seccion[hidden] { display: none; }
-.modal-seccion legend {
-    /* float: el legend deja de "cortar" el borde del fieldset y se comporta como un título normal */
-    float: left;
-    width: 100%;
-    padding: 0;
-    margin-bottom: 0.6rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--texto-3);
-}
-.modal-seccion legend + * { clear: both; }
-.modal-seccion + .modal-seccion {
-    border-top: 1px solid var(--borde);
-    padding-top: 1rem;
-}
-.modal-seccion .form-group:last-child { margin-bottom: 0; }
-.form-ayuda {
-    display: block;
-    margin-top: 0.35rem;
-    font-size: 0.78rem;
-    line-height: 1.4;
-    color: var(--texto-3);
-}
-.form-ayuda[hidden] { display: none; }
-#ayudaEstado {
-    margin-top: 0.6rem;
-    padding: 0.5rem 0.7rem;
-    border-radius: 8px;
-    background: var(--aviso-suave);
-    color: var(--aviso-texto);
-}
-
-.cajero-empty {
-    grid-column: 1 / -1;
-}
-
-
-/* ============================================================
- *  ██ CAJAS — Tarjetas verticales (player card, variante)
- *  ============================================================ */
-.cajas-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1.25rem;
-}
-
-.caja-card {
-    background: var(--superficie);
-    border-radius: 14px;
-    padding: 1.5rem 1.25rem 1.25rem;
-    border-top: 4px solid var(--acento);
-    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    animation: fadeInUp 0.3s ease-out both;
-}
-.caja-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(15,23,42,0.10);
-}
-.caja-card.is-inactiva {
-    opacity: 0.72;
-}
-.caja-card.is-inactiva .caja-numero {
-    filter: grayscale(0.75);
-}
-
-.caja-numero {
-    width: 72px;
-    height: 72px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--acento-hover) 0%, #a855f7 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #fff;
-    margin-bottom: 0.85rem;
-    box-shadow: 0 6px 16px rgba(109,40,217,0.25);
-    flex-shrink: 0;
-    letter-spacing: 0.02em;
-}
-
-.caja-nombre {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--texto);
-    line-height: 1.3;
-    margin-bottom: 0.35rem;
-    word-break: break-word;
-}
-.caja-nombre--muted {
-    color: var(--texto-3);
-    font-style: italic;
-    font-weight: 500;
-}
-
-.caja-cajero {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 0.9rem;
-    background: var(--superficie-2);
-    border-radius: 10px;
-    width: 100%;
-    margin-bottom: 1rem;
-    margin-top: 0.75rem;
-    min-width: 0;
-}
-.caja-cajero-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--acento) 0%, #a855f7 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-}
-.caja-cajero-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.05rem;
-    min-width: 0;
-    flex: 1;
-    text-align: left;
-}
-.caja-cajero-label {
-    font-size: 0.62rem;
-    color: var(--texto-3);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-}
-.caja-cajero-nombre {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--texto);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.caja-cajero--vacio .caja-cajero-info {
-    justify-content: center;
-}
-.caja-cajero--vacio .caja-cajero-nombre {
-    color: var(--texto-3);
-    font-style: italic;
-    font-weight: 500;
-}
-
-.caja-actions {
-    display: flex;
-    gap: 0.4rem;
-    width: 100%;
-    margin-top: auto;
-    flex-wrap: wrap;
-}
-.caja-actions .btn {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0.5rem 0.4rem;
-    font-size: 0.75rem;
-}
-.caja-actions .btn-danger {
-    flex: 0 0 auto;
-    padding: 0.5rem 0.65rem;
-}
-
-
-/* ============================================================
  *  ██ CAJAS — Aviso de reasignación de cajero
  *  ============================================================ */
 .aviso-reasignacion {
@@ -536,229 +193,220 @@
     color: var(--texto-2);
 }
 
-.caja-ventas {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    font-size: 0.8rem;
-    color: var(--texto-3);
-    margin-bottom: 0.75rem;
-}
-.caja-ventas strong { color: var(--ok-texto); }
 
-
-/* ============================================================
- *  Cajeros — avisos y enlace a ventas
- *  ============================================================ */
 .alert-warning { background: var(--aviso-suave); color: var(--aviso-texto); border-color: var(--aviso-borde); }
-.cajero-ver-ventas {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--acento-texto);
-    text-decoration: none;
-    margin: -0.25rem 0 0.75rem;
-}
-.cajero-ver-ventas:hover { text-decoration: underline; }
 
 
 /* ============================================================
- *  Cajas y cajeros — selector de vista estilo Finder
- *  El contenedor (.vista-coleccion) lleva data-vista: iconos (la
- *  cuadrícula de siempre), lista, columnas (por estado) o galeria.
+ *  Tarjetas de cajeros y cajas
+ *  ------------------------------------------------------------
+ *  Cada tarjeta es una pila de piezas (.pz-*) en orden fijo:
+ *    cajero: identidad · ahora · datos · acceso · este mes · acciones
+ *    caja:   identidad · ahora · alertas · cajero · hoy · efectivo · acciones
+ *  Las vistas (data-vista del contenedor .vista-coleccion) solo cambian
+ *  cómo se acomodan. La lista es una tabla aparte (.vista-tabla, hermana
+ *  del contenedor) con un detalle que se despliega al tocar la fila.
  *  ============================================================ */
-.caja-estado { margin-bottom: 0.5rem; }
-/* "Abierta por … desde …" es larga: se parte en dos líneas en vez de salirse de la tarjeta */
-.caja-ventas--turno { justify-content: center; max-width: 100%; }
-.caja-ventas--turno .badge { white-space: normal; text-align: center; line-height: 1.35; max-width: 100%; }
-.cajero-estado { margin-bottom: 0.85rem; }
-
 .vista-barra { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
 .segmentado--iconos button { padding: 0.45rem 0.75rem; }
 .segmentado--iconos svg { display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.badge-info { background: var(--indigo-suave); color: var(--indigo-texto); }
 
-/* ---- Lista: una fila por tarjeta ---- */
-.vista-coleccion[data-vista="lista"] { display: flex; flex-direction: column; gap: 0.6rem; }
-.vista-coleccion[data-vista="lista"] > .caja-card,
-.vista-coleccion[data-vista="lista"] > .cajero-card {
-    display: grid;
-    align-items: center;
-    column-gap: 1.1rem;
-    row-gap: 0.2rem;
-    text-align: left;
-    padding: 0.75rem 1rem;
+/* ---- Íconos: cuadrícula de tarjetas completas ---- */
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.25rem; align-items: stretch; }
+.tarjeta {
+    display: flex; flex-direction: column; gap: 0.75rem; min-width: 0;
+    padding: 1rem;
+    background: var(--superficie);
+    border: 2px solid var(--tinta); border-radius: 16px; box-shadow: var(--sombra-tactil-alta);
+    animation: fadeInUp 0.3s ease-out both;
 }
-.vista-coleccion[data-vista="lista"] .caja-numero,
-.vista-coleccion[data-vista="lista"] .cajero-avatar {
-    width: 48px; height: 48px; margin: 0; font-size: 1rem;
-    box-shadow: 0 3px 8px rgba(109,40,217,0.18);
-}
+.tarjeta.is-apagada { background: var(--superficie-2); }
 
-.vista-coleccion[data-vista="lista"] > .caja-card {
-    grid-template-columns: 48px minmax(140px, 1.1fr) minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
-    grid-template-areas:
-        "num nombre cajero hoy   turno acciones"
-        "num estado cajero fondo turno acciones";
+.pz-identidad { display: flex; align-items: flex-start; gap: 0.75rem; min-width: 0; }
+.pz-nombres { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pz-nombre { margin: 0; font-family: var(--fuente-titulo); font-size: 1.05rem; font-weight: 700; line-height: 1.2; color: var(--texto); overflow-wrap: anywhere; }
+.pz-sub { font-size: 0.8rem; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-identidad .pz-estado { flex-shrink: 0; }
+.pz-avatar {
+    width: 44px; height: 44px; flex: none; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--acento); color: #fff; border: 2px solid var(--tinta);
+    font-family: var(--fuente-titulo); font-weight: 700; font-size: 0.95rem;
 }
-.vista-coleccion[data-vista="lista"] .caja-numero { grid-area: num; border-radius: 12px; }
-.vista-coleccion[data-vista="lista"] .caja-nombre { grid-area: nombre; margin: 0; align-self: end; }
-.vista-coleccion[data-vista="lista"] .caja-estado { grid-area: estado; margin: 0; align-self: start; }
-.vista-coleccion[data-vista="lista"] .caja-cajero { grid-area: cajero; margin: 0; }
-.vista-coleccion[data-vista="lista"] .caja-ventas { margin: 0; }
-.vista-coleccion[data-vista="lista"] .caja-ventas--hoy { grid-area: hoy; align-self: end; }
-.vista-coleccion[data-vista="lista"] .caja-ventas--fondo { grid-area: fondo; align-self: start; }
-.vista-coleccion[data-vista="lista"] .caja-ventas--turno { grid-area: turno; }
-.vista-coleccion[data-vista="lista"] .caja-actions { grid-area: acciones; margin: 0; width: auto; flex-wrap: nowrap; }
-
-.vista-coleccion[data-vista="lista"] > .cajero-card {
-    grid-template-columns: 48px minmax(160px, 1.3fr) auto minmax(200px, 1fr) auto auto;
-    grid-template-areas:
-        "avatar nombre estado stats enlace acciones"
-        "avatar email  estado stats enlace acciones";
-}
-.vista-coleccion[data-vista="lista"] .cajero-avatar { grid-area: avatar; }
-.vista-coleccion[data-vista="lista"] .cajero-name { grid-area: nombre; margin: 0; align-self: end; }
-.vista-coleccion[data-vista="lista"] .cajero-email { grid-area: email; margin: 0; align-self: start; }
-.vista-coleccion[data-vista="lista"] .cajero-estado { grid-area: estado; margin: 0; }
-.vista-coleccion[data-vista="lista"] .cajero-stats {
-    grid-area: stats; margin: 0; padding: 0; border: 0; width: auto;
-    grid-template-columns: auto auto; gap: 1.5rem;
-}
-.vista-coleccion[data-vista="lista"] .cajero-ver-ventas { grid-area: enlace; margin: 0; white-space: nowrap; }
-.vista-coleccion[data-vista="lista"] .cajero-actions { grid-area: acciones; margin: 0; width: auto; }
-
-.vista-coleccion[data-vista="lista"] .caja-actions .btn,
-.vista-coleccion[data-vista="lista"] .cajero-actions .btn { flex: 0 0 auto; padding: 0.45rem 0.7rem; }
-
-@media (max-width: 1100px) {
-    .vista-coleccion[data-vista="lista"] > .caja-card {
-        grid-template-columns: 48px 1fr 1fr;
-        grid-template-areas:
-            "num      nombre   nombre"
-            "num      estado   estado"
-            "cajero   cajero   cajero"
-            "hoy      fondo    turno"
-            "acciones acciones acciones";
-        row-gap: 0.5rem;
-    }
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 48px 1fr auto;
-        grid-template-areas:
-            "avatar   nombre   estado"
-            "avatar   email    estado"
-            "stats    stats    enlace"
-            "acciones acciones acciones";
-        row-gap: 0.5rem;
-    }
-    .vista-coleccion[data-vista="lista"] .caja-actions,
-    .vista-coleccion[data-vista="lista"] .cajero-actions { flex-wrap: wrap; }
-    .vista-coleccion[data-vista="lista"] .caja-actions .btn,
-    .vista-coleccion[data-vista="lista"] .cajero-actions .btn { flex: 1 1 auto; }
-}
-@media (max-width: 640px) {
-    .vista-coleccion[data-vista="lista"] > .caja-card {
-        grid-template-columns: 48px 1fr;
-        grid-template-areas:
-            "num      nombre"
-            "num      estado"
-            "cajero   cajero"
-            "hoy      hoy"
-            "fondo    fondo"
-            "turno    turno"
-            "acciones acciones";
-    }
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 48px 1fr;
-        grid-template-areas:
-            "avatar   nombre"
-            "avatar   email"
-            "estado   estado"
-            "stats    stats"
-            "enlace   enlace"
-            "acciones acciones";
-    }
+.is-apagada .pz-avatar { background: var(--texto-4); }
+.pz-avatar--chico { width: 28px; height: 28px; font-size: 0.7rem; border-width: 1.5px; }
+/* Número de la caja como tecla de caja registradora */
+.pz-tecla {
+    width: 50px; height: 50px; flex: none; border-radius: 12px;
+    display: grid; place-items: center;
+    background: var(--superficie); border: 2px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta);
+    font-family: var(--fuente-titulo); font-weight: 800; font-size: 1.25rem; color: var(--texto);
+    font-variant-numeric: tabular-nums;
 }
 
-/* ---- Columnas: una columna por estado, con scroll horizontal ---- */
+/* "Ahora": qué pasa en este momento. Reserva dos líneas para que la tarjeta no cambie de alto */
+.pz-ahora { display: flex; align-items: center; gap: 0.5rem; min-height: 2.6em; font-size: 0.88rem; font-weight: 600; color: var(--texto-2); min-width: 0; }
+.pz-punto { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--texto-4); }
+.pz-ahora.is-en-turno { color: var(--ok-texto); }
+.pz-ahora.is-en-turno .pz-punto { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-suave); animation: pz-latido 2.4s ease-in-out infinite; }
+.pz-ahora.is-alerta { color: var(--aviso-texto); }
+.pz-ahora.is-alerta .pz-punto { background: var(--aviso); }
+.pz-ahora-txt { display: grid; min-width: 0; overflow-wrap: anywhere; }
+.pz-linea { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pz-linea--2 { font-weight: 500; font-size: 0.8rem; color: var(--texto-3); }
+@keyframes pz-latido { 50% { box-shadow: 0 0 0 7px transparent; } }
+
+.pz-filas { margin: 0; display: grid; gap: 0.35rem; font-size: 0.85rem; }
+.pz-filas > div { display: flex; justify-content: space-between; gap: 1rem; }
+.pz-filas dt { color: var(--texto-3); }
+.pz-filas dd { margin: 0; font-weight: 600; text-align: right; color: var(--texto); font-variant-numeric: tabular-nums; }
+
+/* Acceso: siempre una caja del mismo alto (listo, le falta o sin acceso) */
+.pz-acceso { display: grid; gap: 0.4rem; align-content: start; padding: 0.55rem 0.7rem; border-radius: 12px; font-size: 0.82rem; }
+.tarjeta .pz-acceso { min-height: 7rem; }
+.pz-acceso-titulo { font-size: 0.8rem; font-weight: 700; }
+.pz-acceso--listo { background: var(--ok-suave); border: 1.5px solid var(--ok-borde); }
+.pz-acceso--listo .pz-acceso-titulo { color: var(--ok-texto); }
+.pz-acceso--listo ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.1rem; color: var(--texto-2); }
+.pz-acceso--falta { background: var(--aviso-suave); border: 1.5px dashed var(--aviso-borde); }
+.pz-acceso--falta .pz-acceso-titulo { color: var(--aviso-texto); }
+.pz-acceso--nada { background: var(--superficie-3); border: 1.5px solid var(--borde-fuerte); color: var(--texto-3); }
+.pz-insignias { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.pz-insignias .badge { white-space: normal; max-width: 100%; }
+.pz-reenviar { margin: 0; }
+
+/* Alertas de la caja: espacio fijo aunque no haya */
+.pz-alertas { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.35rem; font-size: 0.82rem; }
+.tarjeta .pz-alertas { min-height: 1.9rem; }
+.pz-cajero { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.pz-cajero-nombre { font-weight: 700; font-size: 0.88rem; color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Cifras (este mes / hoy): se pegan abajo para que todas las tarjetas alineen su base */
+.pz-cifras {
+    display: grid; gap: 0.25rem; margin-top: auto;
+    padding: 0.6rem 0.75rem; border-radius: 12px;
+    background: var(--acento-suave); color: inherit; text-decoration: none;
+    transition: background 0.15s ease;
+}
+.pz-cifras:hover, .pz-cifras:focus-visible { background: var(--acento-suave-2); }
+.pz-cifras-cab { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.8rem; font-weight: 600; color: var(--texto-3); }
+.pz-ir { color: var(--acento-texto); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.pz-cifras-val { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 1rem; font-size: 0.82rem; color: var(--texto-3); }
+.pz-cifras-val strong { font-family: var(--fuente-titulo); font-size: 1.1rem; color: var(--acento-texto); font-variant-numeric: tabular-nums; }
+
+/* Acciones: la principal (Editar) ocupa el espacio; "Dar de baja"/"Reactivar" con nombre y el mismo alto */
+.pz-acciones { display: flex; align-items: stretch; gap: 0.5rem; }
+.pz-acciones .cajero-accion { display: contents; }
+.pz-acciones .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap; }
+.pz-acciones .pz-principal { flex: 1; }
+.pz-acciones .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn-icono { width: 2.25rem; padding: 0; flex-shrink: 0; }
+
+/* ---- Columnas: tarjeta compacta agrupada por estado ---- */
 .vista-coleccion[data-vista="columnas"] {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    /* Ancho fijo, como tablero: con un solo estado no se estira y se distingue de "íconos" */
-    grid-auto-columns: minmax(270px, 320px);
-    align-items: start;
-    gap: 1rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(270px, 310px);
+    align-items: start; gap: 1rem; overflow-x: auto; padding-bottom: 0.5rem;
 }
 .vista-columna {
-    display: flex; flex-direction: column; gap: 0.85rem; min-width: 0;
-    padding: 0.85rem;
-    background: var(--superficie-2);
-    border: 1px solid var(--borde);
-    border-radius: 14px;
+    display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; padding: 0.85rem;
+    background: var(--superficie-3); border: 2px dashed var(--borde-fuerte); border-radius: 16px;
 }
-.vista-columna-titulo {
-    display: flex; align-items: center; gap: 0.4rem;
-    margin: 0 0 0.1rem;
-    font-size: 0.8rem; font-weight: 700; color: var(--texto-2);
-    text-transform: uppercase; letter-spacing: 0.05em;
-}
-@media (max-width: 640px) {
-    .vista-coleccion[data-vista="columnas"] { grid-auto-columns: 85%; }
-}
+.vista-columna-titulo { display: flex; align-items: center; gap: 0.4rem; margin: 0 0 0.1rem; font-size: 0.95rem; font-weight: 700; color: var(--texto-2); }
+.vista-coleccion[data-vista="columnas"] .tarjeta { padding: 0.8rem; gap: 0.6rem; box-shadow: var(--sombra-tactil); }
+/* El estado ya es el título de la columna */
+.vista-coleccion[data-vista="columnas"] .pz-estado { display: none; }
+.vista-coleccion[data-vista="columnas"] .pz-avatar { width: 36px; height: 36px; font-size: 0.82rem; }
+.vista-coleccion[data-vista="columnas"] .pz-tecla { width: 42px; height: 42px; font-size: 1.05rem; }
+.vista-coleccion[data-vista="columnas"] .pz-filas,
+.vista-coleccion[data-vista="columnas"] .pz-cifras-cab { display: none; }
+.vista-coleccion[data-vista="columnas"] .pz-acceso { min-height: 0; }
+@media (max-width: 640px) { .vista-coleccion[data-vista="columnas"] { grid-auto-columns: 85%; } }
 
-/* ---- Galería: tarjetas grandes en una tira que se desliza ---- */
+/* ---- Galería: fichas grandes que se deslizan ---- */
 .vista-coleccion[data-vista="galeria"] {
-    display: flex;
-    gap: 1.25rem;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    overscroll-behavior-x: contain;
-    padding: 0.5rem 0.25rem 1rem;
+    display: flex; gap: 1.25rem; overflow-x: auto; scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain; padding: 0.25rem 0.25rem 1rem;
 }
-.vista-coleccion[data-vista="galeria"] > .caja-card,
-.vista-coleccion[data-vista="galeria"] > .cajero-card {
-    flex: 0 0 min(340px, 85%);
-    scroll-snap-align: start;
-    padding: 2rem 1.5rem 1.5rem;
-}
-.vista-coleccion[data-vista="galeria"] .caja-numero,
-.vista-coleccion[data-vista="galeria"] .cajero-avatar {
-    width: 104px; height: 104px; font-size: 2rem; margin-bottom: 1.1rem;
-}
-.vista-coleccion[data-vista="galeria"] .caja-nombre,
-.vista-coleccion[data-vista="galeria"] .cajero-name { font-size: 1.2rem; }
+.vista-coleccion[data-vista="galeria"] > .tarjeta { flex: 0 0 min(360px, 86%); scroll-snap-align: start; padding: 1.4rem; gap: 0.9rem; }
+.vista-coleccion[data-vista="galeria"] .pz-identidad { display: grid; grid-template-columns: 1fr auto; }
+.vista-coleccion[data-vista="galeria"] .pz-identidad .pz-avatar,
+.vista-coleccion[data-vista="galeria"] .pz-identidad .pz-tecla { grid-column: 1; width: 88px; height: 88px; font-size: 2rem; border-width: 3px; }
+.vista-coleccion[data-vista="galeria"] .pz-identidad .pz-avatar { box-shadow: var(--sombra-tactil); }
+.vista-coleccion[data-vista="galeria"] .pz-identidad .pz-tecla { box-shadow: 0 6px 0 var(--tinta); }
+.vista-coleccion[data-vista="galeria"] .pz-estado { grid-column: 2; grid-row: 1; align-self: start; }
+.vista-coleccion[data-vista="galeria"] .pz-nombres { grid-column: 1 / -1; }
+.vista-coleccion[data-vista="galeria"] .pz-nombre { font-size: 1.3rem; }
 
+/* ---- Lista: tabla corta con detalle desplegable ----
+   En lista se ocultan las tarjetas y se muestra la tabla hermana. */
+.vista-tabla { display: none; }
+.vista-coleccion[data-vista="lista"] { display: none; }
+.vista-coleccion[data-vista="lista"] + .vista-tabla {
+    display: block; overflow-x: auto;
+    background: var(--superficie); border: 2px solid var(--tinta); border-radius: 16px; box-shadow: var(--sombra-tactil-alta);
+}
+.tabla-tarjetas { width: 100%; min-width: 780px; border-collapse: collapse; font-size: 0.86rem; }
+.tabla-tarjetas th {
+    text-align: left; font-size: 0.78rem; font-weight: 700; color: var(--texto-3);
+    padding: 0.75rem 0.85rem; background: var(--superficie-2); border-bottom: 2px solid var(--tinta); white-space: nowrap;
+}
+.tabla-tarjetas td { padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--borde); vertical-align: middle; white-space: nowrap; }
+.tabla-tarjetas .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla-tarjetas .pz-ahora { min-height: 0; }
+.fila-desplegable { cursor: pointer; }
+.fila-desplegable:hover > td, .fila-desplegable[aria-expanded="true"] > td { background: var(--acento-suave); }
+.fila-desplegable.is-apagada > td { background: var(--superficie-2); }
+.fila-desplegable.is-apagada:hover > td, .fila-desplegable.is-apagada[aria-expanded="true"] > td { background: var(--acento-suave); }
+.fila-desplegable[aria-expanded="true"] > td { border-bottom-color: transparent; }
+.fila-id { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.fila-id .pz-avatar { width: 34px; height: 34px; font-size: 0.78rem; }
+.fila-id .pz-tecla { width: 38px; height: 38px; font-size: 0.95rem; box-shadow: 0 3px 0 var(--tinta); }
+.fila-id .pz-nombre { font-size: 0.95rem; }
+.fila-id .pz-sub { max-width: 230px; }
+.fila-abrir { border: 0; background: none; padding: 0.2rem; border-radius: 6px; color: var(--texto-3); cursor: pointer; display: inline-grid; place-items: center; }
+.fila-abrir svg { transition: transform 0.15s ease; }
+.fila-abrir[aria-expanded="true"] svg { transform: rotate(90deg); }
+.fila-abrir:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.fila-segunda { display: block; font-size: 0.78rem; color: var(--texto-3); }
+.fila-cajero { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; }
+/* Botones siempre a la vista: la última columna se queda fija si la tabla se desliza */
+.fila-acciones, .tabla-tarjetas th:last-child { position: sticky; right: 0; width: 1%; background: var(--superficie); box-shadow: -8px 0 8px -8px var(--tinta); }
+.tabla-tarjetas th:last-child { background: var(--superficie-2); }
+.fila-acciones .pz-acciones { justify-content: flex-end; }
+.fila-acciones .pz-principal { flex: none; }
+/* Detalle: datos en rejilla de 3 × 2 y, a la derecha, lo que necesita atención */
+.fila-detalle > td { white-space: normal; background: var(--acento-suave); padding: 0.15rem 0.85rem 0.9rem 3.4rem; }
+.det-rejilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(240px, 1.3fr); gap: 0.75rem 1.25rem; align-items: start; }
+.det-dato { display: grid; gap: 0.25rem; align-content: start; min-width: 0; font-size: 0.86rem; }
+.det-etq { font-size: 0.76rem; font-weight: 700; color: var(--texto-3); }
+.det-largo { overflow-wrap: anywhere; }
+.det-lateral { grid-column: 4; grid-row: 1 / span 2; }
+.det-dato .pz-ahora { min-height: 0; }
+.det-dato .pz-linea { white-space: normal; }
+.det-acciones { flex-wrap: wrap; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--acento-borde); }
+.det-acciones .pz-principal { flex: none; }
+@media (max-width: 760px) {
+    .det-rejilla { grid-template-columns: 1fr 1fr; }
+    .det-lateral { grid-column: 1 / -1; grid-row: auto; }
+    .fila-detalle > td { padding-left: 0.85rem; }
+}
+/* Celular: la tabla deja nombre y "Ahora"; lo demás y las acciones (con su nombre) van en el detalle */
+@media (max-width: 700px) {
+    .tabla-tarjetas { min-width: 0; }
+    .tabla-tarjetas thead th:nth-child(2),
+    .fila-desplegable > td:nth-child(2),
+    .tabla-tarjetas thead th:nth-child(n+4),
+    .fila-desplegable > td:nth-child(n+4) { display: none; }
+    .fila-desplegable > td:first-child, .fila-desplegable > td:nth-child(3) { white-space: normal; }
+    .fila-id .pz-sub { max-width: 36vw; }
+    .det-rejilla { grid-template-columns: 1fr; }
+}
 
-/* ---- Tarjeta de cajero en las vistas ----
-   La tarjeta agrupa sus piezas en bloques (cabecera, datos, ventas del mes,
-   acciones), así que la lista acomoda bloques en vez de piezas sueltas. */
-.vista-coleccion[data-vista="lista"] > .cajero-card {
-    grid-template-columns: minmax(220px, 1.3fr) minmax(240px, 1.6fr) minmax(190px, 1fr) auto;
-    grid-template-areas: "cabecera datos stats acciones";
-    column-gap: 1.25rem;
-}
-.vista-coleccion[data-vista="lista"] .cajero-cabecera { grid-area: cabecera; min-width: 0; }
-.vista-coleccion[data-vista="lista"] .cajero-datos { grid-area: datos; }
-.vista-coleccion[data-vista="lista"] .cajero-stats {
-    grid-area: stats; margin: 0; padding: 0.5rem 0.75rem; width: auto;
-    display: flex; flex-direction: column; gap: 0.2rem; border: 0;
-}
-.vista-coleccion[data-vista="lista"] .cajero-actions { grid-area: acciones; margin: 0; width: auto; flex-wrap: nowrap; }
-@media (max-width: 1100px) {
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-            "cabecera cabecera"
-            "datos    stats"
-            "acciones acciones";
-        row-gap: 0.6rem;
-    }
-}
-@media (max-width: 640px) {
-    .vista-coleccion[data-vista="lista"] > .cajero-card {
-        grid-template-columns: 1fr;
-        grid-template-areas: "cabecera" "datos" "stats" "acciones";
-    }
+@media (prefers-reduced-motion: reduce) {
+    .tarjeta, .pz-ahora.is-en-turno .pz-punto { animation: none; }
+    .fila-abrir svg, .pz-cifras { transition: none; }
 }
 
 
@@ -789,7 +437,6 @@
     color: var(--acento-texto); font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
 }
 .enlace-boton:hover { color: var(--acento-texto-fuerte); }
-.cajero-aviso-pendiente { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .texto-peligro  { color: var(--peligro-texto); }
 .modal-ayuda    { color: var(--texto-3); font-size: 0.9rem; margin-bottom: 1rem; }
 

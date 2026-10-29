@@ -176,6 +176,7 @@ function _prepararModalCajero(modo) {
         const el = document.getElementById(id);
         if (el) el.hidden = !nuevo;
     });
+    _bloquearCorreo(form, false);
 
     const submit = form.querySelector('[type="submit"]');
     if (submit) submit.disabled = false;
@@ -192,11 +193,24 @@ function abrirModalNuevoCajero() {
     form.querySelector('[name="nombre"]').focus();
 }
 
+/**
+ * Correo de solo lectura si el cajero ya lo confirmó al aceptar el aviso.
+ * Es solo para que se entienda: el servidor rechaza el cambio de todos modos.
+ */
+function _bloquearCorreo(form, bloqueado) {
+    const campo = form.querySelector('[name="email"]');
+    campo.readOnly = bloqueado;
+    campo.setAttribute('aria-describedby', bloqueado ? 'ayudaCorreoBloqueado' : '');
+    const ayuda = document.getElementById('ayudaCorreoBloqueado');
+    if (ayuda) ayuda.hidden = !bloqueado;
+}
+
 function abrirModalEditarCajero(btn) {
     const form = _prepararModalCajero('editar');
     form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
     form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
     form.querySelector('[name="email"]').value = btn.dataset.email;
+    _bloquearCorreo(form, btn.dataset.correoBloqueado === '1');
     form.querySelector('[name="estado"]').value = btn.dataset.estado;
     form.dataset.estadoOriginal = btn.dataset.estado;
     _actualizarAyudaEstado();
@@ -349,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFiltros();
     initCustomSelects();
     initVistas();
+    initFilasDesplegables();
 
     // Productos — filtros y solicitudes
     initFiltrosProductos();

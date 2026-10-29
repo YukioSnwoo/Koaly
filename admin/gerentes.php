@@ -7,6 +7,7 @@ require 'header.php';
 <?php
 require_once __DIR__ . '/sucursal_gerente.php';
 require_once __DIR__ . '/profanity_filter.php';
+require_once __DIR__ . '/reglas_nombre.php';
 
 $error = '';
 
@@ -48,6 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($nombre === '') {
                 throw new RuntimeException(t('ger.error_nombre'));
+            }
+            try {
+                $nombre = normalizarNombrePersona($nombre);
+            } catch (NombreInvalido $e) {
+                throw new RuntimeException(t('error.nombre_' . $e->regla));
             }
             try {
                 rechazarSiProfano($nombre);
@@ -101,6 +107,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($nombre === '') {
                 throw new RuntimeException(t('ger.error_nombre'));
+            }
+            try {
+                $nombre = normalizarNombrePersona($nombre);
+            } catch (NombreInvalido $e) {
+                throw new RuntimeException(t('error.nombre_' . $e->regla));
+            }
+            try {
+                rechazarSiProfano($nombre);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.profano'));
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException(t('ger.error_email'));
