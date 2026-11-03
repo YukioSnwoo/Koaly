@@ -214,6 +214,43 @@ try {
     error_log('gerentes.php historial: ' . $e->getMessage());
 }
 
+// Empleados (cajeros) de cada gerente: los de su misma sucursal, con la caja que les asignó.
+// Una sola consulta; se indexa por id del gerente para el modal de cada fila.
+$empleados = [];
+try {
+    $porSucursal = [];
+    foreach ($gerentes as $g) {
+        if ($g['id_sucursal'] !== null) {
+            $porSucursal[(int) $g['id_sucursal']] = (int) $g['id_usuario'];
+        }
+    }
+    $filasEmp = $pdo->query("
+        SELECT u.id_usuario, u.nombre, u.email, u.estado, u.id_sucursal,
+               c.numero_caja, c.nombre AS caja_nombre
+        FROM Usuarios u
+        LEFT JOIN Cajas c ON c.id_cajero_asignado = u.id_usuario AND c.id_sucursal = u.id_sucursal
+        WHERE u.id_rol = 3 AND u.id_sucursal IS NOT NULL
+        ORDER BY u.nombre, c.numero_caja
+    ")->fetchAll();
+    foreach ($filasEmp as $emp) {
+        $idGerente = $porSucursal[(int) $emp['id_sucursal']] ?? null;
+        if ($idGerente === null) {
+            continue;
+        }
+        $caja = $emp['numero_caja'] !== null
+            ? trim($emp['numero_caja'] . ($emp['caja_nombre'] ? ' · ' . $emp['caja_nombre'] : ''))
+            : null;
+        $empleados[$idGerente][] = [
+            'nombre' => $emp['nombre'],
+            'email'  => $emp['email'],
+            'estado' => $emp['estado'],
+            'caja'   => $caja,
+        ];
+    }
+} catch (PDOException $e) {
+    error_log('gerentes.php empleados: ' . $e->getMessage());
+}
+
 // Sucursales sin gerente (para el select de asignar). Incluye las inactivas:
 // una sucursal sin gerente está inactiva y se activa al asignarle uno.
 $sucursales = $pdo->query("
@@ -281,6 +318,11 @@ $todasSucursales = $pdo->query("
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
                                 data-sucursal="<?= $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : '' ?>"><i class="ti ti-arrows-exchange"></i></button>
+                            <button class="icon-btn" title="<?= e(t('ger.empleados')) ?>" onclick="verEmpleados(this)"
+                                data-id="<?= (int) $g['id_usuario'] ?>"
+                                data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
+                                data-sucursal="<?= htmlspecialchars((string) ($g['sucursal_nombre'] ?? ''), ENT_QUOTES) ?>"
+                                <?= $g['id_sucursal'] === null ? 'disabled' : '' ?>><i class="ti ti-users-group"></i></button>
                             <button class="icon-btn" title="<?= e(t('ger.historial')) ?>" onclick="verHistorial(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"><i class="ti ti-history"></i></button>
@@ -307,6 +349,24 @@ $todasSucursales = $pdo->query("
         <div id="historialLista" style="overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
         <div style="display:flex;justify-content:flex-end;margin-top:1.25rem">
             <button type="button" class="btn btn--ghost" onclick="closeModal('modalHistorial')"><?= e(t('comun.cerrar')) ?></button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: empleados (cajeros) del gerente, solo lectura, como árbol de archivos -->
+<div id="modalEmpleados" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="empleadosTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
+    <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:520px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column">
+        <div class="arbol-cabecera">
+            <div>
+                <h2 id="empleadosTitulo" style="font-size:16px;font-weight:500;margin:0 0 .25rem"><?= e(t('ger.empleados')) ?></h2>
+                <p id="empleadosNombre" style="font-size:13px;color:var(--text-secondary);margin:0"></p>
+            </div>
+            <button type="button" class="btn btn--ghost btn--sm" id="empleadosAlternar"><?= e(t('ger.contraer_todo')) ?></button>
+        </div>
+        <div id="empleadosLista" class="arbol-contenedor"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1.25rem">
+            <button type="button" class="btn btn--ghost" onclick="closeModal('modalEmpleados')"><?= e(t('comun.cerrar')) ?></button>
         </div>
     </div>
 </div>
@@ -600,6 +660,115 @@ function verHistorial(btn) {
 
     openModal('modalHistorial');
 }
+
+const EMPLEADOS_GERENTE = <?= json_encode($empleados, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+
+// Árbol de archivos: gerente > sucursal > empleado > (correo, caja). Los datos del servidor
+// entran solo con textContent; el innerHTML se usa únicamente para los SVG constantes.
+const ICONOS_ARBOL = {
+    chev: '<path d="M9 6l6 6-6 6"/>',
+    carpeta: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    carpetaAbierta: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v1"/><path d="M3 7v10a2 2 0 0 0 2 2h12.5a2 2 0 0 0 1.9-1.4L21.8 12a1.5 1.5 0 0 0-1.4-2H7.6a2 2 0 0 0-1.9 1.4L3 19"/>',
+    persona: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+    correo: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    caja: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M7 10V5h10v5"/><path d="M8 14h2M12 14h4M8 17h8"/>'
+};
+
+function arbolIcono(clave, clase) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', clase);
+    svg.innerHTML = ICONOS_ARBOL[clave];
+    return svg;
+}
+
+function arbolTexto(texto, modificador) {
+    const span = document.createElement('span');
+    span.className = 'nodo__txt' + (modificador ? ' nodo__txt--' + modificador : '');
+    span.textContent = texto;
+    return span;
+}
+
+// Rama desplegable. iconoFijo reemplaza a la carpeta cerrada/abierta.
+function arbolRama({ etiqueta, iconoFijo, extra, hijos }) {
+    const li = document.createElement('li');
+    const detalles = document.createElement('details');
+    const resumen = document.createElement('summary');
+    detalles.open = true;
+    resumen.className = 'nodo';
+    resumen.append(arbolIcono('chev', 'chev'));
+    if (iconoFijo) {
+        resumen.append(arbolIcono(iconoFijo, 'ico ico--carpeta'));
+    } else {
+        resumen.append(arbolIcono('carpeta', 'ico ico--carpeta ico--cerrada'), arbolIcono('carpetaAbierta', 'ico ico--carpeta ico--abierta'));
+    }
+    resumen.append(arbolTexto(etiqueta, 'fuerte'));
+    (extra || []).forEach(x => resumen.append(x));
+    const ul = document.createElement('ul');
+    hijos.forEach(h => ul.append(h));
+    detalles.append(resumen, ul);
+    li.append(detalles);
+    return li;
+}
+
+function arbolHoja(icono, texto, modificador) {
+    const li = document.createElement('li');
+    const nodo = document.createElement('div');
+    nodo.className = 'nodo';
+    const hueco = document.createElement('span');
+    hueco.className = 'sin-chev';
+    nodo.append(hueco, arbolIcono(icono, 'ico ico--archivo'), arbolTexto(texto, modificador || 'dato'));
+    li.append(nodo);
+    return li;
+}
+
+function verEmpleados(btn) {
+    const nombreGerente = btn.dataset.nombre;
+    const sucursal = btn.dataset.sucursal;
+    const registros = EMPLEADOS_GERENTE[btn.dataset.id] || [];
+
+    document.getElementById('empleadosNombre').textContent = nombreGerente + ' · ' + tj('empleados_sucursal', { sucursal });
+
+    const nodosEmpleado = registros.map(r => {
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + (BADGES_ESTADO[r.estado] || 'badge--warning');
+        badge.textContent = NOMBRES_ESTADO[r.estado] || r.estado;
+        return arbolRama({
+            etiqueta: r.nombre, iconoFijo: 'persona', extra: [badge],
+            hijos: [
+                arbolHoja('correo', r.email),
+                r.caja ? arbolHoja('caja', tj('empleados_caja', { caja: r.caja })) : arbolHoja('caja', tj('empleados_sin_caja'), 'vacio')
+            ]
+        });
+    });
+    if (nodosEmpleado.length === 0) {
+        nodosEmpleado.push(arbolHoja('persona', tj('empleados_vacio'), 'vacio'));
+    }
+
+    const conteo = document.createElement('span');
+    conteo.className = 'conteo';
+    conteo.textContent = tj(registros.length === 1 ? 'empleados_conteo_uno' : 'empleados_conteo', { n: registros.length });
+
+    const raiz = document.createElement('ul');
+    raiz.className = 'arbol';
+    raiz.setAttribute('aria-label', tj('empleados_de', { gerente: nombreGerente }));
+    raiz.append(arbolRama({
+        etiqueta: nombreGerente, iconoFijo: 'persona',
+        hijos: [arbolRama({ etiqueta: tj('empleados_sucursal', { sucursal }), extra: [conteo], hijos: nodosEmpleado })]
+    }));
+
+    document.getElementById('empleadosLista').replaceChildren(raiz);
+    document.getElementById('empleadosAlternar').textContent = tj('contraer_todo');
+    openModal('modalEmpleados');
+}
+
+// Contraer/expandir solo los nodos de los empleados: la raíz y la sucursal se quedan abiertas.
+document.getElementById('empleadosAlternar').addEventListener('click', e => {
+    const abrir = e.currentTarget.textContent === tj('expandir_todo');
+    document.querySelectorAll('#empleadosLista details').forEach((d, i) => { if (i >= 2) d.open = abrir; });
+    e.currentTarget.textContent = tj(abrir ? 'contraer_todo' : 'expandir_todo');
+});
 
 function asignarSucursal(btn) {
     const form = document.getElementById('formAsignarSucursal');
