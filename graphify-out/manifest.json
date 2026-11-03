@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "admin/gerentes.php": {
-    "mtime": 1793203039.8821738,
-    "seen": 1793203330.650982,
-    "ast_hash": "5f9b859a13bef9417f540c432673d22a",
+    "mtime": 1793721768.799137,
+    "seen": 1793722038.9902725,
+    "ast_hash": "ff031ce272973f6a15be28f36442dbb7",
     "semantic_hash": ""
   },
   "admin/header.php": {
@@ -54,15 +54,15 @@
     "semantic_hash": ""
   },
   "admin/lang/en.php": {
-    "mtime": 1793203039.8821738,
-    "seen": 1793203330.650982,
-    "ast_hash": "ca066799e8df7bdac6a3c627e40cde11",
+    "mtime": 1793721768.799137,
+    "seen": 1793722038.9902725,
+    "ast_hash": "f5e71d1af4c6ee92f8d8e35c91a0b73a",
     "semantic_hash": ""
   },
   "admin/lang/es.php": {
-    "mtime": 1793203039.8821738,
-    "seen": 1793203330.650982,
-    "ast_hash": "fc3f9ccd321aaade5d19f7935648e6a4",
+    "mtime": 1793721768.799137,
+    "seen": 1793722038.9902725,
+    "ast_hash": "560dfc86facb5b39634d65c549ae1180",
     "semantic_hash": ""
   },
   "admin/panel.php": {
@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "admin/profanity_filter.php": {
-    "mtime": 1792462197.7899053,
-    "seen": 1793203330.650982,
-    "ast_hash": "7368a86cb06d612df59f5ecf214385c9",
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "1ee8d7c42ecd4d5b79ef4f1f497cb09a",
     "semantic_hash": ""
   },
   "admin/reportes.php": {
@@ -210,15 +210,15 @@
     "semantic_hash": ""
   },
   "gerente/cajas.php": {
-    "mtime": 1793203039.9035766,
-    "seen": 1793203330.650982,
-    "ast_hash": "4de3a6789a80e213c03b3123ed1d083b",
+    "mtime": 1793721768.8457592,
+    "seen": 1793722038.9902725,
+    "ast_hash": "e0561a4448a695a212db891cb68518fc",
     "semantic_hash": ""
   },
   "gerente/cajeros.php": {
-    "mtime": 1793203039.9102216,
-    "seen": 1793203330.650982,
-    "ast_hash": "f61c7e54f21e606e104a271de1e5aad7",
+    "mtime": 1793721768.84679,
+    "seen": 1793722038.9902725,
+    "ast_hash": "0b8d151754a43ef57430d6fad4efd16d",
     "semantic_hash": ""
   },
   "gerente/cortes.php": {
@@ -294,15 +294,15 @@
     "semantic_hash": ""
   },
   "gerente/includes/turnos.php": {
-    "mtime": 1792533077.5881848,
-    "seen": 1793203330.650982,
-    "ast_hash": "b65977ad587d13be88d7674df8b22c26",
+    "mtime": 1793721768.8514588,
+    "seen": 1793722038.9902725,
+    "ast_hash": "a697fe02bed84a6a7c5495cfdee12b57",
     "semantic_hash": ""
   },
   "gerente/includes/vistas.php": {
-    "mtime": 1792533077.5881848,
-    "seen": 1793203330.650982,
-    "ast_hash": "c4b088f3d7416b895dd703f9ebaf3899",
+    "mtime": 1793721768.8530025,
+    "seen": 1793722038.9902725,
+    "ast_hash": "bf49b40b51e21e03015e82dee1e3173d",
     "semantic_hash": ""
   },
   "gerente/index.php": {
@@ -312,9 +312,9 @@
     "semantic_hash": ""
   },
   "gerente/js/componentes.js": {
-    "mtime": 1793203039.9191444,
-    "seen": 1793203330.650982,
-    "ast_hash": "76effa55a8c97036bd511bcc2b857b08",
+    "mtime": 1793721768.8545187,
+    "seen": 1793722038.9902725,
+    "ast_hash": "2fd8499b9144b6607bcffc0bf1c61b86",
     "semantic_hash": ""
   },
   "gerente/js/core.js": {
@@ -324,27 +324,27 @@
     "semantic_hash": ""
   },
   "gerente/js/paginas.js": {
-    "mtime": 1793203039.9191444,
-    "seen": 1793203330.650982,
-    "ast_hash": "7add60bef1b9b74c3dac4d115bb65c40",
+    "mtime": 1793721768.8545187,
+    "seen": 1793722038.9902725,
+    "ast_hash": "86c4f27f39728d9d19122ff1d74fba6c",
     "semantic_hash": ""
   },
   "gerente/lang/en.php": {
-    "mtime": 1793203039.9191444,
-    "seen": 1793203330.650982,
-    "ast_hash": "8d78ad1a17ecf2da71cd086181943ec4",
+    "mtime": 1793721768.8570857,
+    "seen": 1793722038.9902725,
+    "ast_hash": "eb9e40f7631b9c45359a82a7917f9797",
     "semantic_hash": ""
   },
   "gerente/lang/es.php": {
-    "mtime": 1793203039.9275846,
-    "seen": 1793203330.650982,
-    "ast_hash": "483148bfdd8dc9ac6392132785dc6921",
+    "mtime": 1793721768.8570857,
+    "seen": 1793722038.9902725,
+    "ast_hash": "747a993f11d9ac34a277bf24c5d07247",
     "semantic_hash": ""
   },
   "gerente/lang/turnos.php": {
-    "mtime": 1793203039.9282563,
-    "seen": 1793203330.650982,
-    "ast_hash": "e4052e59091697ad6820423351a99a48",
+    "mtime": 1793721768.8570857,
+    "seen": 1793722038.9902725,
+    "ast_hash": "2d540791ee9700b4b4a780621b2e9774",
     "semantic_hash": ""
   },
   "gerente/movimientos.php": {
@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "perfil/guardar.php": {
-    "mtime": 1793203039.9387937,
-    "seen": 1793203330.650982,
-    "ast_hash": "3e5bd469860ec1a5eebb6a0091253bae",
+    "mtime": 1793721768.8570857,
+    "seen": 1793722039.0050273,
+    "ast_hash": "fdcfb5aa3c550302a43ff4fc4f292931",
     "semantic_hash": ""
   },
   "perfil/notificaciones.php": {
@@ -462,21 +462,21 @@
     "semantic_hash": ""
   },
   "perfil/textos.php": {
-    "mtime": 1793203039.9475856,
-    "seen": 1793203330.650982,
-    "ast_hash": "2e5b83d8a05a625b25f5cbd5191fa117",
+    "mtime": 1793721768.8624547,
+    "seen": 1793722039.0056953,
+    "ast_hash": "0c369cfc410b5e3dd512c00cad7f9fac",
     "semantic_hash": ""
   },
   "privacidad/aviso.php": {
-    "mtime": 1793203039.9475856,
-    "seen": 1793203330.650982,
-    "ast_hash": "ab1d529ec60dc4890034abf62321a785",
+    "mtime": 1793721768.8624547,
+    "seen": 1793722039.0056953,
+    "ast_hash": "1f76bc9134bd699037f4dd008b92ebf8",
     "semantic_hash": ""
   },
   "privacidad/index.php": {
-    "mtime": 1793203039.9475856,
-    "seen": 1793203330.650982,
-    "ast_hash": "91e575d5ca2e2667e6f4350d956aa93a",
+    "mtime": 1793721768.8624547,
+    "seen": 1793722039.0056953,
+    "ast_hash": "ba110a1e60c2c790fc32b5713d787ca8",
     "semantic_hash": ""
   },
   "recursos_humanos/asistencia.php": {
@@ -693,6 +693,246 @@
     "mtime": 1792004835.419698,
     "seen": 1793203330.650982,
     "ast_hash": "56f0fabb840a3cd19c9bf92655179e19",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/arranque.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "7c84c46d05a3a184c73ebb1636a645f1",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/config/blasp.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "b90699abbb8e966d2dc062f3aca8f200",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/config/languages/english.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "43b5799e4c85095cbfc8e08a79ceff11",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/config/languages/spanish.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "32e694728bddab744d5b05fb1c954200",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/koaly/languages/english.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "a4df98dd77935f9d76c3874cc99684c4",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/koaly/languages/spanish.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "ad3897ab87741d392a728d3c06b9d028",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/koaly/pegadas.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "1b4621d3cff97e8723d5c469c86db442",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/koaly/permitidas.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "1e39a5faf046eaa1b2fab59f355403dd",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Analyzer.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "cf9d7fa6eed4f24ff3d1530b5c1ab25c",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Contracts/DriverInterface.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "ba562e38fc21fdc3d9e4d5fb01e39e9c",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Contracts/MaskStrategyInterface.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "faa40ddefcbc0fa8b729020e792e6a73",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Dictionary.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "1fd77eb1e621dd21679a235519492ef1",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Masking/CallbackMask.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "5269c852f30d47035cbb0efabe9ea2bb",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Masking/CharacterMask.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "ec6749c87ef4150d34f7a5edecd0387f",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Masking/GrawlixMask.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "fc500f0e696c3dc78d37ea7850cbd11e",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/MatchedWord.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "9895613467357f6c54148991850b60c8",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Matchers/CompoundWordDetector.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "b1f0f3fb9c141d2491617b3dd00095a3",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Matchers/FalsePositiveFilter.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "17d49c04ef8aa4721ff5b131d2e7f07d",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Matchers/PhoneticMatcher.php": {
+    "mtime": 1793721768.8148613,
+    "seen": 1793722038.9902725,
+    "ast_hash": "64f1fe59409a06a93a2fcaf4fe831138",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Matchers/RegexMatcher.php": {
+    "mtime": 1793721768.8309143,
+    "seen": 1793722038.9902725,
+    "ast_hash": "80492d1e1e0b29700206749aa1bbf279",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Normalizers/EnglishNormalizer.php": {
+    "mtime": 1793721768.8309143,
+    "seen": 1793722038.9902725,
+    "ast_hash": "f73cba79d38fe1967bbcffb6d9b2464e",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Normalizers/FrenchNormalizer.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "f79ef0f275cdb1a739663dc3e10e386d",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Normalizers/GermanNormalizer.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "e8a68afb4d9e6fd834febd75828c2774",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Normalizers/NullNormalizer.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "ff1f4b5c7e33680cc205834f6f608b87",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Normalizers/SpanishNormalizer.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "5cf904510fa865f94006208e391d8ffc",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Normalizers/StringNormalizer.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "16293961353f6878ad42496f183a4591",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Result.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "19fe38fc5a4bc6b68d6f74635f0f53b0",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Core/Score.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "3f343307792d4599148ad4fcc0ba5579",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Drivers/PatternDriver.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "6c6956f06febd3386bb626f4fe14f5d3",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Drivers/PhoneticDriver.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "5fc8a399e528fbf6c7978b63cbf67a1f",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Drivers/PipelineDriver.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "ec2fd6121e9f4db754ec453c29cb9345",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Drivers/RegexDriver.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "cf6be9cdab35d1b225ae49319230e369",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/src/Enums/Severity.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "f9d32cefbe67553a3049768911ea40db",
+    "semantic_hash": ""
+  },
+  "admin/reglas_nombre.php": {
+    "mtime": 1793721768.8332477,
+    "seen": 1793722038.9902725,
+    "ast_hash": "6698aff128570f9a29920ae7f8b7719e",
+    "semantic_hash": ""
+  },
+  "privacidad/aviso_en.php": {
+    "mtime": 1793721768.8624547,
+    "seen": 1793722039.0056953,
+    "ast_hash": "da9792cf42344cb40b70b00d4db77391",
+    "semantic_hash": ""
+  },
+  "privacidad/lang/en.php": {
+    "mtime": 1793721768.8624547,
+    "seen": 1793722039.0056953,
+    "ast_hash": "8d00f5fc84047865f5bf4170ece38d8e",
+    "semantic_hash": ""
+  },
+  "privacidad/lang/es.php": {
+    "mtime": 1793721768.8673358,
+    "seen": 1793722039.0056953,
+    "ast_hash": "6b40abb48f400d4b2503bc9244eef0e4",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/LICENSE.md": {
+    "mtime": 1793721768.799137,
+    "seen": 1793722039.0056953,
+    "ast_hash": "a21730c83449316d55c264f6fc2805eb",
+    "semantic_hash": ""
+  },
+  "admin/lib/blasp/ORIGEN.md": {
+    "mtime": 1793721768.799137,
+    "seen": 1793722039.0056953,
+    "ast_hash": "332ddceb2633e765aff0d52068520c48",
+    "semantic_hash": ""
+  },
+  "prompt-arbol-empleados-koaly.md": {
+    "mtime": 1793210169.4871192,
+    "seen": 1793722039.0056953,
+    "ast_hash": "f086aeb5e64a580f2bd59074095d703b",
     "semantic_hash": ""
   }
 }
