@@ -343,7 +343,8 @@
    En lista se ocultan las tarjetas y se muestra la tabla hermana. */
 .vista-tabla { display: none; }
 .vista-coleccion[data-vista="lista"] { display: none; }
-.vista-coleccion[data-vista="lista"] + .vista-tabla {
+.vista-coleccion[data-vista="lista"] + .vista-tabla,
+.vista-tabla.corte-lista {
     display: block; overflow-x: auto;
     background: var(--superficie); border: 2px solid var(--tinta); border-radius: 16px; box-shadow: var(--sombra-tactil-alta);
 }
@@ -403,6 +404,17 @@
     .fila-id .pz-sub { max-width: 36vw; }
     .det-rejilla { grid-template-columns: 1fr; }
 }
+
+/* Cortes de caja: solo la lista (siempre a la vista); los que tienen
+   diferencia llevan una franja roja a la izquierda */
+.corte-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.corte-conteo {
+    display: inline-grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 0.35rem; margin-left: 0.3rem;
+    border-radius: 999px; background: var(--acento); color: #fff; font-size: 0.74rem; font-weight: 700;
+}
+.segmentado .is-activo .corte-conteo { background: var(--superficie); color: var(--acento-texto); }
+.fila-desplegable.corte-revisar > td:first-child { box-shadow: inset 4px 0 0 var(--peligro); }
+.fila-desplegable.corte-revisar > td { background: var(--peligro-suave); }
 
 @media (prefers-reduced-motion: reduce) {
     .tarjeta, .pz-ahora.is-en-turno .pz-punto { animation: none; }

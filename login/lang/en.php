@@ -13,6 +13,8 @@ return [
     'contrasena.ocultar' => 'Hide password',
 
     // Log in
+    'ticket.tienda' => 'Koaly · Point of sale',
+    'ticket.titulo' => 'Sign-in ticket',
     'login.titulo' => 'Log in',
     'login.subtitulo' => 'Welcome back to Koaly',
     'campo.correo' => 'Email',
@@ -22,10 +24,9 @@ return [
     'login.ingresar' => 'Log in',
     'login.olvide' => 'I forgot my password',
     'login.acceso_rapido' => 'Log in as a test user (beta)',
-    'login.acceso_admin' => '1 · Admin',
-    'login.acceso_gerente' => '2 · Manager',
-    'login.acceso_cajero' => '3 · Cashier',
-    'login.acceso_rrhh' => '4 · HR',
+    'login.acceso_admin' => 'Admin',
+    'login.acceso_gerente' => 'Manager',
+    'login.acceso_cajero' => 'Cashier',
 
     // Left panel (on phones, the band at the top)
     'portada.lema' => 'Log in to open your register, check stock or see your branch’s sales.',

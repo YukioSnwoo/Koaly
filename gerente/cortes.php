@@ -1,13 +1,14 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/turnos.php';
+require_once __DIR__ . '/includes/vistas.php';
 
 /*
  * Cortes de caja de la sucursal (Turnos_Caja, sql/008 y sql/012).
  * Cada cajero cierra su caja con un corte; aquí el gerente ve lo esperado, lo
  * contado y la diferencia, y confirma que recibió el efectivo: el retiro final
  * más los retiros parciales que el cajero metió a la tómbola durante el turno.
- * De las cajas abiertas ve el arqueo al momento (lo que debería haber en caja).
+ * La página es solo la lista: una fila corta por corte y, al tocarla, el detalle.
  */
 
 // Lo que el cajero entrega al cerrar: el retiro final más lo que ya está en la tómbola
@@ -96,37 +97,17 @@ if (!isset($filtros[$ver])) {
     $ver = 'pendientes';
 }
 
+// Cuántos hay en cada pestaña
 $stmt = $pdo->prepare("
     SELECT
-        COALESCE(SUM(t.estado_revision = 'Pendiente'), 0)                                   AS pendientes,
-        COALESCE(SUM(IF(t.estado_revision = 'Pendiente', " . SQL_TOTAL_ENTREGA . ", 0)), 0) AS por_recibir,
-        COALESCE(SUM(t.estado = 'Cerrado' AND t.requiere_revision = 1), 0)                   AS diferencias,
-        COALESCE(SUM(t.estado = 'Abierto'), 0)                                              AS abiertas
+        COALESCE(SUM(t.estado_revision = 'Pendiente'), 0) AS pendientes,
+        COALESCE(SUM(t.requiere_revision = 1), 0)          AS diferencias
     FROM Turnos_Caja t
-    WHERE t.id_sucursal = ?
+    WHERE t.id_sucursal = ? AND t.estado = 'Cerrado'
 ");
 $stmt->execute([$idSucursalGerente]);
 $resumen = $stmt->fetch();
-
-// Cajas abiertas ahora, con su arqueo: apertura + efectivo de las ventas − retiros parciales
-$stmt = $pdo->prepare("
-    SELECT t.id_turno, t.fecha_apertura, t.efectivo_apertura, t.diferencia_apertura,
-           c.numero_caja, c.nombre AS caja_nombre, c.limite_efectivo, u.nombre AS cajero,
-           (SELECT COALESCE(SUM(v.monto_efectivo), 0) FROM Ventas v WHERE v.id_turno = t.id_turno) AS ventas_efectivo,
-           (SELECT COUNT(*) FROM Retiros_Caja r WHERE r.id_turno = t.id_turno) AS num_retiros,
-           (SELECT COALESCE(SUM(r.monto), 0) FROM Retiros_Caja r WHERE r.id_turno = t.id_turno) AS retiros
-    FROM Turnos_Caja t
-    JOIN Cajas c ON c.id_caja = t.id_caja
-    LEFT JOIN Usuarios u ON u.id_usuario = t.id_cajero_apertura
-    WHERE t.id_sucursal = ? AND t.estado = 'Abierto'
-    ORDER BY c.numero_caja
-");
-$stmt->execute([$idSucursalGerente]);
-$abiertas = $stmt->fetchAll();
-foreach ($abiertas as &$a) {
-    $a['esperado'] = (float) $a['efectivo_apertura'] + (float) $a['ventas_efectivo'] - (float) $a['retiros'];
-}
-unset($a);
+$conteoFiltro = ['pendientes' => (int) $resumen['pendientes'], 'diferencias' => (int) $resumen['diferencias']];
 
 // Cortes (turnos cerrados)
 $stmt = $pdo->prepare("
@@ -149,16 +130,6 @@ $pageTitle    = t('turnos.cortes');
 require __DIR__ . '/header.php';
 ?>
 
-<style>
-    /* Solo para esta página */
-    .tabla-productos tr.corte-revisar td { background: var(--peligro-suave); }
-    .tabla-productos tr.corte-revisar td:first-child { box-shadow: inset 4px 0 0 var(--peligro); }
-    .corte-sub { display: block; font-size: 0.78rem; color: var(--texto-3); }
-    .corte-filtros { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
-    .corte-abiertas { margin-bottom: 1.5rem; }
-    .corte-abiertas h2 { font-size: 1rem; font-weight: 700; padding: 1rem 1.25rem 0; color: var(--texto); }
-</style>
-
 <div class="page-header">
     <div>
         <h1><?= e(t('turnos.cortes')) ?></h1>
@@ -173,162 +144,100 @@ require __DIR__ . '/header.php';
     <div class="alert alert-error"><?= e($error) ?></div>
 <?php endforeach; ?>
 
-<section class="kpi-grid">
-    <div class="kpi <?= (int) $resumen['pendientes'] > 0 ? 'kpi--warn' : 'kpi--ok' ?>">
-        <span class="kpi-label"><?= e(t('turnos.kpi_pendientes')) ?></span>
-        <span class="kpi-value"><?= numero((int) $resumen['pendientes']) ?></span>
-    </div>
-    <div class="kpi">
-        <span class="kpi-label"><?= e(t('turnos.kpi_por_recibir')) ?></span>
-        <span class="kpi-value"><?= dinero($resumen['por_recibir']) ?></span>
-        <span class="kpi-sub"><?= e(t('turnos.kpi_por_recibir_sub')) ?></span>
-    </div>
-    <div class="kpi <?= (int) $resumen['diferencias'] > 0 ? 'kpi--danger' : '' ?>">
-        <span class="kpi-label"><?= e(t('turnos.kpi_diferencias')) ?></span>
-        <span class="kpi-value <?= (int) $resumen['diferencias'] > 0 ? 'kpi-value--danger' : '' ?>"><?= numero((int) $resumen['diferencias']) ?></span>
-        <span class="kpi-sub"><?= e(t('turnos.kpi_diferencias_sub')) ?></span>
-    </div>
-    <div class="kpi">
-        <span class="kpi-label"><?= e(t('turnos.kpi_abiertas')) ?></span>
-        <span class="kpi-value"><?= numero((int) $resumen['abiertas']) ?></span>
-        <span class="kpi-sub"><?= e(t('turnos.kpi_abiertas_sub')) ?></span>
-    </div>
-</section>
-
-<?php if ($abiertas): ?>
-    <div class="panel corte-abiertas">
-        <h2><?= e(t('turnos.abiertas_titulo')) ?></h2>
-        <div class="tabla-scroll">
-            <table class="tabla-productos">
-                <thead>
-                    <tr>
-                        <th><?= e(t('turnos.col_caja')) ?></th>
-                        <th><?= e(t('turnos.col_cajero')) ?></th>
-                        <th><?= e(t('turnos.desde')) ?></th>
-                        <th class="num"><?= e(t('turnos.inicio_con')) ?></th>
-                        <th class="num"><?= e(t('turnos.col_ventas_efectivo')) ?></th>
-                        <th class="num"><?= e(t('turnos.col_retiros')) ?></th>
-                        <th class="num"><?= e(t('turnos.col_esperado_ahora')) ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($abiertas as $a): ?>
-                        <tr>
-                            <td><?= e($a['numero_caja']) ?><?= $a['caja_nombre'] ? ' · ' . e($a['caja_nombre']) : '' ?></td>
-                            <td><?= e($a['cajero'] ?? '—') ?></td>
-                            <td><?= e(fecha($a['fecha_apertura'])) ?></td>
-                            <td class="num">
-                                <?= dinero($a['efectivo_apertura']) ?>
-                                <?php if ((float) $a['diferencia_apertura'] != 0): ?>
-                                    <span class="corte-sub texto-peligro"><?= e(t('turnos.al_abrir', ['monto' => dineroConSigno($a['diferencia_apertura'])])) ?></span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="num"><?= dinero($a['ventas_efectivo']) ?></td>
-                            <td class="num">
-                                <?= dinero($a['retiros']) ?>
-                                <span class="corte-sub"><?= e(tn('turnos.n_retiros', (int) $a['num_retiros'])) ?></span>
-                            </td>
-                            <td class="num">
-                                <strong><?= dinero($a['esperado']) ?></strong>
-                                <?php if ($a['esperado'] > (float) $a['limite_efectivo']): ?>
-                                    <span class="corte-sub"><span class="badge badge-warning"><?= e(t('turnos.excedente')) ?></span></span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-<?php endif; ?>
-
 <div class="corte-filtros">
     <div class="segmentado" role="group" aria-label="<?= e(t('turnos.filtro_aria')) ?>">
         <?php foreach ($filtros as $clave => [$texto]): ?>
-            <a href="?ver=<?= $clave ?>" class="<?= $clave === $ver ? 'is-activo' : '' ?>" <?= $clave === $ver ? 'aria-current="true"' : '' ?>><?= e($texto) ?></a>
+            <a href="?ver=<?= $clave ?>" class="<?= $clave === $ver ? 'is-activo' : '' ?>" <?= $clave === $ver ? 'aria-current="true"' : '' ?>>
+                <?= e($texto) ?><?php if (!empty($conteoFiltro[$clave])): ?> <span class="corte-conteo"><?= numero($conteoFiltro[$clave]) ?></span><?php endif; ?>
+            </a>
         <?php endforeach; ?>
     </div>
 </div>
 
-<div class="panel">
-    <div class="tabla-scroll">
-        <table class="tabla-productos">
-            <thead>
-                <tr>
-                    <th><?= e(t('turnos.col_folio')) ?></th>
-                    <th><?= e(t('turnos.col_caja')) ?></th>
-                    <th><?= e(t('turnos.col_turno')) ?></th>
-                    <th class="num"><?= e(t('turnos.col_ventas')) ?></th>
-                    <th class="num"><?= e(t('turnos.col_efectivo')) ?></th>
-                    <th class="num"><?= e(t('turnos.col_tarjeta')) ?></th>
-                    <th><?= e(t('turnos.col_diferencia')) ?></th>
-                    <th class="num"><?= e(t('turnos.col_entrega')) ?></th>
-                    <th><?= e(t('turnos.col_revision')) ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!$cortes): ?>
-                    <tr><td colspan="9" class="empty-state"><?= e(t('turnos.sin_cortes')) ?></td></tr>
-                <?php endif; ?>
-                <?php foreach ($cortes as $c): ?>
-                    <tr class="<?= (int) $c['requiere_revision'] === 1 ? 'corte-revisar' : '' ?>">
-                        <td>#<?= (int) $c['id_turno'] ?></td>
-                        <td>
-                            <?= e($c['numero_caja']) ?><?= $c['caja_nombre'] ? ' · ' . e($c['caja_nombre']) : '' ?>
-                            <span class="corte-sub"><?= e($c['cajero'] ?? '—') ?></span>
-                        </td>
-                        <td>
-                            <?= e(fecha($c['fecha_apertura'])) ?>
-                            <span class="corte-sub">→ <?= e(fecha($c['fecha_cierre'])) ?></span>
-                        </td>
-                        <td class="num"><?= numero((int) $c['num_ventas']) ?></td>
-                        <td class="num">
-                            <?= dinero($c['efectivo_esperado']) ?>
-                            <span class="corte-sub"><?= dinero($c['efectivo_contado']) ?></span>
-                        </td>
-                        <td class="num">
-                            <?= dinero($c['teorico_tarjeta']) ?>
-                            <span class="corte-sub"><?= dinero($c['vouchers']) ?></span>
-                        </td>
-                        <td>
-                            <span class="badge <?= $badgeResultado[$c['resultado']] ?? 'badge-inactivo' ?>"><?= e(t('resultado.' . $c['resultado'])) ?></span>
-                            <span class="corte-sub"><?= e(dineroConSigno($c['diferencia'])) ?></span>
-                            <?php if ($c['diferencia_apertura'] !== null && (float) $c['diferencia_apertura'] != 0): ?>
-                                <span class="corte-sub texto-peligro"><?= e(t('turnos.al_abrir', ['monto' => dineroConSigno($c['diferencia_apertura'])])) ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="num">
-                            <strong><?= dinero($c['total_entrega']) ?></strong>
-                            <?php if ((float) $c['retiros_parciales'] > 0): ?>
-                                <span class="corte-sub"><?= e(t('turnos.incluye_retiros', ['monto' => dinero($c['retiros_parciales'])])) ?></span>
-                            <?php endif; ?>
-                            <span class="corte-sub"><?= e(t('turnos.col_dejado')) ?>: <?= dinero($c['efectivo_dejado']) ?></span>
-                        </td>
-                        <td>
-                            <?php if ($c['estado_revision'] === 'Pendiente'): ?>
-                                <button type="button" class="btn btn-primary btn-sm"
-                                    onclick="abrirRecibirCorte(this)"
-                                    data-id="<?= (int) $c['id_turno'] ?>"
-                                    data-monto="<?= e(number_format((float) $c['total_entrega'], 2, '.', '')) ?>"
-                                    data-cajero="<?= e($c['cajero'] ?? '—') ?>"
-                                    data-caja="<?= e($c['numero_caja']) ?>"
-                                ><?= e(t('turnos.recibir')) ?></button>
-                            <?php else: ?>
-                                <span class="badge badge-activo"><?= e(t('revision.Recibido')) ?></span>
-                                <span class="corte-sub"><?= e(t('turnos.recibido_por', ['gerente' => $c['gerente_revision'] ?? '—', 'fecha' => $c['fecha_revision'] ? fecha($c['fecha_revision']) : ''])) ?></span>
-                                <?php if (round((float) $c['monto_recibido'], 2) != round((float) $c['total_entrega'], 2)): ?>
-                                    <span class="corte-sub texto-peligro"><?= e(t('turnos.recibido_distinto', ['monto' => dinero($c['monto_recibido'])])) ?></span>
-                                <?php endif; ?>
-                                <?php if ($c['nota_revision']): ?>
-                                    <span class="corte-sub"><?= e($c['nota_revision']) ?></span>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
+<?php
+// Botón para recibir un corte pendiente (en la fila y en el detalle)
+$botonRecibir = fn (array $c): string => '<button type="button" class="btn btn-primary btn-sm" onclick="abrirRecibirCorte(this)"'
+    . ' data-id="' . (int) $c['id_turno'] . '"'
+    . ' data-monto="' . e(number_format((float) $c['total_entrega'], 2, '.', '')) . '"'
+    . ' data-cajero="' . e($c['cajero'] ?? '—') . '"'
+    . ' data-caja="' . e($c['numero_caja']) . '">' . e(t('turnos.recibir')) . '</button>';
+?>
+
+<div class="vista-tabla corte-lista">
+    <table class="tabla-tarjetas">
+        <thead><tr>
+            <th><?= e(t('turnos.col_corte')) ?></th>
+            <th><?= e(t('turnos.col_cierre')) ?></th>
+            <th><?= e(t('turnos.col_diferencia')) ?></th>
+            <th class="num"><?= e(t('turnos.col_entrega')) ?></th>
+            <th><?= e(t('turnos.col_revision')) ?></th>
+        </tr></thead>
+        <tbody>
+        <?php if (!$cortes): ?>
+            <tr><td colspan="5" class="empty-state"><?= e(t('turnos.sin_cortes')) ?></td></tr>
+        <?php endif; ?>
+        <?php foreach ($cortes as $c):
+            $pendiente = $c['estado_revision'] === 'Pendiente';
+            $revisar   = (int) $c['requiere_revision'] === 1;
+            $difAbrir  = $c['diferencia_apertura'] !== null && (float) $c['diferencia_apertura'] != 0;
+            $distinto  = !$pendiente && round((float) $c['monto_recibido'], 2) != round((float) $c['total_entrega'], 2);
+        ?>
+            <tr class="fila-desplegable<?= $revisar ? ' corte-revisar' : '' ?>" aria-expanded="false">
+                <td><div class="fila-id">
+                    <button type="button" class="fila-abrir" aria-expanded="false" aria-label="<?= e(t('turnos.ver_detalle', ['folio' => (int) $c['id_turno']])) ?>">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+                    </button>
+                    <div class="pz-tecla" aria-hidden="true"><?= e($c['numero_caja']) ?></div>
+                    <div class="pz-nombres">
+                        <span class="pz-nombre"><?= e($c['cajero'] ?? '—') ?></span>
+                        <span class="fila-segunda"><?= e(t('turnos.folio_caja', ['folio' => (int) $c['id_turno'], 'caja' => $c['numero_caja'] . ($c['caja_nombre'] ? ' · ' . $c['caja_nombre'] : '')])) ?></span>
+                    </div>
+                </div></td>
+                <td><?= e(fecha($c['fecha_cierre'])) ?><span class="fila-segunda"><?= e(tn('tarjeta.ventas', (int) $c['num_ventas'])) ?></span></td>
+                <td>
+                    <span class="badge <?= $badgeResultado[$c['resultado']] ?? 'badge-inactivo' ?>"><?= e(t('resultado.' . $c['resultado'])) ?></span>
+                    <span class="fila-segunda<?= $revisar ? ' texto-peligro' : '' ?>"><?= e(dineroConSigno($c['diferencia'])) ?></span>
+                </td>
+                <td class="num"><strong><?= dinero($c['total_entrega']) ?></strong></td>
+                <td class="fila-acciones">
+                    <?php if ($pendiente): ?>
+                        <?= $botonRecibir($c) ?>
+                    <?php else: ?>
+                        <span class="badge <?= $distinto ? 'badge-warning' : 'badge-activo' ?>"><?= e(t('revision.Recibido')) ?></span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <tr class="fila-detalle" hidden>
+                <td colspan="5">
+                    <div class="det-rejilla">
+                        <?= datoDetalle(t('turnos.col_turno'), '<span>' . e(fecha($c['fecha_apertura'])) . '</span><span class="fila-segunda">→ ' . e(fecha($c['fecha_cierre'])) . '</span>') ?>
+                        <?= datoDetalle(t('turnos.efectivo'),
+                            '<span>' . e(t('turnos.esperado', ['monto' => dinero($c['efectivo_esperado'])])) . '</span>'
+                            . '<span>' . e(t('turnos.contado', ['monto' => dinero($c['efectivo_contado'])])) . '</span>') ?>
+                        <?= datoDetalle(t('turnos.tarjeta'),
+                            '<span>' . e(t('turnos.esperado', ['monto' => dinero($c['teorico_tarjeta'])])) . '</span>'
+                            . '<span>' . e(t('turnos.vouchers', ['monto' => dinero($c['vouchers'])])) . '</span>') ?>
+                        <?= datoDetalle(t('turnos.col_entrega'),
+                            '<strong>' . dinero($c['total_entrega']) . '</strong>'
+                            . ((float) $c['retiros_parciales'] > 0 ? '<span class="fila-segunda">' . e(t('turnos.incluye_retiros', ['monto' => dinero($c['retiros_parciales'])])) . '</span>' : '')) ?>
+                        <?= datoDetalle(t('turnos.col_dejado'), '<span>' . dinero($c['efectivo_dejado']) . '</span>') ?>
+                        <?= datoDetalle(t('turnos.col_diferencia'),
+                            '<span class="' . ($revisar ? 'texto-peligro' : '') . '">' . e(dineroConSigno($c['diferencia'])) . '</span>'
+                            . ($difAbrir ? '<span class="fila-segunda texto-peligro">' . e(t('turnos.al_abrir', ['monto' => dineroConSigno($c['diferencia_apertura'])])) . '</span>' : '')) ?>
+                        <?= datoDetalle(t('turnos.col_revision'), $pendiente
+                            ? '<span>' . e(t('turnos.sin_recibir')) . '</span>'
+                            : '<span>' . e(t('turnos.recibido_por', ['gerente' => $c['gerente_revision'] ?? '—', 'fecha' => $c['fecha_revision'] ? fecha($c['fecha_revision']) : ''])) . '</span>'
+                                . ($distinto ? '<span class="texto-peligro">' . e(t('turnos.recibido_distinto', ['monto' => dinero($c['monto_recibido'])])) . '</span>' : '')
+                                . ($c['nota_revision'] ? '<span class="det-largo">' . e($c['nota_revision']) . '</span>' : ''), 'det-lateral') ?>
+                    </div>
+                    <?php if ($pendiente): ?>
+                        <div class="pz-acciones det-acciones"><?= $botonRecibir($c) ?></div>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
 </div>
 
 <!-- Modal: recibir el efectivo de un corte -->
