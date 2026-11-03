@@ -828,3 +828,37 @@ a.pend__it:hover{background:var(--bg-accent-muted);transform:translate(-2px,-2px
   .ticket{animation:none}
   .pend__it{transition:none}
 }
+
+/* ── Árbol de empleados del gerente (modal en gerentes.php) ── */
+:root{--line:#cfc8e0}
+:root[data-tema="oscuro"]{--line:#433d58}
+@media (prefers-color-scheme: dark){:root:not([data-tema="claro"]){--line:#433d58}}
+.arbol-cabecera{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.arbol-contenedor{overflow:auto;padding:8px 4px}
+.arbol,.arbol ul{list-style:none;margin:0;padding:0}
+.arbol ul{padding-left:22px}
+.arbol li{position:relative}
+.arbol ul>li{padding-left:16px}
+.arbol ul>li::before{content:"";position:absolute;left:0;top:0;bottom:0;border-left:1px solid var(--line)}
+.arbol ul>li:last-child::before{bottom:auto;height:15px}
+.arbol ul>li::after{content:"";position:absolute;left:0;top:15px;width:12px;border-top:1px solid var(--line)}
+.arbol .nodo{display:flex;align-items:center;gap:6px;min-height:30px;padding:2px 6px;border-radius:6px;min-width:0}
+.arbol summary{list-style:none;cursor:pointer}
+.arbol summary::-webkit-details-marker{display:none}
+.arbol summary:hover{background:var(--bg-accent-muted)}
+.arbol .chev{width:14px;height:14px;flex:none;color:var(--text-muted);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.arbol details[open]>summary .chev{transform:rotate(90deg)}
+.arbol .sin-chev{width:14px;flex:none}
+.arbol .ico{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.arbol .ico--carpeta{color:var(--accent)}
+.arbol .ico--archivo{color:var(--text-muted)}
+.arbol .ico--abierta{display:none}
+.arbol details[open]>summary .ico--cerrada{display:none}
+.arbol details[open]>summary .ico--abierta{display:block}
+.arbol .nodo__txt{overflow-wrap:anywhere;min-width:0}
+.arbol .nodo__txt--fuerte{font-weight:500}
+.arbol .nodo__txt--dato{font-size:13px;color:var(--text-secondary)}
+.arbol .nodo__txt--vacio{font-size:13px;color:var(--text-muted);font-style:italic}
+.arbol .conteo{font-size:12px;color:var(--text-muted)}
+.arbol .nodo .badge{margin-left:auto;flex:none}
+@media (prefers-reduced-motion:reduce){.arbol .chev{transition:none}}
