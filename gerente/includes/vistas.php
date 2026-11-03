@@ -29,3 +29,42 @@ function selectorVistas(string $objetivo, string $clave): string
     }
     return $html . '</div>';
 }
+
+/*
+ * Tarjetas de cajeros y cajas. Cada tarjeta es una pila de piezas en orden
+ * fijo; la vista (íconos, columnas, galería) solo cambia cómo se acomodan.
+ * La vista de lista es una tabla aparte (.vista-tabla) con una fila por
+ * tarjeta y su detalle desplegable (initFilasDesplegables en componentes.js).
+ */
+
+/** Tiempo en la empresa desde la fecha de contratación: "11 días", "3 meses", "2 años". */
+function antiguedad(string $fechaContratacion): string
+{
+    $dif = (new DateTimeImmutable($fechaContratacion))->diff(new DateTimeImmutable('today'));
+    if ($dif->invert || $dif->days < 31) {
+        return tn('tarjeta.antig_dias', $dif->invert ? 0 : $dif->days);
+    }
+    return $dif->y >= 1 ? tn('tarjeta.antig_anios', $dif->y) : tn('tarjeta.antig_meses', $dif->m);
+}
+
+/** Cuánto lleva abierto un turno: "35 min", "2 h 40 min". */
+function duracionTurno(string $desde): string
+{
+    $min = max(0, intdiv(time() - strtotime($desde), 60));
+    return $min < 60
+        ? t('tarjeta.dur_min', ['m' => $min])
+        : t('tarjeta.dur_h', ['h' => intdiv($min, 60), 'm' => $min % 60]);
+}
+
+/** Punto de estado con texto (pieza "Ahora"). $tono: en-turno, alerta o '' (neutro). $html ya va escapado. */
+function piezaAhora(string $tono, string $html): string
+{
+    return '<div class="pz-ahora' . ($tono !== '' ? ' is-' . $tono : '') . '"><span class="pz-punto" aria-hidden="true"></span>'
+        . '<span class="pz-ahora-txt">' . $html . '</span></div>';
+}
+
+/** Dato del detalle desplegable de la lista: etiqueta chica arriba y valor. $html ya va escapado. */
+function datoDetalle(string $etiqueta, string $html, string $clase = ''): string
+{
+    return '<div class="det-dato' . ($clase !== '' ? ' ' . $clase : '') . '"><span class="det-etq">' . e($etiqueta) . '</span>' . $html . '</div>';
+}

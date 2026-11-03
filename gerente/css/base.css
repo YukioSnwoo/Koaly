@@ -32,7 +32,7 @@ body {
 }
 
 /* Cifras de ancho fijo: los montos y cantidades se alinean en columna */
-table, .kpi-value, .desglose-monto, .desglose-num, .cajero-stat-value {
+table, .kpi-value, .desglose-monto, .desglose-num {
     font-variant-numeric: tabular-nums;
 }
 img { max-width: 100%; display: block; }
