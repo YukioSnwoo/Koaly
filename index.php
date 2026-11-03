@@ -60,6 +60,9 @@ $botonVer = fn (string $id) => '<button type="button" class="toggle-password" da
 
 // Texto que login.js cambia de idioma: <etiqueta data-i18n="clave">texto</etiqueta>
 $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
+
+// Fecha y hora del ticket de entrada, en hora de las tiendas
+$ahoraTicket = new DateTimeImmutable('now', new DateTimeZone('America/Mexico_City'));
 ?>
 <!DOCTYPE html>
 <html lang="<?= $GLOBALS['LOGIN_IDIOMA'] ?>">
@@ -125,7 +128,17 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
             </button>
         </div>
 
-    <main class="container">
+    <!-- La impresora de la caja: el formulario es el ticket que sale de su ranura -->
+    <div class="maquina">
+    <div class="impresora" aria-hidden="true"><span class="impresora-luz"></span></div>
+    <div class="ticket-marco">
+    <main class="container ticket">
+        <header class="ticket-cabecera">
+            <span class="ticket-tienda" <?= $txt('ticket.tienda') ?></span>
+            <span <?= $txt('ticket.titulo') ?></span>
+            <span class="ticket-renglon"><time datetime="<?= $ahoraTicket->format('Y-m-d\TH:i') ?>"><?= $ahoraTicket->format('d/m/Y') ?></time><span><?= $ahoraTicket->format('H:i') ?></span></span>
+        </header>
+
         <!-- INICIAR SESIÓN -->
         <section id="loginView"<?= $debeCambiar ? ' class="hidden"' : '' ?>>
 
@@ -152,17 +165,19 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
             </form>
 
             <button type="button" id="forgotLink" class="link-button forgot-link" <?= $txt('login.olvide') ?></button>
+            <!-- Talón desprendible: el acceso de prueba, con teclas de caja -->
+            <div class="perforacion" aria-hidden="true"></div>
             <div class="quick-access" id="quickAccess" aria-label="<?= e(t('login.acceso_rapido')) ?>" data-i18n-aria-label="login.acceso_rapido">
                 <span class="quick-access-title" <?= $txt('login.acceso_rapido') ?></span>
                 <button type="button" class="quick-access-btn"
                         data-email="core.armored@tienda.com"
-                        data-rol="1" <?= $txt('login.acceso_admin') ?></button>
+                        data-rol="1"><b>1</b><span <?= $txt('login.acceso_admin') ?></span></button>
                 <button type="button" class="quick-access-btn"
                         data-email="angelmoises549@gmail.com"
-                        data-rol="2" <?= $txt('login.acceso_gerente') ?></button>
+                        data-rol="2"><b>2</b><span <?= $txt('login.acceso_gerente') ?></span></button>
                 <button type="button" class="quick-access-btn"
                         data-email="aguzman66@ucol.mx"
-                        data-rol="3" <?= $txt('login.acceso_cajero') ?></button>
+                        data-rol="3"><b>3</b><span <?= $txt('login.acceso_cajero') ?></span></button>
             </div>
         </section>
 
@@ -274,6 +289,8 @@ $txt = fn (string $clave) => 'data-i18n="' . $clave . '">' . e(t($clave));
             <a href="logout.php" class="link-button volver-link logout-link" <?= $txt('cambiar.salir') ?></a>
         </section>
     </main>
+    </div>
+    </div>
     </div>
 </div>
 

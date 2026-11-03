@@ -161,15 +161,100 @@ body {
     gap: 0.6rem;
 }
 
-.container {
+/* ===== La impresora de la caja y su ticket =====
+   El formulario es el ticket que sale de la ranura: papel con los lados
+   entintados y el borde de abajo cortado en zigzag. */
+.lado-formulario {
+    --impresora: #2c2443;
+    --ranura: #120e1e;
+}
+
+:root[data-tema="oscuro"] .lado-formulario {
+    --impresora: #262035;
+    --ranura: #05040a;
+}
+
+.maquina {
     width: 100%;
-    max-width: 420px;
+    max-width: 464px;
     margin: auto; /* centra sin cortar arriba cuando es más alto que la pantalla */
-    padding: 2.2rem 2rem;
-    background: var(--superficie);
+}
+
+.impresora {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    height: 46px;
+    background: var(--impresora);
     border: 2px solid var(--tinta);
-    border-radius: 20px;
-    box-shadow: var(--sombra-tactil-max);
+    border-radius: 16px 16px 10px 10px;
+    box-shadow: 0 5px 0 var(--tinta);
+}
+
+.impresora::after {
+    content: "";
+    width: calc(100% - 44px);
+    height: 8px;
+    border-radius: 999px;
+    background: var(--ranura);
+}
+
+.impresora-luz {
+    position: absolute;
+    top: 8px;
+    right: 16px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+}
+
+/* Recorta el ticket bajo la ranura, para que parezca salir de ella */
+.ticket-marco {
+    margin: -10px 22px 0;
+    overflow: hidden;
+}
+
+.container {
+    --diente: 10px;
+    width: 100%;
+    padding: 1.6rem 1.75rem calc(1.4rem + var(--diente));
+    background: var(--superficie);
+    border-inline: 2px solid var(--tinta);
+    -webkit-mask:
+        linear-gradient(#000 0 0) top / 100% calc(100% - var(--diente)) no-repeat,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--diente) * 2) var(--diente) repeat-x;
+    mask:
+        linear-gradient(#000 0 0) top / 100% calc(100% - var(--diente)) no-repeat,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--diente) * 2) var(--diente) repeat-x;
+    animation: imprimir 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Cabecera del ticket: como la de un ticket de venta */
+.ticket-cabecera {
+    display: grid;
+    gap: 0.1rem;
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 2px dashed var(--borde-fuerte);
+    font-family: var(--fuente-dato);
+    font-size: 0.74rem;
+    color: var(--texto-3);
+    text-align: center;
+}
+
+.ticket-tienda {
+    color: var(--texto);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ticket-renglon {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.35rem;
 }
 
 /* Al cambiar de vista (login.js quita .hidden) entra con un desliz corto: muestra qué cambió */
@@ -485,40 +570,75 @@ a:focus-visible {
     font-size: 0.92rem;
 }
 
-/* ===== Acceso rápido (beta) ===== */
-.quick-access {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1.4rem;
-    padding-top: 1rem;
+/* ===== Acceso rápido (beta): el talón desprendible del ticket =====
+   Perforación con muescas a los lados; las teclas se hunden como las de la caja. */
+.perforacion {
+    position: relative;
+    margin: 1.3rem -1.75rem 1rem;
     border-top: 2px dashed var(--borde-fuerte);
 }
 
+.perforacion::before,
+.perforacion::after {
+    content: "";
+    position: absolute;
+    top: -10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--fondo);
+    border: 2px solid var(--tinta);
+}
+
+.perforacion::before { left: -11px; }
+.perforacion::after { right: -11px; }
+
+.quick-access {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+}
+
 .quick-access-title {
-    width: 100%;
+    grid-column: 1 / -1;
     text-align: center;
     font-size: 0.82rem;
     color: var(--texto-3);
 }
 
 .quick-access-btn {
-    padding: 0.4rem 0.8rem;
+    display: grid;
+    justify-items: center;
+    gap: 0.1rem;
+    padding: 0.5rem 0.3rem 0.45rem;
     border: 2px solid var(--tinta);
-    border-radius: 999px;
+    border-radius: 12px;
     background: var(--superficie);
     color: var(--texto);
-    font-size: 0.82rem;
-    font-weight: 600;
+    box-shadow: 0 4px 0 var(--tinta);
     cursor: pointer;
-    box-shadow: 2px 2px 0 var(--tinta);
-    transition: background 0.2s, color 0.2s;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.2s;
+}
+
+.quick-access-btn b {
+    font-family: var(--fuente-titulo);
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.quick-access-btn span {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--texto-2);
 }
 
 .quick-access-btn:hover {
     background: var(--acento-suave);
-    color: var(--acento-texto);
+}
+
+.quick-access-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 var(--tinta);
 }
 
 /* ===== Reenviar código ===== */
@@ -597,6 +717,11 @@ a:focus-visible {
 }
 
 /* ===== Animaciones ===== */
+/* El ticket sale un poco de la ranura al cargar; siempre está completo */
+@keyframes imprimir {
+    from { transform: translateY(-28px); }
+}
+
 @keyframes vistaEntrar {
     from { opacity: 0; transform: translateX(12px); }
     to { opacity: 1; transform: none; }
@@ -672,7 +797,7 @@ a:focus-visible {
         padding-top: 1rem;
     }
 
-    .container {
+    .maquina {
         margin-top: 0;
     }
 }
@@ -683,9 +808,16 @@ a:focus-visible {
         padding-right: 12px;
     }
 
+    .ticket-marco {
+        margin-inline: 14px;
+    }
+
     .container {
-        padding: 1.7rem 1.25rem;
-        border-radius: 16px;
+        padding-inline: 1.15rem;
+    }
+
+    .perforacion {
+        margin-inline: -1.15rem;
     }
 
     h1 {
