@@ -176,7 +176,7 @@ body {
 
 .maquina {
     width: 100%;
-    max-width: 348px;
+    max-width: 464px;
     margin: auto; /* centra sin cortar arriba cuando es más alto que la pantalla */
 }
 
@@ -194,7 +194,7 @@ body {
 
 .impresora::after {
     content: "";
-    width: calc(100% - 34px);
+    width: calc(100% - 44px);
     height: 6px;
     border-radius: 999px;
     background: var(--ranura);
@@ -212,14 +212,14 @@ body {
 
 /* Recorta el ticket bajo la ranura, para que parezca salir de ella */
 .ticket-marco {
-    margin: -8px 17px 0;
+    margin: -8px 22px 0;
     overflow: hidden;
 }
 
 .container {
     --diente: 8px;
     width: 100%;
-    padding: 1.2rem 1.3rem calc(1.05rem + var(--diente));
+    padding: 1.2rem 1.75rem calc(1.05rem + var(--diente));
     background: var(--superficie);
     border-inline: 2px solid var(--tinta);
     -webkit-mask:
@@ -574,7 +574,7 @@ a:focus-visible {
    Perforación con muescas a los lados; las teclas se hunden como las de la caja. */
 .perforacion {
     position: relative;
-    margin: 1.1rem -1.3rem 0.85rem;
+    margin: 1.1rem -1.75rem 0.85rem;
     border-top: 2px dashed var(--borde-fuerte);
 }
 
