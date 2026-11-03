@@ -176,7 +176,7 @@ body {
 
 .maquina {
     width: 100%;
-    max-width: 464px;
+    max-width: 348px;
     margin: auto; /* centra sin cortar arriba cuando es más alto que la pantalla */
 }
 
@@ -185,41 +185,41 @@ body {
     z-index: 1;
     display: grid;
     place-items: center;
-    height: 46px;
+    height: 35px;
     background: var(--impresora);
     border: 2px solid var(--tinta);
-    border-radius: 16px 16px 10px 10px;
-    box-shadow: 0 5px 0 var(--tinta);
+    border-radius: 12px 12px 8px 8px;
+    box-shadow: 0 4px 0 var(--tinta);
 }
 
 .impresora::after {
     content: "";
-    width: calc(100% - 44px);
-    height: 8px;
+    width: calc(100% - 34px);
+    height: 6px;
     border-radius: 999px;
     background: var(--ranura);
 }
 
 .impresora-luz {
     position: absolute;
-    top: 8px;
-    right: 16px;
-    width: 7px;
-    height: 7px;
+    top: 6px;
+    right: 12px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--ok);
 }
 
 /* Recorta el ticket bajo la ranura, para que parezca salir de ella */
 .ticket-marco {
-    margin: -10px 22px 0;
+    margin: -8px 17px 0;
     overflow: hidden;
 }
 
 .container {
-    --diente: 10px;
+    --diente: 8px;
     width: 100%;
-    padding: 1.6rem 1.75rem calc(1.4rem + var(--diente));
+    padding: 1.2rem 1.3rem calc(1.05rem + var(--diente));
     background: var(--superficie);
     border-inline: 2px solid var(--tinta);
     -webkit-mask:
@@ -574,7 +574,7 @@ a:focus-visible {
    Perforación con muescas a los lados; las teclas se hunden como las de la caja. */
 .perforacion {
     position: relative;
-    margin: 1.3rem -1.75rem 1rem;
+    margin: 1.1rem -1.3rem 0.85rem;
     border-top: 2px dashed var(--borde-fuerte);
 }
 
