@@ -546,17 +546,39 @@
 .ficha-datos dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-3); font-weight: 700; }
 .ficha-datos dd { font-size: 1rem; color: var(--texto); font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 0.15rem; }
 
-.ficha-acciones {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-    gap: 1rem; margin-bottom: 1.25rem; align-items: start;
-}
-.ficha-accion {
-    background: var(--superficie); border-radius: 12px; padding: 1.1rem 1.25rem;
-    box-shadow: var(--sombra-suave);
-}
-.ficha-accion h2 { font-size: 1rem; color: var(--texto); margin-bottom: 0.25rem; }
+.ficha-dato-sub { display: block; font-size: 0.78rem; font-weight: 500; color: var(--texto-3); }
 .ficha-accion-ayuda { font-size: 0.82rem; color: var(--texto-3); margin-bottom: 0.85rem; }
-.ficha-accion .btn { width: 100%; justify-content: center; }
+
+/* Ajustes del producto: un solo panel, stock | precio y costo, y abajo lo que se usa poco */
+.ajustes { margin-bottom: 1.25rem; }
+.ajustes-cuerpo {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0.25rem 0 0;
+}
+.ajustes-bloque { padding: 0.75rem 1.25rem 1.25rem; display: flex; flex-direction: column; }
+.ajustes-bloque + .ajustes-bloque { border-left: 1px dashed var(--borde); }
+.ajustes-bloque h3 { font-size: 1rem; color: var(--texto); margin-bottom: 0.25rem; }
+.ajustes-bloque > .btn { margin-top: auto; width: 100%; justify-content: center; }
+.ajustes-fila { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 0.75rem; }
+.ajustes-ganancia {
+    margin: 0 0 0.85rem; padding: 0.6rem 0.75rem; border-radius: 8px;
+    background: var(--ok-suave); color: var(--ok-texto); border: 1px solid var(--ok-borde);
+    font-size: 0.88rem; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.ajustes-ganancia.es-perdida { background: var(--peligro-suave); color: var(--peligro-texto); border-color: var(--peligro-borde); }
+.ajustes-mas { border-top: 1px solid var(--borde); }
+.ajustes-mas > summary {
+    cursor: pointer; padding: 0.85rem 1.25rem; font-size: 0.88rem; font-weight: 600; color: var(--texto-2);
+}
+.ajustes-mas > summary:hover { color: var(--texto); }
+.ajustes-mas > form { padding: 0 1.25rem 1.25rem; max-width: 560px; }
+@media (max-width: 760px) {
+    .ajustes-cuerpo { grid-template-columns: 1fr; }
+    .ajustes-bloque + .ajustes-bloque { border-left: 0; border-top: 1px dashed var(--borde); padding-top: 1.1rem; }
+}
+@media (max-width: 420px) {
+    .ajustes-fila { grid-template-columns: 1fr; }
+}
 .campo-con-boton { display: flex; gap: 0.5rem; }
 .campo-con-boton input { flex: 1; min-width: 0; }
 .campo-con-boton .btn { width: auto; white-space: nowrap; }
