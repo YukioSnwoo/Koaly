@@ -1,12 +1,17 @@
 <?php
 /**
  * Ficha de un producto del inventario de la sucursal: datos, ajustes de stock,
- * recepción de mercancía, precio de venta y últimos movimientos.
+ * precio de venta y costo (ganancia por pieza) y últimos movimientos.
  */
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
+require_once __DIR__ . '/../admin/solicitudes_comun.php';
 
 $idProducto = (int) ($_GET['id'] ?? $_POST['id_producto'] ?? 0);
+
+// La columna del costo llega con sql/015_costo_productos.sql; sin ella la
+// ficha funciona igual y avisa qué falta
+$hayCosto = $pdo->query("SHOW COLUMNS FROM Inventario_Sucursal LIKE 'costo'")->fetch() !== false;
 
 $errores = [];
 $exito   = '';
@@ -16,7 +21,7 @@ if (!empty($_SESSION['flash'])) {
 }
 
 /* ============================================================
-   POST: ajustar stock, recibir mercancía, cambiar precio
+   POST: ajustar stock, cambiar precio y costo, solicitar eliminar
    ============================================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -71,52 +76,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
             $mensajeExito = t('prod.ajuste_ok', ['n' => numero($cantidadNueva)]);
 
-        /* -------- Recibir mercancía (entrada de proveedor) -------- */
-        } elseif ($action === 'recibir_mercancia') {
-            $recibida  = (int) ($_POST['cantidad_recibida'] ?? 0);
-            $proveedor = trim($_POST['proveedor'] ?? '');
-            $folio     = trim($_POST['folio'] ?? '');
-
-            if ($recibida <= 0) {
-                throw new RuntimeException(t('error.recibida_invalida'));
-            }
-            if (mb_strlen($proveedor) > 100 || mb_strlen($folio) > 50) {
-                throw new RuntimeException(t('error.proveedor_largo'));
-            }
-
-            $pdo->beginTransaction();
-            $cantidadActual = leerStockParaActualizar($pdo, $idSucursalGerente, $idProducto);
-            if ($cantidadActual === null) {
-                throw new RuntimeException(t('error.no_en_inventario'));
-            }
-            $cantidadNueva = $cantidadActual + $recibida;
-
-            $stmt = $pdo->prepare("UPDATE Inventario_Sucursal SET cantidad_disponible = ? WHERE id_sucursal = ? AND id_producto = ?");
-            $stmt->execute([$cantidadNueva, $idSucursalGerente, $idProducto]);
-
-            $partes = array_filter([
-                $proveedor !== '' ? tEs('kardex.proveedor', ['p' => $proveedor]) : null,
-                $folio !== '' ? tEs('kardex.folio', ['f' => $folio]) : null,
-            ]);
-            registrarMovimiento(
-                $pdo, $idSucursalGerente, $idProducto, 'COMPRA_PROVEEDOR', $recibida, $cantidadNueva,
-                tEs('kardex.recepcion') . ($partes ? ' — ' . implode(' · ', $partes) : ''),
-                $idUsuario
-            );
-
-            $pdo->commit();
-            $mensajeExito = t('prod.recepcion_ok', ['n' => numero($recibida), 'total' => numero($cantidadNueva)]);
-
-        /* -------- Precio de venta de la sucursal -------- */
+        /* -------- Precio de venta y costo de la sucursal -------- */
         } elseif ($action === 'cambiar_precio') {
             $precioVenta = round((float) ($_POST['precio_venta'] ?? -1), 2);
             if ($precioVenta < 0) {
                 throw new RuntimeException(t('error.precio_invalido'));
             }
+            // Costo vacío = desconocido (NULL), no cero
+            $costoTexto = trim((string) ($_POST['costo'] ?? ''));
+            $costo = $costoTexto === '' ? null : round((float) $costoTexto, 2);
+            if ($costo !== null && $costo < 0) {
+                throw new RuntimeException(t('error.costo_invalido'));
+            }
 
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("
-                SELECT precio_venta, cantidad_disponible FROM Inventario_Sucursal
+                SELECT precio_venta, cantidad_disponible" . ($hayCosto ? ', costo' : '') . " FROM Inventario_Sucursal
                 WHERE id_sucursal = ? AND id_producto = ?
                 FOR UPDATE
             ");
@@ -125,18 +100,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($fila === false) {
                 throw new RuntimeException(t('error.no_en_inventario'));
             }
-            if (round((float) $fila['precio_venta'], 2) === $precioVenta) {
+            $precioAntes = round((float) $fila['precio_venta'], 2);
+            $costoAntes  = $hayCosto && $fila['costo'] !== null ? round((float) $fila['costo'], 2) : null;
+            $cambiaPrecio = $precioAntes !== $precioVenta;
+            $cambiaCosto  = $hayCosto && $costoAntes !== $costo;
+            if (!$cambiaPrecio && !$cambiaCosto) {
                 throw new RuntimeException(t('error.mismo_precio'));
             }
 
-            $stmt = $pdo->prepare("UPDATE Inventario_Sucursal SET precio_venta = ? WHERE id_sucursal = ? AND id_producto = ?");
-            $stmt->execute([$precioVenta, $idSucursalGerente, $idProducto]);
+            if ($hayCosto) {
+                $stmt = $pdo->prepare("UPDATE Inventario_Sucursal SET precio_venta = ?, costo = ? WHERE id_sucursal = ? AND id_producto = ?");
+                $stmt->execute([$precioVenta, $costo, $idSucursalGerente, $idProducto]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE Inventario_Sucursal SET precio_venta = ? WHERE id_sucursal = ? AND id_producto = ?");
+                $stmt->execute([$precioVenta, $idSucursalGerente, $idProducto]);
+            }
 
-            // Rastro en el kardex con cantidad 0 (no mueve stock)
+            // Rastro en el kardex con cantidad 0 (no mueve stock); solo lo que cambió
+            $monto = fn (?float $m): string => $m === null ? tEs('kardex.sin_costo') : '$' . number_format($m, 2);
+            $cambios = array_filter([
+                $cambiaPrecio ? $monto($precioAntes) . ' → ' . $monto($precioVenta) : null,
+                $cambiaCosto ? tEs('kardex.costo', ['antes' => $monto($costoAntes), 'ahora' => $monto($costo)]) : null,
+            ]);
             registrarMovimiento(
                 $pdo, $idSucursalGerente, $idProducto, 'AJUSTE_MANUAL', 0, (int) $fila['cantidad_disponible'],
-                sprintf('%s $%s → $%s', PREFIJO_CAMBIO_PRECIO,
-                    number_format((float) $fila['precio_venta'], 2), number_format($precioVenta, 2)),
+                PREFIJO_CAMBIO_PRECIO . ' ' . implode(' · ', $cambios),
                 $idUsuario
             );
 
@@ -189,6 +177,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idSucursalGerente, $idUsuario, $idProducto,
                 $fila['nombre'], $fila['id_categoria'], $justificacion,
             ]);
+            // Primer paso del historial, igual que las solicitudes de productos.php
+            registrarHistorialSolicitud($pdo, (int) $pdo->lastInsertId(), $idUsuario, 'Gerente', 'Enviada', [], $justificacion);
 
             $pdo->commit();
             $mensajeExito = t('cat.eliminar_enviada');
@@ -214,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = $pdo->prepare("
     SELECT p.id_producto, p.codigo, p.nombre, p.descripcion, p.imagen, p.precio AS precio_catalogo,
            p.estado AS estado_producto, c.nombre_categoria,
-           i.cantidad_disponible, i.precio_venta
+           i.cantidad_disponible, i.precio_venta, " . ($hayCosto ? 'i.costo' : 'NULL') . " AS costo
     FROM Inventario_Sucursal i
     INNER JOIN Productos p ON p.id_producto = i.id_producto
     LEFT JOIN Categorias c ON c.id_categoria = p.id_categoria
@@ -231,6 +221,10 @@ if (!$producto) {
 
 $stock  = (int) $producto['cantidad_disponible'];
 $precio = (float) $producto['precio_venta'];
+$costo  = $producto['costo'] !== null ? (float) $producto['costo'] : null;
+// Ganancia por pieza y margen sobre el precio (como lo calculan los puntos de venta)
+$ganancia = $costo !== null && $precio > 0 ? $precio - $costo : null;
+$margen   = $ganancia !== null ? $ganancia / $precio * 100 : null;
 [$stockBadge, $stockTexto] = badgeStock($stock);
 
 $stmt = $pdo->prepare("
@@ -319,12 +313,14 @@ require __DIR__ . '/header.php';
                 <dd><?= $precio > 0 ? dinero($precio) : e(t('exist.sin_precio')) ?></dd>
             </div>
             <div>
-                <dt><?= e(t('prod.precio_catalogo')) ?></dt>
-                <dd><?= dinero($producto['precio_catalogo']) ?></dd>
+                <dt><?= e(t('prod.costo')) ?></dt>
+                <dd><?= $costo !== null ? dinero($costo) : '<span class="texto-tenue">' . e(t('prod.sin_costo')) . '</span>' ?></dd>
             </div>
             <div>
-                <dt><?= e(t('prod.valor_stock')) ?></dt>
-                <dd><?= dinero($stock * $precio) ?></dd>
+                <dt><?= e(t('prod.ganancia_pieza')) ?></dt>
+                <dd class="<?= $ganancia !== null && $ganancia < 0 ? 'texto-peligro' : '' ?>">
+                    <?= $ganancia !== null ? dinero($ganancia) . ' <span class="ficha-dato-sub">' . e(t('prod.margen', ['p' => numero((int) round($margen))])) . '</span>' : '—' ?>
+                </dd>
             </div>
             <div>
                 <dt><?= e(t('prod.vendidas_30')) ?></dt>
@@ -338,107 +334,131 @@ require __DIR__ . '/header.php';
     </div>
 </section>
 
-<div class="ficha-acciones">
-    <!-- Ajustar stock -->
-    <form class="ficha-accion" method="POST" action="producto.php?id=<?= (int) $idProducto ?>" id="formAjuste">
-        <h2><?= e(t('prod.ajustar')) ?></h2>
-        <p class="ficha-accion-ayuda"><?= e(t('prod.ajustar_ayuda')) ?></p>
-        <input type="hidden" name="action" value="ajustar_stock">
-        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-        <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
-        <input type="hidden" name="cantidad_actual" value="<?= $stock ?>">
+<section class="panel ajustes">
+    <div class="panel-encabezado">
+        <h2 class="section-title"><?= e(t('prod.ajustes')) ?></h2>
+    </div>
 
-        <div class="form-group">
-            <label for="cantidadNueva"><?= e(t('prod.cantidad_nueva')) ?></label>
-            <div class="campo-con-boton">
-                <input type="number" id="cantidadNueva" name="cantidad_nueva" min="0" step="1" value="<?= $stock ?>" required>
-                <?php if ($stock > 0): ?>
-                    <button type="button" class="btn btn-ghost btn-sm"
-                            onclick="document.getElementById('cantidadNueva').value = 0; document.getElementById('motivoAjuste').focus();">
-                        <?= e(t('prod.poner_cero')) ?>
-                    </button>
-                <?php endif; ?>
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="motivoAjuste"><?= e(t('prod.motivo')) ?></label>
-            <select id="motivoAjuste" name="motivo" required>
-                <?php foreach (array_keys(MOTIVOS_AJUSTE) as $codigo): ?>
-                    <option value="<?= $codigo ?>"><?= e(t('motivo.' . $codigo)) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="detalleAjuste"><?= e(t('prod.detalle')) ?></label>
-            <input type="text" id="detalleAjuste" name="detalle" maxlength="200" placeholder="<?= e(t('prod.detalle_ayuda')) ?>">
-        </div>
-        <button type="submit" class="btn btn-primary"><?= e(t('prod.guardar_ajuste')) ?></button>
-    </form>
+    <div class="ajustes-cuerpo">
+        <!-- Stock: lo que hay de verdad en tienda -->
+        <form class="ajustes-bloque" method="POST" action="producto.php?id=<?= (int) $idProducto ?>" id="formAjuste">
+            <h3><?= e(t('prod.ajustar')) ?></h3>
+            <p class="ficha-accion-ayuda"><?= e(t('prod.ajustar_ayuda')) ?></p>
+            <input type="hidden" name="action" value="ajustar_stock">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
+            <input type="hidden" name="cantidad_actual" value="<?= $stock ?>">
 
-    <!-- Recibir mercancía -->
-    <form class="ficha-accion" method="POST" action="producto.php?id=<?= (int) $idProducto ?>"
-          onsubmit="this.querySelector('[type=submit]').disabled = true;">
-        <h2><?= e(t('prod.recibir')) ?></h2>
-        <p class="ficha-accion-ayuda"><?= e(t('prod.recibir_ayuda')) ?></p>
-        <input type="hidden" name="action" value="recibir_mercancia">
-        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-        <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
-
-        <div class="form-group">
-            <label for="cantidadRecibida"><?= e(t('prod.unidades_recibidas')) ?></label>
-            <input type="number" id="cantidadRecibida" name="cantidad_recibida" min="1" step="1" required>
-        </div>
-        <div class="form-group">
-            <label for="proveedor"><?= e(t('prod.proveedor')) ?></label>
-            <input type="text" id="proveedor" name="proveedor" maxlength="100">
-        </div>
-        <div class="form-group">
-            <label for="folio"><?= e(t('prod.folio')) ?></label>
-            <input type="text" id="folio" name="folio" maxlength="50">
-        </div>
-        <button type="submit" class="btn btn-primary"><?= e(t('prod.registrar_recepcion')) ?></button>
-    </form>
-
-    <!-- Precio de venta -->
-    <form class="ficha-accion" method="POST" action="producto.php?id=<?= (int) $idProducto ?>">
-        <h2><?= e(t('prod.precio_venta')) ?></h2>
-        <p class="ficha-accion-ayuda"><?= e(t('prod.precio_ayuda')) ?></p>
-        <input type="hidden" name="action" value="cambiar_precio">
-        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-        <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
-
-        <div class="form-group">
-            <label for="precioVenta"><?= e(t('comun.precio_venta_iva')) ?></label>
-            <input type="number" id="precioVenta" name="precio_venta" min="0" step="0.01"
-                   value="<?= $precio > 0 ? number_format($precio, 2, '.', '') : '' ?>" required>
-        </div>
-        <p class="ficha-accion-ayuda"><?= e(t('prod.precio_catalogo_ref', ['precio' => dinero($producto['precio_catalogo'])])) ?></p>
-        <button type="submit" class="btn btn-primary"><?= e(t('prod.guardar_precio')) ?></button>
-    </form>
-
-    <!-- Solicitar eliminar del catálogo (lo resuelve el admin) -->
-    <form class="ficha-accion" method="POST" action="producto.php?id=<?= (int) $idProducto ?>"
-          onsubmit="this.querySelector('[type=submit]').disabled = true;">
-        <h2><?= e(t('cat.eliminar_titulo')) ?></h2>
-        <p class="ficha-accion-ayuda"><?= e(t('cat.eliminar_ayuda')) ?></p>
-        <input type="hidden" name="action" value="solicitar_eliminar">
-        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-        <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
-
-        <?php if ($producto['estado_producto'] === 'Descontinuado'): ?>
-            <p class="ficha-accion-ayuda"><?= e(t('cat.eliminar_ya_descontinuado')) ?></p>
-        <?php elseif ($eliminacionPendiente): ?>
-            <p class="ficha-accion-ayuda"><span class="badge badge-warning"><?= e(t('cat.en_revision')) ?></span> <?= e(t('cat.eliminar_pendiente')) ?></p>
-        <?php else: ?>
             <div class="form-group">
-                <label for="justificacionEliminar"><?= e(t('cat.campo_justificacion')) ?> *</label>
-                <textarea id="justificacionEliminar" name="justificacion" required
-                          placeholder="<?= e(t('cat.eliminar_justificacion_ej')) ?>"></textarea>
+                <label for="cantidadNueva"><?= e(t('prod.cantidad_nueva')) ?></label>
+                <div class="campo-con-boton">
+                    <input type="number" id="cantidadNueva" name="cantidad_nueva" min="0" step="1" value="<?= $stock ?>" required>
+                    <?php if ($stock > 0): ?>
+                        <button type="button" class="btn btn-ghost btn-sm"
+                                onclick="document.getElementById('cantidadNueva').value = 0; document.getElementById('motivoAjuste').focus();">
+                            <?= e(t('prod.poner_cero')) ?>
+                        </button>
+                    <?php endif; ?>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary"><?= e(t('cat.enviar_eliminar')) ?></button>
-        <?php endif; ?>
-    </form>
-</div>
+            <div class="ajustes-fila">
+                <div class="form-group">
+                    <label for="motivoAjuste"><?= e(t('prod.motivo')) ?></label>
+                    <select id="motivoAjuste" name="motivo" required>
+                        <?php foreach (array_keys(MOTIVOS_AJUSTE) as $codigo): ?>
+                            <option value="<?= $codigo ?>"><?= e(t('motivo.' . $codigo)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="detalleAjuste"><?= e(t('prod.detalle')) ?></label>
+                    <input type="text" id="detalleAjuste" name="detalle" maxlength="200" placeholder="<?= e(t('prod.detalle_ayuda')) ?>">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"><?= e(t('prod.guardar_ajuste')) ?></button>
+        </form>
+
+        <!-- Precio y costo: cuánto cuesta y a cuánto se vende -->
+        <form class="ajustes-bloque" method="POST" action="producto.php?id=<?= (int) $idProducto ?>" id="formPrecio">
+            <h3><?= e(t('prod.precio_costo')) ?></h3>
+            <p class="ficha-accion-ayuda"><?= e(t('prod.precio_ayuda')) ?></p>
+            <input type="hidden" name="action" value="cambiar_precio">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
+
+            <div class="ajustes-fila">
+                <div class="form-group">
+                    <label for="costoProducto"><?= e(t('prod.costo_campo')) ?></label>
+                    <input type="number" id="costoProducto" name="costo" min="0" step="0.01" inputmode="decimal"
+                           value="<?= $costo !== null ? number_format($costo, 2, '.', '') : '' ?>"
+                           <?= $hayCosto ? '' : 'disabled' ?>>
+                </div>
+                <div class="form-group">
+                    <label for="precioVenta"><?= e(t('prod.precio_campo')) ?></label>
+                    <input type="number" id="precioVenta" name="precio_venta" min="0" step="0.01" inputmode="decimal"
+                           value="<?= $precio > 0 ? number_format($precio, 2, '.', '') : '' ?>" required>
+                </div>
+            </div>
+            <?php if ($hayCosto): ?>
+                <p class="ajustes-ganancia" id="gananciaVista" aria-live="polite"
+                   data-texto="<?= e(t('prod.ganancia_vista')) ?>" data-perdida="<?= e(t('prod.perdida_vista')) ?>"
+                   data-vacio="<?= e(t('prod.ganancia_vacia')) ?>"></p>
+            <?php else: ?>
+                <p class="ficha-accion-ayuda"><span class="badge badge-warning"><?= e(t('prod.costo_pendiente')) ?></span></p>
+            <?php endif; ?>
+            <p class="ficha-accion-ayuda"><?= e(t('prod.precio_catalogo_ref', ['precio' => dinero($producto['precio_catalogo'])])) ?></p>
+            <button type="submit" class="btn btn-primary"><?= e(t('prod.guardar_precio')) ?></button>
+        </form>
+    </div>
+
+    <!-- Solicitar eliminar del catálogo (lo resuelve el admin); se usa poco -->
+    <details class="ajustes-mas"<?= $eliminacionPendiente ? ' open' : '' ?>>
+        <summary><?= e(t('cat.eliminar_titulo')) ?></summary>
+        <form method="POST" action="producto.php?id=<?= (int) $idProducto ?>"
+              onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <p class="ficha-accion-ayuda"><?= e(t('cat.eliminar_ayuda')) ?></p>
+            <input type="hidden" name="action" value="solicitar_eliminar">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_producto" value="<?= (int) $idProducto ?>">
+
+            <?php if ($producto['estado_producto'] === 'Descontinuado'): ?>
+                <p class="ficha-accion-ayuda"><?= e(t('cat.eliminar_ya_descontinuado')) ?></p>
+            <?php elseif ($eliminacionPendiente): ?>
+                <p class="ficha-accion-ayuda"><span class="badge badge-warning"><?= e(t('cat.en_revision')) ?></span> <?= e(t('cat.eliminar_pendiente')) ?></p>
+            <?php else: ?>
+                <div class="form-group">
+                    <label for="justificacionEliminar"><?= e(t('cat.campo_justificacion')) ?> *</label>
+                    <textarea id="justificacionEliminar" name="justificacion" required
+                              placeholder="<?= e(t('cat.eliminar_justificacion_ej')) ?>"></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger"><?= e(t('cat.enviar_eliminar')) ?></button>
+            <?php endif; ?>
+        </form>
+    </details>
+</section>
+
+<?php if ($hayCosto): ?>
+<script>
+// Ganancia por pieza mientras se escribe el costo o el precio
+(() => {
+    const costo = document.getElementById('costoProducto');
+    const precio = document.getElementById('precioVenta');
+    const vista = document.getElementById('gananciaVista');
+    const dinero = new Intl.NumberFormat(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { style: 'currency', currency: 'MXN' });
+    const pintar = () => {
+        const c = parseFloat(costo.value), p = parseFloat(precio.value);
+        if (!(c >= 0) || !(p > 0)) { vista.textContent = vista.dataset.vacio; vista.className = 'ajustes-ganancia'; return; }
+        const g = p - c;
+        const texto = g < 0 ? vista.dataset.perdida : vista.dataset.texto;
+        vista.textContent = texto.replace('{g}', dinero.format(Math.abs(g))).replace('{p}', Math.round(g / p * 100));
+        vista.className = 'ajustes-ganancia' + (g < 0 ? ' es-perdida' : '');
+    };
+    costo.addEventListener('input', pintar);
+    precio.addEventListener('input', pintar);
+    pintar();
+})();
+</script>
+<?php endif; ?>
 
 <section class="panel">
     <div class="panel-encabezado">

@@ -68,3 +68,14 @@ function datoDetalle(string $etiqueta, string $html, string $clase = ''): string
 {
     return '<div class="det-dato' . ($clase !== '' ? ' ' . $clase : '') . '"><span class="det-etq">' . e($etiqueta) . '</span>' . $html . '</div>';
 }
+
+// Iniciales de un nombre para el avatar (máx. 2 letras): cajeros y cajas
+function iniciales(string $nombre): string
+{
+    $partes = preg_split('/\s+/', trim($nombre));
+    $ini = '';
+    foreach (array_slice($partes, 0, 2) as $p) {
+        $ini .= mb_strtoupper(mb_substr($p, 0, 1));
+    }
+    return $ini !== '' ? $ini : '?';
+}

@@ -394,7 +394,7 @@ function initFiltros() {
                     if (!o.dataset.desde) return;   // sin actividad: viene desactivada del servidor
                     const compatible = o.dataset.desde <= otros.hasta && o.dataset.hasta >= otros.desde;
                     const enPeriodo  = o.dataset.desde <= inHasta.value && o.dataset.hasta >= inDesde.value;
-                    o.disabled = !compatible;
+                    o.disabled = !compatible && !o.selected;   // la elegida se envía siempre
                     o.dataset.estado = !compatible ? 'incompatible' : (enPeriodo ? '' : 'fuera');
                 });
                 sel.dispatchEvent(new Event('select-custom:sincronizar'));

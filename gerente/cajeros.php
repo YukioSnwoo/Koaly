@@ -27,19 +27,6 @@ function puedeCambiarCorreo(PDO $pdo, int $idCajero, bool $debeCambiar): bool
 }
 
 /**
- * Calcula las iniciales de un nombre (máx. 2 letras).
- */
-function iniciales(string $nombre): string
-{
-    $partes = preg_split('/\s+/', trim($nombre));
-    $ini = '';
-    foreach (array_slice($partes, 0, 2) as $p) {
-        $ini .= mb_strtoupper(mb_substr($p, 0, 1));
-    }
-    return $ini !== '' ? $ini : '?';
-}
-
-/**
  * Al dar de baja a un cajero se liberan e inactivan sus cajas.
  * Devuelve cuántas cajas se afectaron. Llamar dentro de una transacción.
  */
@@ -340,12 +327,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
 
             $check = $pdo->prepare("
-                SELECT nombre, email FROM Usuarios
+                SELECT nombre, email, estado FROM Usuarios
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
             $empleado = $check->fetch();
-            if ($empleado === false) {
+            // Dado de baja ya no tiene acceso: no se le manda contraseña nueva
+            if ($empleado === false || $empleado['estado'] === 'Baja') {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
             $nombreCajero = $empleado['nombre'];
@@ -416,8 +404,15 @@ $stmt = $pdo->prepare("
     LEFT JOIN Ventas v
            ON v.id_cajero = u.id_usuario AND v.id_sucursal = ?
           AND v.fecha_hora >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-    -- Caja que tiene abierta ahora (pieza «Ahora» de la tarjeta)
-    LEFT JOIN Turnos_Caja t ON t.id_cajero_apertura = u.id_usuario AND t.estado = 'Abierto'
+    -- Caja que tiene abierta ahora (pieza «Ahora» de la tarjeta). Solo la más
+    -- reciente: con dos turnos abiertos, el cajero saldría dos veces y con
+    -- las ventas al doble
+    LEFT JOIN Turnos_Caja t ON t.id_turno = (
+        SELECT t2.id_turno FROM Turnos_Caja t2
+        WHERE t2.id_cajero_apertura = u.id_usuario AND t2.estado = 'Abierto'
+        ORDER BY t2.fecha_apertura DESC, t2.id_turno DESC
+        LIMIT 1
+    )
     LEFT JOIN Cajas tc ON tc.id_caja = t.id_caja
     WHERE u.id_rol = 3 AND u.id_sucursal = ?
     GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,

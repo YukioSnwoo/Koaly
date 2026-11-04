@@ -158,8 +158,10 @@ try {
     /* --- Productos, precio y existencias (bloqueadas hasta el commit) --- */
     $ids = array_keys($cantidades);
     $marcas = implode(',', array_fill(0, count($ids), '?'));
+    // Costo de la sucursal (sql/015): se copia a cada línea para calcular la ganancia
+    $columnaCosto = isset(columnasTabla($pdo, 'Inventario_Sucursal')['costo']) ? 'i.costo' : 'NULL';
     $stmt = $pdo->prepare("
-        SELECT p.id_producto, p.codigo, p.nombre, p.precio, i.cantidad_disponible
+        SELECT p.id_producto, p.codigo, p.nombre, p.precio, i.cantidad_disponible, $columnaCosto AS costo
         FROM Productos p
         LEFT JOIN Inventario_Sucursal i ON i.id_producto = p.id_producto AND i.id_sucursal = ?
         WHERE p.id_producto IN ($marcas) AND p.estado = 'Activo'
@@ -192,6 +194,7 @@ try {
             'existencia_final' => $disponible - $cantidad,
             'precio_centavos'  => $precioCentavos,
             'importe_centavos' => $importeCentavos,
+            'costo'            => $p['costo'],
         ];
     }
 
@@ -310,6 +313,7 @@ try {
             'precio_venta'    => $precio,
             'subtotal'        => $importe,
             'importe'         => $importe,
+            'costo_unitario'  => $l['costo'],   // se ignora si aún no existe la columna
         ]);
 
         $descontar->execute([$l['cantidad'], $idSucursal, $l['id_producto'], $l['cantidad']]);
