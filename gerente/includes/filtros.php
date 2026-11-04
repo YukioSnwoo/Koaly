@@ -95,7 +95,9 @@ function leerPeriodo(array $get, DateTimeImmutable $hoy, DateTimeImmutable $inic
     $desde = max($desde, $inicio);
     $hasta = min($hasta, $hoy);
     if ($desde > $hasta) {
-        $desde = $hasta;
+        // Todo el rango cayó fuera (p. ej. "ayer" en una sucursal que empezó
+        // hoy): queda el día permitido más cercano, nunca antes de $inicio
+        $desde = $hasta = min(max($hasta, $inicio), $hoy);
     }
 
     $atajo = null;

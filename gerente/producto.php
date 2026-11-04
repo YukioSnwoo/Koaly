@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
+require_once __DIR__ . '/../admin/solicitudes_comun.php';
 
 $idProducto = (int) ($_GET['id'] ?? $_POST['id_producto'] ?? 0);
 
@@ -189,6 +190,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idSucursalGerente, $idUsuario, $idProducto,
                 $fila['nombre'], $fila['id_categoria'], $justificacion,
             ]);
+            // Primer paso del historial, igual que las solicitudes de productos.php
+            registrarHistorialSolicitud($pdo, (int) $pdo->lastInsertId(), $idUsuario, 'Gerente', 'Enviada', [], $justificacion);
 
             $pdo->commit();
             $mensajeExito = t('cat.eliminar_enviada');

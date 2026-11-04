@@ -290,6 +290,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(tn('error.caja_con_ventas', $numVentas));
             }
 
+            // Tampoco con turnos: son los cortes de caja (y la FK también lo impide)
+            $check = $pdo->prepare("SELECT COUNT(*) FROM Turnos_Caja WHERE id_caja = ?");
+            $check->execute([$id]);
+            $numTurnos = (int) $check->fetchColumn();
+            if ($numTurnos > 0) {
+                throw new RuntimeException(tn('error.caja_con_turnos', $numTurnos));
+            }
+
             $stmt = $pdo->prepare("DELETE FROM Cajas WHERE id_caja = ?");
             $stmt->execute([$id]);
 
@@ -318,6 +326,7 @@ $stmt = $pdo->prepare("
            u.estado AS cajero_estado,
            c.creado_en,
            (SELECT COUNT(*) FROM Ventas v WHERE v.id_caja = c.id_caja) AS num_ventas,
+           (SELECT COUNT(*) FROM Turnos_Caja tr WHERE tr.id_caja = c.id_caja) AS num_turnos,
            (SELECT COALESCE(SUM(v.total), 0) FROM Ventas v
              WHERE v.id_caja = c.id_caja AND v.fecha_hora >= CURDATE()) AS monto_hoy,
            (SELECT COUNT(*) FROM Ventas v
@@ -374,16 +383,6 @@ foreach ($cajas as $c) {
     if ($c['estado'] === 'Activa') $totalActivas++;
 }
 
-function inicialesCorta(string $nombre): string
-{
-    $partes = preg_split('/\s+/', trim($nombre));
-    $ini = '';
-    foreach (array_slice($partes, 0, 2) as $p) {
-        $ini .= mb_strtoupper(mb_substr($p, 0, 1));
-    }
-    return $ini !== '' ? $ini : '?';
-}
-
 /* ---------- Piezas de la tarjeta (ver includes/vistas.php) ---------- */
 $BADGE_ESTADO = ['Activa' => 'badge-activo', 'Inactiva' => 'badge-inactivo', 'Mantenimiento' => 'badge-warning'];
 
@@ -423,7 +422,7 @@ $alertasCaja = static function (array $c) use ($alertasDeCaja): string {
 };
 
 $cajeroCaja = static fn(array $c): string => !empty($c['id_cajero_asignado'])
-    ? '<div class="pz-cajero"><div class="pz-avatar pz-avatar--chico" aria-hidden="true">' . e(inicialesCorta($c['cajero_nombre'])) . '</div>'
+    ? '<div class="pz-cajero"><div class="pz-avatar pz-avatar--chico" aria-hidden="true">' . e(iniciales($c['cajero_nombre'])) . '</div>'
       . '<div class="pz-nombres"><span class="pz-sub">' . e(t('tarjeta.cajero_asignado')) . '</span><span class="pz-cajero-nombre">' . e($c['cajero_nombre']) . '</span></div></div>'
     : '<div class="pz-cajero"><div class="pz-nombres"><span class="pz-sub">' . e(t('tarjeta.cajero_asignado')) . '</span><span class="pz-cajero-nombre texto-tenue">' . e(t('cajas.sin_asignar')) . '</span></div></div>';
 
@@ -466,7 +465,7 @@ $accionesCaja = static function (array $c, string $modo): string {
         . '<button type="submit" class="btn btn-sm pz-fin ' . ($esActiva ? 'btn-danger' : 'btn-success') . '"' . ($esActiva ? $bloqueo : '') . '>'
         . e(t($esActiva ? 'comun.desactivar' : 'comun.activar')) . '</button></form>';
 
-    if ((int) $c['num_ventas'] === 0) {
+    if ((int) $c['num_ventas'] === 0 && (int) $c['num_turnos'] === 0) {
         $html .= '<form method="POST" class="cajero-accion" data-confirm="' . e(t('cajas.confirmar_eliminar', ['caja' => $c['numero_caja']])) . '"'
             . ' data-confirm-titulo="' . e(t('cajas.eliminar_titulo')) . '" data-confirm-aceptar="' . e(t('comun.eliminar')) . '" data-confirm-peligroso="1">'
             . '<input type="hidden" name="action" value="eliminar">'
@@ -570,7 +569,7 @@ require __DIR__ . '/header.php';
                     </div></td>
                     <td><span class="badge <?= $BADGE_ESTADO[$c['estado']] ?? 'badge-inactivo' ?>"><?= e(t('estado_caja.' . $c['estado'])) ?></span></td>
                     <td><?= $ahoraCaja($c, true) ?></td>
-                    <td><?php if (!empty($c['id_cajero_asignado'])): ?><span class="fila-cajero"><span class="pz-avatar pz-avatar--chico" aria-hidden="true"><?= e(inicialesCorta($c['cajero_nombre'])) ?></span><?= e($c['cajero_nombre']) ?></span>
+                    <td><?php if (!empty($c['id_cajero_asignado'])): ?><span class="fila-cajero"><span class="pz-avatar pz-avatar--chico" aria-hidden="true"><?= e(iniciales($c['cajero_nombre'])) ?></span><?= e($c['cajero_nombre']) ?></span>
                         <?php else: ?><span class="texto-tenue"><?= e(t('cajas.sin_asignar')) ?></span><?php endif; ?></td>
                     <td class="num"><strong><?= dinero($c['monto_hoy']) ?></strong><span class="fila-segunda"><?= e(tn('tarjeta.ventas', (int) $c['ventas_hoy'])) ?></span></td>
                     <td><?php if ($alertas): $peor = in_array('badge-danger', array_column($alertas, 0), true) ? 'badge-danger' : (in_array('badge-warning', array_column($alertas, 0), true) ? 'badge-warning' : 'badge-info'); ?>

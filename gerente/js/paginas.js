@@ -187,7 +187,10 @@ function abrirModalNuevoCajero() {
     const form = _prepararModalCajero('crear');
     form.dataset.estadoOriginal = '';
     form.querySelector('[name="id_usuario"]').value = '';
-    form.querySelector('[name="fecha_contratacion"]').value = new Date().toISOString().slice(0, 10);
+    // Hoy según el servidor (hora de México), que es el máximo permitido;
+    // toISOString() daría la fecha UTC, que después de las 18:00 ya es mañana
+    const fecha = form.querySelector('[name="fecha_contratacion"]');
+    fecha.value = fecha.max;
     _actualizarAyudaEstado();
     abrirModal('modalCajero');
     form.querySelector('[name="nombre"]').focus();

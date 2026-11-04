@@ -72,13 +72,17 @@ $datosJs   = [
                     <?= !empty($f['depende']) ? 'data-depende="' . e($f['depende']) . '"' : '' ?>>
                 <option value="<?= e($f['vacio'] ?? '0') ?>"><?= e($f['todos']) ?></option>
                 <?php foreach ($f['opciones'] as $o): ?>
-                    <?php $rango = $o['rango'] ?? null; ?>
+                    <?php
+                    $rango = $o['rango'] ?? null;
+                    // La elegida nunca va desactivada: el navegador no la enviaría y el filtro se perdería
+                    $elegida = (string) $o['valor'] === (string) $f['valor'];
+                    ?>
                     <option value="<?= e((string) $o['valor']) ?>"
-                        <?= (string) $o['valor'] === (string) $f['valor'] ? 'selected' : '' ?>
+                        <?= $elegida ? 'selected' : '' ?>
                         <?php if ($rango): ?>data-desde="<?= e($rango['desde']) ?>" data-hasta="<?= e($rango['hasta']) ?>"<?php endif; ?>
                         <?= isset($o['padre']) ? 'data-padre="' . e((string) $o['padre']) . '"' : '' ?>
                         data-detalle="<?= e(textoRangoActividad($rango)) ?>"
-                        <?= $rango ? '' : 'disabled' ?>><?= e($o['texto']) ?></option>
+                        <?= $rango || $elegida ? '' : 'disabled' ?>><?= e($o['texto']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>

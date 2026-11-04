@@ -127,8 +127,11 @@ if ($idProducto > 0) {
 // Un solo filtro para todo: KPIs, desgloses, tabla y CSV
 $wherePeriodo  = "v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?" . $whereFiltros;
 $paramsPeriodo = array_merge([$idSucursalGerente, $inicio, $fin], $paramsFiltros);
-$whereTabla    = $wherePeriodo;
-$paramsTabla   = $paramsPeriodo;
+
+// Con filtro de producto, las cuentas por artículo (unidades, más vendidos)
+// solo suman ese producto, no los demás artículos de las mismas ventas
+$whereLinea  = $idProducto > 0 ? " AND dv.id_producto = ?" : '';
+$paramsLinea = $idProducto > 0 ? [$idProducto] : [];
 
 $orderBy = ($agrupar !== '' ? $agrupaciones[$agrupar][1] . ', ' : '') . $ordenes[$orden][1] . ', v.id_venta DESC';
 
@@ -143,7 +146,7 @@ $selectVentas = "
     INNER JOIN Usuarios u     ON u.id_usuario = v.id_cajero
     INNER JOIN Metodos_Pago m ON m.id_metodo_pago = v.id_metodo_pago
     LEFT JOIN Cajas c         ON c.id_caja = v.id_caja
-    WHERE $whereTabla
+    WHERE $wherePeriodo
     ORDER BY $orderBy
 ";
 
@@ -156,7 +159,7 @@ $nombreCaja = static fn(array $v): string => $v['id_caja'] === null
  * ============================================================ */
 if (($_GET['exportar'] ?? '') === 'csv') {
     $stmt = $pdo->prepare($selectVentas);
-    $stmt->execute($paramsTabla);
+    $stmt->execute($paramsPeriodo);
 
     $filas = (function () use ($stmt, $nombreCaja) {
         while ($v = $stmt->fetch()) {
@@ -190,16 +193,16 @@ if (($_GET['exportar'] ?? '') === 'csv') {
 $totalesGrupo = [];
 if ($agrupar !== '') {
     $colGrupo = ['cajero' => 'v.id_cajero', 'metodo' => 'v.id_metodo_pago', 'caja' => 'v.id_caja'][$agrupar];
-    $stmt = $pdo->prepare("SELECT $colGrupo AS clave, COUNT(*) AS num, SUM(v.total) AS monto FROM Ventas v WHERE $whereTabla GROUP BY $colGrupo");
-    $stmt->execute($paramsTabla);
+    $stmt = $pdo->prepare("SELECT $colGrupo AS clave, COUNT(*) AS num, SUM(v.total) AS monto FROM Ventas v WHERE $wherePeriodo GROUP BY $colGrupo");
+    $stmt->execute($paramsPeriodo);
     foreach ($stmt->fetchAll() as $g) {
         $totalesGrupo[(string) $g['clave']] = $g;
     }
 }
 
-$cargarPagina = static function (int $pagina) use ($pdo, $selectVentas, $paramsTabla): array {
+$cargarPagina = static function (int $pagina) use ($pdo, $selectVentas, $paramsPeriodo): array {
     $stmt = $pdo->prepare($selectVentas . " LIMIT " . VENTAS_POR_PAGINA . " OFFSET " . (($pagina - 1) * VENTAS_POR_PAGINA));
-    $stmt->execute($paramsTabla);
+    $stmt->execute($paramsPeriodo);
     $ventas = $stmt->fetchAll();
 
     $articulos = [];
@@ -279,8 +282,8 @@ $pintarFilas = static function (array $ventas, array $articulosPorVenta, ?string
     return [ob_get_clean(), $grupoActual];
 };
 
-$stmt = $pdo->prepare("SELECT COUNT(*) AS num, COALESCE(SUM(v.total), 0) AS monto FROM Ventas v WHERE $whereTabla");
-$stmt->execute($paramsTabla);
+$stmt = $pdo->prepare("SELECT COUNT(*) AS num, COALESCE(SUM(v.total), 0) AS monto FROM Ventas v WHERE $wherePeriodo");
+$stmt->execute($paramsPeriodo);
 $resumenTabla = $stmt->fetch();
 $numTabla     = (int) $resumenTabla['num'];
 $totalPaginas = max(1, (int) ceil($numTabla / VENTAS_POR_PAGINA));
@@ -301,15 +304,13 @@ if (($_GET['parcial'] ?? '') === '1') {
 /* ============================================================
  * 3. KPIs del periodo
  * ============================================================ */
-$stmt = $pdo->prepare("SELECT COUNT(*) AS num, COALESCE(SUM(v.total), 0) AS monto FROM Ventas v WHERE $wherePeriodo");
-$stmt->execute($paramsPeriodo);
-$resumen   = $stmt->fetch();
-$numVentas = (int) $resumen['num'];
-$monto     = (float) $resumen['monto'];
+// Mismo filtro que la tabla: se reusa su resumen en vez de volver a sumar
+$numVentas = $numTabla;
+$monto     = (float) $resumenTabla['monto'];
 $ticket    = $numVentas > 0 ? $monto / $numVentas : 0.0;
 
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(dv.cantidad), 0) FROM Detalle_Venta dv INNER JOIN Ventas v ON v.id_venta = dv.id_venta WHERE $wherePeriodo");
-$stmt->execute($paramsPeriodo);
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(dv.cantidad), 0) FROM Detalle_Venta dv INNER JOIN Ventas v ON v.id_venta = dv.id_venta WHERE $wherePeriodo$whereLinea");
+$stmt->execute(array_merge($paramsPeriodo, $paramsLinea));
 $unidades = (int) $stmt->fetchColumn();
 
 $variacion = null;
@@ -362,12 +363,12 @@ $stmt = $pdo->prepare("
     FROM Detalle_Venta dv
     INNER JOIN Ventas v    ON v.id_venta = dv.id_venta
     INNER JOIN Productos p ON p.id_producto = dv.id_producto
-    WHERE $wherePeriodo
+    WHERE $wherePeriodo$whereLinea
     GROUP BY p.id_producto, p.nombre, p.codigo
     ORDER BY unidades DESC
     LIMIT 5
 ");
-$stmt->execute($paramsPeriodo);
+$stmt->execute(array_merge($paramsPeriodo, $paramsLinea));
 $topProductos = $stmt->fetchAll();
 
 /* ============================================================
@@ -466,7 +467,7 @@ require __DIR__ . '/header.php';
     <div class="kpi">
         <span class="kpi-label"><?= e(t('ventas.kpi_unidades')) ?></span>
         <span class="kpi-value"><?= numero($unidades) ?></span>
-        <span class="kpi-sub"><?= e(t('ventas.kpi_unidades_sub')) ?></span>
+        <span class="kpi-sub"><?= e(tn('ventas.kpi_unidades_sub', $unidades)) ?></span>
     </div>
 </section>
 
