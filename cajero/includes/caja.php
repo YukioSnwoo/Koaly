@@ -14,6 +14,12 @@ class SinCambioException extends DomainException
 {
 }
 
+// Precio que se cobra: el de venta de la sucursal (lo pone el gerente en la ficha
+// del producto); si aún no tiene, el de catálogo. Necesita el alias ip para
+// Inventario_Sucursal. Lo usan el buscador, el catálogo y registrar_venta.php,
+// para que la caja muestre y cobre lo mismo.
+const SQL_PRECIO_CAJA = 'COALESCE(NULLIF(ip.precio_venta, 0), p.precio)';
+
 // Diferencias (en el corte o al abrir) de más de $50 se marcan para el gerente
 const UMBRAL_REVISION_CENTAVOS = 5000;
 
