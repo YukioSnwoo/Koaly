@@ -1,20 +1,18 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
+require_once __DIR__ . '/../admin/metricas_ventas.php';
 
 /* ------------------------------------------------------------
    Resumen del día para el inicio
    ------------------------------------------------------------ */
-$stmt = $pdo->prepare("
-    SELECT
-        COALESCE(SUM(CASE WHEN fecha_hora >= CURDATE() THEN total END), 0)        AS monto_hoy,
-        COUNT(CASE WHEN fecha_hora >= CURDATE() THEN 1 END)                         AS num_hoy,
-        COALESCE(SUM(CASE WHEN fecha_hora <  CURDATE() THEN total END), 0)        AS monto_ayer
-    FROM Ventas
-    WHERE id_sucursal = ? AND fecha_hora >= CURDATE() - INTERVAL 1 DAY
-");
-$stmt->execute([$idSucursalGerente]);
-$ventasHoy = $stmt->fetch();
+// Mismo cálculo que Ventas (admin/metricas_ventas.php): venta sin IVA y utilidad
+$hoyInicio  = date('Y-m-d 00:00:00');
+$ayerInicio = date('Y-m-d 00:00:00', strtotime('-1 day'));
+$mananaInicio = date('Y-m-d 00:00:00', strtotime('+1 day'));
+$wherePeriodo = 'v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?';
+$ventasHoy  = metricasVentas($pdo, $wherePeriodo, [$idSucursalGerente, $hoyInicio, $mananaInicio]);
+$ventasAyer = metricasVentas($pdo, $wherePeriodo, [$idSucursalGerente, $ayerInicio, $hoyInicio]);
 
 $stmt = $pdo->prepare("
     SELECT COUNT(*) AS en_alerta,
@@ -75,10 +73,13 @@ require __DIR__ . '/header.php';
 <section class="kpi-grid" aria-label="<?= e(t('inicio.resumen_aria')) ?>">
     <a href="ventas_sucursal.php?periodo=hoy" class="kpi kpi--ok kpi--link">
         <span class="kpi-label"><?= e(t('inicio.kpi_ventas')) ?></span>
-        <span class="kpi-value kpi-value--ok"><?= dinero($ventasHoy['monto_hoy']) ?></span>
+        <span class="kpi-value kpi-value--ok"><?= dinero($ventasHoy['venta_neta']) ?></span>
         <span class="kpi-sub">
-            <?= e(tn('ventas.n_ventas', (int) $ventasHoy['num_hoy'])) ?>
-            · <?= e(t('inicio.kpi_ventas_ayer', ['monto' => dinero($ventasHoy['monto_ayer'])])) ?>
+            <?= e(tn('ventas.n_ventas', $ventasHoy['num_ventas'])) ?>
+            <?php if ($ventasHoy['utilidad'] !== null): ?>
+                · <?= e(t('inicio.kpi_utilidad', ['monto' => dinero($ventasHoy['utilidad'])])) ?>
+            <?php endif; ?>
+            · <?= e(t('inicio.kpi_ventas_ayer', ['monto' => dinero($ventasAyer['venta_neta'])])) ?>
         </span>
     </a>
     <a href="productos.php?stock=alerta" class="kpi <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi--danger' : '' ?> kpi--link">
