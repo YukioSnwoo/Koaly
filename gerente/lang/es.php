@@ -165,6 +165,8 @@ return [
     'inicio.eyebrow' => 'Panel de la sucursal',
     'inicio.resumen_aria' => 'Resumen del día',
     'inicio.kpi_ventas' => 'Ventas de hoy (sin IVA)',
+    'inicio.grafica_7' => 'Venta y ganancia de los últimos 7 días',
+    'inicio.grafica_ver' => 'Ver ventas',
     'inicio.kpi_utilidad' => 'ganancia {monto}',
     'inicio.kpi_ventas_ayer' => 'ayer {monto}',
     'inicio.kpi_alerta' => 'Stock en alerta',

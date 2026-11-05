@@ -165,6 +165,8 @@ return [
     'inicio.eyebrow' => 'Branch dashboard',
     'inicio.resumen_aria' => 'Today\'s summary',
     'inicio.kpi_ventas' => "Today's sales (excl. VAT)",
+    'inicio.grafica_7' => 'Sales and profit, last 7 days',
+    'inicio.grafica_ver' => 'View sales',
     'inicio.kpi_utilidad' => 'profit {monto}',
     'inicio.kpi_ventas_ayer' => 'yesterday {monto}',
     'inicio.kpi_alerta' => 'Low stock alerts',

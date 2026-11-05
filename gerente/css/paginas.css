@@ -113,6 +113,8 @@
 .grafica--ancha,
 .ventas-graficas > .grafica:last-child:nth-child(even) { grid-column: 1 / -1; }   /* la que queda sola, a lo ancho */
 .grafica figcaption h2 { font-size: 0.95rem; color: var(--texto); margin-bottom: 0.6rem; }
+.grafica-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.6rem; }
+.grafica .grafica-cabecera h2 { margin-bottom: 0; }
 .grafica-lienzo { position: relative; height: 240px; }
 .grafica--ancha .grafica-lienzo { height: 280px; }
 @media (max-width: 760px) {
