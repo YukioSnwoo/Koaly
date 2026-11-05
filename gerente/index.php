@@ -45,21 +45,14 @@ $stmt = $pdo->prepare("SELECT direccion, telefono, email_contacto FROM Sucursale
 $stmt->execute([$idSucursalGerente]);
 $sucursal = $stmt->fetch() ?: [];
 
-// Gráfica de los últimos 7 días (la dibuja js/graficas.js, igual que en Ventas)
+// Gráfica de los últimos 7 días (la dibuja js/graficas.js, igual que en Gráficas)
 $semanaInicio = (new DateTimeImmutable('today'))->modify('-6 days');
-$serie7 = seriesVentas($pdo, 'dia', $wherePeriodo, [$idSucursalGerente, $semanaInicio->format('Y-m-d 00:00:00'), $mananaInicio]);
-$diasCortos = explode(',', t('grafica.dias_cortos'));
-$claves7 = [];
-for ($d = $semanaInicio; $d->format('Y-m-d') <= date('Y-m-d'); $d = $d->modify('+1 day')) {
-    $claves7[$d->format('Y-m-d')] = $diasCortos[(int) $d->format('w')] . ' ' . $d->format('j');
-}
-$graficas = $serie7 ? [
+$tendencia7 = serieTendencia($pdo, $semanaInicio, new DateTimeImmutable('today'), $wherePeriodo,
+    [$idSucursalGerente, $semanaInicio->format('Y-m-d 00:00:00'), $mananaInicio],
+    explode(',', t('grafica.dias_cortos')), explode(',', t('grafica.meses_cortos')));
+$graficas = array_sum($tendencia7['neta']) > 0 ? [
     'textos'    => ['venta' => t('grafica.venta'), 'ganancia' => t('grafica.ganancia'), 'ventas' => t('grafica.num_ventas')],
-    'tendencia' => [
-        'etiquetas' => array_values($claves7),
-        'neta'      => array_map(fn($k) => round($serie7[$k]['neta'] ?? 0, 2), array_keys($claves7)),
-        'utilidad'  => array_map(fn($k) => isset($serie7[$k]['utilidad']) ? round($serie7[$k]['utilidad'], 2) : null, array_keys($claves7)),
-    ],
+    'tendencia' => $tendencia7,
 ] : null;
 
 $pageTitle = t('inicio.titulo');
@@ -126,7 +119,7 @@ require __DIR__ . '/header.php';
         <figure class="grafica grafica--ancha">
             <figcaption class="grafica-cabecera">
                 <h2><?= e(t('inicio.grafica_7')) ?></h2>
-                <a class="btn btn-ghost btn-sm" href="ventas_sucursal.php?periodo=7"><?= e(t('inicio.grafica_ver')) ?></a>
+                <a class="btn btn-ghost btn-sm" href="graficas.php?periodo=7"><?= e(t('inicio.grafica_ver')) ?></a>
             </figcaption>
             <div class="grafica-lienzo"><canvas id="graficaTendencia" role="img" aria-label="<?= e(t('inicio.grafica_7')) ?>"></canvas></div>
         </figure>

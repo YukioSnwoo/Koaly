@@ -227,3 +227,107 @@ function rentabilidadPor(PDO $pdo, string $por, string $where, array $params, st
     }
     return $filas;
 }
+
+/**
+ * Venta neta y número de ventas por método de pago.
+ * @return list<array{etiqueta:string, num:int, neta:float}>
+ */
+function ventasPorMetodo(PDO $pdo, string $where, array $params): array
+{
+    $stmt = $pdo->prepare("
+        SELECT m.nombre_metodo AS etiqueta, COUNT(*) AS num, SUM(v.total) AS cobrado
+        FROM Ventas v
+        INNER JOIN Metodos_Pago m ON m.id_metodo_pago = v.id_metodo_pago
+        WHERE $where
+        GROUP BY m.id_metodo_pago, m.nombre_metodo
+        ORDER BY cobrado DESC
+    ");
+    $stmt->execute($params);
+    return array_map(fn($f) => [
+        'etiqueta' => (string) $f['etiqueta'],
+        'num'      => (int) $f['num'],
+        'neta'     => sinIva((float) $f['cobrado']),
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+
+/**
+ * Número de ventas por día de la semana y hora (mapa de calor).
+ * @return array{horas: list<int>, filas: list<list<int>>}  filas de lunes a domingo
+ */
+function mapaCalorVentas(PDO $pdo, string $where, array $params): array
+{
+    $stmt = $pdo->prepare("
+        SELECT WEEKDAY(v.fecha_hora) AS dia, HOUR(v.fecha_hora) AS hora, COUNT(*) AS num
+        FROM Ventas v
+        WHERE $where
+        GROUP BY dia, hora
+    ");
+    $stmt->execute($params);
+    $celdas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$celdas) {
+        return ['horas' => [], 'filas' => []];
+    }
+    $horasConVenta = array_map(fn($c) => (int) $c['hora'], $celdas);
+    $horas = range(min($horasConVenta), max($horasConVenta));
+    $filas = array_fill(0, 7, array_fill(0, count($horas), 0));
+    foreach ($celdas as $c) {
+        $filas[(int) $c['dia']][(int) $c['hora'] - $horas[0]] = (int) $c['num'];
+    }
+    return ['horas' => $horas, 'filas' => $filas];
+}
+
+/**
+ * Análisis ABC: ordena los productos por venta y marca A (los que suman el
+ * primer 80% de la venta), B (el siguiente 15%) y C (el último 5%).
+ * Recibe las filas de rentabilidadPor($pdo, 'producto', …).
+ * @return list<array> las mismas filas, de mayor a menor venta, con 'clase' y 'acumulado' (%)
+ */
+function clasificarABC(array $productos): array
+{
+    usort($productos, fn($a, $b) => $b['neta'] <=> $a['neta']);
+    $total = array_sum(array_column($productos, 'neta'));
+    $acumulado = 0.0;
+    foreach ($productos as &$p) {
+        $antes = $total > 0 ? $acumulado / $total * 100 : 0;
+        $acumulado += $p['neta'];
+        // La clase depende de dónde empieza el producto: el que cruza el 80% sigue siendo A
+        $p['clase'] = $antes < 80 ? 'A' : ($antes < 95 ? 'B' : 'C');
+        $p['acumulado'] = $total > 0 ? $acumulado / $total * 100 : 0;
+    }
+    return $productos;
+}
+
+/**
+ * Serie de venta y ganancia para la gráfica de tendencia: por hora si el
+ * periodo es un día, por día hasta 92 días y por mes si es más. Rellena con 0
+ * los huecos sin ventas para que el eje no salte días.
+ * $diasCortos: 7 nombres desde domingo; $mesesCortos: 12 nombres desde enero.
+ * @return array{agrupar:string, etiquetas:list<string>, neta:list<float>, utilidad:list<?float>}
+ */
+function serieTendencia(PDO $pdo, DateTimeImmutable $desde, DateTimeImmutable $hasta, string $where, array $params,
+                        array $diasCortos, array $mesesCortos, string $whereLinea = '', array $paramsLinea = []): array
+{
+    $dias = (int) $desde->diff($hasta)->days + 1;
+    $agrupar = $dias === 1 ? 'hora' : ($dias <= 92 ? 'dia' : 'mes');
+    $serie = seriesVentas($pdo, $agrupar, $where, $params, $whereLinea, $paramsLinea);
+
+    $claves = [];
+    if ($agrupar === 'hora') {
+        $horas = array_map('intval', array_keys($serie)) ?: [9];
+        foreach (range(min($horas), max($horas)) as $h) $claves[(string) $h] = $h . ':00';
+    } elseif ($agrupar === 'dia') {
+        for ($d = $desde; $d <= $hasta; $d = $d->modify('+1 day')) {
+            $claves[$d->format('Y-m-d')] = $diasCortos[(int) $d->format('w')] . ' ' . $d->format('j');
+        }
+    } else {
+        for ($d = $desde->modify('first day of this month'); $d <= $hasta; $d = $d->modify('+1 month')) {
+            $claves[$d->format('Y-m')] = $mesesCortos[(int) $d->format('n') - 1] . ' ' . $d->format('y');
+        }
+    }
+    return [
+        'agrupar'   => $agrupar,
+        'etiquetas' => array_values($claves),
+        'neta'      => array_map(fn($k) => round($serie[$k]['neta'] ?? 0, 2), array_keys($claves)),
+        'utilidad'  => array_map(fn($k) => isset($serie[$k]['utilidad']) ? round($serie[$k]['utilidad'], 2) : null, array_keys($claves)),
+    ];
+}

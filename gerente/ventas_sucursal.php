@@ -319,70 +319,7 @@ if (!$esTodo) {
     $variacionUtilidad = variacionPorcentual($metricas['utilidad'], $anterior['utilidad']);
 }
 
-/* ============================================================
- * 3b. Gráficas: tendencia, cuándo se vende y ganancia por categoría
- * ============================================================ */
-$diasCortos = explode(',', t('grafica.dias_cortos'));   // domingo primero, como DAYOFWEEK
-$mesesCortos = explode(',', t('grafica.meses_cortos'));
-$graficas = ['textos' => [
-    'venta'    => t('grafica.venta'),
-    'ganancia' => t('grafica.ganancia'),
-    'ventas'   => t('grafica.num_ventas'),
-]];
-
-// Tendencia: por hora si es un día, por día hasta 3 meses, por mes si es más
-$agruparTendencia = $dias === 1 ? 'hora' : ($dias <= 92 ? 'dia' : 'mes');
-$serie = seriesVentas($pdo, $agruparTendencia, $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea);
-$claves = [];
-if ($agruparTendencia === 'hora') {
-    $horas = array_map('intval', array_keys($serie)) ?: [9];
-    foreach (range(min($horas), max($horas)) as $h) $claves[(string) $h] = $h . ':00';
-} elseif ($agruparTendencia === 'dia') {
-    for ($d = $desde; $d <= $hasta; $d = $d->modify('+1 day')) {
-        $claves[$d->format('Y-m-d')] = $diasCortos[(int) $d->format('w')] . ' ' . $d->format('j');
-    }
-} else {
-    for ($d = $desde->modify('first day of this month'); $d <= $hasta; $d = $d->modify('+1 month')) {
-        $claves[$d->format('Y-m')] = $mesesCortos[(int) $d->format('n') - 1] . ' ' . $d->format('y');
-    }
-}
-$graficas['tendencia'] = [
-    'titulo'   => t('grafica.tendencia_' . $agruparTendencia),
-    'etiquetas' => array_values($claves),
-    'neta'     => array_map(fn($k) => round($serie[$k]['neta'] ?? 0, 2), array_keys($claves)),
-    'utilidad' => array_map(fn($k) => isset($serie[$k]['utilidad']) ? round($serie[$k]['utilidad'], 2) : null, array_keys($claves)),
-];
-
-// Cuándo se vende: por hora (si el periodo es de varios días) y por día de la semana (desde una semana)
-if ($dias > 1) {
-    $porHora = seriesVentas($pdo, 'hora', $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea);
-    $horas = array_map('intval', array_keys($porHora));
-    if ($horas) {
-        $rango = range(min($horas), max($horas));
-        $graficas['hora'] = [
-            'etiquetas' => array_map(fn($h) => $h . ':00', $rango),
-            'num'       => array_map(fn($h) => $porHora[(string) $h]['num'] ?? 0, $rango),
-            'neta'      => array_map(fn($h) => round($porHora[(string) $h]['neta'] ?? 0, 2), $rango),
-        ];
-    }
-}
-if ($dias >= 7) {
-    $porDia = seriesVentas($pdo, 'semana', $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea);
-    $orden = [2, 3, 4, 5, 6, 7, 1];   // lunes a domingo
-    $graficas['semana'] = [
-        'etiquetas' => array_map(fn($d) => $diasCortos[$d - 1], $orden),
-        'num'       => array_map(fn($d) => $porDia[(string) $d]['num'] ?? 0, $orden),
-        'neta'      => array_map(fn($d) => round($porDia[(string) $d]['neta'] ?? 0, 2), $orden),
-    ];
-}
-
-// Ganancia por categoría y los productos que más ganancia dejan
-$porCategoria = rentabilidadPor($pdo, 'categoria', $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea);
-$graficas['categorias'] = [
-    'etiquetas' => array_map(fn($f) => tValor('categoria', $f['etiqueta'], t('comun.sin_categoria')), $porCategoria),
-    'neta'      => array_map(fn($f) => round($f['neta'], 2), $porCategoria),
-    'utilidad'  => array_map(fn($f) => $f['utilidad'] !== null ? round($f['utilidad'], 2) : null, $porCategoria),
-];
+// Productos que más ganancia dejan (lista junto a "Más vendidos")
 $masGanancia = array_values(array_filter(
     rentabilidadPor($pdo, 'producto', $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea, 5),
     fn($f) => $f['utilidad'] !== null
@@ -499,7 +436,10 @@ require __DIR__ . '/header.php';
             <?php endif; ?>
         </p>
     </div>
-    <a class="btn btn-ghost" href="<?= e($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>"><?= e(t('comun.exportar_csv')) ?></a>
+    <div class="page-header-acciones">
+        <a class="btn btn-ghost" href="graficas.php?<?= e(http_build_query(['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d')])) ?>"><?= e(t('ventas.ver_graficas')) ?></a>
+        <a class="btn btn-ghost" href="<?= e($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>"><?= e(t('comun.exportar_csv')) ?></a>
+    </div>
 </div>
 
 <?php require __DIR__ . '/includes/barra_filtros.php'; ?>
@@ -567,33 +507,6 @@ $pintarVariacion = function (?float $v) use ($esTodo, $desde, $dias): string {
         <div class="empty-state"><?= e(t('ventas.vacio')) ?></div>
     </div>
 <?php else: ?>
-
-    <!-- Gráficas (gerente/js/graficas.js con Chart.js); los datos van abajo en JSON -->
-    <section class="ventas-graficas">
-        <figure class="grafica grafica--ancha">
-            <figcaption><h2><?= e($graficas['tendencia']['titulo']) ?></h2></figcaption>
-            <div class="grafica-lienzo"><canvas id="graficaTendencia" role="img" aria-label="<?= e($graficas['tendencia']['titulo']) ?>"></canvas></div>
-        </figure>
-        <?php if (isset($graficas['hora'])): ?>
-            <figure class="grafica">
-                <figcaption><h2><?= e(t('grafica.por_hora')) ?></h2></figcaption>
-                <div class="grafica-lienzo"><canvas id="graficaHora" role="img" aria-label="<?= e(t('grafica.por_hora')) ?>"></canvas></div>
-            </figure>
-        <?php endif; ?>
-        <?php if (isset($graficas['semana'])): ?>
-            <figure class="grafica">
-                <figcaption><h2><?= e(t('grafica.por_dia')) ?></h2></figcaption>
-                <div class="grafica-lienzo"><canvas id="graficaSemana" role="img" aria-label="<?= e(t('grafica.por_dia')) ?>"></canvas></div>
-            </figure>
-        <?php endif; ?>
-        <?php if (count($graficas['categorias']['etiquetas']) > 1): ?>
-            <figure class="grafica">
-                <figcaption><h2><?= e(t('grafica.por_categoria')) ?></h2></figcaption>
-                <div class="grafica-lienzo"><canvas id="graficaCategorias" role="img" aria-label="<?= e(t('grafica.por_categoria')) ?>"></canvas></div>
-            </figure>
-        <?php endif; ?>
-    </section>
-    <script type="application/json" id="datosGraficas"><?= json_encode($graficas, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 
     <?php
     $desgloses = [
@@ -736,8 +649,4 @@ $pintarVariacion = function (?float $v) use ($esTodo, $desde, $dias): string {
     </section>
 <?php endif; ?>
 
-<?php if ($numVentas > 0): ?>
-    <script src="js/vendor/chart.umd.min.js"></script>
-    <script src="js/graficas.js?v=<?= filemtime(__DIR__ . '/js/graficas.js') ?>"></script>
-<?php endif; ?>
 <?php require __DIR__ . '/footer.php'; ?>
