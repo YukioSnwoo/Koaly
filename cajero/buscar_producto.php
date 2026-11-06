@@ -10,6 +10,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 }
 
 require_once __DIR__ . '/../admin/database.php';
+require_once __DIR__ . '/includes/caja.php';
 
 $q = trim($_GET['q'] ?? '');
 
@@ -24,7 +25,7 @@ $stmt->execute([$_SESSION['id_usuario']]);
 $idSucursal = (int) $stmt->fetchColumn();
 
 $stmt = $pdo->prepare("
-    SELECT p.id_producto, p.codigo, p.nombre, p.precio, p.imagen, COALESCE(ip.cantidad_disponible, 0) AS stock
+    SELECT p.id_producto, p.codigo, p.nombre, " . SQL_PRECIO_CAJA . " AS precio, p.imagen, COALESCE(ip.cantidad_disponible, 0) AS stock
     FROM Productos p
     LEFT JOIN Inventario_Sucursal ip ON ip.id_producto = p.id_producto AND ip.id_sucursal = ?
     WHERE (p.codigo LIKE ? OR p.nombre LIKE ?) AND p.estado = 'Activo'

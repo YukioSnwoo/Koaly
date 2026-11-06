@@ -2,6 +2,7 @@
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/csv.php';
 require_once __DIR__ . '/includes/filtros.php';
+require_once __DIR__ . '/../admin/metricas_ventas.php';
 
 const VENTAS_POR_PAGINA = 50;
 const SIN_CAJA = -1;
@@ -304,22 +305,25 @@ if (($_GET['parcial'] ?? '') === '1') {
 /* ============================================================
  * 3. KPIs del periodo
  * ============================================================ */
-// Mismo filtro que la tabla: se reusa su resumen en vez de volver a sumar
-$numVentas = $numTabla;
-$monto     = (float) $resumenTabla['monto'];
-$ticket    = $numVentas > 0 ? $monto / $numVentas : 0.0;
+// Todo sale de admin/metricas_ventas.php: venta sin IVA, utilidad, ticket…
+$metricas  = metricasVentas($pdo, $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea);
+$numVentas = $metricas['num_ventas'];
+$unidades  = $metricas['unidades'];
+$perdidas  = perdidasInventario($pdo, $idSucursalGerente, $inicio, $fin, $idProducto);
 
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(dv.cantidad), 0) FROM Detalle_Venta dv INNER JOIN Ventas v ON v.id_venta = dv.id_venta WHERE $wherePeriodo$whereLinea");
-$stmt->execute(array_merge($paramsPeriodo, $paramsLinea));
-$unidades = (int) $stmt->fetchColumn();
-
-$variacion = null;
+// Mismo cálculo con el periodo anterior de igual duración
+$variacion = $variacionUtilidad = null;
 if (!$esTodo) {
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(v.total), 0) FROM Ventas v WHERE $wherePeriodo");
-    $stmt->execute(array_merge([$idSucursalGerente, $inicioAnterior, $inicio], $paramsFiltros));
-    $montoAnterior = (float) $stmt->fetchColumn();
-    $variacion = $montoAnterior > 0 ? ($monto - $montoAnterior) / $montoAnterior * 100 : null;
+    $anterior = metricasVentas($pdo, $wherePeriodo, array_merge([$idSucursalGerente, $inicioAnterior, $inicio], $paramsFiltros), $whereLinea, $paramsLinea);
+    $variacion         = variacionPorcentual($metricas['venta_neta'], $anterior['venta_neta']);
+    $variacionUtilidad = variacionPorcentual($metricas['utilidad'], $anterior['utilidad']);
 }
+
+// Productos que más ganancia dejan (lista junto a "Más vendidos")
+$masGanancia = array_values(array_filter(
+    rentabilidadPor($pdo, 'producto', $wherePeriodo, $paramsPeriodo, $whereLinea, $paramsLinea, 5),
+    fn($f) => $f['utilidad'] !== null
+));
 
 /* ============================================================
  * 4. Desgloses del periodo
@@ -432,44 +436,64 @@ require __DIR__ . '/header.php';
             <?php endif; ?>
         </p>
     </div>
-    <a class="btn btn-ghost" href="<?= e($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>"><?= e(t('comun.exportar_csv')) ?></a>
+    <div class="page-header-acciones">
+        <a class="btn btn-ghost" href="graficas.php?<?= e(http_build_query(['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d')])) ?>"><?= e(t('ventas.ver_graficas')) ?></a>
+        <a class="btn btn-ghost" href="<?= e($url($estadoPeriodo + $estadoTabla + ['exportar' => 'csv'])) ?>"><?= e(t('comun.exportar_csv')) ?></a>
+    </div>
 </div>
 
 <?php require __DIR__ . '/includes/barra_filtros.php'; ?>
 
+<?php
+// "▲ 12.5% frente a los 7 días anteriores"
+$pintarVariacion = function (?float $v) use ($esTodo, $desde, $dias): string {
+    if ($esTodo) return e(t('ventas.kpi_desde', ['fecha' => fecha($desde, false)]));
+    if ($v === null) return e(t('ventas.kpi_sin_anterior'));
+    return '<span class="' . ($v >= 0 ? 'texto-ok' : 'texto-peligro') . '" style="font-weight: 600;">'
+        . ($v >= 0 ? '▲' : '▼') . ' ' . numero(abs($v), 1) . '%</span> ' . e(tn('ventas.kpi_vs_anterior', $dias));
+};
+?>
 <section class="kpi-grid">
     <div class="kpi kpi--ok">
-        <span class="kpi-label"><?= e(t('ventas.kpi_monto')) ?></span>
-        <span class="kpi-value kpi-value--ok"><?= dinero($monto) ?></span>
-        <span class="kpi-sub">
-            <?php if ($esTodo): ?>
-                <?= e(t('ventas.kpi_desde', ['fecha' => fecha($desde, false)])) ?>
-            <?php elseif ($variacion === null): ?>
-                <?= e(t('ventas.kpi_sin_anterior')) ?>
-            <?php else: ?>
-                <span class="<?= $variacion >= 0 ? 'texto-ok' : 'texto-peligro' ?>" style="font-weight: 600;">
-                    <?= $variacion >= 0 ? '▲' : '▼' ?> <?= numero(abs($variacion), 1) ?>%
-                </span>
-                <?= e(tn('ventas.kpi_vs_anterior', $dias)) ?>
+        <span class="kpi-label"><?= e(t('ventas.kpi_neta')) ?></span>
+        <span class="kpi-value kpi-value--ok"><?= dinero($metricas['venta_neta']) ?></span>
+        <span class="kpi-sub"><?= $pintarVariacion($variacion) ?></span>
+        <span class="kpi-sub"><?= e(t('ventas.kpi_cobrado', ['monto' => dinero($metricas['cobrado'])])) ?></span>
+    </div>
+    <div class="kpi">
+        <span class="kpi-label"><?= e(t('ventas.kpi_utilidad')) ?></span>
+        <?php if ($metricas['utilidad'] === null): ?>
+            <span class="kpi-value">—</span>
+            <span class="kpi-sub"><?= e(t(hayCostoEnVentas($pdo) ? 'ventas.kpi_utilidad_sin_costo' : 'ventas.kpi_utilidad_sin_sql')) ?></span>
+        <?php else: ?>
+            <span class="kpi-value <?= $metricas['utilidad'] < 0 ? 'kpi-value--danger' : '' ?>"><?= dinero($metricas['utilidad']) ?></span>
+            <span class="kpi-sub"><?= e(t('ventas.kpi_margen', ['p' => numero($metricas['margen'], 1)])) ?> · <?= $pintarVariacion($variacionUtilidad) ?></span>
+            <?php if ($metricas['cobertura'] < 99.5): ?>
+                <span class="kpi-sub texto-pendiente"><?= e(t('ventas.kpi_cobertura', ['p' => numero($metricas['cobertura'], 0)])) ?></span>
             <?php endif; ?>
-        </span>
+        <?php endif; ?>
     </div>
     <div class="kpi">
         <span class="kpi-label"><?= e(t('ventas.kpi_ventas')) ?></span>
         <span class="kpi-value"><?= numero($numVentas) ?></span>
-        <span class="kpi-sub"><?= e(t('ventas.kpi_ventas_sub')) ?></span>
+        <span class="kpi-sub"><?= e(tn('ventas.kpi_unidades_sub', $unidades)) ?> · <?= e(t('ventas.kpi_por_ticket', ['n' => numero($metricas['articulos_ticket'], 1)])) ?></span>
     </div>
     <div class="kpi">
         <span class="kpi-label"><?= e(t('ventas.kpi_ticket')) ?></span>
-        <span class="kpi-value"><?= dinero($ticket) ?></span>
+        <span class="kpi-value"><?= dinero($metricas['ticket']) ?></span>
         <span class="kpi-sub"><?= e(t('ventas.kpi_ticket_sub')) ?></span>
     </div>
-    <div class="kpi">
-        <span class="kpi-label"><?= e(t('ventas.kpi_unidades')) ?></span>
-        <span class="kpi-value"><?= numero($unidades) ?></span>
-        <span class="kpi-sub"><?= e(tn('ventas.kpi_unidades_sub', $unidades)) ?></span>
-    </div>
 </section>
+
+<?php if ($perdidas['unidades'] > 0): ?>
+    <div class="alert alert-warning">
+        <?= e(tn('ventas.perdidas', $perdidas['unidades'])) ?>
+        <?php if ($perdidas['costo'] !== null): ?>
+            <?= e(t('ventas.perdidas_costo', ['monto' => dinero($perdidas['costo'])])) ?>
+        <?php endif; ?>
+        <a href="movimientos.php?<?= e(http_build_query(['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d'), 'tipo' => 'AJUSTE_MERMA'] + ($idProducto > 0 ? ['producto' => $idProducto] : []))) ?>"><?= e(t('ventas.perdidas_ver')) ?></a>
+    </div>
+<?php endif; ?>
 
 <?php if ($ventasSinCaja > 0): ?>
     <div class="alert alert-warning">
@@ -504,12 +528,12 @@ require __DIR__ . '/header.php';
                 </header>
                 <ul class="desglose-lista">
                     <?php foreach ($filas as $f): ?>
-                        <?php $porcentaje = $pct((float) $f['monto'], $monto); ?>
+                        <?php $porcentaje = $pct((float) $f['monto'], (float) $resumenTabla['monto']); ?>
                         <li>
                             <div class="desglose-fila">
                                 <span class="desglose-nombre"><?= e($f['etiqueta']) ?></span>
                                 <span class="desglose-num"><?= e(tn('ventas.n_ventas', (int) $f['num'])) ?></span>
-                                <strong class="desglose-monto"><?= dinero($f['monto']) ?></strong>
+                                <strong class="desglose-monto"><?= dinero(sinIva((float) $f['monto'])) ?></strong>
                                 <span class="desglose-pct"><?= $porcentaje ?>%</span>
                             </div>
                             <div class="desglose-barra"><span style="width: <?= $porcentaje ?>%"></span></div>
@@ -532,6 +556,22 @@ require __DIR__ . '/header.php';
                 <?php endforeach; ?>
             </ol>
         </section>
+
+        <?php if ($masGanancia): ?>
+            <section class="desglose">
+                <header class="desglose-head"><h2><?= e(t('ventas.desglose_ganancia')) ?></h2></header>
+                <ol class="desglose-lista desglose-lista--top">
+                    <?php foreach ($masGanancia as $f): ?>
+                        <li>
+                            <div class="desglose-fila">
+                                <span class="desglose-nombre"><?= e($f['etiqueta']) ?> <small><?= e(t('ventas.kpi_margen', ['p' => numero($f['margen'], 0)])) ?></small></span>
+                                <strong class="desglose-monto <?= $f['utilidad'] < 0 ? 'texto-peligro' : '' ?>"><?= dinero($f['utilidad']) ?></strong>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+            </section>
+        <?php endif; ?>
     </div>
 
     <!-- Tabla de ventas con sus herramientas justo encima -->

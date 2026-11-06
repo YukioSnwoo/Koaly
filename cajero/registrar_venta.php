@@ -159,11 +159,12 @@ try {
     $ids = array_keys($cantidades);
     $marcas = implode(',', array_fill(0, count($ids), '?'));
     // Costo de la sucursal (sql/015): se copia a cada línea para calcular la ganancia
-    $columnaCosto = isset(columnasTabla($pdo, 'Inventario_Sucursal')['costo']) ? 'i.costo' : 'NULL';
+    $columnaCosto = isset(columnasTabla($pdo, 'Inventario_Sucursal')['costo']) ? 'ip.costo' : 'NULL';
     $stmt = $pdo->prepare("
-        SELECT p.id_producto, p.codigo, p.nombre, p.precio, i.cantidad_disponible, $columnaCosto AS costo
+        SELECT p.id_producto, p.codigo, p.nombre, " . SQL_PRECIO_CAJA . " AS precio,
+               ip.cantidad_disponible, $columnaCosto AS costo
         FROM Productos p
-        LEFT JOIN Inventario_Sucursal i ON i.id_producto = p.id_producto AND i.id_sucursal = ?
+        LEFT JOIN Inventario_Sucursal ip ON ip.id_producto = p.id_producto AND ip.id_sucursal = ?
         WHERE p.id_producto IN ($marcas) AND p.estado = 'Activo'
         FOR UPDATE
     ");
