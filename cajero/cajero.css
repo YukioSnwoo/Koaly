@@ -727,16 +727,6 @@ kbd {
 .resumen-item.nuevo { animation: lineaNueva 1.2s ease-out; }
 .resumen-item:last-child { border-bottom: none; }
 
-/* Resumen agrupado: debajo del escaneo, más compacto */
-.resumen-agrupado {
-    display: flex; flex-direction: column;
-    max-height: 32%; min-height: 0;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--borde);
-}
-.resumen-agrupado[hidden] { display: none; }
-.resumen-agrupado .resumen-lista { margin-bottom: 0.5rem; }
-.resumen-agrupado .resumen-item { padding-top: 0.35rem; padding-bottom: 0.35rem; }
 .resumen-item-cantidad {
     min-width: 2.3rem;
     padding: 0.1rem 0.4rem;
