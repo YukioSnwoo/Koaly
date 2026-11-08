@@ -13,7 +13,12 @@
     const MS_ENTRE_CARAS = 8000;
     const MS_ENTRE_SALUDOS = 2500;
     const SALUDOS_SIN_RESPUESTA = 3;    // cuántos se toleran antes de dar la caja por cerrada
-    const MS_GRACIAS_MINIMO = 5000;     // aunque el cajero acepte la venta de inmediato
+    const MS_GRACIAS_MINIMO = 9000;     // aunque el cajero acepte la venta de inmediato: da tiempo de ver el ticket
+    const TICKET_PX_POR_MS = 0.32;      // velocidad a la que sale el papel
+    const TICKET_MS_MINIMO = 1800;
+    const TICKET_MS_MAXIMO = 6000;      // un ticket muy largo sale más rápido
+    const TICKET_MARGEN_ABAJO = 40;
+    const TICKET_ESCALA_MINIMA = 1.2;   // menos que esto ya no se lee bien de lejos
 
     const $ = (id) => document.getElementById(id);
     const koala = $('koala');
@@ -90,7 +95,9 @@
     }
 
     function pintarKoala(anterior) {
-        $('graciasDetalle').hidden = vista !== 'gracias';
+        const conTicket = vista === 'gracias' && !!ultimaVenta?.ticket;
+        $('vistaKoala').classList.toggle('con-ticket', conTicket);
+        $('impresion').hidden = !conTicket;
 
         if (vista === 'cerrada') {
             burbuja.textContent = tr('cliente.caja_cerrada');
@@ -101,11 +108,56 @@
         } else {
             burbuja.textContent = tr('ticket.gracias');
             if (anterior !== vista) ponerCara('fiesta', 'emocionada');
-            $('graciasTotal').textContent = dinero(ultimaVenta?.total);
-            const hayCambio = Number(ultimaVenta?.cambio) > 0;
-            $('graciasBloqueCambio').hidden = !hayCambio;
-            if (hayCambio) $('graciasCambio').textContent = dinero(ultimaVenta.cambio);
+            if (conTicket) imprimirTicket(ultimaVenta.ticket);
         }
+    }
+
+    /* ---------- Ticket ---------- */
+    // Llega ya armado: es el mismo HTML que la caja manda a la impresora (htmlTicket).
+    // Va en un iframe para que sus estilos de 80 mm no se mezclen con los de esta página.
+    let ticketImpreso = null;
+
+    function imprimirTicket(html) {
+        if (html === ticketImpreso) return;
+        ticketImpreso = html;
+        $('impresion').classList.remove('imprimiendo');
+        const papel = $('ticketPapel');
+        papel.onload = () => desenrollarTicket(papel);
+        papel.srcdoc = html;
+    }
+
+    function desenrollarTicket(papel) {
+        const impresion = $('impresion');
+        const salida = $('ticketSalida');
+        const marco = $('ticketMarco');
+        const hoja = papel.contentDocument.body.getBoundingClientRect();
+
+        salida.style.width = '';
+        const disponible = window.innerHeight - marco.getBoundingClientRect().top - TICKET_MARGEN_ABAJO;
+
+        // El ticket mide 80 mm: se amplía para leerse de lejos. Uno normal se ajusta para
+        // verse completo; uno que ni así cabe va a todo lo ancho y avanza hasta llegar al total
+        const escalaAncho = marco.clientWidth / hoja.width;
+        const escalaCabe = disponible / hoja.height;
+        const escala = escalaCabe >= TICKET_ESCALA_MINIMA ? Math.min(escalaAncho, escalaCabe) : escalaAncho;
+        const alto = hoja.height * escala;
+        salida.style.width = `${hoja.width * escala + marco.offsetWidth - marco.clientWidth}px`;
+        papel.style.height = `${hoja.height}px`;
+        papel.style.transform = `scale(${escala})`;
+        $('ticketHoja').style.height = `${alto}px`;
+
+        const visible = Math.min(alto, disponible);
+        const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const ms = sinMovimiento ? 0 : Math.min(TICKET_MS_MAXIMO, Math.max(TICKET_MS_MINIMO, alto / TICKET_PX_POR_MS));
+
+        impresion.style.setProperty('--alto-visible', `${visible}px`);
+        impresion.style.setProperty('--sobra', `${visible - alto}px`);
+        impresion.style.setProperty('--ms-desenrollar', `${ms * visible / alto}ms`);
+        impresion.style.setProperty('--ms-avanzar', `${ms * (alto - visible) / alto}ms`);
+        impresion.style.setProperty('--ms-total', `${ms}ms`);
+
+        void impresion.offsetWidth;     // arranca la animación desde el principio
+        impresion.classList.add('imprimiendo');
     }
 
     function lineaEscaneo({ nombre, precio, cantidad }, nueva) {
