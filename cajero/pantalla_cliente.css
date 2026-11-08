@@ -1,0 +1,325 @@
+/* Pantalla del cliente: el monitor que ve el comprador, a distancia y sin tocarlo.
+   Por eso todo escala con la ventana. El fondo morado y el koala son los del
+   login. Colores y fuentes vienen de ../estilos/koaly.css. */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+[hidden] { display: none !important; }
+
+body {
+    background: var(--fondo);
+    color: var(--texto);
+    overflow: hidden;
+}
+
+/* ===== Espera, caja cerrada y "gracias" ===== */
+.portada,
+.venta-cuenta {
+    background-color: var(--acento);
+    /* Cuadrícula de puntos, como papel de libreta */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1.5px, transparent 1.6px);
+    background-size: 22px 22px;
+}
+
+.portada {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5vmin;
+    padding: 2rem;
+}
+
+.mascota {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3vmin;
+}
+
+.mascota-sello {
+    display: grid;
+    place-items: center;
+    width: min(50vmin, 520px);
+    aspect-ratio: 1;
+    flex-shrink: 0;
+    border: 2px solid var(--tinta);
+    border-radius: 50%;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil-max);
+    animation: selloEntrar 0.6s cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+
+.mascota-imagen {
+    width: 76%;
+    height: 76%;
+    object-fit: contain;
+    user-select: none;
+}
+
+.mascota-imagen.saltando { animation: mascotaSaltar 0.5s ease-out; }
+.mascota-imagen.emocionada { animation: mascotaEmocion 0.6s ease-in-out infinite alternate; }
+
+.mascota-burbuja {
+    margin-bottom: 6vmin;
+    padding: 0.6em 1em;
+    border: 2px solid var(--tinta);
+    border-radius: 14px 14px 14px 4px;
+    background: var(--superficie);
+    box-shadow: 3px 3px 0 var(--tinta);
+    color: var(--acento-texto-fuerte);
+    font-size: clamp(1.25rem, 4vmin, 2.6rem);
+    font-weight: 600;
+    line-height: 1.35;
+    animation: burbujaEntrar 0.35s cubic-bezier(0.34, 1.5, 0.64, 1) 0.45s both;
+}
+
+.gracias-detalle {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem;
+}
+
+.gracias-dato {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 13rem;
+    padding: 0.9rem 1.6rem;
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil-alta);
+    text-align: center;
+}
+
+.gracias-dato span { color: var(--texto-2); font-size: clamp(1rem, 2.4vmin, 1.5rem); }
+
+.gracias-dato strong {
+    font-size: clamp(1.75rem, 5vmin, 3.4rem);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== Venta en curso ===== */
+.venta {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 36%);
+}
+
+.venta-escaneo {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.venta-escaneo h1 {
+    margin-bottom: 0.75rem;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.lista {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.linea {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 0.6rem;
+    border-bottom: 1px dashed var(--borde-fuerte);
+    border-radius: 8px;
+    font-size: clamp(1.1rem, 1.9vw, 1.7rem);
+}
+
+.linea.nueva { animation: lineaNueva 1.2s ease-out; }
+
+.linea-cantidad {
+    min-width: 3.2em;
+    padding: 0.15em 0.5em;
+    border-radius: 999px;
+    background: var(--acento-suave-2);
+    color: var(--acento-texto);
+    font-weight: 700;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.linea-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.linea-nombre {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.linea-info small { color: var(--texto-3); font-size: 0.72em; }
+
+.linea-importe {
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.venta-cuenta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.25rem;
+    min-height: 0;
+    padding: clamp(1.25rem, 3vw, 2.5rem);
+    border-left: 2px solid var(--tinta);
+    color: #fff;
+}
+
+.cuenta-fila,
+.cobro-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    font-size: clamp(1.1rem, 1.9vw, 1.7rem);
+    font-variant-numeric: tabular-nums;
+}
+
+.cuenta-total,
+.cuenta-cobro {
+    border: 2px solid var(--tinta);
+    border-radius: 16px;
+    background: var(--superficie);
+    color: var(--texto);
+}
+
+.cuenta-total {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1.1rem 1.4rem;
+    box-shadow: var(--sombra-tactil-max);
+    font-size: clamp(1.1rem, 1.9vw, 1.7rem);
+}
+
+.cuenta-total strong {
+    color: var(--acento-texto-fuerte);
+    font-size: clamp(2.2rem, 4.6vw, 5rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+}
+
+.cuenta-cobro {
+    display: grid;
+    gap: 0.6rem;
+    padding: 1rem 1.4rem;
+    box-shadow: var(--sombra-tactil-alta);
+}
+
+.cobro-fila.is-falta strong { color: var(--peligro-texto); }
+.cobro-fila.is-cambio strong { color: var(--ok-texto); }
+
+/* ===== Aviso para acomodar la ventana (solo al abrirla) ===== */
+.preparar {
+    position: fixed;
+    left: 50%;
+    bottom: 2rem;
+    z-index: 10;
+    display: grid;
+    gap: 0.9rem;
+    width: min(34rem, calc(100vw - 2rem));
+    padding: 1.1rem 1.25rem;
+    border: 2px solid var(--tinta);
+    border-radius: 14px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-tactil-alta);
+    color: var(--texto);
+    line-height: 1.45;
+    transform: translateX(-50%);
+}
+
+.preparar-botones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.preparar-botones button {
+    padding: 0.55rem 1rem;
+    border: 2px solid var(--tinta);
+    border-radius: 10px;
+    background: var(--superficie);
+    color: var(--texto);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.preparar-botones .preparar-principal {
+    background: var(--acento);
+    color: #fff;
+}
+
+/* ===== Ventana angosta (pruebas lado a lado en una laptop) ===== */
+@media (max-width: 760px) {
+    .venta {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .venta-cuenta {
+        border-left: 0;
+        border-top: 2px solid var(--tinta);
+    }
+}
+
+@keyframes selloEntrar {
+    from { transform: scale(0.6) rotate(-12deg); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes burbujaEntrar {
+    from { opacity: 0; transform: scale(0.85) translateX(-8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes mascotaSaltar {
+    0%, 100% { transform: translateY(0) scale(1); }
+    40%, 60% { transform: translateY(-15px) scale(1.1); }
+}
+
+@keyframes mascotaEmocion {
+    from { transform: rotate(-5deg) scale(1); }
+    to { transform: rotate(5deg) scale(1.1); }
+}
+
+@keyframes lineaNueva {
+    from { background: var(--acento-suave-2); }
+    to { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mascota-sello,
+    .mascota-burbuja,
+    .mascota-imagen.saltando,
+    .mascota-imagen.emocionada,
+    .linea.nueva { animation: none; }
+}

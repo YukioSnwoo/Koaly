@@ -91,6 +91,15 @@ return [
     'resumen.sin_productos' => 'No products',
     'resumen.precio_unidad' => '{precio} each',
 
+    // pantalla del cliente
+    'cliente.boton' => 'Customer display',
+    'cliente.titulo' => 'Customer display',
+    'cliente.bienvenida' => 'Welcome',
+    'cliente.caja_cerrada' => 'Register closed',
+    'cliente.preparar' => 'Drag this window to the customer monitor and make it full screen. Then click the search box on the register.',
+    'cliente.pantalla_completa' => 'Full screen',
+    'cliente.listo' => 'Leave it like this',
+
     // confirmaciones
     'eliminar.titulo' => 'Delete product?',
     'eliminar.confirmar' => 'Yes, delete',

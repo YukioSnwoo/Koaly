@@ -52,6 +52,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         <div class="user-info">
             <!-- Turno: arqueo (lo que debería haber), retiro parcial a la tómbola y corte -->
             <div class="caja-acciones">
+                <button type="button" class="corte-boton" id="btnPantallaCliente" onclick="abrirPantallaCliente()" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    <span class="corte-boton-texto" data-i18n="cliente.boton"><?= e(t('cliente.boton')) ?></span>
+                </button>
                 <button type="button" class="corte-boton" id="btnArqueo" onclick="abrirArqueo()" disabled>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
                     <span class="corte-boton-texto" data-i18n="arqueo.boton"><?= e(t('arqueo.boton')) ?></span>
@@ -114,15 +118,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
-            <!-- Escaneo: historial en tiempo real, los escaneos seguidos del mismo producto se juntan (p1 ×3, p2, p1) -->
-            <div class="panel-title" data-i18n="resumen.escaneo"><?= e(t('resumen.escaneo')) ?></div>
-            <ul class="resumen-lista" id="escaneoLista"></ul>
-
-            <!-- Resumen: todo agrupado por producto (p1 ×4, p2) -->
-            <div class="resumen-agrupado" id="resumenAgrupado" hidden>
-                <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
-                <ul class="resumen-lista" id="resumenLista"></ul>
-            </div>
+            <!-- Resumen: todo agrupado por producto (p1 ×4, p2). El escaneo en orden lo ve el comprador (pantalla_cliente.php) -->
+            <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
+            <ul class="resumen-lista" id="resumenLista"></ul>
 
             <div>
                 <div class="resumen-fila"><span data-i18n="resumen.articulos"><?= e(t('resumen.articulos')) ?></span><span id="totalArticulos">0</span></div>
@@ -509,10 +507,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         /* ---------- Modales ---------- */
         function abrirModal(id) {
             document.getElementById(id).classList.add('open');
+            avisarPantallaCliente();
         }
 
         function cerrarModal(id) {
             document.getElementById(id).classList.remove('open');
+            avisarPantallaCliente();
         }
 
         const MODALES_SIN_ESCAPE = ['modalVenta', 'modalCorteResultado'];
@@ -1542,30 +1542,21 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         function renderResumen() {
-            const escaneo = document.getElementById('escaneoLista');
             const resumen = document.getElementById('resumenLista');
-            document.getElementById('resumenAgrupado').hidden = carrito.length === 0;
 
             if (carrito.length === 0) {
                 const vacio = document.createElement('li');
                 vacio.className = 'resumen-vacio';
                 vacio.textContent = tr('resumen.sin_productos');
-                escaneo.replaceChildren(vacio);
-                resumen.replaceChildren();
+                resumen.replaceChildren(vacio);
                 return;
             }
 
-            // Escaneo: las filas del carrito tal cual, en el orden en que se registraron
-            const lineas = carrito.map((item, index) => lineaResumen(item, index === indiceResaltado));
-            escaneo.replaceChildren(...lineas);
-
-            // Resumen: agrupado por producto; se resalta el del último movimiento
+            // Agrupado por producto; se resalta el del último movimiento
             const idResaltado = carrito[indiceResaltado]?.id_producto;
             resumen.replaceChildren(...agruparCarrito().map(g => lineaResumen(g, g.id_producto === idResaltado)));
 
             // Mantiene a la vista lo último que se registró
-            const nueva = lineas[indiceResaltado];
-            if (nueva) nueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             const grupoNuevo = resumen.querySelector('.nuevo');
             if (grupoNuevo) grupoNuevo.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
@@ -1582,6 +1573,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             document.getElementById('lblTotal').innerText = formatoDinero(totalActual);
             document.getElementById('listaTotal').innerText = formatoDinero(totalActual);
             document.getElementById('contadorLista').innerText = articulos;
+            avisarPantallaCliente();
         }
 
         /* ---------- Avisos y notificaciones ---------- */
@@ -1734,6 +1726,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         // Desglose en vivo: tarjeta, efectivo y, al final, "Restante" mientras no
         // se cubra el total o "Cambio" cuando ya se cubrió
         function actualizarVariosPreview() {
+            avisarPantallaCliente();
             const total = aCentavos(totalActual);
             const tarjeta = centavosDe(inputVariosTarjeta);
             const recibido = centavosDe(inputVariosEfectivo);
@@ -1818,6 +1811,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         // Muestra en vivo cuánto falta o cuánto cambio hay que dar
         function actualizarCambioPreview() {
+            avisarPantallaCliente();
             const preview = document.getElementById('cambioPreview');
             const btnCobrar = document.getElementById('btnCobrarEfectivo');
             const recibido = parseFloat(inputRecibido.value);
@@ -2297,6 +2291,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             document.getElementById('cajaCerrada').hidden = abierta;
             document.querySelectorAll('.corte-boton').forEach(boton => { boton.disabled = !abierta; });
             pintarExcedente();
+            avisarPantallaCliente();
 
             const titulo = document.getElementById('cajaCerradaTitulo');
             const texto = document.getElementById('cajaCerradaTexto');
@@ -3007,6 +3002,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             ultimoTicket = venta.ticket || null;
             document.getElementById('btnReimprimir').style.display = ultimoTicket ? '' : 'none';
 
+            ventaParaCliente = { total: venta.total, cambio: venta.cambio };
             abrirModal('modalVenta');
             document.getElementById('btnFinalizarVenta').focus();
             imprimirTicket(ultimoTicket);
@@ -3020,6 +3016,69 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             cargarCatalogo();   // existencias nuevas después de la venta
             inputBuscar.focus();
             avisarExcedente();  // si la caja pasó del límite, se pide un retiro parcial
+        }
+
+        /* ---------- Pantalla del cliente (pantalla_cliente.php) ---------- */
+        // Dos ventanas del mismo navegador que se hablan por BroadcastChannel, sin
+        // pasar por el servidor. De aquí solo sale lo que el comprador puede ver. Si
+        // esa pantalla no está abierta nadie escucha y la venta sigue igual.
+        const canalCliente = 'BroadcastChannel' in window ? new BroadcastChannel('koaly-pantalla-cliente') : null;
+        let avisoClientePendiente = false;
+        let ventaParaCliente = null;    // la venta recién cobrada, mientras sigue abierto su modal
+        let ventanaCliente = null;
+
+        // Lo capturado en la ventana de efectivo o de pago combinado (null si ninguna está abierta)
+        function cobroParaCliente() {
+            const modalAbierto = (id) => document.getElementById(id).classList.contains('open');
+            const combinado = modalAbierto('modalVarios');
+            if (!combinado && !modalAbierto('modalEfectivo')) return null;
+
+            const total = aCentavos(totalActual);
+            const tarjeta = combinado ? Math.min(centavosDe(inputVariosTarjeta), total) : 0;
+            const resto = total - tarjeta;
+            // Si la tarjeta cubre todo, el efectivo no se usa
+            const recibido = resto === 0 ? 0 : centavosDe(combinado ? inputVariosEfectivo : inputRecibido);
+            return {
+                tarjeta: tarjeta / 100,
+                recibido: recibido / 100,
+                restante: Math.max(0, resto - recibido) / 100,
+                cambio: Math.max(0, recibido - resto) / 100,
+            };
+        }
+
+        function estadoParaCliente() {
+            const ventaAbierta = document.getElementById('modalVenta').classList.contains('open');
+            return {
+                tipo: 'estado',
+                idioma: window.IDIOMA,
+                abierta: estadoCaja === 'abierta',
+                lineas: carrito.map(({ nombre, precio, cantidad }) => ({ nombre, precio, cantidad })),
+                total: totalActual,
+                cobro: cobroParaCliente(),
+                venta: ventaAbierta ? ventaParaCliente : null,
+            };
+        }
+
+        // Un solo mensaje aunque cambien varias cosas a la vez (cerrar un modal y abrir otro)
+        function avisarPantallaCliente() {
+            if (!canalCliente || avisoClientePendiente) return;
+            avisoClientePendiente = true;
+            queueMicrotask(() => {
+                avisoClientePendiente = false;
+                canalCliente.postMessage(estadoParaCliente());
+            });
+        }
+
+        if (canalCliente) {
+            canalCliente.onmessage = ({ data }) => {
+                if (data?.tipo === 'hola') canalCliente.postMessage(estadoParaCliente());
+            };
+            window.addEventListener('pagehide', () => canalCliente.postMessage({ tipo: 'adios' }));
+        }
+
+        function abrirPantallaCliente() {
+            if (ventanaCliente && !ventanaCliente.closed) ventanaCliente.focus();
+            else ventanaCliente = window.open('pantalla_cliente.php', 'koalyPantallaCliente', 'popup,width=1100,height=700');
         }
 
         renderCarrito();

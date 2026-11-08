@@ -92,6 +92,15 @@ return [
     'resumen.sin_productos' => 'Sin productos',
     'resumen.precio_unidad' => '{precio} c/u',
 
+    // pantalla del cliente
+    'cliente.boton' => 'Pantalla cliente',
+    'cliente.titulo' => 'Pantalla del cliente',
+    'cliente.bienvenida' => 'Bienvenid@s',
+    'cliente.caja_cerrada' => 'Caja cerrada',
+    'cliente.preparar' => 'Arrastra esta ventana al monitor del cliente y ponla en pantalla completa. Después da clic en el buscador de la caja.',
+    'cliente.pantalla_completa' => 'Pantalla completa',
+    'cliente.listo' => 'Dejarla así',
+
     // confirmaciones
     'eliminar.titulo' => '¿Eliminar producto?',
     'eliminar.confirmar' => 'Sí, eliminar',
