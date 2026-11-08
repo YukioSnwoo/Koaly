@@ -63,14 +63,16 @@ foreach (array_keys(IDIOMAS) as $codigo) {
             </div>
             <div class="mascota-burbuja" id="burbuja"></div>
         </div>
-        <div class="gracias-detalle" id="graciasDetalle" hidden>
-            <div class="gracias-dato">
-                <span data-i18n="comun.total"></span>
-                <strong id="graciasTotal"></strong>
-            </div>
-            <div class="gracias-dato" id="graciasBloqueCambio" hidden>
-                <span data-i18n="efectivo.cambio"></span>
-                <strong id="graciasCambio"></strong>
+        <!-- Al cobrar: el ticket de la venta, igual al impreso, se desenrolla desde la impresora -->
+        <div class="impresion" id="impresion" aria-hidden="true" hidden>
+            <div class="impresora"><span class="impresora-luz"></span></div>
+            <div class="ticket-salida" id="ticketSalida">
+                <div class="ticket-marco" id="ticketMarco">
+                    <div class="ticket-hoja" id="ticketHoja">
+                        <iframe class="ticket-papel" id="ticketPapel" sandbox="allow-same-origin" tabindex="-1"></iframe>
+                    </div>
+                </div>
+                <div class="ticket-rollo"></div>
             </div>
         </div>
     </main>

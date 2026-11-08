@@ -83,30 +83,116 @@ body {
     animation: burbujaEntrar 0.35s cubic-bezier(0.34, 1.5, 0.64, 1) 0.45s both;
 }
 
-.gracias-detalle {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1.25rem;
-}
-
-.gracias-dato {
+/* ===== Al cobrar: el koala a un lado y la impresora con el ticket al otro ===== */
+.portada.con-ticket {
     display: grid;
-    gap: 0.2rem;
-    min-width: 13rem;
-    padding: 0.9rem 1.6rem;
-    border: 2px solid var(--tinta);
-    border-radius: 14px;
-    background: var(--superficie);
-    box-shadow: var(--sombra-tactil-alta);
-    text-align: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: center;
+    gap: clamp(1.5rem, 4vw, 4rem);
+    padding: 0 clamp(1.5rem, 5vw, 5rem);
 }
 
-.gracias-dato span { color: var(--texto-2); font-size: clamp(1rem, 2.4vmin, 1.5rem); }
+.con-ticket .mascota {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+}
 
-.gracias-dato strong {
-    font-size: clamp(1.75rem, 5vmin, 3.4rem);
-    font-variant-numeric: tabular-nums;
+.con-ticket .mascota-sello { width: min(38vmin, 400px); }
+.con-ticket .mascota-burbuja { margin-bottom: 0; }
+
+/* Impresora y papel como los del login; aquí el papel se desenrolla hacia abajo */
+.impresion {
+    --impresora: #2c2443;
+    --ranura: #120e1e;
+    align-self: start;
+    width: min(40vw, 620px);
+    margin-top: clamp(1rem, 4vh, 2.5rem);
+}
+
+:root[data-tema="oscuro"] .impresion {
+    --impresora: #262035;
+    --ranura: #05040a;
+}
+
+.impresora {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    height: 44px;
+    background: var(--impresora);
+    border: 2px solid var(--tinta);
+    border-radius: 12px 12px 8px 8px;
+    box-shadow: 0 4px 0 var(--tinta);
+}
+
+.impresora::after {
+    content: "";
+    width: calc(100% - 44px);
+    height: 8px;
+    border-radius: 999px;
+    background: var(--ranura);
+}
+
+.impresora-luz {
+    position: absolute;
+    top: 7px;
+    right: 14px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+}
+
+.ticket-salida {
+    width: calc(100% - 44px);
+    margin: -8px auto 0;
+}
+
+/* El papel siempre es blanco, también en modo oscuro; abajo, el corte en zigzag */
+.ticket-marco {
+    --diente: 10px;
+    height: 0;
+    overflow: hidden;
+    background: #fff;
+    border-inline: 2px solid var(--tinta);
+    -webkit-mask:
+        linear-gradient(#000 0 0) top / 100% calc(100% - var(--diente)) no-repeat,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--diente) * 2) var(--diente) repeat-x;
+    mask:
+        linear-gradient(#000 0 0) top / 100% calc(100% - var(--diente)) no-repeat,
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--diente) * 2) var(--diente) repeat-x;
+}
+
+.ticket-papel {
+    display: block;
+    width: 80mm;
+    border: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+}
+
+/* El rollo que va soltando papel: baja con el borde y se adelgaza */
+.ticket-rollo {
+    position: relative;
+    height: 30px;
+    margin: -15px -6px 0;
+    border: 2px solid var(--tinta);
+    border-radius: 999px;
+    background: linear-gradient(#cfcbdc, #fff 38%, #fff 58%, #bdb8cc);
+    opacity: 0;
+}
+
+.imprimiendo .ticket-marco { animation: desenrollar var(--ms-desenrollar) linear both; }
+.imprimiendo .ticket-hoja { animation: avanzar var(--ms-avanzar) linear var(--ms-desenrollar) both; }
+
+.imprimiendo .ticket-rollo {
+    opacity: 1;
+    animation:
+        rolloAdelgaza var(--ms-total) linear both,
+        rolloFin 0.3s ease var(--ms-total) forwards;
 }
 
 /* ===== Venta en curso ===== */
@@ -289,6 +375,10 @@ body {
         border-left: 0;
         border-top: 2px solid var(--tinta);
     }
+
+    .portada.con-ticket { grid-template-columns: 1fr; }
+    .con-ticket .mascota { display: none; }
+    .impresion { width: min(92vw, 460px); }
 }
 
 @keyframes selloEntrar {
@@ -316,10 +406,28 @@ body {
     to { background: transparent; }
 }
 
+@keyframes desenrollar {
+    from { height: 0; }
+    to { height: var(--alto-visible); }
+}
+
+@keyframes avanzar {
+    to { transform: translateY(var(--sobra)); }
+}
+
+@keyframes rolloAdelgaza {
+    to { height: 14px; margin-top: -7px; }
+}
+
+@keyframes rolloFin {
+    to { opacity: 0; transform: translateY(10px) scaleX(0.92); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .mascota-sello,
     .mascota-burbuja,
     .mascota-imagen.saltando,
     .mascota-imagen.emocionada,
     .linea.nueva { animation: none; }
+    .ticket-rollo { display: none; }
 }

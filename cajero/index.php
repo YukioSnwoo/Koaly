@@ -385,7 +385,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <label for="inputRecibido" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
                 <div class="input-dinero">
                     <span>$</span>
-                    <input type="number" id="inputRecibido" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                    <input type="text" id="inputRecibido" inputmode="decimal" autocomplete="off" placeholder="0.00">
                 </div>
             </div>
             <div class="cambio-preview" id="cambioPreview"></div>
@@ -406,7 +406,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <label for="inputVariosEfectivo" data-i18n="efectivo.recibido"><?= e(t('efectivo.recibido')) ?></label>
                 <div class="input-dinero">
                     <span>$</span>
-                    <input type="number" id="inputVariosEfectivo" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                    <input type="text" id="inputVariosEfectivo" inputmode="decimal" autocomplete="off" placeholder="0.00">
                 </div>
             </div>
             <!-- Se llena sola con lo que falta después del efectivo, hasta que el cajero la escriba -->
@@ -414,7 +414,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 <label for="inputVariosTarjeta" data-i18n="varios.tarjeta"><?= e(t('varios.tarjeta')) ?></label>
                 <div class="input-dinero">
                     <span>$</span>
-                    <input type="number" id="inputVariosTarjeta" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-describedby="errorVariosTarjeta">
+                    <input type="text" id="inputVariosTarjeta" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-describedby="errorVariosTarjeta">
                 </div>
                 <div class="campo-error" id="errorVariosTarjeta"></div>
             </div>
@@ -1681,8 +1681,11 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const inputVariosTarjeta = document.getElementById('inputVariosTarjeta');
         const inputVariosEfectivo = document.getElementById('inputVariosEfectivo');
 
+        // Lo capturado en un campo de dinero, sin las comas de miles (parseFloat se detendría en la primera)
+        const numeroDe = (input) => parseFloat(input.value.replace(/,/g, ''));
+
         // Monto capturado en centavos; vacío o negativo cuenta como 0
-        const centavosDe = (input) => Math.max(0, aCentavos(parseFloat(input.value)) || 0);
+        const centavosDe = (input) => Math.max(0, aCentavos(numeroDe(input)) || 0);
 
         function abrirModalVarios() {
             cerrarModal('modalPago');
@@ -1705,7 +1708,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const total = aCentavos(totalActual);
             const recibido = centavosDe(inputVariosEfectivo);
             const sinEfectivo = inputVariosEfectivo.value.trim() === '';
-            inputVariosTarjeta.value = sinEfectivo || recibido >= total ? '' : ((total - recibido) / 100).toFixed(2);
+            inputVariosTarjeta.value = sinEfectivo || recibido >= total ? '' : FORMATO_PESOS.format((total - recibido) / 100);
         }
 
         // Cómo se cobra con lo capturado (montos en centavos), o null si no alcanza el total
@@ -1765,10 +1768,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         inputVariosEfectivo.addEventListener('input', () => {
+            formatearMiles(inputVariosEfectivo);
             autollenarTarjeta();
             actualizarVariosPreview();
         });
         inputVariosTarjeta.addEventListener('input', () => {
+            formatearMiles(inputVariosTarjeta);
             tarjetaManual = inputVariosTarjeta.value.trim() !== '';
             if (!tarjetaManual) autollenarTarjeta();
             actualizarVariosPreview();
@@ -1814,7 +1819,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             avisarPantallaCliente();
             const preview = document.getElementById('cambioPreview');
             const btnCobrar = document.getElementById('btnCobrarEfectivo');
-            const recibido = parseFloat(inputRecibido.value);
+            const recibido = numeroDe(inputRecibido);
 
             preview.classList.remove('error');
 
@@ -1835,7 +1840,10 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             }
         }
 
-        inputRecibido.addEventListener('input', actualizarCambioPreview);
+        inputRecibido.addEventListener('input', () => {
+            formatearMiles(inputRecibido);
+            actualizarCambioPreview();
+        });
         inputRecibido.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !document.getElementById('btnCobrarEfectivo').disabled) cobrarEfectivo();
         });
@@ -1915,7 +1923,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         async function cobrarEfectivo() {
             if (cobrando) return;
-            const recibido = parseFloat(inputRecibido.value);
+            const recibido = numeroDe(inputRecibido);
             if (isNaN(recibido) || aCentavos(recibido) < aCentavos(totalActual)) return;
 
             bloquearCobro(true);
@@ -3002,7 +3010,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             ultimoTicket = venta.ticket || null;
             document.getElementById('btnReimprimir').style.display = ultimoTicket ? '' : 'none';
 
-            ventaParaCliente = { total: venta.total, cambio: venta.cambio };
+            ventaParaCliente = { ticket: venta.ticket ? htmlTicket(venta.ticket) : null };
             abrirModal('modalVenta');
             document.getElementById('btnFinalizarVenta').focus();
             imprimirTicket(ultimoTicket);
@@ -3024,7 +3032,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         // esa pantalla no está abierta nadie escucha y la venta sigue igual.
         const canalCliente = 'BroadcastChannel' in window ? new BroadcastChannel('koaly-pantalla-cliente') : null;
         let avisoClientePendiente = false;
-        let ventaParaCliente = null;    // la venta recién cobrada, mientras sigue abierto su modal
+        let ventaParaCliente = null;    // el ticket recién cobrado (el HTML que se imprime), mientras sigue abierto su modal
         let ventanaCliente = null;
 
         // Lo capturado en la ventana de efectivo o de pago combinado (null si ninguna está abierta)
