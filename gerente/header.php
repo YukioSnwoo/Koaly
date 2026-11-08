@@ -50,6 +50,7 @@ $enlacesNav = [
     ['cajeros.php',         'icono-cajas.png',       t('nav.cajeros')],
     ['cajas.php',           'icono-caja.png',        t('nav.cajas')],
     ['ventas_sucursal.php', 'icono-ventas.png',      t('nav.ventas')],
+    ['graficas.php',        'icono-graficas.png',    t('nav.graficas')],
 ];
 ?>
     <aside class="sidebar" id="barraLateral">

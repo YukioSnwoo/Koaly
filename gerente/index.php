@@ -1,20 +1,18 @@
 <?php
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
+require_once __DIR__ . '/../admin/metricas_ventas.php';
 
 /* ------------------------------------------------------------
    Resumen del día para el inicio
    ------------------------------------------------------------ */
-$stmt = $pdo->prepare("
-    SELECT
-        COALESCE(SUM(CASE WHEN fecha_hora >= CURDATE() THEN total END), 0)        AS monto_hoy,
-        COUNT(CASE WHEN fecha_hora >= CURDATE() THEN 1 END)                         AS num_hoy,
-        COALESCE(SUM(CASE WHEN fecha_hora <  CURDATE() THEN total END), 0)        AS monto_ayer
-    FROM Ventas
-    WHERE id_sucursal = ? AND fecha_hora >= CURDATE() - INTERVAL 1 DAY
-");
-$stmt->execute([$idSucursalGerente]);
-$ventasHoy = $stmt->fetch();
+// Mismo cálculo que Ventas (admin/metricas_ventas.php): venta sin IVA y utilidad
+$hoyInicio  = date('Y-m-d 00:00:00');
+$ayerInicio = date('Y-m-d 00:00:00', strtotime('-1 day'));
+$mananaInicio = date('Y-m-d 00:00:00', strtotime('+1 day'));
+$wherePeriodo = 'v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?';
+$ventasHoy  = metricasVentas($pdo, $wherePeriodo, [$idSucursalGerente, $hoyInicio, $mananaInicio]);
+$ventasAyer = metricasVentas($pdo, $wherePeriodo, [$idSucursalGerente, $ayerInicio, $hoyInicio]);
 
 $stmt = $pdo->prepare("
     SELECT COUNT(*) AS en_alerta,
@@ -47,6 +45,16 @@ $stmt = $pdo->prepare("SELECT direccion, telefono, email_contacto FROM Sucursale
 $stmt->execute([$idSucursalGerente]);
 $sucursal = $stmt->fetch() ?: [];
 
+// Gráfica de los últimos 7 días (la dibuja js/graficas.js, igual que en Gráficas)
+$semanaInicio = (new DateTimeImmutable('today'))->modify('-6 days');
+$tendencia7 = serieTendencia($pdo, $semanaInicio, new DateTimeImmutable('today'), $wherePeriodo,
+    [$idSucursalGerente, $semanaInicio->format('Y-m-d 00:00:00'), $mananaInicio],
+    explode(',', t('grafica.dias_cortos')), explode(',', t('grafica.meses_cortos')));
+$graficas = array_sum($tendencia7['neta']) > 0 ? [
+    'textos'    => ['venta' => t('grafica.venta'), 'ganancia' => t('grafica.ganancia'), 'ventas' => t('grafica.num_ventas')],
+    'tendencia' => $tendencia7,
+] : null;
+
 $pageTitle = t('inicio.titulo');
 require __DIR__ . '/header.php';
 ?>
@@ -75,10 +83,13 @@ require __DIR__ . '/header.php';
 <section class="kpi-grid" aria-label="<?= e(t('inicio.resumen_aria')) ?>">
     <a href="ventas_sucursal.php?periodo=hoy" class="kpi kpi--ok kpi--link">
         <span class="kpi-label"><?= e(t('inicio.kpi_ventas')) ?></span>
-        <span class="kpi-value kpi-value--ok"><?= dinero($ventasHoy['monto_hoy']) ?></span>
+        <span class="kpi-value kpi-value--ok"><?= dinero($ventasHoy['venta_neta']) ?></span>
         <span class="kpi-sub">
-            <?= e(tn('ventas.n_ventas', (int) $ventasHoy['num_hoy'])) ?>
-            · <?= e(t('inicio.kpi_ventas_ayer', ['monto' => dinero($ventasHoy['monto_ayer'])])) ?>
+            <?= e(tn('ventas.n_ventas', $ventasHoy['num_ventas'])) ?>
+            <?php if ($ventasHoy['utilidad'] !== null): ?>
+                · <?= e(t('inicio.kpi_utilidad', ['monto' => dinero($ventasHoy['utilidad'])])) ?>
+            <?php endif; ?>
+            · <?= e(t('inicio.kpi_ventas_ayer', ['monto' => dinero($ventasAyer['venta_neta'])])) ?>
         </span>
     </a>
     <a href="productos.php?stock=alerta" class="kpi <?= (int) $stockAlerta['en_alerta'] > 0 ? 'kpi--danger' : '' ?> kpi--link">
@@ -102,6 +113,19 @@ require __DIR__ . '/header.php';
         <span class="kpi-sub"><?= e(t('inicio.kpi_cajas_sub')) ?></span>
     </a>
 </section>
+
+<?php if ($graficas): ?>
+    <section class="ventas-graficas">
+        <figure class="grafica grafica--ancha">
+            <figcaption class="grafica-cabecera">
+                <h2><?= e(t('inicio.grafica_7')) ?></h2>
+                <a class="btn btn-ghost btn-sm" href="graficas.php?periodo=7"><?= e(t('inicio.grafica_ver')) ?></a>
+            </figcaption>
+            <div class="grafica-lienzo"><canvas id="graficaTendencia" role="img" aria-label="<?= e(t('inicio.grafica_7')) ?>"></canvas></div>
+        </figure>
+    </section>
+    <script type="application/json" id="datosGraficas"><?= json_encode($graficas, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<?php endif; ?>
 
 <section aria-labelledby="operacion-title" style="margin-bottom: 2rem;">
     <h2 id="operacion-title" class="section-title"><?= e(t('inicio.seccion_tienda')) ?></h2>
@@ -188,4 +212,8 @@ require __DIR__ . '/header.php';
     </div>
 </section>
 
+<?php if ($graficas): ?>
+    <script src="js/vendor/chart.umd.min.js"></script>
+    <script src="js/graficas.js?v=<?= filemtime(__DIR__ . '/js/graficas.js') ?>"></script>
+<?php endif; ?>
 <?php require __DIR__ . '/footer.php'; ?>
