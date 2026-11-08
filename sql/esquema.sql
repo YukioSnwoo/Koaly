@@ -1,6 +1,11 @@
 -- Estructura de la base de Koaly (u772860605_DATAK), SIN datos.
 -- Sacada del volcado de phpMyAdmin del 23/10/2026 (ya incluye las migraciones
--- 001 a 013). Sirve para consultar tablas, columnas, índices y llaves.
+-- 001 a 013); a mano se le agregaron las columnas de costo de 015.
+-- Sirve para consultar tablas, columnas, índices y llaves.
+--
+-- NO se corre sobre la base que ya existe (las tablas ya están ahí y falla
+-- en el primer CREATE TABLE). Solo sirve para crear una base vacía desde cero;
+-- los cambios a la base real van en las migraciones numeradas (001, 002…).
 --
 -- No trae filas a propósito: el volcado completo tiene correos, hashes de
 -- contraseñas e IPs de las personas y este repositorio está en GitHub.
@@ -69,7 +74,8 @@ CREATE TABLE `Detalle_Venta` (
   `id_venta` int(11) NOT NULL,
   `id_producto` int(11) NOT NULL,
   `cantidad` int(11) NOT NULL CHECK (`cantidad` > 0),
-  `precio_unitario` decimal(10,2) NOT NULL CHECK (`precio_unitario` >= 0)
+  `precio_unitario` decimal(10,2) NOT NULL CHECK (`precio_unitario` >= 0),
+  `costo_unitario` decimal(10,2) DEFAULT NULL CHECK (`costo_unitario` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -97,6 +103,7 @@ CREATE TABLE `Inventario_Sucursal` (
   `Categoria_Producto` varchar(50) NOT NULL,
   `cantidad_disponible` int(11) NOT NULL DEFAULT 0 CHECK (`cantidad_disponible` >= 0),
   `precio_venta` decimal(10,2) NOT NULL CHECK (`precio_venta` >= 0),
+  `costo` decimal(10,2) DEFAULT NULL CHECK (`costo` >= 0),
   `creado_en` timestamp NULL DEFAULT current_timestamp(),
   `modificado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
