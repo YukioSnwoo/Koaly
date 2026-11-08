@@ -1,6 +1,11 @@
 -- Estructura de la base de Koaly (u772860605_DATAK), SIN datos.
 -- Sacada del volcado de phpMyAdmin del 23/10/2026 (ya incluye las migraciones
--- 001 a 013). Sirve para consultar tablas, columnas, índices y llaves.
+-- 001 a 013); a mano se le agregaron las columnas de costo de 015.
+-- Sirve para consultar tablas, columnas, índices y llaves.
+--
+-- NO se corre sobre la base que ya existe (las tablas ya están ahí y falla
+-- en el primer CREATE TABLE). Solo sirve para crear una base vacía desde cero;
+-- los cambios a la base real van en las migraciones numeradas (001, 002…).
 --
 -- No trae filas a propósito: el volcado completo tiene correos, hashes de
 -- contraseñas e IPs de las personas y este repositorio está en GitHub.
