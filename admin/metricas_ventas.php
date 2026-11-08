@@ -103,13 +103,15 @@ function variacionPorcentual(?float $actual, ?float $anterior): ?float
 /**
  * Mermas y robos del periodo (kardex), valuados al costo actual del producto
  * (el kardex no guarda costo). Sin IVA, como la utilidad.
- * @return array{unidades:int, costo:?float, sin_costo:int}
+ * 'tipos': cuáles de los dos hubo, para que el enlace a movimientos filtre bien.
+ * @return array{unidades:int, costo:?float, sin_costo:int, tipos:list<string>}
  */
 function perdidasInventario(PDO $pdo, int $idSucursal, string $inicio, string $fin, int $idProducto = 0): array
 {
     $hayCosto = $pdo->query("SHOW COLUMNS FROM Inventario_Sucursal LIKE 'costo'")->fetch() !== false;
     $stmt = $pdo->prepare("
         SELECT COALESCE(SUM(-m.cantidad), 0) AS unidades,
+               GROUP_CONCAT(DISTINCT m.tipo_movimiento ORDER BY m.tipo_movimiento) AS tipos,
                " . ($hayCosto
                    ? "SUM(-m.cantidad * i.costo) AS costo,
                       COALESCE(SUM(CASE WHEN i.costo IS NULL THEN -m.cantidad END), 0) AS sin_costo"
@@ -127,6 +129,7 @@ function perdidasInventario(PDO $pdo, int $idSucursal, string $inicio, string $f
         'unidades'  => (int) $f['unidades'],
         'costo'     => $f['costo'] !== null ? sinIva((float) $f['costo']) : null,
         'sin_costo' => (int) $f['sin_costo'],
+        'tipos'     => $f['tipos'] !== null ? explode(',', $f['tipos']) : [],
     ];
 }
 
@@ -230,13 +233,17 @@ function rentabilidadPor(PDO $pdo, string $por, string $where, array $params, st
 
 /**
  * Venta neta y número de ventas por método de pago.
+ * Suma las líneas de Detalle_Venta, como metricasVentas(): así la dona
+ * cuadra con la venta neta de arriba aunque v.total no coincida con sus líneas.
  * @return list<array{etiqueta:string, num:int, neta:float}>
  */
 function ventasPorMetodo(PDO $pdo, string $where, array $params): array
 {
     $stmt = $pdo->prepare("
-        SELECT m.nombre_metodo AS etiqueta, COUNT(*) AS num, SUM(v.total) AS cobrado
-        FROM Ventas v
+        SELECT m.nombre_metodo AS etiqueta, COUNT(DISTINCT v.id_venta) AS num,
+               SUM(dv.cantidad * dv.precio_unitario) AS cobrado
+        FROM Detalle_Venta dv
+        INNER JOIN Ventas v       ON v.id_venta = dv.id_venta
         INNER JOIN Metodos_Pago m ON m.id_metodo_pago = v.id_metodo_pago
         WHERE $where
         GROUP BY m.id_metodo_pago, m.nombre_metodo

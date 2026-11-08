@@ -491,7 +491,7 @@ $pintarVariacion = function (?float $v) use ($esTodo, $desde, $dias): string {
         <?php if ($perdidas['costo'] !== null): ?>
             <?= e(t('ventas.perdidas_costo', ['monto' => dinero($perdidas['costo'])])) ?>
         <?php endif; ?>
-        <a href="movimientos.php?<?= e(http_build_query(['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d'), 'tipo' => 'AJUSTE_MERMA'] + ($idProducto > 0 ? ['producto' => $idProducto] : []))) ?>"><?= e(t('ventas.perdidas_ver')) ?></a>
+        <a href="movimientos.php?<?= e(http_build_query(['desde' => $desde->format('Y-m-d'), 'hasta' => $hasta->format('Y-m-d')] + (count($perdidas['tipos']) === 1 ? ['tipo' => $perdidas['tipos'][0]] : []) + ($idProducto > 0 ? ['producto' => $idProducto] : []))) ?>"><?= e(t('ventas.perdidas_ver')) ?></a>
     </div>
 <?php endif; ?>
 

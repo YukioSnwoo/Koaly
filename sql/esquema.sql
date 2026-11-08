@@ -69,7 +69,8 @@ CREATE TABLE `Detalle_Venta` (
   `id_venta` int(11) NOT NULL,
   `id_producto` int(11) NOT NULL,
   `cantidad` int(11) NOT NULL CHECK (`cantidad` > 0),
-  `precio_unitario` decimal(10,2) NOT NULL CHECK (`precio_unitario` >= 0)
+  `precio_unitario` decimal(10,2) NOT NULL CHECK (`precio_unitario` >= 0),
+  `costo_unitario` decimal(10,2) DEFAULT NULL CHECK (`costo_unitario` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -97,6 +98,7 @@ CREATE TABLE `Inventario_Sucursal` (
   `Categoria_Producto` varchar(50) NOT NULL,
   `cantidad_disponible` int(11) NOT NULL DEFAULT 0 CHECK (`cantidad_disponible` >= 0),
   `precio_venta` decimal(10,2) NOT NULL CHECK (`precio_venta` >= 0),
+  `costo` decimal(10,2) DEFAULT NULL CHECK (`costo` >= 0),
   `creado_en` timestamp NULL DEFAULT current_timestamp(),
   `modificado_en` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
