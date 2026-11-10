@@ -439,7 +439,7 @@ if ($vista === 'solicitudes') {
 
 <?php else: ?>
 <div class="filters" style="margin-top:1rem">
-    <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+    <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;width:100%" onchange="this.submit()">
         <input type="hidden" name="vista" value="solicitudes">
         <select name="estado" class="select">
             <?php foreach ($estadosSolicitud as $v => [$txt]): ?>
@@ -458,7 +458,6 @@ if ($vista === 'solicitudes') {
                 <option value="<?= $s['id_sucursal'] ?>" <?= $fSucursal == $s['id_sucursal'] ? 'selected' : '' ?>><?= htmlspecialchars($s['nombre']) ?></option>
             <?php endforeach; ?>
         </select>
-        <button type="submit" class="btn btn--ghost btn--sm"><?= e(t('comun.filtrar')) ?></button>
     </form>
 </div>
 

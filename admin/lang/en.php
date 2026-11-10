@@ -100,6 +100,17 @@ return [
     'panel.en_orden_ayuda' => 'Nothing pending for now',
     'panel.sucursales_activas' => 'Active branches',
     'panel.gerentes_registrados' => 'Registered managers',
+    'panel.grafica_titulo' => 'Profit by branch',
+    'panel.grafica_sucursal' => 'Branch',
+    'panel.grafica_periodo' => 'Period',
+    'panel.grafica_7' => 'Last 7 days',
+    'panel.grafica_30' => 'Last 30 days',
+    'panel.grafica_venta' => 'Net sales',
+    'panel.grafica_ganancia' => 'Profit',
+    'panel.grafica_sin_ventas' => 'This branch has no sales in the period.',
+    'panel.grafica_sin_costo' => 'These sales have no recorded costs yet, so profit cannot be calculated.',
+    'panel.dias_cortos' => 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
+    'panel.meses_cortos' => 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec',
 
     // suc (sucursales)
     'suc.subtitulo' => 'Manage the company\'s locations',

@@ -862,3 +862,12 @@ a.pend__it:hover{background:var(--bg-accent-muted);transform:translate(-2px,-2px
 .arbol .conteo{font-size:12px;color:var(--text-muted)}
 .arbol .nodo .badge{margin-left:auto;flex:none}
 @media (prefers-reduced-motion:reduce){.arbol .chev{transition:none}}
+
+/* ── Panel: gráfica de ganancias por sucursal ── */
+.grafica-panel{background:var(--surface-1);border-radius:var(--radius);padding:1rem 1.15rem;margin-bottom:1.6rem}
+.grafica-panel__cabecera{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.8rem}
+.grafica-panel__cabecera h2{margin:0}
+.grafica-panel__filtros{display:flex;gap:8px;flex-wrap:wrap}
+.grafica-panel__lienzo{position:relative;height:280px}
+.grafica-panel__aviso{margin:0 0 .6rem;font-size:13px;color:var(--text-secondary)}
+@media (max-width:760px){.grafica-panel__lienzo{height:220px}}
