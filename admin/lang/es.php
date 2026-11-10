@@ -296,6 +296,13 @@ return [
     'rep.mas_vendidos' => 'Productos más vendidos',
     'rep.n_unidades' => ['{n} ud.', '{n} uds.'],
     'rep.metodos_pago' => 'Métodos de pago',
+    'rep.kpi_venta' => 'Venta neta',
+    'rep.kpi_ganancia' => 'Ganancia',
+    'rep.kpi_margen' => 'Margen',
+    'rep.kpi_ticket' => 'Ticket promedio',
+    'rep.tendencia' => 'Venta y ganancia del periodo',
+    'rep.col_sucursal' => 'Sucursal',
+    'rep.vs_anterior' => 'vs. periodo anterior',
 
     // js
     'js.actualizado' => 'actualizado {hora}',
