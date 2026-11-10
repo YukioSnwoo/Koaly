@@ -296,6 +296,13 @@ return [
     'rep.mas_vendidos' => 'Best-selling products',
     'rep.n_unidades' => ['{n} unit', '{n} units'],
     'rep.metodos_pago' => 'Payment methods',
+    'rep.kpi_venta' => 'Net sales',
+    'rep.kpi_ganancia' => 'Profit',
+    'rep.kpi_margen' => 'Margin',
+    'rep.kpi_ticket' => 'Average ticket',
+    'rep.tendencia' => 'Sales and profit for the period',
+    'rep.col_sucursal' => 'Branch',
+    'rep.vs_anterior' => 'vs. previous period',
 
     // js
     'js.actualizado' => 'updated {hora}',

@@ -2,53 +2,77 @@
 <?php require 'sidebar.php'; ?>
 
 <?php
+require_once __DIR__ . '/metricas_ventas.php';
+
+// Periodo elegido y el anterior de la misma duración (para comparar)
 $periodo = $_GET['periodo'] ?? '7';
-$fechaInicio = match($periodo) {
-    '30' => date('Y-m-d', strtotime('-30 days')),
-    'mes' => date('Y-m-01'),
-    default => date('Y-m-d', strtotime('-7 days')),
+$hasta = new DateTimeImmutable('today');
+$desde = match($periodo) {
+    '30' => $hasta->modify('-29 days'),
+    'mes' => $hasta->modify('first day of this month'),
+    default => $hasta->modify('-6 days'),
 };
+$dias = (int) $desde->diff($hasta)->days + 1;
+$desdeAnt = $desde->modify("-$dias days");
+$hastaAnt = $desde->modify('-1 day');
 
-// Ventas por sucursal
-$stmt = $pdo->prepare("
-    SELECT s.nombre, COALESCE(SUM(v.total), 0) AS total_ventas
-    FROM Sucursales s
-    LEFT JOIN Ventas v ON v.id_sucursal = s.id_sucursal AND v.fecha_hora >= ?
-    WHERE s.estado = 'Activa'
-    GROUP BY s.id_sucursal, s.nombre
-    ORDER BY total_ventas DESC
-");
-$stmt->execute([$fechaInicio]);
-$ventasSucursal = $stmt->fetchAll();
+$condPeriodo = 'v.fecha_hora >= ? AND v.fecha_hora < ?';
+$rango = fn(DateTimeImmutable $a, DateTimeImmutable $b) => [$a->format('Y-m-d 00:00:00'), $b->modify('+1 day')->format('Y-m-d 00:00:00')];
+$paramsActual = $rango($desde, $hasta);
+$paramsAnterior = $rango($desdeAnt, $hastaAnt);
 
-$maxVentas = max(array_column($ventasSucursal, 'total_ventas') ?: [1]);
+// Cifras generales y tendencia (todas las sucursales)
+$actual = metricasVentas($pdo, $condPeriodo, $paramsActual);
+$anterior = metricasVentas($pdo, $condPeriodo, $paramsAnterior);
+$tendencia = serieTendencia($pdo, $desde, $hasta, $condPeriodo, $paramsActual,
+    explode(',', t('panel.dias_cortos')), explode(',', t('panel.meses_cortos')));
+$hayVentas = $actual['num_ventas'] > 0;
+$hayGanancia = (bool) array_filter($tendencia['utilidad'], fn($v) => $v !== null);
 
-// Productos más vendidos
-$productos = $pdo->prepare("
-    SELECT p.nombre, SUM(dv.cantidad) AS total_unidades
-    FROM Detalle_Venta dv
-    INNER JOIN Productos p ON p.id_producto = dv.id_producto
-    INNER JOIN Ventas v ON v.id_venta = dv.id_venta
-    WHERE v.fecha_hora >= ?
-    GROUP BY p.id_producto, p.nombre
-    ORDER BY total_unidades DESC
-    LIMIT 5
-");
-$productos->execute([$fechaInicio]);
-$productosTop = $productos->fetchAll();
+// Comparativo por sucursal
+$sucursales = $pdo->query("SELECT id_sucursal, nombre FROM Sucursales WHERE estado = 'Activa' ORDER BY nombre")->fetchAll();
+$comparativo = [];
+foreach ($sucursales as $s) {
+    $cond = "v.id_sucursal = ? AND $condPeriodo";
+    $m = metricasVentas($pdo, $cond, array_merge([$s['id_sucursal']], $paramsActual));
+    $ant = metricasVentas($pdo, $cond, array_merge([$s['id_sucursal']], $paramsAnterior));
+    $comparativo[] = [
+        'nombre'    => $s['nombre'],
+        'neta'      => round($m['venta_neta'], 2),
+        'utilidad'  => $m['utilidad'] !== null ? round($m['utilidad'], 2) : null,
+        'margen'    => $m['margen'],
+        'variacion' => variacionPorcentual($m['venta_neta'], $ant['venta_neta']),
+    ];
+}
+usort($comparativo, fn($a, $b) => $b['neta'] <=> $a['neta']);
 
-// Métodos de pago
-$pagos = $pdo->prepare("
-    SELECT mp.nombre_metodo, COUNT(*) AS num_ventas
-    FROM Ventas v
-    INNER JOIN Metodos_Pago mp ON mp.id_metodo_pago = v.id_metodo_pago
-    WHERE v.fecha_hora >= ?
-    GROUP BY mp.id_metodo_pago, mp.nombre_metodo
-    ORDER BY num_ventas DESC
-");
-$pagos->execute([$fechaInicio]);
-$metodosPago = $pagos->fetchAll();
-$totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
+// Productos más vendidos (por unidades) y métodos de pago
+$productosTop = rentabilidadPor($pdo, 'producto', $condPeriodo, $paramsActual);
+usort($productosTop, fn($a, $b) => $b['unidades'] <=> $a['unidades']);
+$productosTop = array_slice($productosTop, 0, 5);
+$metodosPago = ventasPorMetodo($pdo, $condPeriodo, $paramsActual);
+$totalVentasMetodo = array_sum(array_column($metodosPago, 'num'));
+
+$datosReportes = [
+    'textos' => [
+        'venta' => t('panel.grafica_venta'),
+        'ganancia' => t('panel.grafica_ganancia'),
+    ],
+    'tendencia' => $tendencia,
+    'comparativo' => [
+        'etiquetas' => array_column($comparativo, 'nombre'),
+        'neta' => array_column($comparativo, 'neta'),
+        'utilidad' => array_column($comparativo, 'utilidad'),
+    ],
+];
+
+/** Chip con la variación frente al periodo anterior. */
+$chipVariacion = function (?float $v): string {
+    if ($v === null) return '<span class="rep-var rep-var--nd">—</span>';
+    $clase = $v >= 0 ? 'rep-var--sube' : 'rep-var--baja';
+    return '<span class="rep-var ' . $clase . '">' . ($v >= 0 ? '+' : '') . number_format($v, 1) . '%</span>';
+};
+$dinero = fn(?float $v) => $v === null ? '—' : '$' . number_format($v, 0, '.', ',');
 ?>
 
 <div class="page-header">
@@ -65,18 +89,49 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
     </form>
 </div>
 
-<p class="section-title" style="margin-top:1.25rem"><?= e(t('rep.ventas_sucursal')) ?></p>
-<div class="chart-bars">
-    <?php foreach ($ventasSucursal as $vs):
-        $altura = $maxVentas > 0 ? round(($vs['total_ventas'] / $maxVentas) * 110) : 0;
-    ?>
-        <div class="chart-bar">
-            <span class="chart-bar__value">$<?= number_format($vs['total_ventas'] / 1000, 1) ?>k</span>
-            <div class="chart-bar__rect" style="height:<?= max($altura, 4) ?>px"></div>
-            <span class="chart-bar__label"><?= htmlspecialchars(mb_strstr($vs['nombre'], ' ', false) ?: $vs['nombre']) ?></span>
-        </div>
-    <?php endforeach; ?>
+<div class="rep-kpis">
+    <div class="stat-card"><p class="stat-card__label"><?= e(t('rep.kpi_venta')) ?></p><p class="stat-card__value"><?= $dinero($actual['venta_neta']) ?></p><?= $chipVariacion(variacionPorcentual($actual['venta_neta'], $anterior['venta_neta'])) ?></div>
+    <div class="stat-card"><p class="stat-card__label"><?= e(t('rep.kpi_ganancia')) ?></p><p class="stat-card__value"><?= $dinero($actual['utilidad']) ?></p><?= $chipVariacion(variacionPorcentual($actual['utilidad'], $anterior['utilidad'])) ?></div>
+    <div class="stat-card"><p class="stat-card__label"><?= e(t('rep.kpi_margen')) ?></p><p class="stat-card__value"><?= $actual['margen'] === null ? '—' : number_format($actual['margen'], 1) . '%' ?></p></div>
+    <div class="stat-card"><p class="stat-card__label"><?= e(t('rep.kpi_ticket')) ?></p><p class="stat-card__value"><?= $dinero($actual['ticket']) ?></p><?= $chipVariacion(variacionPorcentual($actual['ticket'], $anterior['ticket'])) ?></div>
 </div>
+
+<?php if (!$hayVentas): ?>
+    <p class="grafica-panel__aviso"><?= e(t('panel.grafica_sin_ventas')) ?></p>
+<?php else: ?>
+    <section class="grafica-panel">
+        <div class="grafica-panel__cabecera"><h2 class="section-title"><?= e(t('rep.tendencia')) ?></h2></div>
+        <?php if (!$hayGanancia): ?>
+            <p class="grafica-panel__aviso"><?= e(t('panel.grafica_sin_costo')) ?></p>
+        <?php endif; ?>
+        <div class="grafica-panel__lienzo"><canvas id="graficaTendencia" role="img" aria-label="<?= e(t('rep.tendencia')) ?>"></canvas></div>
+    </section>
+
+    <section class="grafica-panel">
+        <div class="grafica-panel__cabecera"><h2 class="section-title"><?= e(t('rep.ventas_sucursal')) ?></h2></div>
+        <div class="grafica-panel__lienzo rep-lienzo-suc" style="height:<?= max(180, count($comparativo) * 56 + 60) ?>px"><canvas id="graficaSucursales" role="img" aria-label="<?= e(t('rep.ventas_sucursal')) ?>"></canvas></div>
+        <div class="table-wrap" style="margin-top:.8rem">
+            <table class="table table--compact">
+                <thead><tr>
+                    <th><?= e(t('rep.col_sucursal')) ?></th>
+                    <th style="text-align:right"><?= e(t('rep.kpi_venta')) ?></th>
+                    <th style="text-align:right"><?= e(t('rep.kpi_margen')) ?></th>
+                    <th style="text-align:right"><?= e(t('rep.vs_anterior')) ?></th>
+                </tr></thead>
+                <tbody>
+                    <?php foreach ($comparativo as $c): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($c['nombre']) ?></td>
+                            <td style="text-align:right"><?= $dinero($c['neta']) ?></td>
+                            <td style="text-align:right;color:var(--text-secondary)"><?= $c['margen'] === null ? '—' : number_format($c['margen'], 1) . '%' ?></td>
+                            <td style="text-align:right"><?= $chipVariacion($c['variacion']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+<?php endif; ?>
 
 <div class="grid-2">
     <div>
@@ -89,8 +144,8 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
                     <?php else: ?>
                         <?php foreach ($productosTop as $p): ?>
                             <tr>
-                                <td><?= htmlspecialchars($p['nombre']) ?></td>
-                                <td style="text-align:right;color:var(--text-secondary)"><?= e(tn('rep.n_unidades', (int) $p['total_unidades'])) ?></td>
+                                <td><?= htmlspecialchars($p['etiqueta']) ?></td>
+                                <td style="text-align:right;color:var(--text-secondary)"><?= e(tn('rep.n_unidades', (int) $p['unidades'])) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -107,10 +162,10 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
                         <tr><td style="color:var(--text-muted);text-align:center"><?= e(t('comun.sin_datos')) ?></td></tr>
                     <?php else: ?>
                         <?php foreach ($metodosPago as $mp):
-                            $pct = $totalVentasMetodo > 0 ? round(($mp['num_ventas'] / $totalVentasMetodo) * 100) : 0;
+                            $pct = $totalVentasMetodo > 0 ? round(($mp['num'] / $totalVentasMetodo) * 100) : 0;
                         ?>
                             <tr>
-                                <td><?= e(tValor('metodo_pago', $mp['nombre_metodo'])) ?></td>
+                                <td><?= e(tValor('metodo_pago', $mp['etiqueta'])) ?></td>
                                 <td style="text-align:right;color:var(--text-secondary)"><?= $pct ?>%</td>
                             </tr>
                         <?php endforeach; ?>
@@ -120,5 +175,11 @@ $totalVentasMetodo = array_sum(array_column($metodosPago, 'num_ventas'));
         </div>
     </div>
 </div>
+
+<?php if ($hayVentas): ?>
+    <script type="application/json" id="datosReportes"><?= json_encode($datosReportes, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <script src="../gerente/js/vendor/chart.umd.min.js"></script>
+    <script src="reportes.js?v=<?= filemtime(__DIR__ . '/reportes.js') ?>"></script>
+<?php endif; ?>
 
 <?php require 'footer.php'; ?>

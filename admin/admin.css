@@ -359,42 +359,13 @@ button{font:inherit}
   gap:6px;
 }
 
-/* ── Chart Bar (simple) ── */
-.chart-bars{
-  display:flex;
-  align-items:flex-end;
-  gap:16px;
-  height:200px;
-  padding:0 8px;
-  margin-bottom:1.5rem;
-  border-bottom:2px solid var(--tinta);
-}
-.chart-bar{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:6px;
-  flex:1;
-}
-.chart-bar__value{
-  font-size:12px;
-  color:var(--text-secondary);
-}
-.chart-bar__rect{
-  width:100%;
-  max-width:48px;
-  background:var(--fill-accent);
-  border:2px solid var(--tinta);
-  border-bottom:0;
-  border-radius:6px 6px 0 0;
-  animation:barra-crecer .45s cubic-bezier(0.3,1.3,0.5,1) both;
-  transform-origin:bottom;
-}
-.chart-bar__label{
-  font-size:12px;
-  color:var(--text-secondary);
-}
-@keyframes barra-crecer{from{transform:scaleY(0)}}
+/* ── Reportes: KPIs y variación vs periodo anterior ── */
+.rep-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.2rem}
+.rep-var{display:inline-block;margin-top:4px;font-size:12px;font-weight:600}
+.rep-var--sube{color:var(--text-success)}
+.rep-var--baja{color:var(--text-danger)}
+.rep-var--nd{color:var(--text-muted)}
+@media (max-width:900px){.rep-kpis{grid-template-columns:repeat(2,1fr)}}
 
 /* ── Avatar ── */
 .avatar{
@@ -682,7 +653,7 @@ button{font:inherit}
 }
 @media (prefers-reduced-motion: reduce){
   .admin-main,.table tbody tr{transition:none}
-  .sidebar-link--alerta,.chart-bar__rect,.modal-backdrop,.modal-backdrop > div,
+  .sidebar-link--alerta,.modal-backdrop,.modal-backdrop > div,
   .btn--alerta,.solicitud-ficha{animation:none}
   .solicitud-ficha{transition:none}
 }
