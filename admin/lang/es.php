@@ -100,6 +100,17 @@ return [
     'panel.en_orden_ayuda' => 'No hay nada pendiente por ahora',
     'panel.sucursales_activas' => 'Sucursales activas',
     'panel.gerentes_registrados' => 'Gerentes registrados',
+    'panel.grafica_titulo' => 'Ganancias por sucursal',
+    'panel.grafica_sucursal' => 'Sucursal',
+    'panel.grafica_periodo' => 'Periodo',
+    'panel.grafica_7' => 'Últimos 7 días',
+    'panel.grafica_30' => 'Últimos 30 días',
+    'panel.grafica_venta' => 'Venta neta',
+    'panel.grafica_ganancia' => 'Ganancia',
+    'panel.grafica_sin_ventas' => 'Esta sucursal no tiene ventas en el periodo.',
+    'panel.grafica_sin_costo' => 'Aún no hay costos registrados en estas ventas, por eso no se puede calcular la ganancia.',
+    'panel.dias_cortos' => 'Dom,Lun,Mar,Mié,Jue,Vie,Sáb',
+    'panel.meses_cortos' => 'Ene,Feb,Mar,Abr,May,Jun,Jul,Ago,Sep,Oct,Nov,Dic',
 
     // suc (sucursales)
     'suc.subtitulo' => 'Administra las sedes de la empresa',

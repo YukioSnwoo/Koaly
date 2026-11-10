@@ -47,6 +47,28 @@ $restantes = array_slice($ordenadas, 6);
 $sinGerente = count(array_filter($listaSucursales, fn($s) => !$s['gerente_nombre']));
 $inactivas = count(array_filter($listaSucursales, fn($s) => $s['estado'] !== 'Activa'));
 $pendientes = $bajoStock + $sinGerente;
+
+// Gráfica de ganancias de una sucursal (la dibuja graficas.js); por defecto, la que más vendió hoy
+require_once __DIR__ . '/metricas_ventas.php';
+$idsSucursal = array_map('intval', array_column($listaSucursales, 'id_sucursal'));
+$idGrafica = (int) ($_GET['sucursal'] ?? 0);
+if (!in_array($idGrafica, $idsSucursal, true)) {
+    $idGrafica = $idsSucursal ? (int) $ordenadas[0]['id_sucursal'] : 0;
+}
+$diasGrafica = ($_GET['dias'] ?? '') === '30' ? 30 : 7;
+$graficas = null;
+if ($idGrafica > 0) {
+    $hastaGrafica = new DateTimeImmutable('today');
+    $desdeGrafica = $hastaGrafica->modify('-' . ($diasGrafica - 1) . ' days');
+    $tendencia = serieTendencia($pdo, $desdeGrafica, $hastaGrafica,
+        'v.id_sucursal = ? AND v.fecha_hora >= ? AND v.fecha_hora < ?',
+        [$idGrafica, $desdeGrafica->format('Y-m-d 00:00:00'), $hastaGrafica->modify('+1 day')->format('Y-m-d 00:00:00')],
+        explode(',', t('panel.dias_cortos')), explode(',', t('panel.meses_cortos')));
+    $graficas = [
+        'textos'    => ['venta' => t('panel.grafica_venta'), 'ganancia' => t('panel.grafica_ganancia')],
+        'tendencia' => $tendencia,
+    ];
+}
 ?>
 
 <div class="hero">
@@ -99,6 +121,36 @@ $pendientes = $bajoStock + $sinGerente;
         </div>
     </div>
 </div>
+
+<?php if ($graficas): ?>
+<section class="grafica-panel">
+    <div class="grafica-panel__cabecera">
+        <h2 class="section-title"><?= e(t('panel.grafica_titulo')) ?></h2>
+        <form method="GET" class="grafica-panel__filtros" onchange="this.submit()">
+            <select name="sucursal" class="select" aria-label="<?= e(t('panel.grafica_sucursal')) ?>">
+                <?php foreach ($listaSucursales as $s): ?>
+                    <option value="<?= (int) $s['id_sucursal'] ?>" <?= (int) $s['id_sucursal'] === $idGrafica ? 'selected' : '' ?>><?= htmlspecialchars($s['nombre']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select name="dias" class="select" aria-label="<?= e(t('panel.grafica_periodo')) ?>">
+                <option value="7" <?= $diasGrafica === 7 ? 'selected' : '' ?>><?= e(t('panel.grafica_7')) ?></option>
+                <option value="30" <?= $diasGrafica === 30 ? 'selected' : '' ?>><?= e(t('panel.grafica_30')) ?></option>
+            </select>
+        </form>
+    </div>
+    <?php if (array_sum($graficas['tendencia']['neta']) <= 0): ?>
+        <p class="grafica-panel__aviso"><?= e(t('panel.grafica_sin_ventas')) ?></p>
+    <?php else: ?>
+        <?php if (!array_filter($graficas['tendencia']['utilidad'], fn($v) => $v !== null)): ?>
+            <p class="grafica-panel__aviso"><?= e(t('panel.grafica_sin_costo')) ?></p>
+        <?php endif; ?>
+        <div class="grafica-panel__lienzo"><canvas id="graficaTendencia" role="img" aria-label="<?= e(t('panel.grafica_titulo')) ?>"></canvas></div>
+        <script type="application/json" id="datosGraficas"><?= json_encode($graficas, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+        <script src="../gerente/js/vendor/chart.umd.min.js"></script>
+        <script src="graficas.js?v=<?= filemtime(__DIR__ . '/graficas.js') ?>"></script>
+    <?php endif; ?>
+</section>
+<?php endif; ?>
 
 <div style="margin-top:1rem;display:flex;gap:8px">
     <a href="sucursales.php" class="btn btn--primary"><i class="ti ti-plus"></i><?= e(t('suc.nueva')) ?></a>
