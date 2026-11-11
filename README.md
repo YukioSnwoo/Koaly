@@ -9,7 +9,7 @@
 Administración central de sucursales y personal, inventario propio en cada tienda<br>
 y una caja pensada para el día a día de una tienda de conveniencia.
 
-[**Ver sitio en vivo**](https://koalicius.com/) · [Recorrido](#-recorrido-por-la-plataforma) · [Instalación](#-instalación-local) · [Equipo](#-equipo)
+[**Ver sitio en vivo**](https://koalicius.com/) · [Recorrido](#-recorrido-por-la-plataforma) · [Cómo usar](#-cómo-usar-koaly) · [Equipo](#-equipo)
 
 <br>
 
@@ -44,14 +44,13 @@ y una caja pensada para el día a día de una tienda de conveniencia.
 - [Acerca de Koaly](#-acerca-de-koaly)
 - [Características principales](#-características-principales)
 - [Roles y permisos](#-roles-y-permisos)
+- [Cómo usar Koaly](#-cómo-usar-koaly)
 - [Recorrido por la plataforma](#-recorrido-por-la-plataforma)
 - [Tecnologías](#-tecnologías)
 - [Arquitectura](#-arquitectura)
 - [Estructura del proyecto](#-estructura-del-proyecto)
 - [Base de datos](#-base-de-datos)
 - [Seguridad y privacidad](#-seguridad-y-privacidad)
-- [Instalación local](#-instalación-local)
-- [Despliegue](#-despliegue)
 - [Idiomas](#-idiomas)
 - [Próximas mejoras](#-próximas-mejoras)
 - [Equipo](#-equipo)
@@ -141,6 +140,30 @@ Cada venta descuenta el inventario de la sucursal en el momento, queda ligada al
 | Perfil, tema e idioma | ✅ | ✅ | ✅ |
 
 <sub>✅ gestiona · 👁️ solo consulta · 📝 envía solicitudes · — sin acceso</sub>
+
+---
+
+## 🚀 Cómo usar Koaly
+
+Koaly funciona en el navegador: no se descarga ni se instala nada. Entra a **[koalicius.com](https://koalicius.com/)** e inicia sesión con tu cuenta.
+
+No hay registro abierto: cada cuenta la crea alguien de un rol superior.
+
+| Si eres… | Quién crea tu cuenta | Al entrar llegas a… |
+| :-- | :-- | :-- |
+| Administrador | Se crea al instalar Koaly | Panel general de la empresa |
+| Gerente | El administrador | Inicio de tu sucursal |
+| Cajero | Tu gerente. Te llega por correo una contraseña temporal y el aviso de privacidad | Punto de venta de tu caja |
+
+La primera vez que entras eliges tu propia contraseña.
+
+Para la caja basta una computadora con un navegador actualizado (Chrome, Safari, Firefox, Brave u Opera). La pantalla del cliente necesita un segundo monitor conectado a la misma computadora, y los tickets salen por la impresora configurada en el navegador.
+
+> [!NOTE]
+> ¿Quieres probar Koaly? Pide una cuenta de demostración a cualquier integrante del [equipo](#-equipo).
+
+> [!TIP]
+> Para correr Koaly en tu computadora o instalarlo en tu propio hosting, sigue la **[guía de instalación](docs/INSTALACION.md)**.
 
 ---
 
@@ -447,7 +470,7 @@ Koaly/
 ├── estilos/               Estilo común (colores, fuentes, modo oscuro) y barra lateral
 ├── Imagenes/              Mascota, íconos y billetes y monedas del corte de caja
 ├── sql/                   Esquema de la base y migraciones numeradas
-└── docs/capturas/         Capturas de este README
+└── docs/                 Guía de instalación y capturas de este README
 ```
 
 ---
@@ -485,7 +508,7 @@ erDiagram
 ```
 
 - [`sql/esquema.sql`](sql/esquema.sql) crea la base vacía, sin datos (incluye las migraciones 001 a 013 y el costo de la 015).
-- Los cambios a una base que ya existe van en migraciones numeradas (`sql/001_…` a `sql/016_…`) que se corren en orden desde phpMyAdmin.
+- Los cambios a una base que ya existe van en migraciones numeradas (`sql/001_…` a `sql/016_…`) que se corren en orden desde phpMyAdmin. Los pasos están en la [guía de instalación](docs/INSTALACION.md#cambios-a-la-base-de-datos).
 - Los volcados completos traen datos personales, por eso se guardan fuera de git (`sql/respaldos/` está en `.gitignore`).
 
 ---
@@ -501,123 +524,6 @@ erDiagram
 - **Aviso de privacidad** versionado: el cajero no entra a la caja hasta aceptarlo, y se guarda una constancia (fecha, versión, IP y navegador) que también se le envía por correo.
 - **Filtro de lenguaje ofensivo** en los nombres de sucursales, cajas y personas, en español e inglés.
 - **Credenciales fuera del repositorio**: la conexión a la base, el correo y la llave de la API están en `.gitignore`.
-
----
-
-## 🚀 Instalación local
-
-### Requisitos
-
-- PHP 8.1 o superior con las extensiones `pdo_mysql`, `mbstring` y `openssl` (`curl` es opcional, para el filtro en línea).
-- MariaDB 10.6+ o MySQL 8.
-- Un servidor web local (XAMPP, MAMP, Laragon) o el servidor integrado de PHP.
-
-### Pasos
-
-**1. Clonar el repositorio**
-
-```bash
-git clone https://github.com/YukioSnwoo/Koaly.git
-cd Koaly
-```
-
-**2. Crear la base de datos e importar el esquema**
-
-Crea una base vacía con `utf8mb4` e importa [`sql/esquema.sql`](sql/esquema.sql) (desde phpMyAdmin o la terminal):
-
-```bash
-mysql -u root -p -e "CREATE DATABASE koaly CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u root -p koaly < sql/esquema.sql
-```
-
-**3. Cargar los datos base y el primer administrador**
-
-Genera el hash de una contraseña inicial:
-
-```bash
-php -r "echo password_hash('CambiaEsta123', PASSWORD_DEFAULT), PHP_EOL;"
-```
-
-Y corre esto en la base, pegando el hash donde dice `HASH_GENERADO`:
-
-```sql
--- Los id de los roles importan: el login manda 1 → admin/, 2 → gerente/, 3 → cajero/
-INSERT INTO Roles (id_rol, nombre_rol) VALUES (1, 'Administrador'), (2, 'Gerente'), (3, 'Cajero');
-
--- La caja busca los métodos por nombre
-INSERT INTO Metodos_Pago (nombre_metodo) VALUES ('Efectivo'), ('Tarjeta Credito'), ('Transferencia'), ('Varios');
-
--- Los paneles traducen las categorías por este nombre exacto
-INSERT INTO Categorias (nombre_categoria)
-VALUES ('Abarrotes'), ('Bebidas'), ('Cuidado Personal'), ('Electronica'), ('Hogar'), ('Ropa');
-
--- Primer administrador: no lleva sucursal y debe cambiar la contraseña al entrar
-INSERT INTO Usuarios (nombre, email, contrasena_hash, id_rol, id_sucursal, estado,
-                      fecha_inicio_estado, fecha_contratacion, debe_cambiar)
-VALUES ('Administrador', 'admin@ejemplo.com', 'HASH_GENERADO', 1, NULL, 'Activo',
-        CURDATE(), CURDATE(), 1);
-```
-
-**4. Configurar la conexión**
-
-Crea `admin/database.php` (no se sube a git):
-
-```php
-<?php
-$pdo = new PDO(
-    'mysql:host=localhost;dbname=koaly;charset=utf8mb4',
-    'root',
-    'tu_contraseña',
-    [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]
-);
-```
-
-**5. Configurar el correo**
-
-Copia [`login/config_correo.ejemplo.php`](login/config_correo.ejemplo.php) como `login/config_correo.php` y llena los datos del buzón. El archivo de ejemplo explica cómo hacerlo con Hostinger o con Gmail. Sin este archivo se usa `mail()` del servidor, que en local casi nunca funciona.
-
-**6. (Opcional) Filtro de lenguaje en línea**
-
-El filtro funciona sin internet. Para sumar la revisión de APIVerve, crea `private/private-API-frofanity.php` **una carpeta arriba del proyecto** (fuera de la carpeta pública) con:
-
-```php
-<?php
-return ['APIVERVE_API_KEY' => 'tu_llave'];
-```
-
-**7. Iniciar el servidor**
-
-```bash
-php -S localhost:8000
-```
-
-Abre <http://localhost:8000>, entra con `admin@ejemplo.com` y la contraseña del paso 3, y elige tu contraseña definitiva.
-
-**8. Primeros datos**
-
-1. Como administrador, crea una sucursal y registra a su gerente; al asignárselo, la sucursal queda activa.
-2. Como gerente, solicita los productos del catálogo; el administrador los aprueba en *Inventario global → Solicitudes*.
-3. El gerente da de alta cajas y cajeros. Cada cajero recibe por correo su contraseña temporal y el enlace del aviso de privacidad, así que este paso necesita el correo del paso 5.
-
-> [!TIP]
-> Para que funcionen las fotos de perfil y las imágenes de productos, el servidor necesita permiso de escritura en `Imagenes/`.
-
----
-
-## 📦 Despliegue
-
-El sitio en producción está en **Hostinger**: [koalicius.com](https://koalicius.com/).
-
-1. Sube el proyecto a `public_html/` (por Git desde hPanel o por FTP).
-2. Crea la base en hPanel → Bases de datos e importa `sql/esquema.sql` con phpMyAdmin.
-3. Crea `admin/database.php` y `login/config_correo.php` directamente en el servidor.
-4. Si usas la API del filtro, pon `private/` al mismo nivel que `public_html/`, no adentro.
-5. Al cambiar la base, corre la migración nueva de `sql/` en phpMyAdmin antes de subir el código que la usa.
-
-Las hojas de estilo y scripts llevan la fecha del archivo en la URL (`?v=…`), así el navegador descarga la versión nueva aunque Hostinger guarde la anterior en caché.
 
 ---
 
