@@ -580,8 +580,8 @@ Los textos de cada módulo están en su carpeta `lang/` (`es.php` y `en.php`, co
       </a>
     </td>
     <td align="center" width="150">
-      <a href="https://github.com/Elurielll">
-        <img src="https://github.com/Elurielll.png" width="80" alt=""><br>
+      <a href="https://github.com/ur1eh">
+        <img src="https://github.com/ur1eh.png" width="80" alt=""><br>
         <sub><b>Uriel Dominyk Ramírez Larios</b></sub>
       </a>
     </td>
