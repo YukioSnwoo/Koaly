@@ -178,7 +178,7 @@ Para la caja basta una computadora con un navegador actualizado (Chrome, Safari,
 
 ### Acceso
 
-<!-- 📸 Figura 1 · docs/capturas/01-login.png
+<!-- 📸 Figura 1 · docs/capturas/Log In.png
      Dónde: koalicius.com sin sesión iniciada.
      Cómo: escribe un correo para que el koala reaccione; que se vea el ticket con el talón de acceso rápido. -->
 <p align="center">
