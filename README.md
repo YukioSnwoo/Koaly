@@ -29,13 +29,18 @@ y una caja pensada para el día a día de una tienda de conveniencia.
 
 <br>
 
-<!-- 📸 PORTADA · docs/capturas/portada.png
-     Opción recomendada: un montaje de 3 pantallas (Panel general del admin, Punto de venta y
-     Pantalla del cliente) sobre fondo morado #7c3aed, a 1600×900 (Canva o Figma).
-     Opción rápida: una copia de 04-admin-panel.png con el nombre portada.png. -->
-<p align="center">
-  <img src="docs/capturas/portada.png" alt="Vista general de Koaly" width="100%">
-</p>
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="docs/capturas/panelAdmin.png" alt="Panel general del administrador" width="100%"></td>
+    <td width="33%" align="center"><img src="docs/capturas/panelGerente.png" alt="Panel de gerencia de una sucursal" width="100%"></td>
+    <td width="33%" align="center"><img src="docs/capturas/panelCajero.png" alt="Punto de venta del cajero" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Administrador</b> · toda la empresa</sub></td>
+    <td align="center"><sub><b>Gerente</b> · su sucursal</sub></td>
+    <td align="center"><sub><b>Cajero</b> · punto de venta</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -172,30 +177,21 @@ Para la caja basta una computadora con un navegador actualizado (Chrome, Safari,
 <!-- 📸 CÓMO TOMAR LAS CAPTURAS (este comentario no se ve en GitHub)
      - Guárdalas en docs/capturas/ con el nombre exacto que dice cada figura.
      - PNG, ventana del navegador a 1440×900 (o 1920×1080), zoom al 100 %.
-     - Modo claro en todas, salvo la Figura 23 (claro y oscuro).
+     - Modo claro en todas, salvo la Figura 24 (claro y oscuro).
      - Usa datos de prueba: que no salgan correos, teléfonos ni nombres reales de personas.
      - Recorta la barra del navegador y el escritorio; solo la página. -->
 
 ### Acceso
 
-<!-- 📸 Figura 1 · docs/capturas/Log In.png
-     Dónde: koalicius.com sin sesión iniciada.
-     Cómo: escribe un correo para que el koala reaccione; que se vea el ticket con el talón de acceso rápido. -->
 <p align="center">
-  <img src="docs/capturas/01-login.png" alt="Inicio de sesión" width="100%">
+  <img src="docs/capturas/login.png" alt="Inicio de sesión" width="100%">
   <br><sub><b>Figura 1.</b> Inicio de sesión: el formulario es un ticket que sale de la impresora de la caja.</sub>
 </p>
 
-<!-- 📸 Figura 2 · docs/capturas/02-recuperar-contrasena.png
-     Dónde: login → "Olvidé mi contraseña".
-     Cómo: de preferencia el paso 2 (código de 6 dígitos y contraseña nueva) con el aviso de contraseña débil visible; si no, el paso 1.
-     Figura 3 · docs/capturas/03-aviso-privacidad.png
-     Dónde: koalicius.com/privacidad/ (página pública).
-     Cómo: la parte de arriba del aviso, con el botón de idioma visible. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/02-recuperar-contrasena.png" alt="Recuperación de contraseña" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/03-aviso-privacidad.png" alt="Aviso de privacidad" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/recuContra.png" alt="Recuperación de contraseña" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/privacidad.png" alt="Aviso de privacidad" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Figura 2.</b> Recuperación de contraseña con código por correo.</sub></td>
@@ -205,198 +201,188 @@ Para la caja basta una computadora con un navegador actualizado (Chrome, Safari,
 
 ### Administrador
 
-<!-- 📸 Figura 4 · docs/capturas/04-admin-panel.png
-     Dónde: Admin → Panel general.
-     Cómo: un día con ventas, gráfica "Ganancias por sucursal" en "Últimos 30 días". Que se vea la barra lateral completa. -->
 <p align="center">
-  <img src="docs/capturas/04-admin-panel.png" alt="Panel general del administrador" width="100%">
-  <br><sub><b>Figura 4.</b> Panel general: ventas del día, pendientes y ganancias por sucursal.</sub>
+  <img src="docs/capturas/panelAdmin.png" alt="Panel general del administrador" width="100%">
+  <br><sub><b>Figura 4.</b> Panel general: corte del día de toda la red, pendientes por atender y ganancias por sucursal.</sub>
 </p>
 
-<!-- 📸 Figura 5 · docs/capturas/05-admin-sucursales.png
-     Dónde: Admin → Sucursales.
-     Cómo: la lista con al menos una sucursal activa y una inactiva (sin gerente).
-     Figura 6 · docs/capturas/06-admin-gerentes.png
-     Dónde: Admin → Gerentes.
-     Cómo: abre "Empleados del gerente" en uno que tenga cajas y cajeros. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/05-admin-sucursales.png" alt="Sucursales" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/06-admin-gerentes.png" alt="Gerentes y sus empleados" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/adminSuc.png" alt="Sucursales" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/adminGer.png" alt="Gerentes" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Figura 5.</b> Sucursales con su estado y gerente responsable.</sub></td>
-    <td align="center"><sub><b>Figura 6.</b> Gerentes y los empleados de su sucursal.</sub></td>
+    <td align="center"><sub><b>Figura 6.</b> Gerentes con su sucursal asignada y estado laboral.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 7 · docs/capturas/07-admin-solicitudes.png
-     Dónde: Admin → Inventario global → pestaña "Solicitudes" → botón "Revisar" de una solicitud.
-     Cómo: con la ficha abierta; si hay una que el gerente regresó con cambios (en amarillo), mejor.
-     Figura 8 · docs/capturas/08-admin-reportes.png
-     Dónde: Admin → Reportes, periodo "Últimos 30 días".
-     Cómo: que se vean los indicadores y el comparativo por sucursal. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/07-admin-solicitudes.png" alt="Revisión de solicitudes de producto" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/08-admin-reportes.png" alt="Reportes" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/adminInvGlob.png" alt="Inventario global" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/adminVen.png" alt="Ventas de todas las sucursales" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 7.</b> Revisión de una solicitud de producto del gerente.</sub></td>
-    <td align="center"><sub><b>Figura 8.</b> Reportes comparativos entre sucursales.</sub></td>
+    <td align="center"><sub><b>Figura 7.</b> Inventario global: existencias de cada producto en todas las sucursales.</sub></td>
+    <td align="center"><sub><b>Figura 8.</b> Ventas de todas las sucursales con folio, cajero y método de pago.</sub></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="docs/capturas/adminRepo.png" alt="Reportes" width="100%">
+  <br><sub><b>Figura 9.</b> Reportes: venta neta, ganancia, margen y ticket promedio, con el comparativo por sucursal.</sub>
+</p>
 
 ### Gerente
 
-<!-- 📸 Figura 9 · docs/capturas/09-gerente-inicio.png
+<!-- 📸 Figura 10 · docs/capturas/10-gerente-inicio.png
      Dónde: Gerente → Inicio.
      Cómo: con ventas de hoy, la gráfica de los últimos 7 días y las tarjetas de acceso. -->
 <p align="center">
-  <img src="docs/capturas/09-gerente-inicio.png" alt="Inicio del gerente" width="100%">
-  <br><sub><b>Figura 9.</b> Inicio de la sucursal: ventas de hoy, stock en alerta, solicitudes y cajas activas.</sub>
+  <img src="docs/capturas/10-gerente-inicio.png" alt="Inicio del gerente" width="100%">
+  <br><sub><b>Figura 10.</b> Inicio de la sucursal: ventas de hoy, stock en alerta, solicitudes y cajas activas.</sub>
 </p>
 
-<!-- 📸 Figura 10 · docs/capturas/10-gerente-productos.png
+<!-- 📸 Figura 11 · docs/capturas/11-gerente-productos.png
      Dónde: Gerente → Productos.
      Cómo: la lista con imágenes y algún producto en alerta de stock.
-     Figura 11 · docs/capturas/11-gerente-ficha-producto.png
+     Figura 12 · docs/capturas/12-gerente-ficha-producto.png
      Dónde: Productos → clic en un producto.
      Cómo: con precio y costo capturados, para que se vea "Ganas $X por pieza". -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/10-gerente-productos.png" alt="Productos de la sucursal" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/11-gerente-ficha-producto.png" alt="Ficha de producto" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/11-gerente-productos.png" alt="Productos de la sucursal" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/12-gerente-ficha-producto.png" alt="Ficha de producto" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 10.</b> Catálogo de la empresa con el inventario de la sucursal.</sub></td>
-    <td align="center"><sub><b>Figura 11.</b> Ficha de producto: precio, costo, ganancia por pieza y ajustes de stock.</sub></td>
+    <td align="center"><sub><b>Figura 11.</b> Catálogo de la empresa con el inventario de la sucursal.</sub></td>
+    <td align="center"><sub><b>Figura 12.</b> Ficha de producto: precio, costo, ganancia por pieza y ajustes de stock.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 12 · docs/capturas/12-gerente-movimientos.png
+<!-- 📸 Figura 13 · docs/capturas/13-gerente-movimientos.png
      Dónde: Gerente → Movimientos.
      Cómo: periodo "Últimos 30 días", con entradas, salidas y algún ajuste.
-     Figura 13 · docs/capturas/13-gerente-cajeros.png
+     Figura 14 · docs/capturas/14-gerente-cajeros.png
      Dónde: Gerente → Cajeros.
      Cómo: vista "Galería", con un cajero "Trabajando" y otro "Fuera de turno". -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/12-gerente-movimientos.png" alt="Movimientos de inventario" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/13-gerente-cajeros.png" alt="Cajeros" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/13-gerente-movimientos.png" alt="Movimientos de inventario" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/14-gerente-cajeros.png" alt="Cajeros" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 12.</b> Historial de movimientos de inventario.</sub></td>
-    <td align="center"><sub><b>Figura 13.</b> Cajeros con su estado, caja y acceso.</sub></td>
+    <td align="center"><sub><b>Figura 13.</b> Historial de movimientos de inventario.</sub></td>
+    <td align="center"><sub><b>Figura 14.</b> Cajeros con su estado, caja y acceso.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 14 · docs/capturas/14-gerente-cajas.png
+<!-- 📸 Figura 15 · docs/capturas/15-gerente-cajas.png
      Dónde: Gerente → Cajas.
      Cómo: con una caja abierta y otra cerrada.
-     Figura 15 · docs/capturas/15-gerente-cortes.png
+     Figura 16 · docs/capturas/16-gerente-cortes.png
      Dónde: Gerente → Cajas → "Cortes de caja".
      Cómo: con el detalle de un corte abierto (esperado, contado y diferencia). -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/14-gerente-cajas.png" alt="Cajas" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/15-gerente-cortes.png" alt="Cortes de caja" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/15-gerente-cajas.png" alt="Cajas" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/16-gerente-cortes.png" alt="Cortes de caja" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 14.</b> Cajas de la sucursal y su cajero asignado.</sub></td>
-    <td align="center"><sub><b>Figura 15.</b> Cortes de caja: lo esperado, lo contado y lo que se entrega.</sub></td>
+    <td align="center"><sub><b>Figura 15.</b> Cajas de la sucursal y su cajero asignado.</sub></td>
+    <td align="center"><sub><b>Figura 16.</b> Cortes de caja: lo esperado, lo contado y lo que se entrega.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 16 · docs/capturas/16-gerente-ventas.png
+<!-- 📸 Figura 17 · docs/capturas/17-gerente-ventas.png
      Dónde: Gerente → Ventas, periodo "Últimos 7 días".
      Cómo: con los indicadores y el desglose por método de pago visibles.
-     Figura 17 · docs/capturas/17-gerente-graficas.png
+     Figura 18 · docs/capturas/18-gerente-graficas.png
      Dónde: Gerente → Gráficas, periodo "Últimos 30 días".
      Cómo: baja hasta que se vean el mapa de calor y la matriz de productos. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/16-gerente-ventas.png" alt="Ventas de la sucursal" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/17-gerente-graficas.png" alt="Gráficas de la sucursal" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/17-gerente-ventas.png" alt="Ventas de la sucursal" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/18-gerente-graficas.png" alt="Gráficas de la sucursal" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 16.</b> Ventas por periodo, cajero, caja y método de pago.</sub></td>
-    <td align="center"><sub><b>Figura 17.</b> Gráficas: mapa de calor, margen por categoría y matriz de productos.</sub></td>
+    <td align="center"><sub><b>Figura 17.</b> Ventas por periodo, cajero, caja y método de pago.</sub></td>
+    <td align="center"><sub><b>Figura 18.</b> Gráficas: mapa de calor, margen por categoría y matriz de productos.</sub></td>
   </tr>
 </table>
 
 ### Cajero
 
-<!-- 📸 Figura 18 · docs/capturas/18-cajero-punto-de-venta.png
+<!-- 📸 Figura 19 · docs/capturas/19-cajero-punto-de-venta.png
      Dónde: Cajero → caja abierta.
      Cómo: con 3 a 5 productos en la venta y algún producto "Agotado" o "Quedan N" en el catálogo. -->
 <p align="center">
-  <img src="docs/capturas/18-cajero-punto-de-venta.png" alt="Punto de venta" width="100%">
-  <br><sub><b>Figura 18.</b> Punto de venta: catálogo por categorías, buscador y resumen de la venta.</sub>
+  <img src="docs/capturas/19-cajero-punto-de-venta.png" alt="Punto de venta" width="100%">
+  <br><sub><b>Figura 19.</b> Punto de venta: catálogo por categorías, buscador y resumen de la venta.</sub>
 </p>
 
-<!-- 📸 Figura 19 · docs/capturas/19-cajero-cobro.png
+<!-- 📸 Figura 20 · docs/capturas/20-cajero-cobro.png
      Dónde: Cajero → Pagar → "Varios" (pago combinado) o "Efectivo".
      Cómo: con el efectivo recibido escrito, para que se vea el cambio.
-     Figura 20 · docs/capturas/20-cajero-corte.png
+     Figura 21 · docs/capturas/21-cajero-corte.png
      Dónde: Cajero → Corte.
      Cómo: con billetes y monedas ya contados y el total en efectivo. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/19-cajero-cobro.png" alt="Cobro" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/20-cajero-corte.png" alt="Corte de caja" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/20-cajero-cobro.png" alt="Cobro" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/21-cajero-corte.png" alt="Corte de caja" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 19.</b> Cobro en efectivo, con tarjeta o combinado.</sub></td>
-    <td align="center"><sub><b>Figura 20.</b> Corte de caja contando billetes, monedas y vouchers.</sub></td>
+    <td align="center"><sub><b>Figura 20.</b> Cobro en efectivo, con tarjeta o combinado.</sub></td>
+    <td align="center"><sub><b>Figura 21.</b> Corte de caja contando billetes, monedas y vouchers.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 21 · docs/capturas/21-pantalla-cliente.png
+<!-- 📸 Figura 22 · docs/capturas/22-pantalla-cliente.png
      Dónde: Cajero → botón "Pantalla cliente" (se abre otra ventana).
      Cómo: con productos en la venta, o justo al cobrar mientras sale el ticket.
-     Figura 22 · docs/capturas/22-ticket-venta.png
+     Figura 23 · docs/capturas/23-ticket-venta.png
      Dónde: después de cobrar → "Imprimir ticket".
      Cómo: la vista previa de impresión del navegador; recorta solo el ticket. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/21-pantalla-cliente.png" alt="Pantalla del cliente" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/22-ticket-venta.png" alt="Ticket de venta" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/22-pantalla-cliente.png" alt="Pantalla del cliente" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/23-ticket-venta.png" alt="Ticket de venta" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 21.</b> Pantalla del cliente en un segundo monitor.</sub></td>
-    <td align="center"><sub><b>Figura 22.</b> Ticket de venta impreso.</sub></td>
+    <td align="center"><sub><b>Figura 22.</b> Pantalla del cliente en un segundo monitor.</sub></td>
+    <td align="center"><sub><b>Figura 23.</b> Ticket de venta impreso.</sub></td>
   </tr>
 </table>
 
 ### Para todos los roles
 
-<!-- 📸 Figura 23 · docs/capturas/23a-tema-claro.png y docs/capturas/23b-tema-oscuro.png
+<!-- 📸 Figura 24 · docs/capturas/24a-tema-claro.png y docs/capturas/24b-tema-oscuro.png
      Dónde: la MISMA pantalla en los dos temas (recomendado: Gerente → Inicio).
      Cómo: cambia el tema desde el menú de perfil y toma las dos con el mismo encuadre. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/23a-tema-claro.png" alt="Modo claro" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/23b-tema-oscuro.png" alt="Modo oscuro" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/24a-tema-claro.png" alt="Modo claro" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/24b-tema-oscuro.png" alt="Modo oscuro" width="100%"></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><sub><b>Figura 23.</b> Modo claro y modo oscuro.</sub></td>
+    <td colspan="2" align="center"><sub><b>Figura 24.</b> Modo claro y modo oscuro.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 24 · docs/capturas/24-menu-perfil.png
+<!-- 📸 Figura 25 · docs/capturas/25-menu-perfil.png
      Dónde: cualquier panel → botón con tu nombre (arriba a la derecha).
      Cómo: con el menú abierto y alguna notificación; recorta a la zona del menú.
-     Figura 25 · docs/capturas/25-vista-movil.png
+     Figura 26 · docs/capturas/26-vista-movil.png
      Dónde: DevTools → vista de celular (iPhone 12/13, 390×844), en el login o en un panel con el menú abierto. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/24-menu-perfil.png" alt="Menú de perfil" width="100%"></td>
-    <td width="50%" align="center"><img src="docs/capturas/25-vista-movil.png" alt="Vista en celular" width="60%"></td>
+    <td width="50%"><img src="docs/capturas/25-menu-perfil.png" alt="Menú de perfil" width="100%"></td>
+    <td width="50%" align="center"><img src="docs/capturas/26-vista-movil.png" alt="Vista en celular" width="60%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 24.</b> Menú de perfil: foto, notificaciones, idioma y tema.</sub></td>
-    <td align="center"><sub><b>Figura 25.</b> Vista en celular.</sub></td>
+    <td align="center"><sub><b>Figura 25.</b> Menú de perfil: foto, notificaciones, idioma y tema.</sub></td>
+    <td align="center"><sub><b>Figura 26.</b> Vista en celular.</sub></td>
   </tr>
 </table>
 
