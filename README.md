@@ -235,79 +235,52 @@ Para la caja basta una computadora con un navegador actualizado (Chrome, Safari,
 
 ### Gerente
 
-<!-- 📸 Figura 10 · docs/capturas/10-gerente-inicio.png
-     Dónde: Gerente → Inicio.
-     Cómo: con ventas de hoy, la gráfica de los últimos 7 días y las tarjetas de acceso. -->
 <p align="center">
-  <img src="docs/capturas/10-gerente-inicio.png" alt="Inicio del gerente" width="100%">
-  <br><sub><b>Figura 10.</b> Inicio de la sucursal: ventas de hoy, stock en alerta, solicitudes y cajas activas.</sub>
+  <img src="docs/capturas/panelGerente.png" alt="Panel de gerencia" width="100%">
+  <br><sub><b>Figura 10.</b> Panel de gerencia: ventas de hoy, stock en alerta, solicitudes pendientes y cajas activas.</sub>
 </p>
 
-<!-- 📸 Figura 11 · docs/capturas/11-gerente-productos.png
-     Dónde: Gerente → Productos.
-     Cómo: la lista con imágenes y algún producto en alerta de stock.
-     Figura 12 · docs/capturas/12-gerente-ficha-producto.png
-     Dónde: Productos → clic en un producto.
-     Cómo: con precio y costo capturados, para que se vea "Ganas $X por pieza". -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/11-gerente-productos.png" alt="Productos de la sucursal" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/12-gerente-ficha-producto.png" alt="Ficha de producto" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerProd.png" alt="Productos de la sucursal" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerFicha.png" alt="Ficha de producto" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 11.</b> Catálogo de la empresa con el inventario de la sucursal.</sub></td>
+    <td align="center"><sub><b>Figura 11.</b> Productos de la sucursal: existencias, agotados, stock bajo y valor del inventario.</sub></td>
     <td align="center"><sub><b>Figura 12.</b> Ficha de producto: precio, costo, ganancia por pieza y ajustes de stock.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 13 · docs/capturas/13-gerente-movimientos.png
-     Dónde: Gerente → Movimientos.
-     Cómo: periodo "Últimos 30 días", con entradas, salidas y algún ajuste.
-     Figura 14 · docs/capturas/14-gerente-cajeros.png
-     Dónde: Gerente → Cajeros.
-     Cómo: vista "Galería", con un cajero "Trabajando" y otro "Fuera de turno". -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/13-gerente-movimientos.png" alt="Movimientos de inventario" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/14-gerente-cajeros.png" alt="Cajeros" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerMov.png" alt="Movimientos de inventario" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerCajeros.png" alt="Cajeros" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 13.</b> Historial de movimientos de inventario.</sub></td>
-    <td align="center"><sub><b>Figura 14.</b> Cajeros con su estado, caja y acceso.</sub></td>
+    <td align="center"><sub><b>Figura 13.</b> Movimientos de inventario con entradas, salidas y quién los hizo.</sub></td>
+    <td align="center"><sub><b>Figura 14.</b> Cajeros con su caja, su estado y lo que les falta para entrar a la caja.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 15 · docs/capturas/15-gerente-cajas.png
-     Dónde: Gerente → Cajas.
-     Cómo: con una caja abierta y otra cerrada.
-     Figura 16 · docs/capturas/16-gerente-cortes.png
-     Dónde: Gerente → Cajas → "Cortes de caja".
-     Cómo: con el detalle de un corte abierto (esperado, contado y diferencia). -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/15-gerente-cajas.png" alt="Cajas" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/16-gerente-cortes.png" alt="Cortes de caja" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerCajas.png" alt="Cajas" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerCortes.png" alt="Cortes de caja" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 15.</b> Cajas de la sucursal y su cajero asignado.</sub></td>
-    <td align="center"><sub><b>Figura 16.</b> Cortes de caja: lo esperado, lo contado y lo que se entrega.</sub></td>
+    <td align="center"><sub><b>Figura 15.</b> Cajas con su cajero asignado, fondo base y límite de efectivo.</sub></td>
+    <td align="center"><sub><b>Figura 16.</b> Cortes de caja por recibir: diferencia contra lo esperado y lo que entrega el cajero.</sub></td>
   </tr>
 </table>
 
-<!-- 📸 Figura 17 · docs/capturas/17-gerente-ventas.png
-     Dónde: Gerente → Ventas, periodo "Últimos 7 días".
-     Cómo: con los indicadores y el desglose por método de pago visibles.
-     Figura 18 · docs/capturas/18-gerente-graficas.png
-     Dónde: Gerente → Gráficas, periodo "Últimos 30 días".
-     Cómo: baja hasta que se vean el mapa de calor y la matriz de productos. -->
 <table>
   <tr>
-    <td width="50%"><img src="docs/capturas/17-gerente-ventas.png" alt="Ventas de la sucursal" width="100%"></td>
-    <td width="50%"><img src="docs/capturas/18-gerente-graficas.png" alt="Gráficas de la sucursal" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerVen.png" alt="Ventas de la sucursal" width="100%"></td>
+    <td width="50%"><img src="docs/capturas/gerGraf.png" alt="Gráficas de la sucursal" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Figura 17.</b> Ventas por periodo, cajero, caja y método de pago.</sub></td>
-    <td align="center"><sub><b>Figura 18.</b> Gráficas: mapa de calor, margen por categoría y matriz de productos.</sub></td>
+    <td align="center"><sub><b>Figura 17.</b> Ventas por método de pago, cajero y caja, con los productos más vendidos.</sub></td>
+    <td align="center"><sub><b>Figura 18.</b> Gráficas: venta por día, métodos de pago y mapa de calor por día y hora.</sub></td>
   </tr>
 </table>
 
