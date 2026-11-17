@@ -536,6 +536,23 @@ a:focus-visible {
     color: var(--ok-texto);
 }
 
+/* Reloj del bloqueo por intentos fallidos (login.js: mostrarBloqueo): el
+   segundero avanza un paso por segundo y al lado va lo que falta */
+.reloj-bloqueo {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    margin-top: 0.6rem; padding: 0.3rem 0.85rem 0.3rem 0.45rem;
+    border: 2px solid var(--peligro-borde); border-radius: 999px;
+    background: var(--superficie); color: var(--peligro-texto);
+    font-size: 0.85rem;
+}
+.reloj-bloqueo svg { flex-shrink: 0; }
+.reloj-bloqueo__manecilla { transform-origin: 12px 12px; animation: reloj-segundero 60s steps(60) infinite; }
+.reloj-bloqueo__tiempo { min-width: 2.6em; font-family: var(--fuente-dato); font-size: 1rem; font-variant-numeric: tabular-nums; }
+@keyframes reloj-segundero { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .reloj-bloqueo__manecilla { animation: none; }
+}
+
 .strength-warning {
     display: none;
     margin-top: 0.4rem;

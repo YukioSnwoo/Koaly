@@ -71,13 +71,45 @@ function evaluarFuerza(password, email) {
 }
 
 function mostrarMensaje(caja, tipo, texto) {
+    clearInterval(caja.relojBloqueo);
     caja.className = 'message ' + tipo;
     caja.textContent = texto;
 }
 
 function limpiarMensaje(caja) {
+    clearInterval(caja.relojBloqueo);
     caja.className = 'message';
     caja.textContent = '';
+}
+
+/**
+ * Bloqueo por intentos fallidos: el mensaje del servidor y abajo un reloj con la
+ * cuenta regresiva (`espera` segundos, calculados en login.php). Al llegar a 0:00
+ * avisa que ya se puede intentar. Cualquier otro mensaje en esa caja lo detiene.
+ */
+function mostrarBloqueo(caja, texto, segundos) {
+    mostrarMensaje(caja, 'error', '');
+    const fin = Date.now() + segundos * 1000;
+
+    const aviso = document.createElement('div');
+    aviso.textContent = texto;
+    const reloj = document.createElement('span');
+    reloj.className = 'reloj-bloqueo';
+    reloj.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"'
+        + ' stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/>'
+        + '<line class="reloj-bloqueo__manecilla" x1="12" y1="12" x2="12" y2="6.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>'
+        + '<span class="reloj-bloqueo__texto"></span> <strong class="reloj-bloqueo__tiempo" role="timer"></strong>';
+    reloj.querySelector('.reloj-bloqueo__texto').textContent = tl('msg.bloqueo_reloj');
+    caja.append(aviso, reloj);
+
+    const tiempo = reloj.querySelector('.reloj-bloqueo__tiempo');
+    const pintar = () => {
+        const resta = Math.max(0, Math.ceil((fin - Date.now()) / 1000));
+        tiempo.textContent = Math.floor(resta / 60) + ':' + String(resta % 60).padStart(2, '0');
+        if (resta === 0) mostrarMensaje(caja, 'success', tl('msg.bloqueo_listo'));
+    };
+    pintar();
+    caja.relojBloqueo = setInterval(pintar, 1000);
 }
 
 /** Aviso bajo un campo; sin texto lo oculta. */
@@ -270,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ocupado(boton, false);
             $('loginPassword').value = '';
             $('loginPassword').focus();
+            if (resultado.espera > 0) return mostrarBloqueo(caja, resultado.message, resultado.espera);
             return mostrarMensaje(caja, 'error', resultado.message || tl('msg.error_login'));
         }
 
