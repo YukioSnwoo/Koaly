@@ -35,6 +35,16 @@ return [
         'form.guardar'        => 'Guardar',
         'form.guardando'      => 'Guardando…',
         'form.guardado'       => 'Cambios guardados.',
+        'form.guardado_aviso' => 'Cambios guardados. Te enviamos un aviso a tu correo.',
+
+        // Aviso por correo cuando cambia la contraseña desde Mi perfil (guardar.php)
+        'correo.asunto'       => 'Se cambió tu contraseña de Koaly',
+        'correo.saludo'       => 'Hola, {nombre}:',
+        'correo.cuerpo'       => 'La contraseña de tu cuenta de Koaly se cambió el {fecha} a las {hora} desde «Mi perfil».',
+        'correo.si_fuiste'    => 'Si fuiste tú, no tienes que hacer nada.',
+        'correo.no_fuiste'    => 'Si no fuiste tú, {enlace} para cambiarla de nuevo.',
+        'correo.aqui'         => 'haz clic aquí',
+        'correo.no_fuiste_texto' => 'Si no fuiste tú, cámbiala de nuevo aquí:',
 
         'error.sesion'        => 'Tu sesión terminó. Vuelve a iniciar sesión.',
         'error.csrf'          => 'La página caducó. Recárgala e intenta de nuevo.',
@@ -116,6 +126,15 @@ return [
         'form.guardar'        => 'Save',
         'form.guardando'      => 'Saving…',
         'form.guardado'       => 'Changes saved.',
+        'form.guardado_aviso' => 'Changes saved. We sent a notice to your email.',
+
+        'correo.asunto'       => 'Your Koaly password was changed',
+        'correo.saludo'       => 'Hi {nombre},',
+        'correo.cuerpo'       => 'The password of your Koaly account was changed on {fecha} at {hora} from “My profile”.',
+        'correo.si_fuiste'    => 'If it was you, there’s nothing else to do.',
+        'correo.no_fuiste'    => 'If it wasn’t you, {enlace} to change it again.',
+        'correo.aqui'         => 'click here',
+        'correo.no_fuiste_texto' => 'If it wasn’t you, change it again here:',
 
         'error.sesion'        => 'Your session ended. Please log in again.',
         'error.csrf'          => 'The page expired. Reload it and try again.',

@@ -9,6 +9,28 @@ require_once __DIR__ . '/../admin/solicitudes_comun.php';   // guardarImagenProd
 require_once __DIR__ . '/../admin/profanity_filter.php';
 require_once __DIR__ . '/../admin/reglas_nombre.php';
 require_once __DIR__ . '/../login/reglas_contrasena.php';
+require_once __DIR__ . '/../login/correo.php';
+
+/**
+ * Avisa por correo que la contraseña cambió (diseño y "Si no fuiste tú" en
+ * login/correo.php). Va al correo que tenía la cuenta antes de guardar: el del
+ * dueño, aunque en el mismo guardado se cambie.
+ */
+function perfilAvisarCambioContrasena(string $para, string $nombre, string $correoCuenta): bool
+{
+    $ahora = new DateTimeImmutable();
+    $vars  = ['fecha' => $ahora->format(perfilIdioma() === 'en' ? 'm/d/Y' : 'd/m/Y'), 'hora' => $ahora->format('H:i')];
+
+    return enviarAvisoContrasenaCambiada($para, $correoCuenta, [
+        'asunto'          => perfilT('correo.asunto'),
+        'saludo'          => perfilT('correo.saludo', ['nombre' => $nombre]),
+        'cuerpo'          => perfilT('correo.cuerpo', $vars),
+        'si_fuiste'       => perfilT('correo.si_fuiste'),
+        'no_fuiste'       => perfilT('correo.no_fuiste'),
+        'aqui'            => perfilT('correo.aqui'),
+        'no_fuiste_texto' => perfilT('correo.no_fuiste_texto'),
+    ]);
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     perfilError(405, 'base_datos');
@@ -123,5 +145,13 @@ if ($foto !== $usuario['foto'] && $usuario['foto'] && str_starts_with($usuario['
     @unlink(__DIR__ . '/../' . $usuario['foto']);
 }
 
+// Ya guardado: si el correo no sale, la contraseña nueva igual queda
+$avisoEnviado = $nueva !== '' && perfilAvisarCambioContrasena($usuario['email'], $nombre, $email);
+
 $usuario = ['nombre' => $nombre, 'email' => $email, 'foto' => $foto] + $usuario;
-perfilResponder(200, ['ok' => true, 'mensaje' => perfilT('form.guardado'), 'usuario' => perfilParaJs($usuario)]);
+perfilResponder(200, [
+    'ok'      => true,
+    'mensaje' => perfilT($avisoEnviado ? 'form.guardado_aviso' : 'form.guardado'),
+    'aviso'   => $avisoEnviado,   // perfil.js deja el panel abierto más tiempo para leerlo
+    'usuario' => perfilParaJs($usuario),
+]);

@@ -5,6 +5,11 @@ session_start();
 $rutasPorRol = [1 => 'admin/', 2 => 'gerente/', 3 => 'cajero/']; // igual que RUTAS_POR_ROL en login/login.php
 $debeCambiar = false;
 
+// ?recuperar= viene del aviso de "se cambió tu contraseña" (perfil/guardar.php): abre la
+// recuperación con el correo puesto. No se manda al panel aunque haya sesión: si alguien
+// más cambió la contraseña, el dueño ya no sabe la actual y solo le queda recuperarla.
+$correoRecuperar = filter_var((string) ($_GET['recuperar'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
+
 if (isset($_SESSION['id_usuario'])) {
     try {
         require_once __DIR__ . '/admin/database.php';
@@ -30,7 +35,7 @@ if (isset($_SESSION['id_usuario'])) {
         session_destroy();
     } elseif ((int) $sesion['debe_cambiar'] === 1) {
         $debeCambiar = true;
-    } else {
+    } elseif ($correoRecuperar === '') {
         // La sesión pudo quedar con rol 0 si cambió la contraseña por otro lado (recuperación)
         $_SESSION['id_rol'] = (int) $sesion['id_rol'];
         header('Location: ' . $rutasPorRol[(int) $sesion['id_rol']]);
@@ -81,7 +86,7 @@ $ahoraTicket = new DateTimeImmutable('now', new DateTimeZone('America/Mexico_Cit
     <!-- Estilo común de Koaly (colores, fuentes y modo oscuro), igual que en los paneles -->
     <link rel="stylesheet" href="estilos/koaly.css?v=<?= $verKoaly ?>">
 </head>
-<body<?= $debeCambiar ? ' data-debe-cambiar="1"' : '' ?>>
+<body<?= $debeCambiar ? ' data-debe-cambiar="1"' : ($correoRecuperar !== '' ? ' data-recuperar="1"' : '') ?>>
 <div class="pantalla">
     <!-- Portada: el koala que reacciona a lo que se escribe (login.js) es lo protagonista.
          En celular queda solo el koala con su burbuja, en una franja arriba. -->
@@ -140,7 +145,7 @@ $ahoraTicket = new DateTimeImmutable('now', new DateTimeZone('America/Mexico_Cit
         </header>
 
         <!-- INICIAR SESIÓN -->
-        <section id="loginView"<?= $debeCambiar ? ' class="hidden"' : '' ?>>
+        <section id="loginView"<?= $debeCambiar || $correoRecuperar !== '' ? ' class="hidden"' : '' ?>>
 
             <h1 <?= $txt('login.titulo') ?></h1>
             <p class="subtitle" <?= $txt('login.subtitulo') ?></p>
@@ -182,7 +187,7 @@ $ahoraTicket = new DateTimeImmutable('now', new DateTimeZone('America/Mexico_Cit
         </section>
 
         <!-- RECUPERAR CONTRASEÑA · PASO 1: CORREO -->
-        <section id="recoverStep1" class="hidden">
+        <section id="recoverStep1"<?= !$debeCambiar && $correoRecuperar !== '' ? '' : ' class="hidden"' ?>>
             <button type="button" class="link-button volver-link" data-volver <?= $txt('recuperar.volver') ?></button>
 
             <ol class="steps" aria-label="<?= e(t('recuperar.paso1')) ?>" data-i18n-aria-label="recuperar.paso1">
@@ -199,7 +204,7 @@ $ahoraTicket = new DateTimeImmutable('now', new DateTimeZone('America/Mexico_Cit
             <form id="recoverForm1" novalidate>
                 <div class="form-group">
                     <label for="recoverEmail" <?= $txt('campo.correo') ?></label>
-                    <input type="email" id="recoverEmail" placeholder="<?= e(t('campo.correo_ej')) ?>" data-i18n-placeholder="campo.correo_ej" autocomplete="username" required>
+                    <input type="email" id="recoverEmail" placeholder="<?= e(t('campo.correo_ej')) ?>" data-i18n-placeholder="campo.correo_ej" autocomplete="username" required<?= $correoRecuperar !== '' ? ' value="' . e($correoRecuperar) . '"' : '' ?>>
                 </div>
                 <button type="submit" id="btnSendCode" class="btn-primary" <?= $txt('recuperar.enviar') ?></button>
             </form>

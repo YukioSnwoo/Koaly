@@ -398,6 +398,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.body.dataset.debeCambiar === '1') {
         $('newPassword').focus();
     }
+    // Enlace "si no fuiste tú" del aviso de cambio de contraseña: index.php ya abrió
+    // la recuperación con el correo puesto; solo falta pedir el código
+    if (document.body.dataset.recuperar === '1') {
+        $('btnSendCode').focus();
+    }
     // ===== Koala de la portada: cambia de cara y de mensaje según lo que se escribe =====
     const mascotaCara = $('mascotaCara');
     const mascotaBurbuja = $('mascotaBurbuja');
