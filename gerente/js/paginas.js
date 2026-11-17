@@ -249,6 +249,23 @@ function initZonasArchivo() {
  * ██ CAJEROS — Modales
  * ============================================================ */
 
+// Al menos un apellido, paterno o materno (el servidor pide lo mismo: admin/reglas_nombre.php).
+// El aviso sale en el paterno con el estilo de core.js.
+function validarApellidos(form) {
+    const paterno = form.querySelector('[name="apellido_paterno"]');
+    const materno = form.querySelector('[name="apellido_materno"]');
+    const falta = paterno.value.trim() === '' && materno.value.trim() === '';
+    paterno.setCustomValidity(falta ? tj('apellido_falta') : '');
+}
+
+function initApellidosCajero() {
+    const form = document.getElementById('formCajero');
+    if (!form) return;
+    ['apellido_paterno', 'apellido_materno'].forEach(nombre => {
+        form.querySelector(`[name="${nombre}"]`).addEventListener('input', () => validarApellidos(form));
+    });
+}
+
 function _prepararModalCajero(modo) {
     const form = document.getElementById('formCajero');
     form.reset();
@@ -280,8 +297,9 @@ function abrirModalNuevoCajero() {
     const fecha = form.querySelector('[name="fecha_contratacion"]');
     fecha.value = fecha.max;
     _actualizarAyudaEstado();
+    validarApellidos(form);
     abrirModal('modalCajero');
-    form.querySelector('[name="nombre"]').focus();
+    form.querySelector('[name="nombres"]').focus();
 }
 
 /**
@@ -299,7 +317,11 @@ function _bloquearCorreo(form, bloqueado) {
 function abrirModalEditarCajero(btn) {
     const form = _prepararModalCajero('editar');
     form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
-    form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
+    // Nombre(s) y apellidos por separado (si aún no lo están, cajeros.php los adivina)
+    form.querySelector('[name="nombres"]').value = btn.dataset.nombres;
+    form.querySelector('[name="apellido_paterno"]').value = btn.dataset.paterno;
+    form.querySelector('[name="apellido_materno"]').value = btn.dataset.materno;
+    validarApellidos(form);
     form.querySelector('[name="email"]').value = btn.dataset.email;
     _bloquearCorreo(form, btn.dataset.correoBloqueado === '1');
     form.querySelector('[name="estado"]').value = btn.dataset.estado;
@@ -460,6 +482,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initFiltrosProductos();
     initFormularioSolicitud();
     initZonasArchivo();
+
+    // Cajeros
+    initApellidosCajero();
 
     // Ventas y Movimientos
     initScrollInfinito();

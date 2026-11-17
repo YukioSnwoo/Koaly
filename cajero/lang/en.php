@@ -99,6 +99,11 @@ return [
     'cliente.preparar' => 'Drag this window to the customer monitor and make it full screen. Then click the search box on the register.',
     'cliente.pantalla_completa' => 'Full screen',
     'cliente.listo' => 'Leave it like this',
+    'cliente.se_agrego' => 'Just added',
+    'cliente.mas_arriba_1' => '▲ 1 more item above',
+    'cliente.mas_arriba' => '▲ {n} more items above',
+    'cliente.mas_abajo_1' => '▼ 1 more item below',
+    'cliente.mas_abajo' => '▼ {n} more items below',
 
     // confirmaciones
     'eliminar.titulo' => 'Delete product?',

@@ -16,6 +16,7 @@
 
 require_once __DIR__ . '/../admin/csrf.php';
 require_once __DIR__ . '/../admin/preferencia_idioma.php';
+require_once __DIR__ . '/../admin/reglas_nombre.php';   // nombre(s) y apellidos por separado
 
 const PERFIL_CARPETA_FOTOS       = 'Imagenes/perfiles';
 const PERFIL_DIAS_NOTIFICACIONES = 30;
@@ -63,11 +64,13 @@ function perfilUsuario(PDO $pdo, int $idUsuario): ?array
         LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
         WHERE u.id_usuario = ?
     ";
+    // Nombre(s) y apellidos por separado, o NULL si aún no se corre sql/017
+    $apellidos = columnasApellidos($pdo) . ',';
     try {
-        $stmt = $pdo->prepare(sprintf($sql, 'u.foto, u.notificaciones_vistas_en,'));
+        $stmt = $pdo->prepare(sprintf($sql, 'u.foto, u.notificaciones_vistas_en, ' . $apellidos));
         $stmt->execute([$idUsuario]);
     } catch (PDOException $e) {
-        $stmt = $pdo->prepare(sprintf($sql, 'NULL AS foto, NULL AS notificaciones_vistas_en,'));
+        $stmt = $pdo->prepare(sprintf($sql, 'NULL AS foto, NULL AS notificaciones_vistas_en, ' . $apellidos));
         $stmt->execute([$idUsuario]);
     }
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -94,7 +97,7 @@ function perfilFotoUrl(?string $foto): ?string
 /** Datos del usuario que necesita el navegador después de guardar el perfil. */
 function perfilParaJs(array $usuario): array
 {
-    return [
+    return partesNombre($usuario) + [
         'nombre'    => $usuario['nombre'],
         'email'     => $usuario['email'],
         'foto'      => perfilFotoUrl($usuario['foto']),
@@ -435,10 +438,24 @@ function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
                 </div>
             </div>
 
+            <?php // Nombre(s) y apellidos por separado; guardar.php arma el completo ?>
+            <?php $partes = partesNombre($usuario); ?>
             <label class="perfil-campo">
-                <?= $txt('form.nombre') ?>
-                <input type="text" name="nombre" maxlength="100" required autocomplete="name" value="<?= perfilE($usuario['nombre']) ?>">
+                <?= $txt('form.nombres') ?>
+                <input type="text" name="nombres" maxlength="<?= NOMBRE_MAX_NOMBRES ?>" required autocomplete="given-name" value="<?= perfilE($partes['nombres']) ?>">
             </label>
+            <div class="perfil-fila">
+                <label class="perfil-campo">
+                    <?= $txt('form.paterno') ?>
+                    <input type="text" name="apellido_paterno" maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="family-name" value="<?= perfilE($partes['apellido_paterno']) ?>">
+                </label>
+                <label class="perfil-campo">
+                    <?= $txt('form.materno') ?>
+                    <input type="text" name="apellido_materno" maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="off" value="<?= perfilE($partes['apellido_materno']) ?>">
+                </label>
+            </div>
+            <?php // Basta con un apellido, pero no los dos vacíos (lo revisa guardar.php) ?>
+            <small class="perfil-fila-ayuda"><?= $txt('form.apellidos_ayuda') ?></small>
             <label class="perfil-campo">
                 <?= $txt('form.email') ?>
                 <input type="email" name="email" maxlength="100" required autocomplete="email" value="<?= perfilE($usuario['email']) ?>">

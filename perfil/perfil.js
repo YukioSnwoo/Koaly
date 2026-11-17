@@ -282,7 +282,7 @@
         botonGuardar.disabled = false;
         dialogo.classList.remove('is-cerrando');
         dialogo.showModal();
-        form.querySelector('[name="nombre"]').focus();
+        form.querySelector('[name="nombres"]').focus();
     }
 
     menu.querySelector('[data-perfil-editar]').addEventListener('click', abrirPerfil);
@@ -346,7 +346,9 @@
         raiz.querySelectorAll('[data-perfil-nombre]').forEach(el => { el.textContent = u.nombre; });
         raiz.querySelectorAll('[data-perfil-email]').forEach(el => { el.textContent = u.email; });
         // Así form.reset() vuelve a lo guardado la próxima vez
-        form.querySelector('[name="nombre"]').defaultValue = u.nombre;
+        form.querySelector('[name="nombres"]').defaultValue = u.nombres;
+        form.querySelector('[name="apellido_paterno"]').defaultValue = u.apellido_paterno;
+        form.querySelector('[name="apellido_materno"]').defaultValue = u.apellido_materno;
         form.querySelector('[name="email"]').defaultValue = u.email;
         desplegarContrasena(false); // también borra las contraseñas escritas
 

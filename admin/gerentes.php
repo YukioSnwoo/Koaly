@@ -43,19 +43,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'crear') {
-            $nombre = trim($_POST['nombre'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = (string) ($_POST['password'] ?? '');
             $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
 
-            if ($nombre === '') {
-                throw new RuntimeException(t('ger.error_nombre'));
-            }
+            // Nombre(s) y apellidos por separado; $nombre es el completo (reglas_nombre.php)
             try {
-                $nombre = normalizarNombrePersona($nombre);
+                $partesNombre = nombreDesdeFormulario($_POST);
             } catch (NombreInvalido $e) {
                 throw new RuntimeException(t('error.nombre_' . $e->regla));
             }
+            $nombre = $partesNombre['nombre'];
             try {
                 rechazarSiProfano($nombre);
             } catch (RuntimeException) {
@@ -96,7 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hoy,
                 $hoy
             ]);
-            registrarCambioEstado($pdo, (int) $pdo->lastInsertId(), null, 'Activo');
+            $idNuevo = (int) $pdo->lastInsertId();
+            guardarPartesNombre($pdo, $idNuevo, $partesNombre);
+            registrarCambioEstado($pdo, $idNuevo, null, 'Activo');
 
             // Al asignarle gerente, la sucursal pasa a activa.
             if ($idSucursal > 0) {
@@ -111,17 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'editar') {
             $idGerente = (int) ($_POST['id_usuario'] ?? 0);
-            $nombre = trim($_POST['nombre'] ?? '');
             $email = trim($_POST['email'] ?? '');
 
-            if ($nombre === '') {
-                throw new RuntimeException(t('ger.error_nombre'));
-            }
             try {
-                $nombre = normalizarNombrePersona($nombre);
+                $partesNombre = nombreDesdeFormulario($_POST);
             } catch (NombreInvalido $e) {
                 throw new RuntimeException(t('error.nombre_' . $e->regla));
             }
+            $nombre = $partesNombre['nombre'];
             try {
                 rechazarSiProfano($nombre);
             } catch (RuntimeException) {
@@ -150,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->prepare("UPDATE Usuarios SET nombre = ?, email = ? WHERE id_usuario = ? AND id_rol = 2")
                 ->execute([$nombre, $email, $idGerente]);
+            guardarPartesNombre($pdo, $idGerente, $partesNombre);
 
             header('Location: gerentes.php');
             exit;
@@ -235,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Consultar gerentes con su sucursal
 $stmt = $pdo->query("
-    SELECT u.id_usuario, u.nombre, u.email, u.estado,
+    SELECT u.id_usuario, u.nombre, " . columnasApellidos($pdo) . ", u.email, u.estado,
            s.nombre AS sucursal_nombre, s.id_sucursal
     FROM Usuarios u
     LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
@@ -362,9 +360,13 @@ $todasSucursales = $pdo->query("
                             </span>
                         </td>
                         <td>
+                            <?php $partes = partesNombre($g); ?>
                             <button class="icon-btn" title="<?= e(t('comun.editar')) ?>" onclick="editarGerente(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
+                                data-nombres="<?= htmlspecialchars($partes['nombres'], ENT_QUOTES) ?>"
+                                data-paterno="<?= htmlspecialchars($partes['apellido_paterno'], ENT_QUOTES) ?>"
+                                data-materno="<?= htmlspecialchars($partes['apellido_materno'], ENT_QUOTES) ?>"
                                 data-email="<?= htmlspecialchars($g['email'], ENT_QUOTES) ?>"><i class="ti ti-edit"></i></button>
                             <button class="icon-btn" title="<?= e(t('ger.asignar_sucursal')) ?>" onclick="asignarSucursal(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
@@ -430,10 +432,22 @@ $todasSucursales = $pdo->query("
         <form method="POST" action="gerentes.php">
             <input type="hidden" name="action" value="crear">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <?php // Nombre(s) y apellidos por separado; el servidor arma el completo (reglas_nombre.php) ?>
             <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.nombre_completo')) ?></label>
-                <input type="text" name="nombre" class="input" style="width:100%" placeholder="<?= e(t('ger.nombre_ej')) ?>" required>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.nombres')) ?></label>
+                <input type="text" name="nombres" class="input" style="width:100%" placeholder="<?= e(t('ger.nombres_ej')) ?>" maxlength="<?= NOMBRE_MAX_NOMBRES ?>" required>
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                    <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.paterno')) ?></label>
+                    <input type="text" name="apellido_paterno" class="input" style="width:100%" placeholder="<?= e(t('ger.paterno_ej')) ?>" maxlength="<?= NOMBRE_MAX_APELLIDO ?>">
+                </div>
+                <div>
+                    <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.materno')) ?></label>
+                    <input type="text" name="apellido_materno" class="input" style="width:100%" placeholder="<?= e(t('ger.materno_ej')) ?>" maxlength="<?= NOMBRE_MAX_APELLIDO ?>">
+                </div>
+            </div>
+            <span style="display:block;color:var(--text-muted);font-size:12px;margin:4px 0 10px"><?= e(t('ger.apellidos_ayuda')) ?></span>
             <div style="margin-bottom:10px">
                 <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.email')) ?></label>
                 <input type="email" name="email" class="input" style="width:100%" placeholder="<?= e(t('ger.email_ej')) ?>" required>
@@ -473,10 +487,22 @@ $todasSucursales = $pdo->query("
             <input type="hidden" name="action" value="editar">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
             <input type="hidden" name="id_usuario" value="">
+            <?php // Nombre(s) y apellidos por separado; el servidor arma el completo (reglas_nombre.php) ?>
             <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.nombre_completo')) ?></label>
-                <input type="text" name="nombre" class="input" style="width:100%" required>
+                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.nombres')) ?></label>
+                <input type="text" name="nombres" class="input" style="width:100%" maxlength="<?= NOMBRE_MAX_NOMBRES ?>" required>
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                    <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.paterno')) ?></label>
+                    <input type="text" name="apellido_paterno" class="input" style="width:100%" maxlength="<?= NOMBRE_MAX_APELLIDO ?>">
+                </div>
+                <div>
+                    <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.materno')) ?></label>
+                    <input type="text" name="apellido_materno" class="input" style="width:100%" maxlength="<?= NOMBRE_MAX_APELLIDO ?>">
+                </div>
+            </div>
+            <span style="display:block;color:var(--text-muted);font-size:12px;margin:4px 0 10px"><?= e(t('ger.apellidos_ayuda')) ?></span>
             <div style="margin-bottom:1rem">
                 <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.email')) ?></label>
                 <input type="email" name="email" class="input" style="width:100%" required>
@@ -692,10 +718,28 @@ $todasSucursales = $pdo->query("
 function editarGerente(btn) {
     const form = document.getElementById('formEditarGerente');
     form.querySelector('[name="id_usuario"]').value = btn.dataset.id;
-    form.querySelector('[name="nombre"]').value = btn.dataset.nombre;
+    // Nombre(s) y apellidos por separado (si aún no lo están, gerentes.php los adivina)
+    form.querySelector('[name="nombres"]').value = btn.dataset.nombres;
+    form.querySelector('[name="apellido_paterno"]').value = btn.dataset.paterno;
+    form.querySelector('[name="apellido_materno"]').value = btn.dataset.materno;
+    form.querySelector('[name="apellido_paterno"]').dispatchEvent(new Event('input'));   // revisa los apellidos
     form.querySelector('[name="email"]').value = btn.dataset.email;
     openModal('modalEditarGerente');
 }
+
+// Al menos un apellido, paterno o materno (el servidor pide lo mismo: reglas_nombre.php).
+// En DOMContentLoaded porque tj() viene de admin.js, que se carga en el footer.
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#modalGerente form, #formEditarGerente').forEach(form => {
+        const paterno = form.querySelector('[name="apellido_paterno"]');
+        const materno = form.querySelector('[name="apellido_materno"]');
+        const revisar = () => paterno.setCustomValidity(
+            paterno.value.trim() === '' && materno.value.trim() === '' ? tj('apellido_falta') : '');
+        paterno.addEventListener('input', revisar);
+        materno.addEventListener('input', revisar);
+        revisar();
+    });
+});
 
 const HISTORIAL_ESTADOS = <?= json_encode($historial, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
 const BADGES_ESTADO = <?= json_encode(array_map(fn($i) => $i['badge'], ESTADOS_GERENTE)) ?>;

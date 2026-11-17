@@ -19,6 +19,10 @@
     const TICKET_MS_MAXIMO = 6000;      // un ticket muy largo sale más rápido
     const TICKET_MARGEN_ABAJO = 40;
     const TICKET_ESCALA_MINIMA = 1.2;   // menos que esto ya no se lee bien de lejos
+    const REPASO_MS_ARRIBA = 1500;      // al cobrar: pausa al principio de la lista…
+    const REPASO_MS_ABAJO = 2500;       // …y al final, antes de volver a empezar
+    const REPASO_ALTOS_POR_SEGUNDO = 0.06;  // velocidad de bajada: 6 % del alto de la ventana por segundo
+    const REPASO_PX_POR_SEGUNDO_SUBIDA = 900;
 
     const $ = (id) => document.getElementById(id);
     const koala = $('koala');
@@ -84,8 +88,16 @@
         $('vistaKoala').hidden = !conKoala;
         $('vistaVenta').hidden = conKoala;
 
-        if (conKoala) pintarKoala(anterior);
-        else pintarVenta(indiceNuevo);
+        if (conKoala) {
+            lineasPintadas = '';
+            pintarKoala(anterior);
+        } else {
+            pintarVenta(indiceNuevo);
+        }
+
+        // Mientras se cobra, la lista se repasa sola; en cualquier otro momento, no
+        if (vista === 'venta' && estado.cobro) iniciarRepaso();
+        else detenerRepaso();
 
         // Terminó el mínimo de "gracias" sin que llegara nada nuevo: de regreso a espera
         clearTimeout(temporizadorGracias);
@@ -160,13 +172,47 @@
         impresion.classList.add('imprimiendo');
     }
 
-    function lineaEscaneo({ nombre, precio, cantidad }, nueva) {
+    /* ---------- Fotos de los productos ---------- */
+    // La misma foto del catálogo; sin foto, o si no carga, la inicial del nombre.
+    // Con cantidad > 1 lleva el globito ×N en la esquina.
+    function fotoProducto({ nombre, imagen, cantidad }, clase) {
+        const marco = document.createElement('span');
+        marco.className = `foto ${clase}`;
+        const ponerInicial = () => {
+            marco.classList.add('sin-foto');
+            const letra = document.createElement('span');
+            letra.textContent = (String(nombre).trim()[0] || '?').toUpperCase();
+            marco.prepend(letra);
+        };
+        if (imagen) {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.onerror = () => { img.remove(); ponerInicial(); };
+            img.src = `../${imagen}`;
+            marco.append(img);
+        } else {
+            ponerInicial();
+        }
+        if (cantidad > 1) {
+            const globito = document.createElement('span');
+            globito.className = 'foto-cantidad';
+            globito.textContent = `×${cantidad}`;
+            marco.append(globito);
+        }
+        return marco;
+    }
+
+    function lineaEscaneo(linea, nueva) {
+        const { nombre, precio, cantidad } = linea;
         const li = document.createElement('li');
         li.className = nueva ? 'linea nueva' : 'linea';
 
+        // En la lista el globito va siempre, también con ×1
+        const etiquetaFoto = fotoProducto({ ...linea, cantidad: 0 }, 'linea-foto');
         const etiquetaCantidad = document.createElement('span');
-        etiquetaCantidad.className = 'linea-cantidad';
+        etiquetaCantidad.className = 'foto-cantidad';
         etiquetaCantidad.textContent = `×${cantidad}`;
+        etiquetaFoto.append(etiquetaCantidad);
 
         const info = document.createElement('span');
         info.className = 'linea-info';
@@ -181,17 +227,60 @@
         importe.className = 'linea-importe';
         importe.textContent = dinero(cantidad * precio);
 
-        li.append(etiquetaCantidad, info, importe);
+        li.append(etiquetaFoto, info, importe);
         return li;
     }
 
+    /* ---------- "Se agregó": lo último que pasó por el escáner ---------- */
+    // Entra con un salto cada vez que se agrega o aumenta algo; al quitar productos
+    // se queda el que estaba (o el último de la lista). Mientras se cobra se oculta:
+    // ese espacio es para lo recibido y el cambio.
+    let ultimoMostrado = '';        // nombre|imagen|cantidad de lo que está en la tarjeta
+
+    function pintarUltimo(indiceNuevo) {
+        const lineas = estado.lineas;
+        const agregado = lineas[indiceNuevo];
+        const nombreActual = ultimoMostrado.split('|')[0];
+        const linea = agregado || lineas.findLast((l) => l.nombre === nombreActual) || lineas[lineas.length - 1];
+
+        const tarjeta = $('ultimo');
+        tarjeta.hidden = !linea || !!estado.cobro;
+        if (!linea) {
+            ultimoMostrado = '';
+            return;
+        }
+
+        const clave = `${linea.nombre}|${linea.imagen}|${linea.cantidad}`;
+        if (clave !== ultimoMostrado) {
+            $('ultimoFoto').replaceChildren(fotoProducto(linea, 'ultimo-foto'));
+            $('ultimoNombre').textContent = linea.nombre;
+            $('ultimoPrecio').textContent = dinero(linea.precio);
+            ultimoMostrado = clave;
+        }
+        if (agregado && !tarjeta.hidden) {
+            tarjeta.classList.remove('entrando');
+            void tarjeta.offsetWidth;     // reinicia la animación aunque sea el mismo producto
+            tarjeta.classList.add('entrando');
+        }
+    }
+
+    // La lista solo se vuelve a dibujar si cambian los productos: mientras el cajero
+    // escribe lo recibido llegan muchos estados y no deben brincar el repaso
+    let lineasPintadas = '';
+
     function pintarVenta(indiceNuevo) {
-        const filas = estado.lineas.map((linea, i) => lineaEscaneo(linea, i === indiceNuevo));
-        $('listaEscaneo').replaceChildren(...filas);
-        (filas[indiceNuevo] || filas[filas.length - 1]).scrollIntoView({ block: 'nearest' });
+        const lineasJson = JSON.stringify(estado.lineas);
+        if (lineasJson !== lineasPintadas || indiceNuevo >= 0) {
+            lineasPintadas = lineasJson;
+            const filas = estado.lineas.map((linea, i) => lineaEscaneo(linea, i === indiceNuevo));
+            $('listaEscaneo').replaceChildren(...filas);
+            (filas[indiceNuevo] || filas[filas.length - 1]).scrollIntoView({ block: 'nearest' });
+        }
+        revisarAvisos();
 
         $('totalArticulos').textContent = estado.lineas.reduce((n, linea) => n + linea.cantidad, 0);
         $('totalVenta').textContent = dinero(estado.total);
+        pintarUltimo(indiceNuevo);
         pintarCobro(estado.cobro);
     }
 
@@ -217,6 +306,96 @@
             fila.append(nombre, valor);
             return fila;
         }));
+    }
+
+    /* ---------- La lista no cabe: avisos y repaso al cobrar ---------- */
+    // "▲ 5 productos más arriba / ▼ 3 más abajo", con la orilla desvanecida, para
+    // que se note que la lista sigue aunque nadie la pueda tocar
+    function revisarAvisos() {
+        const lista = $('listaEscaneo');
+        const caja = lista.getBoundingClientRect();
+        let arriba = 0;
+        let abajo = 0;
+        for (const fila of lista.children) {
+            const r = fila.getBoundingClientRect();
+            if (r.bottom <= caja.top + 8) arriba += 1;
+            else if (r.top >= caja.bottom - 8) abajo += 1;
+        }
+        const aviso = (id, clave, n) => {
+            $(id).textContent = n === 1 ? tr(`${clave}_1`) : tr(clave, { n });
+            $(id).classList.toggle('oculto', n === 0);
+        };
+        aviso('masArriba', 'cliente.mas_arriba', arriba);
+        aviso('masAbajo', 'cliente.mas_abajo', abajo);
+        $('listaEnvoltura').classList.toggle('hay-arriba', arriba > 0);
+        $('listaEnvoltura').classList.toggle('hay-abajo', abajo > 0);
+    }
+    $('listaEscaneo').addEventListener('scroll', revisarAvisos, { passive: true });
+    window.addEventListener('resize', () => { if (vista === 'venta') revisarAvisos(); });
+
+    // Al cobrar, el cliente revisa su compra: la lista baja despacio hasta el final,
+    // se espera y vuelve a empezar desde arriba. Va y viene en lugar de dar vueltas:
+    // un carrusel que repite productos parecería un cobro doble. Se detiene al dejar
+    // de cobrar. Sin animaciones (prefers-reduced-motion) no se mueve sola.
+    let turnoRepaso = 0;            // cambia para cancelar el repaso en curso
+    let repasando = false;
+
+    function iniciarRepaso() {
+        if (repasando || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        repasando = true;
+        repasar(++turnoRepaso);
+    }
+
+    function detenerRepaso() {
+        if (!repasando) return;
+        repasando = false;
+        turnoRepaso += 1;
+        // De regreso al último producto, como al escanear
+        const ultima = $('listaEscaneo').lastElementChild;
+        if (vista === 'venta' && ultima) ultima.scrollIntoView({ block: 'nearest' });
+    }
+
+    const esperar = (ms) => new Promise((listo) => setTimeout(listo, ms));
+
+    // Lleva la lista a `destino` (scrollTop) a cierta velocidad; se corta si cambia el turno.
+    // La posición se lleva aquí, con decimales: a la velocidad de bajada avanza menos
+    // de 1 px por cuadro, y Safari redondea scrollTop hacia abajo, así que sumarle
+    // la fracción a scrollTop la dejaba siempre en el mismo lugar.
+    function deslizar(destino, pxPorSegundo, turno) {
+        const lista = $('listaEscaneo');
+        return new Promise((listo) => {
+            let posicion = lista.scrollTop;
+            let antes = performance.now();
+            const paso = (ahora) => {
+                if (turno !== turnoRepaso) return listo();
+                const falta = destino - posicion;
+                if (Math.abs(falta) < 1) {
+                    lista.scrollTop = destino;
+                    return listo();
+                }
+                posicion += Math.sign(falta) * Math.min(Math.abs(falta), pxPorSegundo * (ahora - antes) / 1000);
+                antes = ahora;
+                lista.scrollTop = posicion;
+                requestAnimationFrame(paso);
+            };
+            requestAnimationFrame(paso);
+        });
+    }
+
+    async function repasar(turno) {
+        const lista = $('listaEscaneo');
+        while (turno === turnoRepaso) {
+            const recorrido = lista.scrollHeight - lista.clientHeight;
+            if (recorrido < 4) {            // todo cabe: no hay nada que repasar
+                await esperar(1000);
+                continue;
+            }
+            await deslizar(0, REPASO_PX_POR_SEGUNDO_SUBIDA, turno);
+            await esperar(REPASO_MS_ARRIBA);
+            if (turno !== turnoRepaso) return;
+            await deslizar(recorrido, window.innerHeight * REPASO_ALTOS_POR_SEGUNDO, turno);
+            await esperar(REPASO_MS_ABAJO);
+        }
     }
 
     // Qué línea se acaba de agregar o aumentar, para resaltarla (-1: ninguna).

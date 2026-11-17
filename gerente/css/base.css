@@ -260,6 +260,23 @@ button { font: inherit; }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
+/* Secciones de un formulario largo (Nuevo cajero: datos personales y
+   situación laboral). Sin esto el navegador pinta su borde gris. */
+.modal-seccion {
+    min-width: 0;
+    margin: 0 0 1rem; padding: 0.85rem 1rem 0.1rem;
+    border: 2px dashed var(--borde-fuerte); border-radius: 12px;
+}
+.modal-seccion legend {
+    padding: 0 0.4rem;
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--texto-3);
+}
+.form-ayuda { display: block; margin-top: 0.4rem; font-size: 0.78rem; line-height: 1.45; color: var(--texto-3); }
+.form-ayuda[hidden] { display: none; }
+/* Ayuda debajo de una fila de dos campos (apellidos): pegada a los campos */
+.form-row + .form-ayuda--fila { margin: -0.6rem 0 1rem; }
+
 /* Zona para elegir o soltar un archivo. Es un <label> con el input oculto
    dentro (sigue siendo enfocable y validable); paginas.js atiende el arrastre.
    .tiene-archivo: ya hay archivo (nombre); .tiene-miniatura: y se puede mostrar. */

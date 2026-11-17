@@ -21,6 +21,11 @@ $claves = array_flip([
     'cliente.preparar',
     'cliente.pantalla_completa',
     'cliente.listo',
+    'cliente.se_agrego',
+    'cliente.mas_arriba_1',
+    'cliente.mas_arriba',
+    'cliente.mas_abajo_1',
+    'cliente.mas_abajo',
     'resumen.escaneo',
     'resumen.articulos',
     'resumen.precio_unidad',
@@ -81,9 +86,23 @@ foreach (array_keys(IDIOMAS) as $codigo) {
     <main class="venta" id="vistaVenta" hidden>
         <section class="venta-escaneo">
             <h1 data-i18n="resumen.escaneo"></h1>
-            <ul class="lista" id="listaEscaneo"></ul>
+            <!-- Avisos de que la lista sigue y repaso al cobrar (pantalla_cliente.js: revisarAvisos, repasar) -->
+            <div class="lista-envoltura" id="listaEnvoltura">
+                <span class="mas mas-arriba oculto" id="masArriba" aria-hidden="true"></span>
+                <ul class="lista" id="listaEscaneo"></ul>
+                <span class="mas mas-abajo oculto" id="masAbajo" aria-hidden="true"></span>
+            </div>
         </section>
         <aside class="venta-cuenta">
+            <!-- Lo último que pasó por el escáner, con la foto en grande (pantalla_cliente.js: pintarUltimo) -->
+            <div class="cuenta-ultimo" id="ultimo" hidden>
+                <span class="cuenta-ultimo-foto" id="ultimoFoto"></span>
+                <div class="cuenta-ultimo-datos">
+                    <small data-i18n="cliente.se_agrego"></small>
+                    <strong id="ultimoNombre"></strong>
+                    <span id="ultimoPrecio"></span>
+                </div>
+            </div>
             <div class="cuenta-fila">
                 <span data-i18n="resumen.articulos"></span>
                 <strong id="totalArticulos"></strong>

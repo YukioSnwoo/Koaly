@@ -72,19 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'crear') {
-            $nombre   = trim($_POST['nombre'] ?? '');
             $email    = trim($_POST['email'] ?? '');
             $estado   = $_POST['estado'] ?? 'Activo';
             $fechaContratacion = $_POST['fecha_contratacion'] ?? date('Y-m-d');
 
-            if ($nombre === '' || mb_strlen($nombre) > 100) {
-                throw new RuntimeException(t('error.nombre_cajero'));
-            }
+            // Nombre(s) y apellidos por separado; $nombre es el completo (admin/reglas_nombre.php)
             try {
-                $nombre = normalizarNombrePersona($nombre);
+                $partesNombre = nombreDesdeFormulario($_POST);
             } catch (NombreInvalido $e) {
                 throw new RuntimeException(t('error.nombre_' . $e->regla));
             }
+            $nombre = $partesNombre['nombre'];
             try {
                 rechazarSiProfano($nombre);
             } catch (RuntimeException) {
@@ -133,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
             $idNuevo = (int) $pdo->lastInsertId();
+            guardarPartesNombre($pdo, $idNuevo, $partesNombre);
             $acceso  = ponerPasswordTemporal($pdo, $idNuevo);
             $mensajeExito = t('cajeros.creado');
 
@@ -144,7 +143,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($action === 'editar') {
             $id     = (int) ($_POST['id_usuario'] ?? 0);
-            $nombre = trim($_POST['nombre'] ?? '');
             $email  = trim($_POST['email'] ?? '');
             $estado = $_POST['estado'] ?? 'Activo';
             $motivoBaja = (string) ($_POST['motivo_baja'] ?? '');
@@ -152,14 +150,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
-            if ($nombre === '' || mb_strlen($nombre) > 100) {
-                throw new RuntimeException(t('error.nombre_cajero'));
-            }
             try {
-                $nombre = normalizarNombrePersona($nombre);
+                $partesNombre = nombreDesdeFormulario($_POST);
             } catch (NombreInvalido $e) {
                 throw new RuntimeException(t('error.nombre_' . $e->regla));
             }
+            $nombre = $partesNombre['nombre'];
             try {
                 rechazarSiProfano($nombre);
             } catch (RuntimeException) {
@@ -219,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id_usuario = ?
             ");
             $stmt->execute([$nombre, $email, $estado, $estado, $id]);
+            guardarPartesNombre($pdo, $id, $partesNombre);
 
             // Correo nuevo: los enlaces del aviso que no se han usado dejan de servir,
             // para que un enlace no termine en un buzón que el empleado no confirmó
@@ -429,9 +426,11 @@ try {
     $hayVencimiento = false;
 }
 $columnaVence = $hayVencimiento ? 'u.temporal_expira_en' : 'NULL';
+// Nombre(s) y apellidos por separado para el formulario de edición (sql/017)
+$columnasApellidos = columnasApellidos($pdo);
 
 $stmt = $pdo->prepare("
-    SELECT u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
+    SELECT u.id_usuario, u.nombre, $columnasApellidos, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
            u.debe_cambiar, $columnaVence AS temporal_expira_en,
            COUNT(v.id_venta) AS total_ventas,
            COALESCE(SUM(v.total), 0) AS monto_total,
@@ -455,8 +454,9 @@ $stmt = $pdo->prepare("
     )
     LEFT JOIN Cajas tc ON tc.id_caja = t.id_caja
     WHERE u.id_rol = 3 AND u.id_sucursal = ?
-    GROUP BY u.id_usuario, u.nombre, u.email, u.estado, u.fecha_contratacion, u.fecha_inicio_estado,
-             u.debe_cambiar, temporal_expira_en, tc.numero_caja, t.fecha_apertura
+    GROUP BY u.id_usuario, u.nombre, nombres, apellido_paterno, apellido_materno, u.email, u.estado,
+             u.fecha_contratacion, u.fecha_inicio_estado, u.debe_cambiar, temporal_expira_en,
+             tc.numero_caja, t.fecha_apertura
     ORDER BY u.nombre
 ");
 $stmt->execute(array_merge($hayTablaAviso ? [AVISO_PRIVACIDAD_VERSION] : [], [$idSucursalGerente, $idSucursalGerente]));
@@ -552,9 +552,11 @@ $accionesCajero = static function (array $c, string $modo) use ($hayTablaAviso):
     $iconoEditar = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     $iconoLlave = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>';
 
+    $partes = partesNombre($c);
     $html = '<div class="pz-acciones">'
         . '<button type="button" class="btn btn-ghost btn-sm' . ($conNombre ? ' pz-principal' : ' btn-icono') . '" onclick="abrirModalEditarCajero(this)"'
         . ' data-id="' . $id . '" data-nombre="' . e($c['nombre']) . '" data-email="' . e($c['email']) . '" data-estado="' . e($c['estado']) . '"'
+        . ' data-nombres="' . e($partes['nombres']) . '" data-paterno="' . e($partes['apellido_paterno']) . '" data-materno="' . e($partes['apellido_materno']) . '"'
         . ' data-correo-bloqueado="' . ($c['aviso_alguna_vez'] || (!$hayTablaAviso && (int) $c['debe_cambiar'] === 0) ? '1' : '0') . '"'
         . ($conNombre ? '' : ' title="' . e(t('comun.editar')) . '" aria-label="' . e(t('comun.editar') . ' · ' . $c['nombre']) . '"') . '>'
         . $iconoEditar . ($conNombre ? '<span>' . e(t('comun.editar')) . '</span>' : '') . '</button>';
@@ -729,11 +731,26 @@ require __DIR__ . '/header.php';
 
             <fieldset class="modal-seccion">
                 <legend><?= e(t('cajeros.seccion_datos')) ?></legend>
+                <?php // Nombre(s) y apellidos por separado; el servidor arma el completo (admin/reglas_nombre.php) ?>
                 <div class="form-group">
-                    <label for="cajeroNombre"><?= e(t('cajeros.campo_nombre')) ?></label>
-                    <input type="text" id="cajeroNombre" name="nombre" placeholder="<?= e(t('cajeros.campo_nombre_ej')) ?>"
-                           maxlength="100" autocomplete="off" required>
+                    <label for="cajeroNombres"><?= e(t('cajeros.campo_nombres')) ?></label>
+                    <input type="text" id="cajeroNombres" name="nombres" placeholder="<?= e(t('cajeros.campo_nombres_ej')) ?>"
+                           maxlength="<?= NOMBRE_MAX_NOMBRES ?>" autocomplete="off" required>
                 </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cajeroPaterno"><?= e(t('cajeros.campo_paterno')) ?></label>
+                        <input type="text" id="cajeroPaterno" name="apellido_paterno" placeholder="<?= e(t('cajeros.campo_paterno_ej')) ?>"
+                               maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="off" aria-describedby="ayudaApellidos">
+                    </div>
+                    <div class="form-group">
+                        <label for="cajeroMaterno"><?= e(t('cajeros.campo_materno')) ?></label>
+                        <input type="text" id="cajeroMaterno" name="apellido_materno" placeholder="<?= e(t('cajeros.campo_materno_ej')) ?>"
+                               maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="off" aria-describedby="ayudaApellidos">
+                    </div>
+                </div>
+                <?php // Basta con un apellido, pero no los dos vacíos (paginas.js: validarApellidos) ?>
+                <small class="form-ayuda form-ayuda--fila" id="ayudaApellidos"><?= e(t('cajeros.apellidos_ayuda')) ?></small>
                 <div class="form-group">
                     <label for="cajeroEmail"><?= e(t('cajeros.campo_email')) ?></label>
                     <input type="email" id="cajeroEmail" name="email" placeholder="<?= e(t('cajeros.campo_email_ej')) ?>"
