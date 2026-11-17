@@ -4,29 +4,67 @@
  * perfil (perfil/guardar.php). login.js aplica las mismas en el navegador.
  */
 
+/** Se rechazan tal cual. login.js tiene la misma lista. */
+const CONTRASENAS_COMUNES = [
+    '12345678', 'password', '123456789', 'qwerty', 'abc123',
+    'password123', 'admin', 'letmein', 'welcome', '12345',
+    '1234567890', 'qwerty123', '1q2w3e4r', 'iloveyou', 'monkey',
+];
+
+/**
+ * Palabras que no sirven de contraseña aunque se les pongan números o símbolos
+ * al principio o al final, ni con números en lugar de letras: "Contraseña123",
+ * "Koaly2026!", "p4ssw0rd", "TeAmo1234". En minúsculas, sin acentos y con la
+ * ñ como n. login.js tiene la misma lista.
+ */
+const BASES_COMUNES = [
+    'password', 'contrasena', 'contra', 'clave', 'secreto', 'secreta', 'acceso',
+    'qwerty', 'qwertyuiop', 'asdf', 'asdfgh', 'asdfghjkl', 'zxcvbn', 'abc', 'abcd', 'abcde', 'abcdef',
+    'admin', 'administrador', 'usuario', 'user', 'root', 'test', 'prueba',
+    'koaly', 'koala', 'cajero', 'cajera', 'gerente', 'tienda', 'ventas', 'caja',
+    'hola', 'holamundo', 'bienvenido', 'welcome', 'letmein', 'iloveyou', 'monkey', 'dragon',
+    'teamo', 'tequiero', 'amor', 'amorcito', 'mexico', 'colima', 'america', 'chivas',
+    'cruzazul', 'pumas', 'tigres', 'rayados', 'futbol', 'dios', 'jesus', 'familia',
+    'princesa', 'mama', 'papa',
+];
+
+/**
+ * La palabra que queda al quitarle a la contraseña los números y símbolos de
+ * las orillas y pasar a letra los números que hacen de letra:
+ * "C0ntraseña123!" → "contrasena". login.js hace lo mismo.
+ */
+function baseContrasena(string $password): string
+{
+    $texto = strtr(mb_strtolower($password, 'UTF-8'), [
+        'á' => 'a', 'à' => 'a', 'ä' => 'a', 'â' => 'a', 'é' => 'e', 'è' => 'e', 'ë' => 'e', 'ê' => 'e',
+        'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'î' => 'i', 'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ô' => 'o',
+        'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'û' => 'u', 'ñ' => 'n',
+    ]);
+    $texto = preg_replace('/^[^a-z]+|[^a-z]+$/', '', $texto);
+    $texto = strtr($texto, ['4' => 'a', '@' => 'a', '3' => 'e', '1' => 'i', '!' => 'i', '0' => 'o', '5' => 's', '$' => 's', '7' => 't']);
+    return preg_replace('/[^a-z]/', '', $texto);
+}
+
 /** Motivo por el que la contraseña no se acepta, o null si es válida. login.js aplica las mismas reglas. */
 function passwordIsTooSimple(string $password, string $email, ?string $nombre = null): ?string
 {
-    if (strlen($password) < 8) {
+    if (mb_strlen($password, 'UTF-8') < 8) {
         return 'La contraseña debe tener mínimo 8 caracteres';
     }
-    if (preg_match('/^[a-zA-Z]+$/', $password)) {
+    // \p{L}: las letras con acento y la ñ también cuentan ("contraseñas" es solo letras)
+    if (preg_match('/^\p{L}+$/u', $password)) {
         return 'La contraseña no puede ser solo letras';
     }
     if (preg_match('/^[0-9]+$/', $password)) {
         return 'La contraseña no puede ser solo números';
     }
-    if (preg_match('/^[^a-zA-Z0-9]+$/', $password)) {
+    if (preg_match('/^[^\p{L}\p{N}]+$/u', $password)) {
         return 'La contraseña no puede ser solo símbolos';
     }
 
-    $common = [
-        '12345678', 'password', '123456789', 'qwerty', 'abc123',
-        'password123', 'admin', 'letmein', 'welcome', '12345',
-        '1234567890', 'qwerty123', '1q2w3e4r', 'iloveyou', 'monkey'
-    ];
     $passwordLower = mb_strtolower($password);
-    if (in_array($passwordLower, $common, true)) {
+    if (in_array($passwordLower, CONTRASENAS_COMUNES, true)
+        || in_array(baseContrasena($password), BASES_COMUNES, true)) {
         return 'La contraseña es demasiado común';
     }
 
