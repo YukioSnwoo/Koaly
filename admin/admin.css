@@ -666,7 +666,8 @@ button{font:inherit}
   background:var(--surface-1);
   text-align:left;
 }
-.menu-estado[hidden]{display:none}
+.menu-estado[hidden],
+.menu-estado [hidden]{display:none}
 .menu-estado__titulo{
   padding:6px 10px 4px;
   font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
