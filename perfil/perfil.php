@@ -444,32 +444,46 @@ function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
                 <input type="email" name="email" maxlength="100" required autocomplete="email" value="<?= perfilE($usuario['email']) ?>">
             </label>
 
-            <fieldset class="perfil-grupo">
-                <legend data-perfil-t="form.contrasena"><?= perfilE(perfilT('form.contrasena')) ?></legend>
-                <div class="perfil-campo">
-                    <label for="perfilNueva"><?= $txt('form.nueva') ?></label>
-                    <span class="perfil-contrasena">
-                        <input type="password" id="perfilNueva" name="nueva" autocomplete="new-password">
-                        <?= $botonVer ?>
-                    </span>
-                    <small><?= $txt('form.nueva_ayuda') ?></small>
+            <?php // Cambiar contraseña: solo el botón; al tocarlo se despliegan los campos.
+                  // Cerrarlo de nuevo borra lo escrito (perfil.js). ?>
+            <button type="button" class="perfil-desplegar" id="perfilDesplegarContrasena" aria-expanded="false" aria-controls="perfilCamposContrasena" data-perfil-desplegar>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <?= $txt('form.contrasena') ?>
+                <svg class="perfil-desplegar__flecha" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="perfil-plegable" id="perfilCamposContrasena" role="group" aria-labelledby="perfilDesplegarContrasena" data-perfil-plegable="contrasena">
+                <div class="perfil-plegable__recorte">
+                    <div class="perfil-grupo">
+                        <div class="perfil-campo">
+                            <label for="perfilNueva"><?= $txt('form.nueva') ?></label>
+                            <span class="perfil-contrasena">
+                                <input type="password" id="perfilNueva" name="nueva" autocomplete="new-password">
+                                <?= $botonVer ?>
+                            </span>
+                        </div>
+                        <div class="perfil-campo">
+                            <label for="perfilConfirmar"><?= $txt('form.confirmar') ?></label>
+                            <span class="perfil-contrasena">
+                                <input type="password" id="perfilConfirmar" name="confirmar" autocomplete="new-password">
+                                <?= $botonVer ?>
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div class="perfil-campo">
-                    <label for="perfilConfirmar"><?= $txt('form.confirmar') ?></label>
-                    <span class="perfil-contrasena">
-                        <input type="password" id="perfilConfirmar" name="confirmar" autocomplete="new-password">
-                        <?= $botonVer ?>
-                    </span>
-                </div>
-            </fieldset>
+            </div>
 
-            <div class="perfil-campo">
-                <label for="perfilActual"><?= $txt('form.actual') ?></label>
-                <span class="perfil-contrasena">
-                    <input type="password" id="perfilActual" name="actual" autocomplete="current-password">
-                    <?= $botonVer ?>
-                </span>
-                <small><?= $txt('form.actual_ayuda') ?></small>
+            <?php // La contraseña actual solo sale cuando el servidor la pide: al cambiar la contraseña o el correo ?>
+            <div class="perfil-plegable" data-perfil-plegable="actual">
+                <div class="perfil-plegable__recorte">
+                    <div class="perfil-campo">
+                        <label for="perfilActual"><?= $txt('form.actual') ?></label>
+                        <span class="perfil-contrasena">
+                            <input type="password" id="perfilActual" name="actual" autocomplete="current-password">
+                            <?= $botonVer ?>
+                        </span>
+                        <small><?= $txt('form.actual_ayuda') ?></small>
+                    </div>
+                </div>
             </div>
 
             <input type="hidden" name="csrf_token" value="<?= perfilE(csrfToken()) ?>">

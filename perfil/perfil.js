@@ -221,23 +221,78 @@
         b.addEventListener('click', () => verContrasena(b, b.getAttribute('aria-pressed') !== 'true'));
     });
 
+    /* Cambiar contraseña: el botón despliega los campos. La contraseña actual
+       solo se pide (y se muestra) al cambiar la contraseña o el correo. */
+    const botonDesplegar = form.querySelector('[data-perfil-desplegar]');
+    const plegableContrasena = form.querySelector('[data-perfil-plegable="contrasena"]');
+    const plegableActual = form.querySelector('[data-perfil-plegable="actual"]');
+    const inputNueva = form.querySelector('[name="nueva"]');
+    const inputEmail = form.querySelector('[name="email"]');
+
+    // Al cerrar un bloque se borra lo que tenía: cerrado = no se cambia
+    function plegar(bloque, abrir) {
+        bloque.classList.toggle('is-abierto', abrir);
+        if (abrir) return;
+        bloque.querySelectorAll('.perfil-contrasena input').forEach(i => { i.value = ''; });
+        bloque.querySelectorAll('.perfil-ver').forEach(b => verContrasena(b, false));
+    }
+
+    function pideActual() {
+        return botonDesplegar.getAttribute('aria-expanded') === 'true'
+            || inputEmail.value.trim().toLowerCase() !== inputEmail.defaultValue.trim().toLowerCase();
+    }
+
+    function desplegarContrasena(abrir) {
+        botonDesplegar.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        plegar(plegableContrasena, abrir);
+        plegar(plegableActual, pideActual());
+    }
+
+    botonDesplegar.addEventListener('click', () => {
+        const abrir = botonDesplegar.getAttribute('aria-expanded') !== 'true';
+        desplegarContrasena(abrir);
+        if (abrir) inputNueva.focus();
+    });
+    inputEmail.addEventListener('input', () => {
+        const pide = pideActual();
+        if (pide !== plegableActual.classList.contains('is-abierto')) plegar(plegableActual, pide);
+    });
+
+    // Sale deslizándose a la derecha (perfil.css) y luego se cierra de verdad
+    const sinAnimacion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function cerrarPerfil() {
+        if (!dialogo.open || dialogo.classList.contains('is-cerrando')) return;
+        if (sinAnimacion.matches) return dialogo.close();
+        dialogo.classList.add('is-cerrando');
+        setTimeout(() => {
+            dialogo.classList.remove('is-cerrando');
+            dialogo.close();
+        }, 220);
+    }
+
     function abrirPerfil() {
         cerrarMenu();
         form.reset();
         form.querySelectorAll('.perfil-ver').forEach(b => verContrasena(b, false)); // reset() no regresa el tipo
+        desplegarContrasena(false);
         quitarFoto.value = '0';
         pintarAvatar(avatarForm, fotoActual);
         botonQuitar.hidden = !fotoActual;
         avisar('', 'error');
         botonGuardar.disabled = false;
+        dialogo.classList.remove('is-cerrando');
         dialogo.showModal();
         form.querySelector('[name="nombre"]').focus();
     }
 
     menu.querySelector('[data-perfil-editar]').addEventListener('click', abrirPerfil);
-    form.querySelector('[data-perfil-cerrar]').addEventListener('click', () => dialogo.close());
-    // Clic en el fondo oscuro (fuera de la caja) cierra
-    dialogo.addEventListener('click', (e) => { if (e.target === dialogo) dialogo.close(); });
+    form.querySelector('[data-perfil-cerrar]').addEventListener('click', cerrarPerfil);
+    // Esc también cierra con la animación
+    dialogo.addEventListener('cancel', (e) => { e.preventDefault(); cerrarPerfil(); });
+    // Clic en el fondo oscuro, a la izquierda del panel, cierra
+    dialogo.addEventListener('click', (e) => {
+        if (e.target === dialogo && e.clientX < dialogo.getBoundingClientRect().left) cerrarPerfil();
+    });
     dialogo.addEventListener('close', () => {
         if (urlVistaPrevia) URL.revokeObjectURL(urlVistaPrevia);
         urlVistaPrevia = null;
@@ -262,6 +317,12 @@
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        // Abrió "Cambiar contraseña" pero no escribió la nueva
+        if (botonDesplegar.getAttribute('aria-expanded') === 'true' && inputNueva.value === '') {
+            avisar(pt('error.nueva_falta'), 'error');
+            inputNueva.focus();
+            return;
+        }
         botonGuardar.disabled = true;
         botonGuardar.textContent = pt('form.guardando');
         let r;
@@ -287,10 +348,11 @@
         // Así form.reset() vuelve a lo guardado la próxima vez
         form.querySelector('[name="nombre"]').defaultValue = u.nombre;
         form.querySelector('[name="email"]').defaultValue = u.email;
-        form.querySelectorAll('.perfil-contrasena input').forEach(i => { i.value = ''; }); // también las que se ven
+        desplegarContrasena(false); // también borra las contraseñas escritas
 
         avisar(r.mensaje, 'ok');
-        setTimeout(() => { if (dialogo.open) dialogo.close(); }, 900);
+        // Si se mandó el aviso por correo, el mensaje es más largo: se deja leer
+        setTimeout(cerrarPerfil, r.aviso ? 2200 : 900);
     });
 
 

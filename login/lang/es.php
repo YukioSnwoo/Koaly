@@ -133,7 +133,18 @@ return [
     'srv.debe_cambiar' => 'Debes cambiar tu contraseña',
     'srv.exito' => 'Inicio de sesión exitoso',
 
-    // Correo con el código de recuperación
+    // Correo con el código de recuperación (diseño en login/correo.php)
     'correo.asunto' => 'Código de recuperación - Koaly',
-    'correo.cuerpo' => "Hola {nombre},\n\nTu código para restablecer la contraseña de Koaly es:\n\n    {codigo}\n\nEs válido por {minutos} minutos.\nSi no lo pediste, ignora este mensaje: tu contraseña no cambiará.\n\n— Equipo Koaly",
+    'correo.saludo' => 'Hola, {nombre}:',
+    'correo.intro' => 'Tu código para restablecer la contraseña de Koaly es:',
+    'correo.vigencia' => 'Es válido por {minutos} minutos.',
+    'correo.no_pediste' => 'Si no lo pediste, ignora este mensaje: tu contraseña no cambiará.',
+
+    // Aviso después de restablecer la contraseña con el código
+    'correo.restablecida_asunto' => 'Se restableció tu contraseña de Koaly',
+    'correo.restablecida' => 'La contraseña de tu cuenta de Koaly se restableció con éxito el {fecha} a las {hora} con un código de recuperación.',
+    'correo.restablecida_si_fuiste' => 'Si fuiste tú, ya puedes iniciar sesión con tu contraseña nueva.',
+    'correo.no_fuiste' => 'Si no fuiste tú, {enlace} para cambiarla de nuevo.',
+    'correo.aqui' => 'haz clic aquí',
+    'correo.no_fuiste_texto' => 'Si no fuiste tú, cámbiala de nuevo aquí:',
 ];

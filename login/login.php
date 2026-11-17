@@ -135,10 +135,16 @@ if ($action === 'send_recover_code') {
     ]);
     $idReset = $pdo->lastInsertId();
 
-    $cuerpo = t('correo.cuerpo', ['nombre' => $usuario['nombre'], 'codigo' => $codigo, 'minutos' => CODIGO_MINUTOS_VALIDEZ]);
+    $parrafos = [
+        t('correo.saludo', ['nombre' => $usuario['nombre']]),
+        t('correo.intro'),
+        ['codigo' => $codigo],
+        t('correo.vigencia', ['minutos' => CODIGO_MINUTOS_VALIDEZ]),
+    ];
+    $pie = t('correo.no_pediste');
 
     // El código nunca se devuelve en la respuesta: si el correo no sale, no hay recuperación
-    if (!enviarCorreo($usuario['email'], t('correo.asunto'), $cuerpo)) {
+    if (!enviarCorreo($usuario['email'], t('correo.asunto'), correoTexto($parrafos, $pie), null, correoHtml($parrafos, correoE($pie)))) {
         $pdo->prepare('DELETE FROM password_resets WHERE id = :id')->execute([':id' => $idReset]);
         error(500, t('srv.correo_no_salio'));
     }
@@ -203,6 +209,22 @@ if ($action === 'reset_password') {
         $pdo->rollBack();
         error(500, t('srv.no_actualizar'));
     }
+
+    // Aviso de que se restableció, con el mismo "Si no fuiste tú" que Mi perfil.
+    // Si el correo no sale, la contraseña nueva igual queda.
+    $ahora = new DateTimeImmutable();
+    enviarAvisoContrasenaCambiada($usuario['email'], $usuario['email'], [
+        'asunto'          => t('correo.restablecida_asunto'),
+        'saludo'          => t('correo.saludo', ['nombre' => $usuario['nombre']]),
+        'cuerpo'          => t('correo.restablecida', [
+            'fecha' => $ahora->format($GLOBALS['LOGIN_IDIOMA'] === 'en' ? 'm/d/Y' : 'd/m/Y'),
+            'hora'  => $ahora->format('H:i'),
+        ]),
+        'si_fuiste'       => t('correo.restablecida_si_fuiste'),
+        'no_fuiste'       => t('correo.no_fuiste'),
+        'aqui'            => t('correo.aqui'),
+        'no_fuiste_texto' => t('correo.no_fuiste_texto'),
+    ]);
 
     responder(200, [
         'success' => true,
