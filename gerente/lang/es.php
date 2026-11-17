@@ -156,6 +156,7 @@ return [
     'error.nombre_repetidas' => 'El nombre no puede tener la misma letra tres veces seguidas.',
     'error.nombre_corta' => 'Cada nombre o apellido lleva al menos 2 letras; una sola letra solo como inicial con punto (J.).',
     'error.email_invalido' => 'El correo electrónico no es válido.',
+    'error.email_profano' => 'El correo contiene lenguaje no permitido.',
     'error.email_duplicado' => 'El correo electrónico ya está registrado por otro usuario.',
     'error.email_de_baja' => 'Ese correo es de {nombre}, que está dado de baja. Reactívalo, o elimínalo permanentemente para registrarlo de nuevo.',
     'error.eliminar_no_baja' => 'Primero da de baja al cajero para poder eliminarlo.',

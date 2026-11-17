@@ -13,6 +13,7 @@
 - `koaly/languages/*.php`: envuelven las listas originales y agregan las groserías mexicanas que faltaban, la `v` como sustituto de la `u` y los nombres permitidos.
 - `koaly/pegadas.php`: raíces que se buscan dentro de cada palabra ("tuputamadre", "Cajamierda"), porque Blasp ignora a propósito lo que va pegado a otra palabra. La búsqueda está en `tieneGroseriaPegada()` de `admin/profanity_filter.php`, que también corta el texto en cada mayúscula ("TuPutaMadre" → "Tu Puta Madre").
 - `koaly/permitidas.php`: nombres reales que Blasp confundía (Concha, Culiacán, Analí). Solo se permiten escritos tal cual.
+- `koaly/derivables.php`: groserías a las que también se les buscan diminutivos, aumentativos y plurales ("putito", "penesito", "nalgona"). La búsqueda está en `esDerivadaDeGroseria()` de `admin/profanity_filter.php`. Es una lista corta para no bloquear nombres como Peñón, La Peñita, Chuchito o Gordon.
 
 ## Para actualizar
 Descargar los mismos archivos del tag nuevo, volver a aplicar los dos cambios de arriba y correr las pruebas de nombres (bloquear "p3nd3j0", "p-e-n-d-e-j-o"; dejar pasar "Concha", "Culiacán").

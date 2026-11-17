@@ -64,6 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException(t('ger.error_email'));
             }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
+            }
             if (strlen($password) < 8) {
                 throw new RuntimeException(t('ger.error_password'));
             }
@@ -124,6 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException(t('ger.error_email'));
+            }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
             }
 
             $existe = $pdo->prepare("SELECT 1 FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");

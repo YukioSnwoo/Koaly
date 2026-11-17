@@ -93,6 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
                 throw new RuntimeException(t('error.email_invalido'));
             }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
+            }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));
             }
@@ -162,6 +167,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
                 throw new RuntimeException(t('error.email_invalido'));
+            }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));

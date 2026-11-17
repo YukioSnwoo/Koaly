@@ -11,4 +11,6 @@ return [
     'putisima', 'putita', 'mierd', 'cabron', 'culero', 'culera', 'maricon',
     'pinche', 'panocha', 'mamada', 'mamon', 'ojete', 'vergota', 'vergaz',
     'nalga', 'cojones', 'malparid', 'gonorea', 'fuck', 'bitch',
+    'putit', 'huevon', 'guevon', 'chupaverg', 'mamaverg', 'chupapit',
+    'chupapij', 'mamahuev', 'mamaguev', 'piruj', 'puneter', 'cogelon',
 ];

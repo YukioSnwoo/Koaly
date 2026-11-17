@@ -48,6 +48,7 @@ return [
     'error.formulario_expirado' => 'The form has expired. Reload the page and try again.',
     'error.guardar' => 'Could not save. Please try again.',
     'error.profano' => 'The text contains inappropriate language.',
+    'error.email_profano' => 'The email address contains inappropriate language.',
     'error.nombre_caracteres' => 'The name can only contain letters, spaces, hyphens (-), apostrophes (\') and periods.',
     'error.nombre_mayuscula' => 'Each first and last name starts with a capital letter and has no capitals in the middle (McDonald, O\'Brien or DeLeón are fine).',
     'error.nombre_repetidas' => 'The name can\'t have the same letter three times in a row.',
