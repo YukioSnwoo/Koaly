@@ -798,12 +798,23 @@ require __DIR__ . '/header.php';
             </div>
 
             <div class="form-group">
-                <label data-nuevo="<?= e(t('cat.campo_imagen')) ?> *" data-editar="<?= e(t('cat.campo_imagen_cambiar')) ?>"><?= e(t('cat.campo_imagen')) ?> *</label>
-                <input type="file" name="imagen" accept="image/png,image/jpeg,image/webp" required>
-                <div class="imagen-preview" hidden>
-                    <img src="" alt="">
-                    <span><?= e(t('cat.campo_imagen_ayuda')) ?></span>
-                </div>
+                <label for="solicitudImagen" data-nuevo="<?= e(t('cat.campo_imagen')) ?> *" data-editar="<?= e(t('cat.campo_imagen_cambiar')) ?>"><?= e(t('cat.campo_imagen')) ?> *</label>
+                <?php // Toda la zona es un <label>: un clic en cualquier parte abre el selector.
+                      // Soltar un archivo encima lo maneja initZonasArchivo (paginas.js).
+                      // accept lleva también las extensiones: el selector de macOS
+                      // filtra mejor con ellas que solo con los tipos MIME. ?>
+                <label class="zona-archivo">
+                    <input type="file" id="solicitudImagen" name="imagen" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" required>
+                    <span class="zona-archivo-figura" aria-hidden="true">
+                        <svg class="zona-archivo-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18.5H6.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.6 8.1 4.75 4.75 0 0 1 17.5 18.5H17"/><path d="M12 20.5v-8"/><path d="m8.75 15.25 3.25-3.25 3.25 3.25"/></svg>
+                        <img class="zona-archivo-miniatura" src="" alt="" hidden>
+                    </span>
+                    <span class="zona-archivo-textos">
+                        <span class="zona-archivo-titulo"><strong><?= e(t('cat.zona_imagen_elegir')) ?></strong> <?= e(t('cat.zona_imagen_arrastrar')) ?></span>
+                        <span class="zona-archivo-nombre" data-actual="<?= e(t('cat.zona_imagen_actual')) ?>"></span>
+                        <span class="zona-archivo-ayuda" data-vacia="<?= e(t('cat.campo_imagen_ayuda')) ?>" data-archivo="<?= e(t('cat.zona_imagen_cambiar')) ?>"><?= e(t('cat.campo_imagen_ayuda')) ?></span>
+                    </span>
+                </label>
             </div>
 
             <div class="form-group">

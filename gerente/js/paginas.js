@@ -78,14 +78,39 @@ function validarContactoProveedor(form) {
     telefono.setCustomValidity(falta ? tj('sol_contacto') : '');
 }
 
-function mostrarVistaPreviaSolicitud(form, src) {
-    const vista = form.querySelector('.imagen-preview');
-    vista.hidden = !src;
-    vista.querySelector('img').src = src || '';
+/**
+ * Pone la zona de la imagen en su estado: vacía (nube + "Selecciona un archivo"),
+ * o con archivo (miniatura + nombre). Sin nombre pero con src es la imagen que ya
+ * tenía la solicitud ("Imagen actual"); con nombre y sin src, un archivo inválido.
+ */
+function mostrarVistaPreviaSolicitud(form, src, nombre = '') {
+    const zona = form.querySelector('.zona-archivo');
+    const conArchivo = !!(src || nombre);
+    zona.classList.toggle('tiene-archivo', conArchivo);
+    zona.classList.toggle('tiene-miniatura', !!src);
+
+    const miniatura = zona.querySelector('.zona-archivo-miniatura');
+    if (miniatura.src.startsWith('blob:')) URL.revokeObjectURL(miniatura.src);
+    miniatura.hidden = !src;
+    miniatura.src = src || '';
+
+    const etiqueta = zona.querySelector('.zona-archivo-nombre');
+    etiqueta.textContent = nombre || etiqueta.dataset.actual;
+
+    const ayuda = zona.querySelector('.zona-archivo-ayuda');
+    ayuda.textContent = conArchivo ? ayuda.dataset.archivo : ayuda.dataset.vacia;
+}
+
+// Lo mismo que acepta el servidor (guardarImagenProducto). Algunos sistemas no
+// dan el tipo MIME de un archivo: entonces se mira la extensión.
+function esImagenPermitida(archivo) {
+    if (archivo.type) return ['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type);
+    return /\.(png|jpe?g|webp)$/i.test(archivo.name);
 }
 
 function prepararFormularioSolicitud(form) {
     form.reset();
+    form.dataset.imagenActual = '';
     mostrarVistaPreviaSolicitud(form, '');
     form.querySelector('[name="imagen"]').setCustomValidity('');
     const submit = form.querySelector('[type="submit"]');
@@ -120,7 +145,8 @@ function abrirModalEditarSolicitud(btn) {
     form.querySelector('[name="proveedor_telefono"]').value = d.telefono;
     form.querySelector('[name="proveedor_correo"]').value = d.correo;
     mostrarCamposProveedor(form, d.proveedor !== '');
-    mostrarVistaPreviaSolicitud(form, d.imagen ? '../' + d.imagen : '');
+    form.dataset.imagenActual = d.imagen ? '../' + d.imagen : '';
+    mostrarVistaPreviaSolicitud(form, form.dataset.imagenActual);
 
     cerrarModal('fichaSolicitud' + d.id);
     abrirModal('modalSolicitarProducto');
@@ -151,10 +177,72 @@ function initFormularioSolicitud() {
     const imagen = form.querySelector('[name="imagen"]');
     imagen.addEventListener('change', () => {
         const archivo = imagen.files[0];
-        imagen.setCustomValidity(archivo && archivo.size > LIMITE_IMAGEN_SOLICITUD ? tj('sol_imagen_grande') : '');
-        if (archivo) mostrarVistaPreviaSolicitud(form, URL.createObjectURL(archivo));
+        if (!archivo) {
+            // Algunos navegadores vacían el input si se cancela el selector
+            imagen.setCustomValidity('');
+            mostrarVistaPreviaSolicitud(form, form.dataset.imagenActual || '');
+            return;
+        }
+        const error = !esImagenPermitida(archivo) ? tj('sol_imagen_formato')
+            : archivo.size > LIMITE_IMAGEN_SOLICITUD ? tj('sol_imagen_grande') : '';
+        imagen.setCustomValidity(error);
+        mostrarVistaPreviaSolicitud(form, error ? '' : URL.createObjectURL(archivo), archivo.name);
         imagen.reportValidity();
     });
+}
+
+/* ------------------------------------------------------------
+ * Zonas para soltar archivos (.zona-archivo). La zona es un <label>
+ * con el <input type="file"> oculto dentro: el clic lo resuelve el
+ * navegador. Aquí solo se atiende el arrastre: el archivo soltado se
+ * pasa al input y se dispara "change", igual que al elegirlo.
+ * ------------------------------------------------------------ */
+function arrastraArchivos(e) {
+    return e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+}
+
+function initZonasArchivo() {
+    document.querySelectorAll('.zona-archivo').forEach(zona => {
+        const input = zona.querySelector('input[type="file"]');
+        // dragenter/dragleave también llegan al pasar por los hijos de la zona:
+        // el contador evita que el resaltado parpadee
+        let dentro = 0;
+        const salir = () => { dentro = 0; zona.classList.remove('is-arrastrando'); };
+
+        zona.addEventListener('dragenter', (e) => {
+            if (!arrastraArchivos(e)) return;
+            e.preventDefault();
+            dentro++;
+            zona.classList.add('is-arrastrando');
+        });
+        zona.addEventListener('dragover', (e) => {
+            if (!arrastraArchivos(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        zona.addEventListener('dragleave', () => { if (--dentro <= 0) salir(); });
+        zona.addEventListener('drop', (e) => {
+            e.preventDefault();
+            salir();
+            const archivo = e.dataTransfer.files[0];
+            if (!archivo) return;
+            const lista = new DataTransfer();
+            lista.items.add(archivo);
+            input.files = lista.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+
+    // Un archivo soltado fuera de la zona hace que el navegador lo abra y se
+    // pierde el formulario. Mientras la página tenga zonas, se ignora; los
+    // <input type="file"> normales siguen recibiendo archivos.
+    if (!document.querySelector('.zona-archivo')) return;
+    ['dragover', 'drop'].forEach(tipo => window.addEventListener(tipo, (e) => {
+        if (arrastraArchivos(e) && !e.target.closest?.('.zona-archivo, input[type="file"]')) {
+            e.preventDefault();
+            if (tipo === 'dragover') e.dataTransfer.dropEffect = 'none';
+        }
+    }));
 }
 
 /* ============================================================
@@ -371,6 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Productos — filtros y solicitudes
     initFiltrosProductos();
     initFormularioSolicitud();
+    initZonasArchivo();
 
     // Ventas y Movimientos
     initScrollInfinito();
