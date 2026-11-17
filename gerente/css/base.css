@@ -260,12 +260,92 @@ button { font: inherit; }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
-.imagen-preview { margin-top: 0.6rem; display: flex; align-items: center; gap: 0.75rem; }
-.imagen-preview img {
-    width: 64px; height: 64px; object-fit: cover;
-    border-radius: 8px; border: 1px solid var(--borde);
+/* Zona para elegir o soltar un archivo. Es un <label> con el input oculto
+   dentro (sigue siendo enfocable y validable); paginas.js atiende el arrastre.
+   .tiene-archivo: ya hay archivo (nombre); .tiene-miniatura: y se puede mostrar. */
+/* .form-group: para ganarle a ".form-group label" (display: block, negritas) */
+.form-group .zona-archivo {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    margin: 0; padding: 1.4rem 1rem;
+    font-weight: 400;
+    border: 2px dashed var(--borde-fuerte); border-radius: 10px;
+    background: var(--superficie-2);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
-.imagen-preview span { font-size: 0.8rem; color: var(--texto-3); }
+.zona-archivo:hover,
+.zona-archivo.is-arrastrando {
+    border-color: var(--acento);
+    background: var(--acento-suave);
+}
+.zona-archivo:focus-within {
+    border-color: var(--tinta);
+    box-shadow: 3px 3px 0 var(--foco);
+}
+.form-group .zona-archivo input[type="file"] {
+    position: absolute; left: 50%; bottom: 0;
+    width: 1px; height: 1px; padding: 0;
+    opacity: 0; pointer-events: none;
+}
+
+.zona-archivo-figura {
+    display: grid; place-items: center;
+    width: 3rem; height: 3rem; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--acento-suave); color: var(--acento);
+    transition: transform 0.15s, background 0.15s;
+}
+.zona-archivo-icono { width: 1.6rem; height: 1.6rem; }
+.zona-archivo:hover .zona-archivo-figura,
+.zona-archivo.is-arrastrando .zona-archivo-figura {
+    background: var(--superficie); transform: translateY(-2px);
+}
+/* img lleva display: block global: sin esto "hidden" no la oculta */
+.zona-archivo-miniatura[hidden] { display: none; }
+/* Conserva la proporción de la imagen dentro de un tope: una lata se ve
+   alta y angosta, un paquete ancho y bajo, y la zona crece con ella.
+   contain: si la imagen es tan extrema que choca con los mínimos, no se deforma. */
+.zona-archivo-miniatura {
+    width: auto; height: auto;
+    min-width: 2.5rem; min-height: 2.5rem;
+    max-width: 8rem; max-height: 7rem;
+    object-fit: contain;
+    border-radius: 8px; border: 1px solid var(--borde);
+    background: var(--marco-imagen); filter: var(--filtro-imagen);
+}
+
+.zona-archivo-textos { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.zona-archivo-titulo { font-size: 0.9rem; color: var(--texto-2); }
+.zona-archivo-titulo strong { color: var(--acento-texto); font-weight: 700; }
+.zona-archivo-nombre {
+    display: none;
+    font-size: 0.9rem; font-weight: 600; color: var(--texto);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.zona-archivo-ayuda { font-size: 0.8rem; color: var(--texto-3); }
+
+/* Con archivo: fila compacta, borde continuo y la miniatura en lugar de la nube */
+.zona-archivo.tiene-archivo {
+    flex-direction: row; gap: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border-style: solid;
+    text-align: left;
+}
+.zona-archivo.tiene-archivo .zona-archivo-titulo { display: none; }
+.zona-archivo.tiene-archivo .zona-archivo-nombre { display: block; }
+.zona-archivo.tiene-archivo .zona-archivo-figura { width: 3.5rem; height: 3.5rem; border-radius: 8px; }
+.zona-archivo.tiene-miniatura .zona-archivo-figura {
+    display: block; width: auto; height: auto;
+    background: none; transform: none;
+}
+.zona-archivo.tiene-miniatura .zona-archivo-icono { display: none; }
+
+.form-group.campo-invalido .zona-archivo {
+    border-color: var(--acento);
+    background: var(--acento-suave);
+}
 
 
 /* ============================================================
