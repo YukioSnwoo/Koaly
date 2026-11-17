@@ -156,6 +156,7 @@ return [
     'error.nombre_repetidas' => 'The name can\'t have the same letter three times in a row.',
     'error.nombre_corta' => 'Each first or last name needs at least 2 letters; a single letter only as an initial with a period (J.).',
     'error.email_invalido' => 'The email address is not valid.',
+    'error.email_profano' => 'The email address contains inappropriate language.',
     'error.email_duplicado' => 'The email address is already used by another user.',
     'error.email_de_baja' => 'That email belongs to {nombre}, who was terminated. Reactivate them, or delete them permanently to register it again.',
     'error.eliminar_no_baja' => 'Terminate the cashier first to be able to delete them.',

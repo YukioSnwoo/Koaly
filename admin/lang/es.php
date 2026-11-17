@@ -48,6 +48,7 @@ return [
     'error.formulario_expirado' => 'El formulario expiró. Recarga la página e inténtalo de nuevo.',
     'error.guardar' => 'No se pudo guardar. Inténtalo de nuevo.',
     'error.profano' => 'El texto ingresado contiene lenguaje no permitido.',
+    'error.email_profano' => 'El correo contiene lenguaje no permitido.',
     'error.nombre_caracteres' => 'El nombre solo puede llevar letras, espacios, guion (-), apóstrofo (\') y punto.',
     'error.nombre_mayuscula' => 'Cada nombre y apellido empieza con mayúscula y no lleva mayúsculas en medio (se aceptan McDonald, O\'Brien o DeLeón).',
     'error.nombre_repetidas' => 'El nombre no puede tener la misma letra tres veces seguidas.',

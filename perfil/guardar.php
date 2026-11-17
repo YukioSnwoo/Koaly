@@ -44,6 +44,13 @@ if (mb_strlen($email) > 100 || filter_var($email, FILTER_VALIDATE_EMAIL) === fal
 }
 
 $cambiaEmail = $email !== strtolower($usuario['email']);
+if ($cambiaEmail) {
+    try {
+        rechazarCorreoSiProfano($email);
+    } catch (RuntimeException $e) {
+        perfilError(422, 'email_profano');
+    }
+}
 if ($cambiaEmail || $nueva !== '') {
     if ($actual === '') {
         perfilError(422, 'actual_falta');

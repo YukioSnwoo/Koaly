@@ -4,11 +4,30 @@
 const API = 'login/login.php';
 const SEGUNDOS_REENVIO = 60; // igual que CODIGO_SEGUNDOS_ESPERA en login.php
 
+// Las mismas listas que login/reglas_contrasena.php
 const CONTRASENAS_COMUNES = [
     '12345678', 'password', '123456789', 'qwerty', 'abc123',
     'password123', 'admin', 'letmein', 'welcome', '12345',
     '1234567890', 'qwerty123', '1q2w3e4r', 'iloveyou', 'monkey'
 ];
+const BASES_COMUNES = [
+    'password', 'contrasena', 'contra', 'clave', 'secreto', 'secreta', 'acceso',
+    'qwerty', 'qwertyuiop', 'asdf', 'asdfgh', 'asdfghjkl', 'zxcvbn', 'abc', 'abcd', 'abcde', 'abcdef',
+    'admin', 'administrador', 'usuario', 'user', 'root', 'test', 'prueba',
+    'koaly', 'koala', 'cajero', 'cajera', 'gerente', 'tienda', 'ventas', 'caja',
+    'hola', 'holamundo', 'bienvenido', 'welcome', 'letmein', 'iloveyou', 'monkey', 'dragon',
+    'teamo', 'tequiero', 'amor', 'amorcito', 'mexico', 'colima', 'america', 'chivas',
+    'cruzazul', 'pumas', 'tigres', 'rayados', 'futbol', 'dios', 'jesus', 'familia',
+    'princesa', 'mama', 'papa',
+];
+const NUMERO_COMO_LETRA = { '4': 'a', '@': 'a', '3': 'e', '1': 'i', '!': 'i', '0': 'o', '5': 's', '$': 's', '7': 't' };
+
+/** "C0ntraseña123!" → "contrasena": sin números ni símbolos en las orillas y con los números que hacen de letra pasados a letra. */
+function baseContrasena(password) {
+    const texto = password.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/^[^a-z]+|[^a-z]+$/g, '');
+    return texto.replace(/[4@3105$7!]/g, (c) => NUMERO_COMO_LETRA[c]).replace(/[^a-z]/g, '');
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,12 +48,14 @@ function tl(clave, vars = {}) {
 /** Mismas reglas que passwordIsTooSimple() en reglas_contrasena.php (salvo el nombre, que solo conoce el servidor). */
 function problemaContrasena(password, email) {
     if (password.length < 8) return tl('regla.min8');
-    if (/^[a-zA-Z]+$/.test(password)) return tl('regla.solo_letras');
+    if (/^\p{L}+$/u.test(password)) return tl('regla.solo_letras');
     if (/^[0-9]+$/.test(password)) return tl('regla.solo_numeros');
-    if (/^[^a-zA-Z0-9]+$/.test(password)) return tl('regla.solo_simbolos');
+    if (/^[^\p{L}\p{N}]+$/u.test(password)) return tl('regla.solo_simbolos');
 
     const minusculas = password.toLowerCase();
-    if (CONTRASENAS_COMUNES.includes(minusculas)) return tl('regla.comun');
+    if (CONTRASENAS_COMUNES.includes(minusculas) || BASES_COMUNES.includes(baseContrasena(password))) {
+        return tl('regla.comun');
+    }
 
     const usuarioCorreo = (email || '').split('@')[0].toLowerCase();
     if (usuarioCorreo.length >= 3 && minusculas.includes(usuarioCorreo)) return tl('regla.correo');
