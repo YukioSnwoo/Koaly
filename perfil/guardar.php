@@ -1,6 +1,6 @@
 <?php
 /**
- * Guarda "Mi perfil" (POST multipart con csrf_token): foto, nombre, correo y
+ * Guarda "Mi perfil" (POST multipart con csrf_token): foto, nombre(s) y apellidos, correo y
  * contraseña del propio usuario. Cambiar el correo o la contraseña pide la
  * contraseña actual. Responde {ok, mensaje, usuario} o {ok: false, error, mensaje}.
  */
@@ -39,28 +39,40 @@ if (!csrfValido()) {
     perfilError(403, 'csrf');
 }
 
-$nombre    = trim((string) ($_POST['nombre'] ?? ''));
 $email     = strtolower(trim((string) ($_POST['email'] ?? '')));
 $actual    = (string) ($_POST['actual'] ?? '');
 $nueva     = (string) ($_POST['nueva'] ?? '');
 $confirmar = (string) ($_POST['confirmar'] ?? '');
 $quitarFoto = ($_POST['quitar_foto'] ?? '0') === '1';
 
-if ($nombre === '' || mb_strlen($nombre) > 100) {
-    perfilError(422, 'nombre');
+// Nombre(s) y apellidos por separado (admin/reglas_nombre.php). Si el nombre
+// completo no cambió no se vuelve a revisar: un nombre de antes de las reglas
+// no impide guardar lo demás (aunque sí se guarda cómo quedó separado).
+$partesNombre = partesNombrePost($_POST);
+if (faltaNombreOApellido($partesNombre)) {
+    perfilError(422, 'nombre_falta');
 }
-if ($nombre !== $usuario['nombre']) {
+if (nombreCompleto($partesNombre) !== $usuario['nombre']) {
     try {
-        $nombre = normalizarNombrePersona($nombre);
+        $partesNombre = nombreDesdeFormulario($_POST);
     } catch (NombreInvalido $e) {
         perfilError(422, 'nombre_' . $e->regla);
     }
     try {
-        rechazarSiProfano($nombre);
+        rechazarSiProfano($partesNombre['nombre']);
     } catch (RuntimeException $e) {
         perfilError(422, 'nombre_profano');
     }
+} else {
+    if (mb_strlen($partesNombre['nombres']) > NOMBRE_MAX_NOMBRES
+        || mb_strlen($partesNombre['apellido_paterno']) > NOMBRE_MAX_APELLIDO
+        || mb_strlen($partesNombre['apellido_materno']) > NOMBRE_MAX_APELLIDO) {
+        perfilError(422, 'nombre_largo');
+    }
+    $partesNombre = apellidosVaciosANull($partesNombre);
+    $partesNombre['nombre'] = $usuario['nombre'];
 }
+$nombre = $partesNombre['nombre'];
 if (mb_strlen($email) > 100 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
     perfilError(422, 'email');
 }
@@ -116,6 +128,10 @@ try {
 $foto = $fotoNueva ?? ($quitarFoto ? null : $usuario['foto']);
 $sets = ['nombre = ?', 'email = ?'];
 $params = [$nombre, $email];
+if (hayColumnasApellidos($pdo)) {   // sql/017
+    array_push($sets, 'nombres = ?', 'apellido_paterno = ?', 'apellido_materno = ?');
+    array_push($params, $partesNombre['nombres'], $partesNombre['apellido_paterno'], $partesNombre['apellido_materno']);
+}
 if ($foto !== $usuario['foto']) {
     $sets[] = 'foto = ?';
     $params[] = $foto;
@@ -148,7 +164,14 @@ if ($foto !== $usuario['foto'] && $usuario['foto'] && str_starts_with($usuario['
 // Ya guardado: si el correo no sale, la contraseña nueva igual queda
 $avisoEnviado = $nueva !== '' && perfilAvisarCambioContrasena($usuario['email'], $nombre, $email);
 
-$usuario = ['nombre' => $nombre, 'email' => $email, 'foto' => $foto] + $usuario;
+$usuario = [
+    'nombre'           => $nombre,
+    'nombres'          => $partesNombre['nombres'],
+    'apellido_paterno' => $partesNombre['apellido_paterno'],
+    'apellido_materno' => $partesNombre['apellido_materno'],
+    'email'            => $email,
+    'foto'             => $foto,
+] + $usuario;
 perfilResponder(200, [
     'ok'      => true,
     'mensaje' => perfilT($avisoEnviado ? 'form.guardado_aviso' : 'form.guardado'),
