@@ -318,6 +318,9 @@ CREATE TABLE `Turnos_Caja` (
 CREATE TABLE `Usuarios` (
   `id_usuario` int(11) NOT NULL,
   `nombre` varchar(100) NOT NULL,
+  `nombres` varchar(60) DEFAULT NULL,
+  `apellido_paterno` varchar(40) DEFAULT NULL,
+  `apellido_materno` varchar(40) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
   `contrasena_hash` varchar(255) NOT NULL,
   `id_rol` int(11) NOT NULL,

@@ -475,7 +475,7 @@ erDiagram
 ## 🔐 Seguridad y privacidad
 
 - **Contraseñas** guardadas con `password_hash`, con reglas mínimas (8 caracteres, no solo letras o números, sin el nombre ni el correo, no comunes).
-- **Bloqueo de acceso** tras 5 intentos fallidos por correo o 20 por IP, durante 15 minutos.
+- **Bloqueo de acceso** tras 5 intentos fallidos por correo o 20 por IP, durante 5 minutos (el login muestra un reloj con lo que falta).
 - **Recuperación de contraseña** con un código de 6 dígitos guardado como hash, que vence en 15 minutos y se invalida al quinto intento. La respuesta es la misma exista o no el correo.
 - **Contraseñas temporales** de 10 caracteres que llegan solo por correo, vencen en 7 días y obligan a elegir una nueva en el primer ingreso.
 - **Consultas preparadas** con PDO en toda la aplicación y **tokens CSRF** en los formularios y endpoints que cambian datos.

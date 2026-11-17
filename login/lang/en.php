@@ -91,6 +91,8 @@ return [
     'msg.no_coinciden' => 'The passwords don\'t match.',
     'msg.ingresando' => 'Logging in…',
     'msg.error_login' => 'Couldn\'t log in.',
+    'msg.bloqueo_reloj' => 'Try again in',
+    'msg.bloqueo_listo' => 'Done, you can try again now.',
     'msg.entrando' => 'Logged in. Coming in…',
     'msg.guardando' => 'Saving…',
     'msg.error_actualizar' => 'Couldn\'t update the password.',
@@ -121,7 +123,7 @@ return [
     'srv.temporal_vencida' => 'Your temporary password has expired. Ask your manager to send you access again.',
     'srv.ya_actualizada' => 'Your password is already up to date. To change it, use “Forgot my password”.',
     'srv.credenciales' => 'Enter a valid email and password',
-    'srv.bloqueo' => 'Too many failed attempts. Wait {minutos} minutes or reset your password.',
+    'srv.bloqueo' => 'Too many failed attempts. Wait for the timer to run out or reset your password.',
     'srv.incorrectos' => 'Wrong email or password',
     'srv.estado' => 'Your account status is “{estado}”. Check with your manager or the administrator.',
     'srv.sin_sucursal' => 'The account has no branch assigned',
@@ -134,5 +136,15 @@ return [
 
     // Recovery code email
     'correo.asunto' => 'Recovery code - Koaly',
-    'correo.cuerpo' => "Hi {nombre},\n\nYour code to reset your Koaly password is:\n\n    {codigo}\n\nIt's valid for {minutos} minutes.\nIf you didn't ask for it, ignore this message: your password won't change.\n\n— The Koaly team",
+    'correo.saludo' => 'Hi {nombre},',
+    'correo.intro' => 'Your code to reset your Koaly password is:',
+    'correo.vigencia' => 'It’s valid for {minutos} minutes.',
+    'correo.no_pediste' => 'If you didn’t ask for it, ignore this message: your password won’t change.',
+
+    'correo.restablecida_asunto' => 'Your Koaly password was reset',
+    'correo.restablecida' => 'The password of your Koaly account was successfully reset on {fecha} at {hora} with a recovery code.',
+    'correo.restablecida_si_fuiste' => 'If it was you, you can now log in with your new password.',
+    'correo.no_fuiste' => 'If it wasn’t you, {enlace} to change it again.',
+    'correo.aqui' => 'click here',
+    'correo.no_fuiste_texto' => 'If it wasn’t you, change it again here:',
 ];

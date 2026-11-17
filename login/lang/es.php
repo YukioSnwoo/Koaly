@@ -91,6 +91,8 @@ return [
     'msg.no_coinciden' => 'Las contraseñas no coinciden.',
     'msg.ingresando' => 'Ingresando…',
     'msg.error_login' => 'No fue posible iniciar sesión.',
+    'msg.bloqueo_reloj' => 'Intenta de nuevo en',
+    'msg.bloqueo_listo' => 'Listo, ya puedes intentar de nuevo.',
     'msg.entrando' => 'Inicio de sesión exitoso. Entrando…',
     'msg.guardando' => 'Guardando…',
     'msg.error_actualizar' => 'No fue posible actualizar la contraseña.',
@@ -122,7 +124,7 @@ return [
     'srv.temporal_vencida' => 'Tu contraseña temporal venció. Pide a tu gerente que te reenvíe el acceso.',
     'srv.ya_actualizada' => 'Tu contraseña ya está actualizada. Para cambiarla usa «Olvidé mi contraseña».',
     'srv.credenciales' => 'Ingresa un correo y contraseña válidos',
-    'srv.bloqueo' => 'Demasiados intentos fallidos. Espera {minutos} minutos o restablece tu contraseña.',
+    'srv.bloqueo' => 'Demasiados intentos fallidos. Espera a que termine el reloj o restablece tu contraseña.',
     'srv.incorrectos' => 'Correo o contraseña incorrectos',
     'srv.estado' => 'Tu usuario está en estado «{estado}». Consulta con tu gerente o el administrador.',
     'srv.sin_sucursal' => 'La cuenta no tiene una sucursal asignada',
@@ -133,7 +135,18 @@ return [
     'srv.debe_cambiar' => 'Debes cambiar tu contraseña',
     'srv.exito' => 'Inicio de sesión exitoso',
 
-    // Correo con el código de recuperación
+    // Correo con el código de recuperación (diseño en login/correo.php)
     'correo.asunto' => 'Código de recuperación - Koaly',
-    'correo.cuerpo' => "Hola {nombre},\n\nTu código para restablecer la contraseña de Koaly es:\n\n    {codigo}\n\nEs válido por {minutos} minutos.\nSi no lo pediste, ignora este mensaje: tu contraseña no cambiará.\n\n— Equipo Koaly",
+    'correo.saludo' => 'Hola, {nombre}:',
+    'correo.intro' => 'Tu código para restablecer la contraseña de Koaly es:',
+    'correo.vigencia' => 'Es válido por {minutos} minutos.',
+    'correo.no_pediste' => 'Si no lo pediste, ignora este mensaje: tu contraseña no cambiará.',
+
+    // Aviso después de restablecer la contraseña con el código
+    'correo.restablecida_asunto' => 'Se restableció tu contraseña de Koaly',
+    'correo.restablecida' => 'La contraseña de tu cuenta de Koaly se restableció con éxito el {fecha} a las {hora} con un código de recuperación.',
+    'correo.restablecida_si_fuiste' => 'Si fuiste tú, ya puedes iniciar sesión con tu contraseña nueva.',
+    'correo.no_fuiste' => 'Si no fuiste tú, {enlace} para cambiarla de nuevo.',
+    'correo.aqui' => 'haz clic aquí',
+    'correo.no_fuiste_texto' => 'Si no fuiste tú, cámbiala de nuevo aquí:',
 ];

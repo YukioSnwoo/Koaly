@@ -20,7 +20,7 @@ const CODIGO_MAX_INTENTOS    = 5;   // fallos antes de invalidar el código
 const CODIGO_SEGUNDOS_ESPERA = 60;  // entre un envío y otro al mismo correo (login.js usa lo mismo)
 
 // Inicio de sesión
-const LOGIN_MINUTOS_BLOQUEO   = 15;
+const LOGIN_MINUTOS_BLOQUEO   = 5;
 const LOGIN_MAX_FALLOS_CORREO = 5;
 const LOGIN_MAX_FALLOS_IP     = 20;
 
@@ -71,6 +71,25 @@ function buscarUsuarioPorCorreo(PDO $pdo, string $email): ?array
     $stmt = $pdo->prepare('SELECT id_usuario, nombre, email, estado FROM Usuarios WHERE LOWER(email) = :email LIMIT 1');
     $stmt->execute([':email' => $email]);
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+/**
+ * Segundos que faltan para que $columna = $valor (un correo o una IP) baje de
+ * $max fallos en la ventana de LOGIN_MINUTOS_BLOQUEO; 0 si no está bloqueado.
+ * Es cuando vence el fallo número $max contando desde el más reciente.
+ */
+function segundosBloqueo(PDO $pdo, string $columna, string $valor, int $max): int
+{
+    $columna = $columna === 'ip' ? 'ip' : 'email';
+    $stmt = $pdo->prepare(
+        'SELECT TIMESTAMPDIFF(SECOND, NOW(), creado_en + INTERVAL ' . LOGIN_MINUTOS_BLOQUEO . ' MINUTE)
+         FROM login_intentos
+         WHERE ' . $columna . ' = :valor AND creado_en > NOW() - INTERVAL ' . LOGIN_MINUTOS_BLOQUEO . ' MINUTE
+         ORDER BY creado_en DESC LIMIT 1 OFFSET ' . ($max - 1)
+    );
+    $stmt->execute([':valor' => $valor]);
+    $segundos = $stmt->fetchColumn();
+    return $segundos === false ? 0 : max(1, (int) $segundos);
 }
 
 /** Motivo de passwordIsTooSimple() (viene en español); en otro idioma, la regla completa. */
@@ -135,10 +154,16 @@ if ($action === 'send_recover_code') {
     ]);
     $idReset = $pdo->lastInsertId();
 
-    $cuerpo = t('correo.cuerpo', ['nombre' => $usuario['nombre'], 'codigo' => $codigo, 'minutos' => CODIGO_MINUTOS_VALIDEZ]);
+    $parrafos = [
+        t('correo.saludo', ['nombre' => $usuario['nombre']]),
+        t('correo.intro'),
+        ['codigo' => $codigo],
+        t('correo.vigencia', ['minutos' => CODIGO_MINUTOS_VALIDEZ]),
+    ];
+    $pie = t('correo.no_pediste');
 
     // El código nunca se devuelve en la respuesta: si el correo no sale, no hay recuperación
-    if (!enviarCorreo($usuario['email'], t('correo.asunto'), $cuerpo)) {
+    if (!enviarCorreo($usuario['email'], t('correo.asunto'), correoTexto($parrafos, $pie), null, correoHtml($parrafos, correoE($pie)))) {
         $pdo->prepare('DELETE FROM password_resets WHERE id = :id')->execute([':id' => $idReset]);
         error(500, t('srv.correo_no_salio'));
     }
@@ -204,6 +229,22 @@ if ($action === 'reset_password') {
         error(500, t('srv.no_actualizar'));
     }
 
+    // Aviso de que se restableció, con el mismo "Si no fuiste tú" que Mi perfil.
+    // Si el correo no sale, la contraseña nueva igual queda.
+    $ahora = new DateTimeImmutable();
+    enviarAvisoContrasenaCambiada($usuario['email'], $usuario['email'], [
+        'asunto'          => t('correo.restablecida_asunto'),
+        'saludo'          => t('correo.saludo', ['nombre' => $usuario['nombre']]),
+        'cuerpo'          => t('correo.restablecida', [
+            'fecha' => $ahora->format($GLOBALS['LOGIN_IDIOMA'] === 'en' ? 'm/d/Y' : 'd/m/Y'),
+            'hora'  => $ahora->format('H:i'),
+        ]),
+        'si_fuiste'       => t('correo.restablecida_si_fuiste'),
+        'no_fuiste'       => t('correo.no_fuiste'),
+        'aqui'            => t('correo.aqui'),
+        'no_fuiste_texto' => t('correo.no_fuiste_texto'),
+    ]);
+
     responder(200, [
         'success' => true,
         'message' => t('srv.restablecida')
@@ -257,17 +298,18 @@ if ($email === '' || $password === '' || !filter_var($email, FILTER_VALIDATE_EMA
     error(400, t('srv.credenciales'));
 }
 
-// Límite de intentos fallidos, por correo y por IP
+// Límite de intentos fallidos, por correo y por IP. Se bloquea ese correo, no el
+// sistema: con otra cuenta se entra normal (si no, cualquiera podría dejar fuera a
+// un compañero equivocándose a propósito con su correo). Recuperar la contraseña
+// quita el bloqueo. El límite por IP frena a quien prueba muchos correos.
 $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-$stmt = $pdo->prepare(
-    'SELECT COALESCE(SUM(email = :email), 0), COALESCE(SUM(ip = :ip), 0) FROM login_intentos
-     WHERE creado_en > NOW() - INTERVAL ' . LOGIN_MINUTOS_BLOQUEO . ' MINUTE AND (email = :email2 OR ip = :ip2)'
+$espera = max(
+    segundosBloqueo($pdo, 'email', $email, LOGIN_MAX_FALLOS_CORREO),
+    segundosBloqueo($pdo, 'ip', $ip, LOGIN_MAX_FALLOS_IP)
 );
-$stmt->execute([':email' => $email, ':ip' => $ip, ':email2' => $email, ':ip2' => $ip]);
-[$fallosCorreo, $fallosIp] = array_map('intval', $stmt->fetch(PDO::FETCH_NUM));
-
-if ($fallosCorreo >= LOGIN_MAX_FALLOS_CORREO || $fallosIp >= LOGIN_MAX_FALLOS_IP) {
-    error(429, t('srv.bloqueo', ['minutos' => LOGIN_MINUTOS_BLOQUEO]));
+if ($espera > 0) {
+    // login.js muestra un reloj con la cuenta regresiva de `espera` segundos
+    responder(429, ['success' => false, 'message' => t('srv.bloqueo'), 'espera' => $espera]);
 }
 
 $registrarFallo = function () use ($pdo, $email, $ip): never {

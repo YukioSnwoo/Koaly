@@ -3060,7 +3060,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 tipo: 'estado',
                 idioma: window.IDIOMA,
                 abierta: estadoCaja === 'abierta',
-                lineas: carrito.map(({ nombre, precio, cantidad }) => ({ nombre, precio, cantidad })),
+                // imagen: la misma foto del catálogo, para la lista y la tarjeta "Se agregó"
+                lineas: carrito.map(({ nombre, precio, cantidad, imagen }) => ({ nombre, precio, cantidad, imagen: imagen || null })),
                 total: totalActual,
                 cobro: cobroParaCliente(),
                 venta: ventaAbierta ? ventaParaCliente : null,

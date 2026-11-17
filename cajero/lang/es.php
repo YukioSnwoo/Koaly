@@ -100,6 +100,11 @@ return [
     'cliente.preparar' => 'Arrastra esta ventana al monitor del cliente y ponla en pantalla completa. Después da clic en el buscador de la caja.',
     'cliente.pantalla_completa' => 'Pantalla completa',
     'cliente.listo' => 'Dejarla así',
+    'cliente.se_agrego' => 'Se agregó',
+    'cliente.mas_arriba_1' => '▲ 1 producto más arriba',
+    'cliente.mas_arriba' => '▲ {n} productos más arriba',
+    'cliente.mas_abajo_1' => '▼ 1 producto más abajo',
+    'cliente.mas_abajo' => '▼ {n} productos más abajo',
 
     // confirmaciones
     'eliminar.titulo' => '¿Eliminar producto?',
