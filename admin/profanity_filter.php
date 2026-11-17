@@ -5,7 +5,9 @@
 // Va de lo más barato a lo más caro y se detiene en cuanto encuentra algo:
 //
 // 1. Groserías comunes: cada palabra, sin acentos ni números que hacen de
-//    letra ("p3nd3j0"), se busca tal cual en la lista. Microsegundos.
+//    letra ("p3nd3j0"), se busca tal cual en la lista, y también sus
+//    diminutivos, aumentativos y plurales ("putito", "nalgona") sobre la
+//    lista corta de koaly/derivables.php. Microsegundos.
 // 2. Groserías pegadas: raíces fuertes dentro de cada palabra
 //    ("tuputamadre", "Cajamierda"). Microsegundos.
 // 3. Blasp (admin/lib/blasp/, copia del paquete de GitHub, MIT): separadores,
@@ -53,6 +55,17 @@ function rechazarSiProfano(string $texto): void
 
     if ($resultado['isProfane']) {
         throw new RuntimeException('El texto ingresado contiene lenguaje no permitido.');
+    }
+}
+
+// Correos: los pasos locales (1 a 3) sobre el usuario y el dominio separados en
+// palabras ("pene.sito@x.com" → "pene sito x com"). No se consulta APIVerve:
+// el correo es un dato personal y no hace falta mandarlo a un servicio externo.
+function rechazarCorreoSiProfano(string $email): void
+{
+    $texto = preg_replace('/[@._+\-]+/', ' ', $email);
+    if (tieneGroseriaComun($texto) || tieneGroseriaPegada($texto) || blaspEncuentraProfano($texto)) {
+        throw new RuntimeException('El correo ingresado contiene lenguaje no permitido.');
     }
 }
 
@@ -130,7 +143,52 @@ function tieneGroseriaComun(string $texto): bool
         foreach ($palabras as $palabra) {
             $compacta = compactarTexto($palabra, false);
             foreach ([$compacta, preg_replace('/(.)\1{2,}/', '$1$1', $compacta), preg_replace('/(.)\1{2,}/', '$1', $compacta)] as $forma) {
-                if (isset($comunes[$forma])) {
+                if (isset($comunes[$forma]) || esDerivadaDeGroseria($forma)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Terminaciones de diminutivo, aumentativo y plural, con la vocal que la
+// palabra pudo perder al agregarlas: "putito" = "put" + "ito" (puto),
+// "penesito" = "pene" + "sito", "nalgona" = "nalg" + "ona" (nalga).
+// La -ita solo regresa a -a: así "Peñita" da "peña" y no "pene".
+const TERMINACIONES_DERIVADAS = [
+    'citos' => [''], 'citas' => [''], 'cito' => [''], 'cita' => [''],
+    'sitos' => [''], 'sitas' => [''], 'sito' => [''], 'sita' => [''],
+    'itos' => ['o', 'e'], 'ito' => ['o', 'e'], 'itas' => ['a'], 'ita' => ['a'],
+    'otes' => ['o', 'e'], 'ote' => ['o', 'e'], 'otas' => ['a'], 'ota' => ['a'],
+    'ones' => ['o', 'a'], 'on' => ['o', 'a'], 'onas' => ['a', 'o'], 'ona' => ['a', 'o'],
+    'azos' => ['a', 'o', ''], 'azo' => ['a', 'o', ''], 'azas' => ['a', ''], 'aza' => ['a', ''],
+    'es' => [''], 's' => [''],
+];
+
+// ¿La palabra (ya compactada) es un derivado de koaly/derivables.php?
+// La raíz debe quedar de 3 letras o más.
+function esDerivadaDeGroseria(string $palabra): bool
+{
+    static $bases = null;
+    $bases ??= array_fill_keys(
+        array_map(fn ($p) => compactarTexto($p, false), require __DIR__ . '/lib/blasp/koaly/derivables.php'),
+        true
+    );
+
+    foreach (TERMINACIONES_DERIVADAS as $terminacion => $vocales) {
+        if (!str_ends_with($palabra, $terminacion)) {
+            continue;
+        }
+        $raiz = substr($palabra, 0, -strlen($terminacion));
+        if (strlen($raiz) < 3) {
+            continue;
+        }
+        // "nalguita", "verguita": la u solo estaba por la g
+        $raices = str_ends_with($raiz, 'gu') ? [$raiz, substr($raiz, 0, -1)] : [$raiz];
+        foreach ($raices as $r) {
+            foreach ($vocales as $vocal) {
+                if (isset($bases[$r . $vocal])) {
                     return true;
                 }
             }

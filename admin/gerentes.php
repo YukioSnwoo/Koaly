@@ -8,6 +8,7 @@ require 'header.php';
 require_once __DIR__ . '/sucursal_gerente.php';
 require_once __DIR__ . '/profanity_filter.php';
 require_once __DIR__ . '/reglas_nombre.php';
+require_once __DIR__ . '/eliminar_usuario.php';
 
 $error = '';
 
@@ -63,6 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException(t('ger.error_email'));
             }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
+            }
             if (strlen($password) < 8) {
                 throw new RuntimeException(t('ger.error_password'));
             }
@@ -70,10 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(t('error.sucursal_ocupada'));
             }
 
-            $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ?");
+            $check = $pdo->prepare("SELECT nombre, estado, id_rol FROM Usuarios WHERE email = ?");
             $check->execute([$email]);
-            if ($check->fetch() !== false) {
-                throw new RuntimeException(t('ger.error_email_duplicado'));
+            if (($dueno = $check->fetch()) !== false) {
+                // Dar de baja no borra la cuenta: el correo sigue ocupado. Se explica qué hacer.
+                throw new RuntimeException((int) $dueno['id_rol'] === 2 && $dueno['estado'] === 'Baja'
+                    ? t('ger.error_email_baja', ['nombre' => $dueno['nombre']])
+                    : t('ger.error_email_duplicado'));
             }
 
             $hoy = date('Y-m-d');
@@ -121,6 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException(t('ger.error_email'));
             }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
+            }
 
             $existe = $pdo->prepare("SELECT 1 FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
             $existe->execute([$idGerente]);
@@ -167,6 +181,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     asignarSucursalAGerente($pdo, $idGerente, 0);
                 }
                 $pdo->commit();
+            }
+
+            header('Location: gerentes.php');
+            exit;
+        }
+
+        // Eliminar permanentemente: solo después de dar de baja (ver eliminar_usuario.php)
+        if ($action === 'eliminar') {
+            $idGerente = (int) ($_POST['id_usuario'] ?? 0);
+            $stmt = $pdo->prepare("SELECT estado FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+            $stmt->execute([$idGerente]);
+            $estadoActual = $stmt->fetchColumn();
+            if ($estadoActual === false) {
+                throw new RuntimeException(t('error.gerente_no_existe'));
+            }
+            if ($estadoActual !== 'Baja') {
+                throw new RuntimeException(t('ger.error_eliminar_no_baja'));
+            }
+            try {
+                eliminarCuentaDadaDeBaja($pdo, $idGerente, 2);
+            } catch (CuentaConHistorial) {
+                throw new RuntimeException(t('ger.error_eliminar_historial'));
             }
 
             header('Location: gerentes.php');
@@ -490,12 +526,23 @@ $todasSucursales = $pdo->query("
             <i class="ti ti-<?= $info['icono'] ?>"></i><?= e($estado === 'Baja' ? t('ger.dar_baja') : tValor('estado_usuario', $estado)) ?>
         </button>
     <?php endforeach; ?>
+    <!-- Solo para gerentes ya dados de baja: borra la cuenta y libera el correo -->
+    <div class="menu-estado__sep" data-solo-baja></div>
+    <button type="button" role="menuitem" data-accion="eliminar" data-solo-baja
+            class="menu-estado__item menu-estado__item--peligro">
+        <i class="ti ti-trash"></i><?= e(t('ger.eliminar')) ?>
+    </button>
 </div>
 <form method="POST" action="gerentes.php" id="formEstado" hidden>
     <input type="hidden" name="action" value="cambiar_estado">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
     <input type="hidden" name="id_usuario" value="">
     <input type="hidden" name="estado" value="">
+</form>
+<form method="POST" action="gerentes.php" id="formEliminar" hidden>
+    <input type="hidden" name="action" value="eliminar">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+    <input type="hidden" name="id_usuario" value="">
 </form>
 
 <!-- Modal: confirmar el cambio de estado -->
@@ -568,6 +615,25 @@ $todasSucursales = $pdo->query("
         aceptar.focus();
     }
 
+    function confirmarEliminar(btn) {
+        const formEliminar = document.getElementById('formEliminar');
+        document.getElementById('confirmarEstadoTitulo').textContent = tj('eliminar_titulo');
+        parrafo(tj('eliminar_texto'), { nombre: btn.dataset.nombre });
+        const caja = document.getElementById('confirmarEstadoIcono');
+        caja.classList.add('confirmar-estado__icono--peligro');
+        caja.firstElementChild.className = 'ti ti-trash';
+        aceptar.className = 'btn btn--danger';
+        aceptar.textContent = tj('eliminar');
+        aceptar.onclick = () => {
+            aceptar.disabled = true;
+            formEliminar.id_usuario.value = btn.dataset.id;
+            formEliminar.submit();
+        };
+        aceptar.disabled = false;
+        openModal('modalConfirmarEstado');
+        aceptar.focus();
+    }
+
     function cerrar() {
         if (!boton) return;
         menu.hidden = true;
@@ -583,6 +649,10 @@ $todasSucursales = $pdo->query("
         menu.querySelectorAll('[data-estado]').forEach(item => {
             item.disabled = item.dataset.estado === btn.dataset.estado;
         });
+        // Eliminar solo aparece cuando ya está dado de baja
+        menu.querySelectorAll('[data-solo-baja]').forEach(el => {
+            el.hidden = btn.dataset.estado !== 'Baja';
+        });
         menu.hidden = false;
         // Alineado al borde derecho del botón; hacia arriba si no cabe abajo
         const r = btn.getBoundingClientRect();
@@ -596,10 +666,14 @@ $todasSucursales = $pdo->query("
     };
 
     menu.addEventListener('click', e => {
-        const item = e.target.closest('[data-estado]');
+        const item = e.target.closest('[data-estado], [data-accion="eliminar"]');
         if (!item || item.disabled || !boton) return;
         const btn = boton;
         cerrar();
+        if (item.dataset.accion === 'eliminar') {
+            confirmarEliminar(btn);
+            return;
+        }
         confirmarCambio(btn, item.dataset.estado, item.querySelector('i').className.replace('ti ti-', ''));
     });
 

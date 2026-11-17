@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/vistas.php';
 require_once __DIR__ . '/includes/turnos.php';
 require_once __DIR__ . '/../admin/profanity_filter.php';
 require_once __DIR__ . '/../admin/reglas_nombre.php';
+require_once __DIR__ . '/../admin/eliminar_usuario.php';
 
 /**
  * ¿El gerente puede cambiar el correo de este cajero? Solo mientras el cajero
@@ -92,6 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
                 throw new RuntimeException(t('error.email_invalido'));
             }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
+            }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));
             }
@@ -103,10 +109,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(t('error.fecha_contratacion_futura'));
             }
 
-            $check = $pdo->prepare("SELECT 1 FROM Usuarios WHERE email = ?");
+            $check = $pdo->prepare("SELECT nombre, estado, id_rol, id_sucursal FROM Usuarios WHERE email = ?");
             $check->execute([$email]);
-            if ($check->fetch() !== false) {
-                throw new RuntimeException(t('error.email_duplicado'));
+            if (($dueno = $check->fetch()) !== false) {
+                // Dar de baja no libera el correo. Si es un cajero de esta sucursal dado
+                // de baja, se dice quién es y qué hacer (de otras sucursales no se revela nada).
+                $esBajaPropia = (int) $dueno['id_rol'] === 3 && $dueno['estado'] === 'Baja'
+                    && (int) $dueno['id_sucursal'] === $idSucursalGerente;
+                throw new RuntimeException($esBajaPropia
+                    ? t('error.email_de_baja', ['nombre' => $dueno['nombre']])
+                    : t('error.email_duplicado'));
             }
 
             // La contraseña la genera el sistema y solo llega al cajero por correo: el gerente
@@ -155,6 +167,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
                 throw new RuntimeException(t('error.email_invalido'));
+            }
+            try {
+                rechazarCorreoSiProfano($email);
+            } catch (RuntimeException) {
+                throw new RuntimeException(t('error.email_profano'));
             }
             if (!in_array($estado, $ESTADOS_VALIDOS, true)) {
                 throw new RuntimeException(t('error.estado_invalido'));
@@ -344,6 +361,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
             $avisar(enviarAvisoPasswordRestablecida($empleado, $datosCorreo, $acceso), $empleado['email'], 'cajeros.password_enviada');
+
+        } elseif ($action === 'eliminar') {
+            // Eliminar permanentemente: solo después de dar de baja y si nunca trabajó
+            // (sin ventas, turnos ni retiros). Ver admin/eliminar_usuario.php
+            $id = (int) ($_POST['id_usuario'] ?? 0);
+            $check = $pdo->prepare("
+                SELECT nombre, estado FROM Usuarios
+                WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
+            ");
+            $check->execute([$id, $idSucursalGerente]);
+            $empleado = $check->fetch();
+            if ($empleado === false) {
+                throw new RuntimeException(t('error.cajero_invalido'));
+            }
+            if ($empleado['estado'] !== 'Baja') {
+                throw new RuntimeException(t('error.eliminar_no_baja'));
+            }
+            try {
+                eliminarCuentaDadaDeBaja($pdo, $id, 3);
+            } catch (CuentaConHistorial) {
+                throw new RuntimeException(t('error.eliminar_historial', ['nombre' => $empleado['nombre']]));
+            }
+            $mensajeExito = t('cajeros.eliminado', ['nombre' => $empleado['nombre']]);
         }
 
         // PRG: tras guardar, redirigir para que F5 no reenvíe el formulario
@@ -544,6 +584,21 @@ $accionesCajero = static function (array $c, string $modo) use ($hayTablaAviso):
             . '<input type="hidden" name="csrf_token" value="' . e(csrfToken()) . '">'
             . '<input type="hidden" name="id_usuario" value="' . $id . '">'
             . '<button type="submit" class="btn btn-success btn-sm pz-fin">' . e(t('cajeros.reactivar_titulo')) . '</button></form>';
+    }
+
+    // Ya dado de baja: se puede eliminar permanentemente (ocupa el lugar de la llave,
+    // así la tarjeta no cambia de forma). El servidor rechaza si tiene historial.
+    if ($c['estado'] === 'Baja') {
+        $detalle = $modo === 'detalle';
+        $iconoBasura = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+        $html .= '<form method="POST" class="cajero-accion" data-confirm="' . e(t('cajeros.confirmar_eliminar')) . '"'
+            . ' data-confirm-titulo="' . e(t('cajeros.eliminar_titulo', ['nombre' => $c['nombre']])) . '" data-confirm-aceptar="' . e(t('cajeros.eliminar_aceptar')) . '" data-confirm-peligroso="1">'
+            . '<input type="hidden" name="action" value="eliminar">'
+            . '<input type="hidden" name="csrf_token" value="' . e(csrfToken()) . '">'
+            . '<input type="hidden" name="id_usuario" value="' . $id . '">'
+            . '<button type="submit" class="btn btn-danger btn-sm' . ($detalle ? '' : ' btn-icono') . '"'
+            . ($detalle ? '' : ' title="' . e(t('cajeros.eliminar')) . '" aria-label="' . e(t('cajeros.eliminar') . ' · ' . $c['nombre']) . '"') . '>'
+            . $iconoBasura . ($detalle ? '<span>' . e(t('cajeros.eliminar')) . '</span>' : '') . '</button></form>';
     }
     return $html . '</div>';
 };
