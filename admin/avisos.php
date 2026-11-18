@@ -5,7 +5,8 @@
 //                          quién falta y el botón para avisarles por correo; abajo,
 //                          el historial de versiones publicadas.
 //   avisos.php?editar=X    editor: el texto vigente en el formato de
-//                          ../privacidad/formato.php, vista previa y "Publicar".
+//                          ../privacidad/formato.php, vista previa en vivo (en
+//                          español o inglés) y "Publicar".
 //   avisos.php?ver=ID      el texto de una versión publicada (las viejas no se borran).
 //
 // Publicar crea una versión nueva en avisos_versiones (nunca se edita una
@@ -46,8 +47,7 @@ $mensaje = $_SESSION['avisos_mensaje'] ?? null;     // ['texto', 'tono'] tras pu
 unset($_SESSION['avisos_mensaje']);
 
 $editar = $tipoValido($_GET['editar'] ?? '');
-$borrador = null;       // lo escrito en el editor, cuando se previsualiza o hay un error
-$vistaPrevia = null;
+$borrador = null;       // lo escrito en el editor, si publicar falló (para no perderlo)
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = (string) ($_POST['action'] ?? '');
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        if ($accion === 'previsualizar' || $accion === 'publicar') {
+        if ($accion === 'publicar') {
             $editar = $tipo;
             $borrador = [
                 'texto_es'   => (string) ($_POST['texto_es'] ?? ''),
@@ -95,40 +95,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (trim($borrador['texto_en']) !== '' && $textoEn === '') {
                 throw new RuntimeException(t('av.error_vacio_en'));
             }
-            $vistaPrevia = seccionesDesdeTexto($textoEs);
-
-            if ($accion === 'publicar') {
-                if (!$hayTablas) {
-                    throw new RuntimeException(t('av.falta_tabla'));
-                }
-                // Una versión nueva obliga a aceptar otra vez: solo si de verdad cambió algo
-                $igual = $textoEs === normalizarTextoAviso(textoVigenteAviso($tipo, 'es'))
-                    && $textoEn === normalizarTextoAviso(textoVigenteAviso($tipo, 'en'));
-                if ($igual) {
-                    throw new RuntimeException(t('av.error_sin_cambios'));
-                }
-                if ($seAcepta($tipo) && $borrador['cambios_es'] === '') {
-                    throw new RuntimeException(t('av.error_cambios'));
-                }
-
-                $version = nuevaVersionAviso($pdo, $tipo);
-                $pdo->prepare("
-                    INSERT INTO avisos_versiones (tipo, version, texto_es, texto_en, cambios_es, cambios_en, publicado_por)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ")->execute([
-                    $tipo, $version, $textoEs, $textoEn !== '' ? $textoEn : null,
-                    $borrador['cambios_es'] !== '' ? $borrador['cambios_es'] : null,
-                    $borrador['cambios_en'] !== '' ? $borrador['cambios_en'] : null,
-                    (int) $admin['id_usuario'],
-                ]);
-                $_SESSION['avisos_mensaje'] = [
-                    'texto' => t('av.publicado', ['aviso' => t('av.tipo.' . $tipo), 'fecha' => fechaVersionAviso($idioma, $tipo, $version)])
-                        . ($seAcepta($tipo) ? ' ' . t('av.publicado_pendientes') : ''),
-                    'tono'  => 'success',
-                ];
-                header('Location: avisos.php');
-                exit;
+            if (!$hayTablas) {
+                throw new RuntimeException(t('av.falta_tabla'));
             }
+            // Una versión nueva obliga a aceptar otra vez: solo si de verdad cambió algo
+            $igual = $textoEs === normalizarTextoAviso(textoVigenteAviso($tipo, 'es'))
+                && $textoEn === normalizarTextoAviso(textoVigenteAviso($tipo, 'en'));
+            if ($igual) {
+                throw new RuntimeException(t('av.error_sin_cambios'));
+            }
+            if ($seAcepta($tipo) && $borrador['cambios_es'] === '') {
+                throw new RuntimeException(t('av.error_cambios'));
+            }
+
+            $version = nuevaVersionAviso($pdo, $tipo);
+            $pdo->prepare("
+                INSERT INTO avisos_versiones (tipo, version, texto_es, texto_en, cambios_es, cambios_en, publicado_por)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ")->execute([
+                $tipo, $version, $textoEs, $textoEn !== '' ? $textoEn : null,
+                $borrador['cambios_es'] !== '' ? $borrador['cambios_es'] : null,
+                $borrador['cambios_en'] !== '' ? $borrador['cambios_en'] : null,
+                (int) $admin['id_usuario'],
+            ]);
+            $_SESSION['avisos_mensaje'] = [
+                'texto' => t('av.publicado', ['aviso' => t('av.tipo.' . $tipo), 'fecha' => fechaVersionAviso($idioma, $tipo, $version)])
+                    . ($seAcepta($tipo) ? ' ' . t('av.publicado_pendientes') : ''),
+                'tono'  => 'success',
+            ];
+            header('Location: avisos.php');
+            exit;
         }
     } catch (RuntimeException $e) {
         $error = $e->getMessage();
@@ -193,7 +189,7 @@ $aviso = static fn(string $texto, string $tono = 'muted'): string
     <?php if (!$hayTablas): ?><?= $aviso(t('av.falta_tabla'), 'warning') ?><?php endif; ?>
     <?php if ($error !== ''): ?><?= $aviso($error, 'danger') ?><?php endif; ?>
 
-    <div class="aviso-editor">
+    <div class="aviso-editor aviso-editor--vivo">
         <form method="POST" action="avisos.php?editar=<?= e($editar) ?>" class="aviso-form"
               data-confirmar-publicar="<?= e(t($seAcepta($editar) ? 'av.publicar_confirmar' : 'av.publicar_confirmar_cliente')) ?>">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
@@ -227,19 +223,43 @@ $aviso = static fn(string $texto, string $tono = 'muted'): string
 
             <div class="aviso-form__acciones">
                 <a href="avisos.php" class="btn btn--ghost"><?= e(t('comun.cancelar')) ?></a>
-                <button type="submit" name="action" value="previsualizar" class="btn btn--ghost"><i class="ti ti-eye"></i><?= e(t('av.vista_previa')) ?></button>
                 <button type="submit" name="action" value="publicar" class="btn btn--primary"<?= $hayTablas ? '' : ' disabled' ?>>
                     <i class="ti ti-send"></i><?= e(t('av.publicar')) ?>
                 </button>
             </div>
         </form>
 
-        <?php if ($vistaPrevia): ?>
-            <section class="aviso-vista" aria-labelledby="tituloVistaPrevia">
-                <p class="aviso-vista__etiqueta" id="tituloVistaPrevia"><?= e(t('av.vista_previa')) ?></p>
-                <?= htmlSeccionesAviso($vistaPrevia, tAviso('lo_ven', 'es')) ?>
-            </section>
-        <?php endif; ?>
+        <?php
+        // Vista previa en vivo: el script de abajo la vuelve a armar con cada tecla, con
+        // las mismas reglas de ../privacidad/formato.php y el HTML de htmlSeccionesAviso().
+        // Lo que se ve aquí sin JavaScript es el español tal como llegó.
+        $textosVista = [];
+        foreach (['es', 'en'] as $codigo) {
+            $textosVista[$codigo] = [
+                'loVen'   => tAviso('lo_ven', $codigo),
+                'cambios' => tAviso('cambios.version', $codigo),
+            ];
+        }
+        $textosVista['sinIngles'] = t('av.vista_sin_en');
+        $textosVista['vacio']     = t('av.vista_vacia');
+        ?>
+        <section class="aviso-vista aviso-vista--viva" id="vistaPrevia" aria-labelledby="tituloVistaPrevia"
+                 data-textos="<?= e(json_encode($textosVista, JSON_UNESCAPED_UNICODE)) ?>">
+            <div class="aviso-vista__barra">
+                <div>
+                    <p class="aviso-vista__etiqueta" id="tituloVistaPrevia"><?= e(t('av.vista_previa')) ?></p>
+                    <p class="aviso-vista__ayuda"><?= e(t('av.vista_viva')) ?></p>
+                </div>
+                <div class="segmentado aviso-idiomas" role="group" aria-label="<?= e(t('av.vista_idioma')) ?>">
+                    <button type="button" data-idioma="es" class="is-activo" aria-pressed="true"><?= e(t('av.idioma_es')) ?></button>
+                    <button type="button" data-idioma="en" aria-pressed="false"><?= e(t('av.idioma_en')) ?></button>
+                </div>
+            </div>
+            <p class="aviso-vista__nota" hidden></p>
+            <div class="aviso-vista__cuerpo" aria-live="off">
+                <?= htmlSeccionesAviso(seccionesDesdeTexto($valores['texto_es']), tAviso('lo_ven', 'es')) ?>
+            </div>
+        </section>
     </div>
 
 <?php elseif ($verVersion): ?>
@@ -395,6 +415,164 @@ document.querySelectorAll('form[data-confirmar-publicar]').forEach((form) => {
         if (e.submitter?.value === 'publicar' && !confirm(form.dataset.confirmarPublicar)) e.preventDefault();
     });
 });
+
+// Vista previa en vivo del editor: se vuelve a armar con cada tecla, en español o en
+// inglés (cambia sola al escribir en un campo del otro idioma) y marca la sección
+// donde está el cursor. leerSecciones() es el mismo formato que seccionesDesdeTexto()
+// de ../privacidad/formato.php y pintarSecciones() el HTML de htmlSeccionesAviso():
+// si se cambia uno, hay que cambiar el otro.
+(() => {
+    const vista = document.getElementById('vistaPrevia');
+    const form = document.querySelector('.aviso-form');
+    if (!vista || !form) return;
+
+    const textos = JSON.parse(vista.dataset.textos);
+    const cuerpo = vista.querySelector('.aviso-vista__cuerpo');
+    const nota = vista.querySelector('.aviso-vista__nota');
+    const barra = vista.querySelector('.aviso-vista__barra');
+    const botones = vista.querySelectorAll('[data-idioma]');
+    const campo = (nombre) => form.elements[nombre];
+    let idioma = 'es';
+
+    const RENGLON = /\r\n|[\n\v\f\r\x85\u2028\u2029]/;
+    const recortar = (s) => s.replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, '');   // trim() de PHP
+    const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+
+    function leerSecciones(texto) {
+        const secciones = new Map();    // título → bloques, en el orden en que aparecen
+        let titulo = null;
+        let bloque = null;              // { tipo: 'p' | 'lista' | 'tabla', datos }
+        const cerrar = () => {
+            const lleno = bloque && (bloque.tipo === 'tabla' ? bloque.datos.size : bloque.datos.length);
+            if (titulo !== null && lleno) {
+                secciones.get(titulo).push(bloque.tipo === 'p' ? bloque.datos.join(' ') : bloque);
+            }
+            bloque = null;
+        };
+        for (const crudo of texto.split(RENGLON)) {
+            const linea = recortar(crudo);
+            if (linea.startsWith('# ')) {
+                cerrar();
+                titulo = recortar(linea.slice(2));
+                if (!secciones.has(titulo)) secciones.set(titulo, []);
+                continue;
+            }
+            if (titulo === null) continue;
+            if (linea === '') { cerrar(); continue; }
+
+            const tipo = linea.startsWith('- ') ? 'lista' : (linea.startsWith('|') ? 'tabla' : 'p');
+            if (!bloque || bloque.tipo !== tipo) {
+                cerrar();
+                bloque = { tipo, datos: tipo === 'tabla' ? new Map() : [] };
+            }
+            if (tipo === 'lista') {
+                bloque.datos.push(recortar(linea.slice(2)));
+            } else if (tipo === 'tabla') {
+                const celdas = linea.replace(/^[| \t]+|[| \t]+$/g, '').split('|').map(recortar);
+                const termino = celdas.shift();
+                if (termino === '' || !celdas.length) continue;
+                bloque.datos.set(termino, [celdas[0], celdas.slice(1).join(' | ')]);
+            } else {
+                bloque.datos.push(linea);
+            }
+        }
+        cerrar();
+        return [...secciones].filter(([, bloques]) => bloques.length);
+    }
+
+    const pintarSecciones = (secciones, loVen) => secciones.map(([titulo, bloques], i) =>
+        `<section id="seccion-${i + 1}"><h2>${esc(titulo)}</h2>` + bloques.map((b) => {
+            if (typeof b === 'string') return `<p>${esc(b)}</p>`;
+            if (b.tipo === 'lista') return '<ul>' + b.datos.map((item) => `<li>${esc(item)}</li>`).join('') + '</ul>';
+            return '<dl class="datos">' + [...b.datos].map(([termino, [dato, quienVe]]) =>
+                `<div><dt>${esc(termino)}</dt><dd>${esc(dato)}`
+                + (quienVe !== '' ? ` <span class="quien-ve">${esc(loVen)} ${esc(quienVe)}</span>` : '')
+                + '</dd></div>').join('') + '</dl>';
+        }).join('') + '</section>').join('');
+
+    // Qué cambió: un punto por renglón, sin el guion o la viñeta (como cambiosAviso())
+    const leerCambios = (texto) => texto.split(RENGLON)
+        .map((l) => recortar(recortar(l).replace(/^[-•*]\s*/u, '')))
+        .filter((l) => l !== '');
+
+    // En inglés sin traducción se muestra el español, igual que en la página del aviso
+    const campoMostrado = () => (idioma === 'en' && recortar(campo('texto_en').value) !== '' ? 'texto_en' : 'texto_es');
+
+    function pintar() {
+        const sinIngles = idioma === 'en' && campoMostrado() === 'texto_es';
+        const secciones = leerSecciones(campo(campoMostrado()).value);
+        const cambiosEn = campo('cambios_en').value;
+        const cambios = leerCambios(idioma === 'en' && recortar(cambiosEn) !== '' ? cambiosEn : campo('cambios_es').value);
+
+        nota.textContent = textos.sinIngles;
+        nota.hidden = !sinIngles;
+        cuerpo.lang = sinIngles ? 'es' : idioma;
+        cuerpo.innerHTML = (cambios.length
+            ? `<div class="aviso-vista__novedades"><strong>${esc(textos[idioma].cambios)}</strong><ul>`
+              + cambios.map((c) => `<li>${esc(c)}</li>`).join('') + '</ul></div>'
+            : '')
+            + (secciones.length ? pintarSecciones(secciones, textos[idioma].loVen) : `<p class="aviso-vista__vacio">${esc(textos.vacio)}</p>`);
+        marcarSeccion(false);
+    }
+
+    // La sección donde está el cursor: la del último "# " antes de él
+    function marcarSeccion(llevar) {
+        cuerpo.querySelector('section.is-actual')?.classList.remove('is-actual');
+        const area = document.activeElement;
+        if (!area || area.name !== campoMostrado()) return;
+
+        const fin = area.value.indexOf('\n', area.selectionStart);
+        const renglones = area.value.slice(0, fin === -1 ? undefined : fin).split(RENGLON);
+        let titulo = null;
+        for (let i = renglones.length - 1; i >= 0 && titulo === null; i--) {
+            const linea = recortar(renglones[i]);
+            if (linea.startsWith('# ')) titulo = recortar(linea.slice(2));
+        }
+        const seccion = titulo === null ? null
+            : [...cuerpo.querySelectorAll('section')].find((s) => s.firstElementChild.textContent === titulo);
+        if (!seccion) return;
+        seccion.classList.add('is-actual');
+        if (llevar) llevarAVista(seccion);
+    }
+
+    // Si la vista previa tiene su propio scroll (pantalla ancha), la lleva a la sección
+    // cuando no se ve; en pantalla angosta no mueve la página.
+    function llevarAVista(seccion) {
+        if (vista.scrollHeight <= vista.clientHeight + 1) return;
+        const arriba = vista.getBoundingClientRect().top + barra.offsetHeight;
+        const abajo = vista.getBoundingClientRect().bottom;
+        const r = seccion.getBoundingClientRect();
+        const seVe = (r.top >= arriba && r.top < abajo - 40) || (r.top < arriba && r.bottom > arriba + 40);
+        if (!seVe) vista.scrollBy({ top: r.top - arriba - 12, behavior: 'smooth' });
+    }
+
+    function elegirIdioma(nuevo) {
+        if (nuevo === idioma || !textos[nuevo]) return;
+        idioma = nuevo;
+        botones.forEach((b) => {
+            const activo = b.dataset.idioma === idioma;
+            b.classList.toggle('is-activo', activo);
+            b.setAttribute('aria-pressed', String(activo));
+        });
+        pintar();
+    }
+
+    let pendiente = 0;
+    form.addEventListener('input', () => {
+        cancelAnimationFrame(pendiente);
+        pendiente = requestAnimationFrame(() => { pintar(); marcarSeccion(true); });
+    });
+    form.addEventListener('focusin', (e) => {
+        if (e.target.matches('textarea[lang]')) elegirIdioma(e.target.lang);
+        marcarSeccion(true);
+    });
+    form.addEventListener('focusout', () => setTimeout(() => marcarSeccion(false)));
+    ['click', 'keyup'].forEach((evento) => form.addEventListener(evento, (e) => {
+        if (e.target.classList.contains('aviso-texto')) marcarSeccion(true);
+    }));
+    botones.forEach((b) => b.addEventListener('click', () => elegirIdioma(b.dataset.idioma)));
+    pintar();
+})();
 </script>
 
 <?php require 'footer.php'; ?>

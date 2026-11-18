@@ -889,4 +889,35 @@ a.pend__it:hover{background:var(--bg-accent-muted);transform:translate(-2px,-2px
 .aviso-vista .datos dt{font-weight:700}
 .aviso-vista .datos dd{margin:2px 0 0}
 .aviso-vista .quien-ve{display:block;margin-top:2px;font-size:12.5px;color:var(--texto-3)}
+/* Vista previa en vivo: en pantalla ancha va al lado del editor y se queda fija
+   (con su propio scroll) mientras se baja por el formulario */
+.aviso-vista--viva{padding-top:0}
+.aviso-vista__barra{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;
+  margin:0 -1.5rem 1rem;padding:1rem 1.5rem .8rem;background:var(--surface-1);border-bottom:1px solid var(--borde);
+}
+.aviso-vista__barra .aviso-vista__etiqueta{margin:0}
+.aviso-vista__ayuda{margin:2px 0 0;font-size:12.5px;line-height:1.4;color:var(--texto-3)}
+.aviso-idiomas{display:inline-flex;overflow:hidden}
+.aviso-idiomas button{
+  padding:.4rem .85rem;border:0;border-left:2px solid var(--tinta);background:transparent;
+  font:inherit;font-size:13px;font-weight:600;color:var(--texto-2);cursor:pointer;
+}
+.aviso-idiomas button:first-child{border-left:0}
+.aviso-idiomas button:not(.is-activo):hover{background:var(--acento-suave);color:var(--acento-texto)}
+.aviso-idiomas button:focus-visible{outline:2px solid var(--acento);outline-offset:-4px}
+.aviso-vista__nota{margin:0 0 1rem;padding:8px 12px;border-radius:10px;background:var(--bg-warning);color:var(--text-warning);font-size:13px;line-height:1.45}
+.aviso-vista__novedades{margin:0 0 1rem;padding:10px 14px;border-radius:10px;background:var(--acento-suave)}
+.aviso-vista__novedades strong{display:block;margin-bottom:4px;font-size:13.5px;color:var(--acento-texto)}
+.aviso-vista__novedades ul{margin:0;padding-left:20px}
+.aviso-vista__vacio{color:var(--texto-3)}
+/* La sección donde está el cursor, con una raya a la izquierda */
+.aviso-vista--viva section{margin-left:-13px;padding-left:10px;border-left:3px solid transparent;transition:border-color .2s}
+.aviso-vista--viva section.is-actual{border-left-color:var(--acento)}
+@media (min-width:1200px){
+  .aviso-editor--vivo{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .aviso-vista--viva{position:sticky;top:78px;max-height:calc(100vh - 94px);overflow-y:auto;overscroll-behavior:contain}
+  .aviso-vista__barra{position:sticky;top:0;z-index:1}
+}
+@media (prefers-reduced-motion:reduce){.aviso-vista--viva section{transition:none}}
 @media (max-width:960px){.avisos-grid{grid-template-columns:1fr}}
