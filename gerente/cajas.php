@@ -3,8 +3,56 @@ require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/turnos.php';
 require_once __DIR__ . '/includes/vistas.php';
 require_once __DIR__ . '/../admin/profanity_filter.php';
+require_once __DIR__ . '/includes/correos_empleado.php';
+require_once __DIR__ . '/../login/reglas_contrasena.php';
+require_once __DIR__ . '/../admin/reglas_nombre.php';
 
 $ESTADOS_VALIDOS = ['Activa', 'Inactiva', 'Mantenimiento'];
+
+/**
+ * El acceso del cajero (contraseña temporal + enlace del aviso de privacidad) se
+ * envía cuando el gerente le asigna caja, no al darlo de alta. Solo si está
+ * Activo y nunca ha entrado (debe_cambiar = 1): al que ya trabaja no se le
+ * cambia la contraseña por moverlo de caja.
+ * @return array|null ['ok' => bool, 'email' => string], o null si no tocaba enviar
+ */
+function enviarAccesoAlAsignarCaja(PDO $pdo, int $idCajero, array $caja, int $idGerente, int $idSucursal): ?array
+{
+    $stmt = $pdo->prepare("
+        SELECT u.nombre, u.email, u.estado, u.debe_cambiar, " . columnasApellidos($pdo) . "
+        FROM Usuarios u
+        WHERE u.id_usuario = ? AND u.id_sucursal = ? AND u.id_rol = 3
+    ");
+    $stmt->execute([$idCajero, $idSucursal]);
+    $empleado = $stmt->fetch();
+    if ($empleado === false || $empleado['estado'] !== 'Activo' || (int) $empleado['debe_cambiar'] !== 1) {
+        return null;
+    }
+    $empleado['nombres'] = partesNombre($empleado)['nombres'];
+
+    // Si ya se le mandó un enlace antes (asignado, desasignado y vuelto a asignar), es un reenvío
+    try {
+        $stmt = $pdo->prepare("SELECT 1 FROM avisos_privacidad WHERE id_usuario = ? LIMIT 1");
+        $stmt->execute([$idCajero]);
+        $reenvio = $stmt->fetchColumn() !== false;
+    } catch (PDOException $e) {
+        $reenvio = false;   // sin la tabla del aviso (sql/010)
+    }
+
+    $acceso = ponerPasswordTemporal($pdo, $idCajero);
+    $datos  = datosParaCorreos($pdo, $idGerente, $idSucursal);
+    $ok = enviarAvisoPrivacidad($pdo, $idCajero, $empleado, $datos, $acceso, $reenvio, $caja);
+    return ['ok' => $ok, 'email' => $empleado['email']];
+}
+
+/** Mensaje del correo de acceso para el flash ([] si no se envió nada). */
+function avisoAccesoCaja(?array $envio): array
+{
+    if ($envio === null) {
+        return [];
+    }
+    return [['ok' => $envio['ok'], 'msg' => t($envio['ok'] ? 'cajas.acceso_enviado' : 'cajas.acceso_fallo', ['email' => $envio['email']])]];
+}
 
 /**
  * Valida el cajero elegido para una caja y devuelve su id (o null).
@@ -36,6 +84,7 @@ function validarCajeroDeCaja(PDO $pdo, int $idCajero, int $idSucursal, string $e
 
 $errores = [];
 $exito   = '';
+$avisosCorreo = [];   // [['ok' => bool, 'msg' => string]]: correo de acceso al cajero
 
 /* ------------------------------------------------------------
    Flash (PRG)
@@ -44,6 +93,7 @@ if (!empty($_SESSION['flash'])) {
     $flash = $_SESSION['flash'];
     unset($_SESSION['flash']);
     $exito = $flash['msg'] ?? '';
+    $avisosCorreo = $flash['avisos'] ?? [];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -107,7 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idCajero
             ]);
 
-            $_SESSION['flash'] = ['msg' => t('cajas.creada')];
+            // Primera caja de un cajero nuevo: le llega su acceso. Si el correo falla, la caja queda creada.
+            $envio = $idCajero !== null
+                ? enviarAccesoAlAsignarCaja($pdo, $idCajero, ['numero_caja' => $numeroCaja, 'nombre' => $nombre], (int) $gerente['id_usuario'], $idSucursalGerente)
+                : null;
+
+            $_SESSION['flash'] = ['msg' => t('cajas.creada'), 'avisos' => avisoAccesoCaja($envio)];
             header('Location: cajas.php');
             exit;
 
@@ -204,7 +259,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
 
-            $_SESSION['flash'] = ['msg' => t('cajas.actualizada') . $mensajeExtra];
+            $envio = $cambiaCajero && $idCajero !== null
+                ? enviarAccesoAlAsignarCaja($pdo, $idCajero, ['numero_caja' => $numeroCaja, 'nombre' => $nombre], (int) $gerente['id_usuario'], $idSucursalGerente)
+                : null;
+
+            $_SESSION['flash'] = ['msg' => t('cajas.actualizada') . $mensajeExtra, 'avisos' => avisoAccesoCaja($envio)];
             header('Location: cajas.php');
             exit;
 
@@ -503,6 +562,9 @@ require __DIR__ . '/header.php';
 <?php if ($exito): ?>
     <div class="alert alert-success"><?= htmlspecialchars($exito) ?></div>
 <?php endif; ?>
+<?php foreach ($avisosCorreo as $aviso): ?>
+    <div class="alert <?= $aviso['ok'] ? 'alert-success' : 'alert-warning' ?>"><?= e($aviso['msg']) ?></div>
+<?php endforeach; ?>
 <?php foreach ($errores as $error): ?>
     <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
 <?php endforeach; ?>

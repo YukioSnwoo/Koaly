@@ -164,13 +164,21 @@ function correoEnlace(string $url, string $texto): string
 /**
  * Correo con el diseño de Koaly: tarjeta blanca con borde, "Koaly" en morado,
  * los párrafos y, al final, un pie en letra chica separado por una línea.
- * Cada párrafo es texto (aquí se escapa) o ['codigo' => '123456'], que sale
- * en grande y centrado. $pieHtml ya viene escapado: puede llevar un enlace.
+ * Cada párrafo es texto (aquí se escapa), ['codigo' => '123456'], que sale
+ * en grande y centrado, o ['enlace' => url, 'texto' => '...'], un botón.
+ * $pieHtml ya viene escapado: puede llevar un enlace.
  */
 function correoHtml(array $parrafos, ?string $pieHtml = null): string
 {
     $cuerpo = '';
     foreach ($parrafos as $p) {
+        if (is_array($p) && isset($p['enlace'])) {
+            $cuerpo .= '<p style="margin:4px 0 18px;text-align:center;"><a href="' . correoE($p['enlace']) . '" '
+                . 'style="display:inline-block;padding:11px 20px;border:2px solid #3b3156;border-radius:10px;'
+                . 'background:#6d28d9;box-shadow:3px 3px 0 #3b3156;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">'
+                . correoE($p['texto']) . '</a></p>';
+            continue;
+        }
         $cuerpo .= is_array($p)
             ? '<p style="margin:4px 0 18px;text-align:center;"><span style="display:inline-block;padding:12px 22px;'
                 . 'border:2px solid #3b3156;border-radius:12px;background:#efe9fd;box-shadow:3px 3px 0 #3b3156;'
@@ -190,10 +198,10 @@ function correoHtml(array $parrafos, ?string $pieHtml = null): string
         . '</div></body></html>';
 }
 
-/** Los mismos párrafos en texto plano, para quien no vea el HTML (el código va sangrado). */
+/** Los mismos párrafos en texto plano, para quien no vea el HTML (el código y los enlaces van sangrados). */
 function correoTexto(array $parrafos, ?string $pie = null): string
 {
-    $bloques = array_map(fn($p) => is_array($p) ? '    ' . $p['codigo'] : $p, $parrafos);
+    $bloques = array_map(fn($p) => is_array($p) ? '    ' . ($p['enlace'] ?? $p['codigo']) : $p, $parrafos);
     if ($pie !== null) {
         $bloques[] = $pie;
     }

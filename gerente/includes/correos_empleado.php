@@ -83,11 +83,13 @@ function _bloqueAcceso(array $empleado, array $acceso, bool $reenvio): string
  * La contraseña temporal la genera el sistema y solo llega aquí: el gerente
  * nunca la ve. Sirve para el primer ingreso, vence y el sistema obliga a
  * cambiarla antes de dejarlo entrar a la caja.
- * @param array      $empleado ['nombre', 'email']
+ * @param array      $empleado ['nombre', 'email', 'nombres' (opcional, para el saludo)]
  * @param array|null $acceso   de ponerPasswordTemporal(); null: solo se le recuerda cómo entrar
  * @param bool       $reenvio  true: no es la bienvenida, el gerente le reenvió el acceso
+ * @param array|null $caja     ['numero_caja', 'nombre'] la caja que le asignó el gerente (el acceso
+ *                             se envía al asignarla); null: correo sin caja
  */
-function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos, ?array $acceso = null, bool $reenvio = false): bool
+function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array $datos, ?array $acceso = null, bool $reenvio = false, ?array $caja = null): bool
 {
     try {
         $enlace = crearEnlaceAviso($pdo, $idUsuario, AVISO_ENLACE_DIAS * 24);
@@ -96,35 +98,44 @@ function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array 
         error_log('correos_empleado.php: no se pudo crear el enlace del aviso: ' . $e->getMessage());
         return false;
     }
-    $dias = AVISO_ENLACE_DIAS;
-    $paso2 = $acceso
-        ? "2. Entra al sistema con estos datos:\n\n" . _bloqueAcceso($empleado, $acceso, $reenvio)
-        : "2. Entra al sistema en " . urlSitio() . " con tu correo ({$empleado['email']})\n"
-          . "   y tu contraseña. Si no la recuerdas, usa «Olvidé mi contraseña».";
-    $saludo = $reenvio
-        ? "Te reenviamos tu acceso al sistema Koaly de {$datos['sucursal']['nombre']}."
-        : "Te damos la bienvenida al equipo de {$datos['sucursal']['nombre']}. Ya tienes una\ncuenta de cajero en el sistema Koaly.";
+    $sucursal = $datos['sucursal']['nombre'];
+    // "Hola Laura:" con los nombres de pila; sin ellos (falta sql/017), el nombre completo
+    $parrafos = ['Hola ' . (($empleado['nombres'] ?? '') ?: $empleado['nombre']) . ':'];
+    $parrafos[] = $reenvio
+        ? "Te reenviamos tu acceso al sistema Koaly de {$sucursal}."
+        : "Te damos la bienvenida al equipo de {$sucursal}. Ya tienes una cuenta de cajero en el sistema Koaly.";
+    if ($caja) {
+        $nombreCaja = 'Caja ' . $caja['numero_caja'] . (!empty($caja['nombre']) ? ' · ' . $caja['nombre'] : '');
+        $parrafos[] = "Tu gerente te asignó la {$nombreCaja}. Para empezar a trabajar en ella:";
+    }
 
-    $texto = <<<TXT
-    Hola {$empleado['nombre']}:
+    $parrafos[] = '1. Lee y acepta nuestro aviso de privacidad; ahí también puedes revisar tus datos. '
+        . 'El enlace es personal y vale ' . AVISO_ENLACE_DIAS . ' días. Hasta que aceptes el aviso no podrás iniciar sesión en la caja.';
+    $parrafos[] = ['enlace' => $enlace, 'texto' => 'Leer y aceptar el aviso'];
 
-    {$saludo}
+    if ($acceso) {
+        $vence = $acceso['vence'] ? ' y vence el ' . date('d/m/Y', strtotime($acceso['vence'])) : '';
+        $parrafos[] = '2. Entra a ' . urlSitio() . " con tu correo ({$empleado['email']}) y esta contraseña temporal:";
+        $parrafos[] = ['codigo' => $acceso['password']];
+        $parrafos[] = "Solo sirve para tu primer ingreso{$vence}."
+            . ($reenvio ? ' Reemplaza a la que te enviamos antes: esa ya no funciona.' : '')
+            . ' Al entrar, el sistema te pedirá elegir tu propia contraseña. No la compartas con nadie; nadie de Koaly te la pedirá.';
+    } else {
+        $parrafos[] = '2. Entra a ' . urlSitio() . " con tu correo ({$empleado['email']}) y tu contraseña. "
+            . 'Si no la recuerdas, usa «Olvidé mi contraseña».';
+    }
+    if ($caja) {
+        $parrafos[] = '3. Ya en la caja, pulsa «Abrir caja» y cuenta el efectivo con el que empiezas.';
+    }
 
-    1. Lee y acepta nuestro aviso de privacidad. Ahí también puedes revisar
-       tus datos en el sistema:
-
-        {$enlace}
-
-       El enlace es personal y vale {$dias} días. Hasta que aceptes el aviso no
-       podrás iniciar sesión en la caja.
-
-    {$paso2}
-
-
-    TXT;
-
-    $asunto = $reenvio ? 'Tu acceso a Koaly: acepta tu aviso de privacidad' : 'Bienvenida a Koaly: acepta tu aviso de privacidad';
-    return enviarCorreo($empleado['email'], $asunto, $texto . "\n" . _firma($datos));
+    $asunto = match (true) {
+        $caja !== null && !$reenvio => 'Ya tienes caja en Koaly: acepta tu aviso y entra',
+        $reenvio                    => 'Tu acceso a Koaly: acepta tu aviso de privacidad',
+        default                     => 'Bienvenida a Koaly: acepta tu aviso de privacidad',
+    };
+    $pieHtml = nl2br(correoE("Atentamente,\n{$datos['gerente']['nombre']}\nGerente de {$sucursal} · Koaly"), false)
+        . '<br><br>' . correoEnlace(urlSitio() . 'privacidad/', 'Aviso de privacidad');
+    return enviarCorreo($empleado['email'], $asunto, correoTexto($parrafos, _firma($datos)), null, correoHtml($parrafos, $pieHtml));
 }
 
 /**

@@ -120,7 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // La contraseña la genera el sistema y solo llega al cajero por correo: el gerente
-            // nunca la ve. El hash de relleno se reemplaza enseguida con la temporal.
+            // nunca la ve. El hash de relleno no lo sabe nadie; la temporal se le pone y se le
+            // envía, con el enlace del aviso de privacidad, cuando el gerente le asigna caja
+            // (ver enviarAccesoAlAsignarCaja() en cajas.php).
             $hash = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare("
@@ -132,14 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$nombre, $email, $hash, $idSucursalGerente, $estado, $fechaContratacion]);
             $idNuevo = (int) $pdo->lastInsertId();
             guardarPartesNombre($pdo, $idNuevo, $partesNombre);
-            $acceso  = ponerPasswordTemporal($pdo, $idNuevo);
-            $mensajeExito = t('cajeros.creado');
-
-            // Bienvenida con la cuenta, la contraseña temporal y el enlace del aviso de privacidad
-            // (sin aceptarlo no entra a la caja). Si no sale, "Reenviar acceso" genera otra.
-            $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
-            $avisar(enviarAvisoPrivacidad($pdo, $idNuevo, ['nombre' => $nombre, 'email' => $email], $datosCorreo, $acceso),
-                $email, 'cajeros.aviso_enviado');
+            $mensajeExito = t('cajeros.creado_sin_acceso');
 
         } elseif ($action === 'editar') {
             $id     = (int) ($_POST['id_usuario'] ?? 0);
@@ -310,14 +305,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // perderse, vencer o no llegar. Va con el enlace del aviso si falta aceptarlo.
             $id = (int) ($_POST['id_usuario'] ?? 0);
             $check = $pdo->prepare("
-                SELECT nombre, email, estado, debe_cambiar FROM Usuarios
-                WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
+                SELECT u.nombre, u.email, u.estado, u.debe_cambiar, " . columnasApellidos($pdo) . "
+                FROM Usuarios u
+                WHERE u.id_usuario = ? AND u.id_sucursal = ? AND u.id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
             $empleado = $check->fetch();
             if ($empleado === false || $empleado['estado'] === 'Baja') {
                 throw new RuntimeException(t('error.cajero_invalido'));
             }
+            $empleado['nombres'] = partesNombre($empleado)['nombres'];
             $sinEntrar = (int) $empleado['debe_cambiar'] === 1;
             try {
                 $falteAviso = !avisoAceptado($pdo, $id);
@@ -327,10 +324,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$sinEntrar && !$falteAviso) {
                 throw new RuntimeException(t('cajeros.acceso_al_dia', ['nombre' => $empleado['nombre']]));
             }
+            // El primer acceso se envía al asignarle caja: sin caja todavía no hay nada que reenviar
+            $stmt = $pdo->prepare("SELECT numero_caja, nombre FROM Cajas WHERE id_cajero_asignado = ? AND id_sucursal = ? ORDER BY numero_caja LIMIT 1");
+            $stmt->execute([$id, $idSucursalGerente]);
+            $caja = $stmt->fetch() ?: null;
+            if ($sinEntrar && $caja === null) {
+                throw new RuntimeException(t('cajeros.reenviar_sin_caja', ['nombre' => $empleado['nombre']]));
+            }
             $acceso = $sinEntrar ? ponerPasswordTemporal($pdo, $id) : null;
             $datosCorreo = datosParaCorreos($pdo, (int) $gerente['id_usuario'], $idSucursalGerente);
             $enviado = $falteAviso
-                ? enviarAvisoPrivacidad($pdo, $id, $empleado, $datosCorreo, $acceso, true)
+                ? enviarAvisoPrivacidad($pdo, $id, $empleado, $datosCorreo, $acceso, true, $caja)
                 : enviarAvisoPasswordRestablecida($empleado, $datosCorreo, $acceso, true);
             if (!$enviado) {
                 throw new RuntimeException(t('cajeros.notificacion_fallo', ['email' => $empleado['email']]));
@@ -341,7 +345,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = (int) ($_POST['id_usuario'] ?? 0);
 
             $check = $pdo->prepare("
-                SELECT nombre, email, estado FROM Usuarios
+                SELECT nombre, email, estado, debe_cambiar,
+                       EXISTS (SELECT 1 FROM Cajas c WHERE c.id_cajero_asignado = u.id_usuario
+                                                     AND c.id_sucursal = u.id_sucursal) AS tiene_caja
+                FROM Usuarios u
                 WHERE id_usuario = ? AND id_sucursal = ? AND id_rol = 3
             ");
             $check->execute([$id, $idSucursalGerente]);
@@ -349,6 +356,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Dado de baja ya no tiene acceso: no se le manda contraseña nueva
             if ($empleado === false || $empleado['estado'] === 'Baja') {
                 throw new RuntimeException(t('error.cajero_invalido'));
+            }
+            // Si nunca ha entrado, su primer acceso llega al asignarle caja
+            if ((int) $empleado['debe_cambiar'] === 1 && !(int) $empleado['tiene_caja']) {
+                throw new RuntimeException(t('cajeros.reenviar_sin_caja', ['nombre' => $empleado['nombre']]));
             }
             $nombreCajero = $empleado['nombre'];
 
