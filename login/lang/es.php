@@ -122,6 +122,7 @@ return [
     'srv.usuario' => 'Usuario no encontrado',
     'srv.actualizada' => 'Contraseña actualizada correctamente',
     'srv.temporal_vencida' => 'Tu contraseña temporal venció. Pide a tu gerente que te reenvíe el acceso.',
+    'srv.temporal_vencida_gerente' => 'Tu contraseña temporal venció. Pide a la administración que te envíe otra.',
     'srv.ya_actualizada' => 'Tu contraseña ya está actualizada. Para cambiarla usa «Olvidé mi contraseña».',
     'srv.credenciales' => 'Ingresa un correo y contraseña válidos',
     'srv.bloqueo' => 'Demasiados intentos fallidos. Espera a que termine el reloj o restablece tu contraseña.',

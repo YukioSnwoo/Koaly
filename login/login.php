@@ -374,7 +374,8 @@ $pdo->prepare('DELETE FROM login_intentos WHERE email = :email')->execute([':ema
 // La contraseña temporal (la que llega por correo) sirve PASSWORD_TEMPORAL_DIAS días.
 // Va antes del aviso: con la temporal vencida no tiene caso mandarlo a aceptarlo.
 if ((int) $usuario['debe_cambiar'] === 1 && passwordTemporalVencida($pdo, (int) $usuario['id_usuario'])) {
-    error(403, t('srv.temporal_vencida'));
+    // Al cajero se la reenvía su gerente; al gerente, la administración
+    error(403, t((int) $usuario['id_rol'] === 2 ? 'srv.temporal_vencida_gerente' : 'srv.temporal_vencida'));
 }
 
 // Un cajero o un gerente no entra hasta aceptar la versión vigente de su aviso de
