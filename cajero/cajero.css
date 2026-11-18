@@ -709,6 +709,14 @@ kbd {
     padding: 1.25rem;
     display: flex; flex-direction: column; justify-content: space-between;
 }
+/* Encabezado: "Resumen" y el botón para vaciar la venta */
+.resumen-cabecera {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.resumen-cabecera .panel-title { margin-bottom: 0; }
+.btn-limpiar { padding: 0.35rem 0.75rem; font-size: 0.82rem; }
+.btn-limpiar svg { width: 15px; height: 15px; flex-shrink: 0; }
 .resumen-lista {
     list-style: none;
     flex: 1; min-height: 0;

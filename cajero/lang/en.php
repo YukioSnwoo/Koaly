@@ -86,6 +86,7 @@ return [
     // panel derecho
     'resumen.escaneo' => 'Scanned',
     'resumen.resumen' => 'Summary',
+    'resumen.limpiar_ayuda' => 'Empties the whole sale (asks for confirmation)',
     'resumen.articulos' => 'Items',
     'resumen.pagar' => 'Pay',
     'resumen.sin_productos' => 'No products',
