@@ -1,10 +1,12 @@
 <?php
 /**
- * Aviso de privacidad para empleados.
+ * Avisos de privacidad (aviso.php): cajeros, gerentes y clientes.
  *
- *   privacidad/              el aviso vigente (público, para consultarlo cuando sea)
- *   privacidad/?token=...    enlace personal: muestra los datos del empleado y
- *                            le pide aceptar el aviso. El enlace sirve una sola vez.
+ *   privacidad/                 el aviso vigente de cajeros (público, para consultarlo cuando sea)
+ *   privacidad/?aviso=gerente   el de gerentes
+ *   privacidad/?aviso=cliente   el de clientes (va impreso en el ticket); solo se lee
+ *   privacidad/?token=...       enlace personal: muestra los datos del empleado y
+ *                               le pide aceptar el aviso de su rol. Sirve una sola vez.
  *
  * Al aceptar se guarda la constancia (fecha, versión, IP y navegador) en
  * avisos_privacidad, se envía por correo al empleado con un folio y el texto
@@ -26,12 +28,16 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 // Hora de México, como el panel del gerente (las fechas de la tabla son TIMESTAMP)
 date_default_timezone_set('America/Mexico_City');
 $pdo->exec("SET time_zone = '" . (new DateTimeImmutable())->format('P') . "'");
+// Versiones publicadas desde el panel del admin (si las hay, mandan sobre las del código)
+avisosPublicados($pdo);
 
 // Cambio de idioma desde la cabecera: se guarda para todo el sitio y se regresa al mismo enlace
 if (in_array($_GET['idioma'] ?? '', AVISO_IDIOMAS, true)) {
     guardarIdioma($_GET['idioma']);
     $token = (string) ($_GET['token'] ?? '');
-    header('Location: ./' . ($token !== '' ? '?token=' . rawurlencode($token) : ''));
+    $aviso = in_array($_GET['aviso'] ?? '', AVISO_TIPOS, true) && $_GET['aviso'] !== 'empleado' ? $_GET['aviso'] : '';
+    $vuelta = $token !== '' ? ['token' => $token] : ($aviso !== '' ? ['aviso' => $aviso] : []);
+    header('Location: ./' . ($vuelta ? '?' . http_build_query($vuelta) : ''));
     exit;
 }
 
@@ -82,11 +88,25 @@ $fecha = static fn(?string $f, bool $hora = false): string => $f ? date($t('form
 /** Valor de la base de datos (puesto, situación) en el idioma de la página; sin traducción, tal cual. */
 $deBd = static fn(string $clave, ?string $valor): string => ($texto = $t($clave)) !== $clave ? $texto : (string) $valor;
 
-$contacto = $enlace
-    ? (trim((string) $enlace['email_contacto']) ?: ($enlace['gerente_email'] ?: $t('contacto_generico')))
-    : $t('contacto_generico');
+// Qué aviso: el del rol del enlace (cajero o gerente), el de la constancia recién
+// aceptada o el que se pidió en la dirección; sin nada, el de cajeros
+$tipo = $enlace
+    ? tipoAvisoRol((int) $enlace['id_rol'])
+    : ($aceptado['tipo'] ?? (in_array($_GET['aviso'] ?? '', AVISO_TIPOS, true) ? $_GET['aviso'] : 'empleado'));
+
+// A quién escribir: el cajero, a su sucursal o a su gerente; el gerente y el cliente, a la empresa
+$configCorreo  = configCorreo() ?? [];
+$correoEmpresa = ($configCorreo['responder_a'] ?? '') ?: ($configCorreo['buzon_constancias'] ?? '');
+$contacto = match (true) {
+    $tipo !== 'empleado' => $correoEmpresa,
+    $enlace !== null     => trim((string) $enlace['email_contacto']) ?: ($enlace['gerente_email'] ?: $t('contacto_generico')),
+    default              => $t('contacto_generico'),
+};
 $sucursalAviso = $enlace && $enlace['sucursal'] ? ['nombre' => $enlace['sucursal'], 'direccion' => $enlace['direccion']] : null;
-$secciones = $aceptado['secciones'] ?? seccionesAvisoPrivacidad($sucursalAviso, $contacto, $idioma);
+$secciones = $aceptado['secciones'] ?? seccionesAviso($tipo, $sucursalAviso, $contacto, $idioma);
+/** Texto de la página para este aviso: "clave.gerente" si existe, si no "clave". */
+$tTipo = static fn(string $clave, array $vars = []): string
+    => ($texto = $t("{$clave}.{$tipo}", $vars)) !== "{$clave}.{$tipo}" ? $texto : $t($clave, $vars);
 $puesto = $enlace ? $deBd('rol.' . $enlace['id_rol'], $enlace['nombre_rol']) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -104,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SET aceptado_en = NOW(), version = ?, ip = ?, agente = ?, token_hash = NULL
             WHERE id = ? AND aceptado_en IS NULL
         ")->execute([
-            AVISO_PRIVACIDAD_VERSION,
+            versionAviso($tipo),
             $ip,
             substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
             $enlace['id'],
@@ -119,6 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'fecha'    => date($t('formato_fecha') . ' H:i'),
             'ip'       => $ip,
             'idioma'   => $idioma,
+            'tipo'     => $tipo,
         ];
         $primerIngreso = (int) $enlace['debe_cambiar'] === 1;
         // Copia al buzón de constancias (config_correo.php) o, si no hay, al contacto de la sucursal
@@ -136,15 +157,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $enlaceInvalido = $token !== '' && !$enlace && !$aceptado;
 // Quien ya aceptó otra versión ve qué cambió; un empleado nuevo no (todo es nuevo para él)
-$verCambios = $enlace
-    ? $enlace['version_anterior'] !== null && $enlace['version_anterior'] !== AVISO_PRIVACIDAD_VERSION
-    : !$aceptado;
+$cambios = cambiosAviso($tipo, $idioma);
+$verCambios = $cambios && ($enlace
+    ? $enlace['version_anterior'] !== null && $enlace['version_anterior'] !== versionAviso($tipo)
+    : !$aceptado);
 $verCss   = filemtime(__DIR__ . '/privacidad.css');
 $verKoaly = filemtime(__DIR__ . '/../estilos/koaly.css');
 // Ancla de cada sección para el índice
 $ancla = static fn(int $i): string => 'seccion-' . ($i + 1);
 $otroIdioma = $idioma === 'es' ? 'en' : 'es';
-$urlIdioma = '?' . http_build_query(['idioma' => $otroIdioma] + ($token !== '' ? ['token' => $token] : []));
+$urlIdioma = '?' . http_build_query(['idioma' => $otroIdioma]
+    + ($token !== '' ? ['token' => $token] : ($tipo !== 'empleado' ? ['aviso' => $tipo] : [])));
 ?>
 <!DOCTYPE html>
 <html lang="<?= $e($idioma) ?>">
@@ -179,7 +202,9 @@ $urlIdioma = '?' . http_build_query(['idioma' => $otroIdioma] + ($token !== '' ?
                 <?= $e($t('idioma.cambiar')) ?>
             </a>
         <?php endif; ?>
-        <a class="volver" href="../"><?= $e($t('ir_login')) ?></a>
+        <?php if ($tipo !== 'cliente'): // el cliente no inicia sesión ?>
+            <a class="volver" href="../"><?= $e($t('ir_login')) ?></a>
+        <?php endif; ?>
     </div>
 </header>
 
@@ -198,15 +223,22 @@ $urlIdioma = '?' . http_build_query(['idioma' => $otroIdioma] + ($token !== '' ?
 
 <main class="hoja">
     <header class="hoja-cabecera">
-        <h1><?= $e($t('h1')) ?></h1>
-        <p class="version"><?= $e($t('version', ['fecha' => fechaVersionAviso($idioma)])) ?></p>
+        <h1><?= $e($tTipo('h1')) ?></h1>
+        <p class="version"><?= $e($t('version', ['fecha' => fechaVersionAviso($idioma, $tipo)])) ?></p>
+        <?php if (!$enlace && !$aceptado): // quien solo lo consulta puede ir a los otros dos ?>
+            <p class="otros-avisos no-imprimir"><?= $e($t('otros_avisos')) ?>
+                <?php foreach (AVISO_TIPOS as $otro): if ($otro === $tipo) continue; ?>
+                    <a href="./<?= $otro === 'empleado' ? '' : '?aviso=' . $otro ?>"><?= $e($t('aviso.' . $otro)) ?></a>
+                <?php endforeach; ?>
+            </p>
+        <?php endif; ?>
     </header>
 
     <?php if ($aceptado): ?>
         <section class="aviso aviso--ok no-imprimir" role="status">
             <h2><?= $e($t('ok.gracias', ['nombre' => $aceptado['nombre']])) ?></h2>
             <p><?= $e($t('ok.registrado', ['fecha' => $aceptado['fecha']])) ?> <?= $e(!empty($aceptado['primer_ingreso'])
-                ? $t('ok.primer_ingreso')
+                ? $tTipo('ok.primer_ingreso')
                 : $t('ok.puedes_entrar')) ?></p>
             <p><?= $aceptado['correo_enviado']
                 ? str_replace('{email}', '<strong>' . $e($aceptado['email']) . '</strong>', $e($t('ok.correo', ['frase' => $t('frase')])))
@@ -243,47 +275,30 @@ $urlIdioma = '?' . http_build_query(['idioma' => $otroIdioma] + ($token !== '' ?
     <?php if ($verCambios): ?>
         <section class="cambios no-imprimir" aria-labelledby="titulo-cambios">
             <h2 id="titulo-cambios"><?= $e($t($enlace ? 'cambios.desde' : 'cambios.version')) ?></h2>
-            <ul><?php foreach (cambiosAvisoPrivacidad($idioma) as $cambio): ?><li><?= $e($cambio) ?></li><?php endforeach; ?></ul>
+            <ul><?php foreach ($cambios as $cambio): ?><li><?= $e($cambio) ?></li><?php endforeach; ?></ul>
         </section>
     <?php endif; ?>
 
     <?php if ($enlace): ?>
         <section class="ficha" aria-labelledby="titulo-ficha">
             <h2 id="titulo-ficha"><?= $e($t('ficha.titulo')) ?></h2>
-            <p class="ficha-ayuda"><?= $e($t('ficha.ayuda')) ?></p>
+            <p class="ficha-ayuda"><?= $e($tTipo('ficha.ayuda')) ?></p>
             <dl>
                 <div><dt><?= $e($t('campo.nombre')) ?></dt><dd><?= $e($enlace['nombre']) ?></dd></div>
                 <div><dt><?= $e($t('campo.correo_acceso')) ?></dt><dd><?= $e($enlace['email']) ?></dd></div>
                 <div><dt><?= $e($t('campo.puesto')) ?></dt><dd><?= $e($puesto) ?></dd></div>
                 <div><dt><?= $e($t('campo.sucursal')) ?></dt><dd><?= $e($enlace['sucursal'] ?? '—') ?></dd></div>
-                <div><dt><?= $e($t('campo.caja')) ?></dt><dd><?= $e($enlace['cajas'] ?: $t('sin_caja')) ?></dd></div>
+                <?php if ($tipo === 'empleado'): // el gerente no tiene caja ?>
+                    <div><dt><?= $e($t('campo.caja')) ?></dt><dd><?= $e($enlace['cajas'] ?: $t('sin_caja')) ?></dd></div>
+                <?php endif; ?>
                 <div><dt><?= $e($t('campo.contratacion')) ?></dt><dd><?= $e($fecha($enlace['fecha_contratacion'])) ?></dd></div>
                 <div><dt><?= $e($t('campo.situacion')) ?></dt><dd><?= $e($deBd('estado.' . $enlace['estado'], $enlace['estado'])) ?></dd></div>
             </dl>
         </section>
     <?php endif; ?>
 
-    <article class="texto-aviso">
-        <?php $i = 0; foreach ($secciones as $titulo => $parrafos): ?>
-            <section id="<?= $ancla($i++) ?>">
-                <h2><?= $e($titulo) ?></h2>
-                <?php foreach ($parrafos as $p): ?>
-                    <?php if (is_string($p)): ?>
-                        <p><?= $e($p) ?></p>
-                    <?php elseif (array_is_list($p)): ?>
-                        <ul><?php foreach ($p as $item): ?><li><?= $e($item) ?></li><?php endforeach; ?></ul>
-                    <?php else: ?>
-                        <dl class="datos"><?php foreach ($p as $termino => $texto): ?>
-                            <?php [$dato, $quienVe] = is_array($texto) ? $texto : [$texto, '']; ?>
-                            <div><dt><?= $e($termino) ?></dt><dd><?= $e($dato) ?>
-                                <?php if ($quienVe !== ''): ?><span class="quien-ve"><?= $e($t('lo_ven')) ?> <?= $e($quienVe) ?></span><?php endif; ?>
-                            </dd></div>
-                        <?php endforeach; ?></dl>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </section>
-        <?php endforeach; ?>
-    </article>
+    <?php // Cada sección lleva id="seccion-N", el mismo que usa el índice ($ancla) ?>
+    <article class="texto-aviso"><?= htmlSeccionesAviso($secciones, $t('lo_ven')) ?></article>
 
     <?php if ($enlace): ?>
         <form method="POST" class="aceptar" id="aceptar">
@@ -298,7 +313,7 @@ $urlIdioma = '?' . http_build_query(['idioma' => $otroIdioma] + ($token !== '' ?
                 <span><?= $e($t('acepto')) ?></span>
             </label>
             <button type="submit" class="boton"><?= $e($t('aceptar')) ?></button>
-            <p class="nota"><?= $e($t('nota')) ?></p>
+            <p class="nota"><?= $e($tTipo('nota')) ?></p>
         </form>
     <?php endif; ?>
 </main>
