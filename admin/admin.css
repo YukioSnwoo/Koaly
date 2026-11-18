@@ -951,3 +951,6 @@ a.pend__it:hover{background:var(--bg-accent-muted);transform:translate(-2px,-2px
   .sd-admin__item{grid-template-columns:auto minmax(0,1fr)}
   .sd-admin__acciones{grid-column:1 / -1;justify-content:flex-end}
 }
+/* Alta de gerente: la contraseña temporal le llega por correo (gerentes.php) */
+.acceso-por-correo{display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;padding:9px 12px;border-radius:var(--radius);background:var(--acento-suave);color:var(--acento-texto);font-size:13px;line-height:1.45}
+.acceso-por-correo .ti{font-size:17px;margin-top:1px}
