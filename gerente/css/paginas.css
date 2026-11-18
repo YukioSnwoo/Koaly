@@ -634,6 +634,7 @@
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 0.75rem; margin-bottom: 0.9rem;
 }
+.catalogo-barra[hidden] { display: none; }   /* en el modo resurtir solo cuenta "En sucursal" */
 
 /* Barra de filtros de Productos: la de Ventas (componentes.css), con búsqueda en vez de periodo */
 .filtros--productos .filtros-campo[hidden] { display: none; }
@@ -909,3 +910,85 @@
 }
 .chip-sugerencia:hover { border-color: var(--acento); }
 .chip-sugerencia:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* ============================================================
+ * Resurtir (productos.php): registrar de golpe la mercancía que llegó.
+ * Las tarjetas de la sucursal ganan − / cantidad / + y lo que quedará;
+ * la barra de abajo se queda a la vista con el total y "Registrar entrada".
+ * ============================================================ */
+.resurtir-aviso {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem 1rem;
+    margin-bottom: 1rem; padding: 0.75rem 1rem;
+    border: 2px solid var(--acento-borde); border-radius: 12px;
+    background: var(--acento-suave); color: var(--acento-texto);
+}
+.resurtir-aviso[hidden] { display: none; }
+.resurtir-aviso p { margin: 0; font-size: 0.9rem; }
+.resurtir-llenar {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.45rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.75rem;
+    border: 2px dashed var(--acento-borde); border-radius: 10px;
+    background: var(--superficie); font-size: 0.85rem; font-weight: 600;
+}
+.resurtir-llenar input {
+    width: 4.4rem; padding: 0.3rem 0.45rem;
+    border: 2px solid var(--tinta); border-radius: 7px;
+    background: var(--superficie); color: var(--texto); font: inherit; text-align: right;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.resurtir-llenar input::-webkit-outer-spin-button,
+.resurtir-llenar input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.resurtir-llenado { flex-basis: 100%; font-size: 0.8rem; font-weight: 600; }
+.resurtir-llenado:empty { display: none; }
+
+/* En el modo, la tarjeta no es un enlace: no se levanta al pasar el mouse */
+.modo-resurtir a.producto-card { cursor: default; }
+.modo-resurtir a.producto-card:hover { transform: none; }
+.producto-card.is-resurtir { outline: 3px solid var(--acento); outline-offset: 2px; }
+.resurtir-paso {
+    display: grid; grid-template-columns: 2.1rem 1fr 2.1rem; align-items: center; gap: 0.3rem;
+    margin-top: 0.6rem; padding: 0.3rem;
+    border: 2px dashed var(--borde-fuerte); border-radius: 10px;
+}
+.resurtir-paso[hidden], .resurtir-queda[hidden] { display: none; }
+.producto-card.is-resurtir .resurtir-paso { border-style: solid; border-color: var(--acento); background: var(--acento-suave); }
+.resurtir-paso:focus-within { box-shadow: 3px 3px 0 var(--foco, var(--acento-borde)); }
+.resurtir-paso button {
+    width: 2.1rem; height: 2.1rem; padding: 0;
+    border: 2px solid var(--tinta); border-radius: 8px;
+    background: var(--superficie); color: var(--texto);
+    font-size: 1.1rem; font-weight: 800; line-height: 1; cursor: pointer;
+}
+.resurtir-paso button:hover { background: var(--acento-suave); }
+.resurtir-paso button:active { transform: translateY(1px); }
+.resurtir-paso input {
+    width: 100%; min-width: 0; padding: 0; border: none; background: transparent;
+    color: var(--texto); font: inherit; font-size: 1.05rem; font-weight: 800; text-align: center;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.resurtir-paso input::-webkit-outer-spin-button,
+.resurtir-paso input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.resurtir-paso input:focus { outline: none; }
+.resurtir-queda { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--texto-3); text-align: center; }
+.producto-card.is-resurtir .resurtir-queda { color: var(--ok-texto); font-weight: 700; }
+
+.resurtir-barra {
+    position: sticky; bottom: 1rem; z-index: 20;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.75rem;
+    margin-top: 1.25rem; padding: 0.8rem 1rem;
+    border: 2px solid var(--tinta); border-radius: 14px;
+    background: var(--superficie); box-shadow: 4px 4px 0 var(--tinta);
+}
+.resurtir-barra[hidden] { display: none; }
+.resurtir-total { margin: 0 auto 0 0; font-size: 0.92rem; font-weight: 600; color: var(--texto-2); }
+.resurtir-nota {
+    flex: 1 1 220px; max-width: 360px; padding: 0.55rem 0.7rem;
+    border: 2px solid var(--tinta); border-radius: 8px;
+    background: var(--superficie); color: var(--texto); font: inherit; font-size: 0.9rem;
+}
+@media (max-width: 640px) {
+    .resurtir-barra { bottom: 0.5rem; }
+    .resurtir-nota { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) { .resurtir-paso button:active { transform: none; } }
+
