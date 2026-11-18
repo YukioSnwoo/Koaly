@@ -921,3 +921,33 @@ a.pend__it:hover{background:var(--bg-accent-muted);transform:translate(-2px,-2px
 }
 @media (prefers-reduced-motion:reduce){.aviso-vista--viva section{transition:none}}
 @media (max-width:960px){.avisos-grid{grid-template-columns:1fr}}
+/* ── Cambios de nombre o correo por aprobar (gerentes.php, sql/020) ──
+   Solo se aprueban o se rechazan: lo que se pidió no se edita */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sd-admin{margin-top:1rem;padding:1rem 1.15rem .35rem;border-radius:var(--radius);background:var(--surface-1);scroll-margin-top:80px}
+.sd-admin__cabecera h2{display:flex;align-items:center;gap:8px;margin:0;font-size:15px;font-weight:600}
+.sd-admin__cabecera p{margin:4px 0 0;font-size:13px;color:var(--text-secondary)}
+.sd-admin__lista{margin:.7rem 0 0;padding:0;list-style:none}
+.sd-admin__item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px 14px;padding:.85rem 0;border-top:1px solid var(--borde)}
+.sd-admin__quien{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;font-size:14px}
+.sd-admin__quien span{font-size:12.5px;color:var(--text-muted)}
+.sd-admin__cambios{display:grid;gap:5px;margin:.4rem 0 0}
+.sd-admin__cambios>div{display:grid;grid-template-columns:4.5rem minmax(0,1fr);gap:10px;align-items:baseline}
+.sd-admin__cambios dt{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted)}
+.sd-admin__cambios dd{display:flex;flex-wrap:wrap;gap:2px 7px;margin:0;font-size:13.5px;overflow-wrap:anywhere}
+.sd-admin__antes{color:var(--text-muted);text-decoration:line-through}
+.sd-admin__flecha{color:var(--text-muted)}
+.sd-admin__acciones{display:flex;align-items:center;gap:6px}
+.sd-admin__acciones form{margin:0}
+.sd-admin__campo{display:grid;gap:4px;margin-bottom:10px;font-size:13px;color:var(--text-secondary)}
+.sd-admin__campo .input{width:100%}
+.sd-admin__campo textarea{resize:vertical;min-height:70px;font:inherit}
+.sd-admin__campo small{font-size:12px;color:var(--text-muted)}
+.sd-admin__sugerencias{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.sd-admin__sugerencia{padding:3px 10px;border:1.5px solid var(--acento-borde);border-radius:999px;background:var(--acento-suave);color:var(--acento-texto);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.sd-admin__sugerencia:hover{border-color:var(--acento)}
+.sd-admin__sugerencia:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+@media (max-width:640px){
+  .sd-admin__item{grid-template-columns:auto minmax(0,1fr)}
+  .sd-admin__acciones{grid-column:1 / -1;justify-content:flex-end}
+}

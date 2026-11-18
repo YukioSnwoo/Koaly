@@ -45,17 +45,16 @@
     background: var(--peligro); border: 2px solid var(--superficie);
 }
 
-/* ---------- Foto o iniciales ---------- */
+/* ---------- Iniciales (primer nombre y primer apellido) ---------- */
 .perfil-avatar {
     display: inline-grid; place-items: center; flex-shrink: 0;
     border-radius: 50%; overflow: hidden;
     background: var(--acento-suave-2); color: var(--acento-texto-fuerte);
     font-family: var(--fuente-titulo); font-weight: 800; line-height: 1;
 }
-.perfil-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .perfil-avatar--mini   { width: 28px; height: 28px; font-size: 0.72rem; }
 .perfil-avatar--grande { width: 56px; height: 56px; font-size: 1.2rem; border: 2px solid var(--tinta); }
-.perfil-avatar--foto   { width: 88px; height: 88px; font-size: 1.8rem; border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
+.perfil-avatar--panel  { width: 64px; height: 64px; font-size: 1.4rem; border: 2px solid var(--tinta); box-shadow: var(--sombra-tactil); }
 
 /* ---------- Menú desplegable ---------- */
 .perfil-menu {
@@ -206,9 +205,34 @@ a.perfil-notif__cuerpo:hover { background: var(--superficie-2); }
 .perfil-form { display: flex; flex-direction: column; gap: 0.9rem; min-height: 100%; padding: 1.6rem 1.5rem 0; text-align: left; }
 .perfil-form h2 { margin: 0; font-size: 1.25rem; }
 
-.perfil-foto { display: flex; align-items: center; gap: 1rem; }
-.perfil-foto__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.perfil-foto__acciones small { flex-basis: 100%; font-size: 0.75rem; color: var(--texto-4); }
+/* Arriba del formulario: iniciales y nombre */
+.perfil-identidad { display: flex; align-items: center; gap: 0.9rem; }
+.perfil-identidad__datos { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.perfil-identidad__datos strong { font-size: 1rem; overflow-wrap: anywhere; }
+
+/* Gerente y cajero: el nombre y el correo se piden (admin/solicitudes_datos.php) */
+.perfil-nota { margin: 0; font-size: 0.8rem; color: var(--texto-3); }
+.perfil-solicitud-caja:empty { display: none; }
+.perfil-solicitud {
+    display: flex; flex-direction: column; gap: 0.35rem;
+    padding: 0.75rem 0.9rem; border: 2px solid; border-radius: 12px; font-size: 0.85rem;
+}
+.perfil-solicitud--pendiente { background: var(--aviso-suave); border-color: var(--aviso-borde); color: var(--texto); }
+.perfil-solicitud--pendiente > strong { color: var(--aviso-texto); }
+.perfil-solicitud--rechazada { background: var(--peligro-suave); border-color: var(--peligro-borde); color: var(--texto); }
+.perfil-solicitud--rechazada > strong { color: var(--peligro-texto); }
+.perfil-solicitud p { margin: 0; overflow-wrap: anywhere; }
+.perfil-solicitud__meta { font-size: 0.75rem; color: var(--texto-3); }
+.perfil-solicitud__cambios { display: flex; flex-direction: column; gap: 0.3rem; margin: 0.15rem 0 0; padding: 0; list-style: none; }
+.perfil-solicitud__cambios li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.4rem; overflow-wrap: anywhere; }
+.perfil-solicitud__campo { flex-basis: 100%; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--texto-3); }
+.perfil-solicitud__antes { color: var(--texto-3); text-decoration: line-through; }
+.perfil-solicitud__flecha { color: var(--texto-4); }
+.perfil-solicitud__despues { font-weight: 700; }
+.perfil-solicitud__cancelar { align-self: flex-start; margin-top: 0.2rem; padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+/* Con una solicitud pendiente, nombre y correo son de solo lectura */
+.perfil-campo input[readonly] { background: var(--superficie-2, var(--fondo)); color: var(--texto-3); border-style: dashed; cursor: not-allowed; }
+.perfil-campo input[readonly]:focus { box-shadow: none; }
 
 .perfil-campo { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 600; color: var(--texto-2); }
 .perfil-campo small { font-weight: 400; font-size: 0.75rem; color: var(--texto-4); }
@@ -299,8 +323,6 @@ a.perfil-notif__cuerpo:hover { background: var(--superficie-2); }
 .perfil-btn--primario:hover:not(:disabled) { background: var(--acento-hover); }
 .perfil-btn--plano { background: transparent; }
 .perfil-btn:focus-within { outline: 2px solid var(--foco); outline-offset: 2px; }
-/* El input de archivo queda dentro del botón, invisible pero enfocable */
-.perfil-oculto { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
 
 .perfil-mensaje { padding: 0.6rem 0.8rem; border: 2px solid; border-radius: 10px; font-size: 0.85rem; }
 .perfil-mensaje--error { background: var(--peligro-suave); color: var(--peligro-texto); border-color: var(--peligro-borde); }
@@ -326,14 +348,13 @@ body.cursor-custom .perfil-dialogo,
 body.cursor-custom .perfil-dialogo * { cursor: auto !important; }
 body.cursor-custom .perfil-dialogo :is(button, label.perfil-btn) { cursor: pointer !important; }
 
-/* ---------- Celular: solo foto y engranaje ---------- */
+/* ---------- Celular: solo iniciales y engranaje ---------- */
 @media (max-width: 640px) {
     .perfil-boton { padding-right: 0.45rem; gap: 0.35rem; }
     .perfil-boton__nombre { display: none; }
     .perfil-dialogo { width: 100vw; border-left: none; border-radius: 0; box-shadow: none; }
     .perfil-form { padding: 1.1rem 1.1rem 0; }
     .perfil-form__acciones { margin-inline: -1.1rem; padding-inline: 1.1rem; }
-    .perfil-foto { flex-direction: column; align-items: flex-start; }
     .perfil-fila { grid-template-columns: 1fr; }
 }
 

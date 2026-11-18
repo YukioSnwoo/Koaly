@@ -204,21 +204,11 @@
 
     /* ---------- Mi perfil ---------- */
     const mensaje = form.querySelector('[data-perfil-mensaje]');
-    const inputFoto = form.querySelector('[name="foto"]');
-    const quitarFoto = form.querySelector('[name="quitar_foto"]');
-    const botonQuitar = form.querySelector('[data-perfil-quitar-foto]');
     const botonGuardar = form.querySelector('[data-perfil-guardar]');
-    const avatarForm = form.querySelector('[data-perfil-avatar]');
-    let fotoActual = avatarForm.querySelector('img').hidden ? null : avatarForm.querySelector('img').getAttribute('src');
-    let urlVistaPrevia = null;
 
-    function pintarAvatar(avatar, foto, iniciales) {
-        const img = avatar.querySelector('img');
-        const letras = avatar.querySelector('.perfil-avatar__iniciales');
-        img.hidden = !foto;
-        if (foto) img.src = foto; else img.removeAttribute('src');
-        letras.hidden = !!foto;
-        if (iniciales) letras.textContent = iniciales;
+    // El avatar son las iniciales (primer nombre y primer apellido)
+    function pintarAvatar(avatar, iniciales) {
+        if (iniciales) avatar.querySelector('.perfil-avatar__iniciales').textContent = iniciales;
     }
 
     function avisar(texto, tipo) {
@@ -273,6 +263,43 @@
         if (pide !== plegableActual.classList.contains('is-abierto')) plegar(plegableActual, pide);
     });
 
+    /* Gerente y cajero: el nombre y el correo se piden (los aprueba su gerente o la
+       administración). Recuadro con la solicitud pendiente o la última rechazada;
+       mientras hay una pendiente, esos campos quedan de solo lectura. */
+    const cajaSolicitud = form.querySelector('[data-perfil-solicitud]');
+
+    function pintarSolicitud(html, pendiente) {
+        if (!cajaSolicitud) return;
+        cajaSolicitud.innerHTML = html;
+        form.querySelectorAll('[data-perfil-dato]').forEach(campo => {
+            campo.readOnly = pendiente;
+            if (pendiente) campo.value = campo.defaultValue;   // lo guardado, no lo que se pidió
+        });
+        plegar(plegableActual, pideActual());
+    }
+
+    cajaSolicitud?.addEventListener('click', async (e) => {
+        const boton = e.target.closest('[data-perfil-cancelar-solicitud]');
+        if (!boton) return;
+        boton.disabled = true;
+        const cuerpo = new FormData();
+        cuerpo.set('csrf_token', csrf);
+        let r;
+        try {
+            const res = await fetch(api + 'solicitud_datos.php', { method: 'POST', body: cuerpo, headers: { Accept: 'application/json' } });
+            r = await res.json();
+        } catch (err) {
+            r = { ok: false, mensaje: pt('error.conexion') };
+        }
+        if (!r.ok) {
+            boton.disabled = false;
+            avisar(r.mensaje, 'error');
+            return;
+        }
+        pintarSolicitud(r.solicitud_html, r.pendiente);
+        avisar(r.mensaje, 'ok');
+    });
+
     // Sale deslizándose a la derecha (perfil.css) y luego se cierra de verdad
     const sinAnimacion = window.matchMedia('(prefers-reduced-motion: reduce)');
     function cerrarPerfil() {
@@ -290,9 +317,6 @@
         form.reset();
         form.querySelectorAll('.perfil-ver').forEach(b => verContrasena(b, false)); // reset() no regresa el tipo
         desplegarContrasena(false);
-        quitarFoto.value = '0';
-        pintarAvatar(avatarForm, fotoActual);
-        botonQuitar.hidden = !fotoActual;
         avisar('', 'error');
         botonGuardar.disabled = false;
         dialogo.classList.remove('is-cerrando');
@@ -307,27 +331,6 @@
     // Clic en el fondo oscuro, a la izquierda del panel, cierra
     dialogo.addEventListener('click', (e) => {
         if (e.target === dialogo && e.clientX < dialogo.getBoundingClientRect().left) cerrarPerfil();
-    });
-    dialogo.addEventListener('close', () => {
-        if (urlVistaPrevia) URL.revokeObjectURL(urlVistaPrevia);
-        urlVistaPrevia = null;
-    });
-
-    inputFoto.addEventListener('change', () => {
-        const archivo = inputFoto.files[0];
-        if (!archivo) return;
-        if (urlVistaPrevia) URL.revokeObjectURL(urlVistaPrevia);
-        urlVistaPrevia = URL.createObjectURL(archivo);
-        quitarFoto.value = '0';
-        pintarAvatar(avatarForm, urlVistaPrevia);
-        botonQuitar.hidden = false;
-    });
-
-    botonQuitar.addEventListener('click', () => {
-        inputFoto.value = '';
-        quitarFoto.value = '1';
-        pintarAvatar(avatarForm, null);
-        botonQuitar.hidden = true;
     });
 
     form.addEventListener('submit', async (e) => {
@@ -356,8 +359,7 @@
         }
 
         const u = r.usuario;
-        fotoActual = u.foto;
-        raiz.querySelectorAll('[data-perfil-avatar]').forEach(a => pintarAvatar(a, u.foto, u.iniciales));
+        raiz.querySelectorAll('[data-perfil-avatar]').forEach(a => pintarAvatar(a, u.iniciales));
         raiz.querySelectorAll('[data-perfil-nombre]').forEach(el => { el.textContent = u.nombre; });
         raiz.querySelectorAll('[data-perfil-email]').forEach(el => { el.textContent = u.email; });
         // Así form.reset() vuelve a lo guardado la próxima vez
@@ -366,8 +368,11 @@
         form.querySelector('[name="apellido_materno"]').defaultValue = u.apellido_materno;
         form.querySelector('[name="email"]').defaultValue = u.email;
         desplegarContrasena(false); // también borra las contraseñas escritas
+        if (r.solicitud_html !== undefined) pintarSolicitud(r.solicitud_html, r.pendiente);
 
         avisar(r.mensaje, 'ok');
+        // Con una solicitud nueva el panel se queda abierto para verla
+        if (r.cerrar === false) return;
         // Si se mandó el aviso por correo, el mensaje es más largo: se deja leer
         setTimeout(cerrarPerfil, r.aviso ? 2200 : 900);
     });

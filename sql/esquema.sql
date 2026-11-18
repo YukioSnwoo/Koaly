@@ -264,6 +264,38 @@ CREATE TABLE `Roles` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `Solicitudes_Datos` (sql/020_solicitudes_datos.sql)
+
+CREATE TABLE `Solicitudes_Datos` (
+  `id_solicitud` int(11) NOT NULL AUTO_INCREMENT,
+  `id_usuario` int(11) NOT NULL,
+  `revisa` enum('Gerente','Admin') NOT NULL,
+  `id_sucursal` int(11) DEFAULT NULL,
+  `nombre_antes` varchar(100) NOT NULL,
+  `email_antes` varchar(100) NOT NULL,
+  `nombre` varchar(100) DEFAULT NULL,
+  `nombres` varchar(60) DEFAULT NULL,
+  `apellido_paterno` varchar(40) DEFAULT NULL,
+  `apellido_materno` varchar(40) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `estado` enum('Pendiente','Aprobada','Rechazada','Cancelada') NOT NULL DEFAULT 'Pendiente',
+  `rechazo_titulo` varchar(80) DEFAULT NULL,
+  `rechazo_motivo` text DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `resuelto_en` timestamp NULL DEFAULT NULL,
+  `resuelto_por` int(11) DEFAULT NULL,
+  `pendiente_de` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id_solicitud`),
+  UNIQUE KEY `uk_solicitud_datos_pendiente` (`pendiente_de`),
+  KEY `idx_solicitud_datos_revisa` (`revisa`,`estado`,`id_sucursal`),
+  KEY `idx_solicitud_datos_usuario` (`id_usuario`,`id_solicitud`),
+  KEY `fk_solicitud_datos_sucursal` (`id_sucursal`),
+  KEY `fk_solicitud_datos_revisor` (`resuelto_por`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `Solicitudes_Productos`
 
 CREATE TABLE `Solicitudes_Productos` (
@@ -740,6 +772,14 @@ ALTER TABLE `Productos`
 ALTER TABLE `Retiros_Caja`
   ADD CONSTRAINT `fk_retiro_cajero` FOREIGN KEY (`id_cajero`) REFERENCES `Usuarios` (`id_usuario`),
   ADD CONSTRAINT `fk_retiro_turno` FOREIGN KEY (`id_turno`) REFERENCES `Turnos_Caja` (`id_turno`);
+
+--
+-- Filtros para la tabla `Solicitudes_Datos`
+--
+ALTER TABLE `Solicitudes_Datos`
+  ADD CONSTRAINT `fk_solicitud_datos_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_solicitud_datos_sucursal` FOREIGN KEY (`id_sucursal`) REFERENCES `Sucursales` (`id_sucursal`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_solicitud_datos_revisor` FOREIGN KEY (`resuelto_por`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `Solicitudes_Productos`
