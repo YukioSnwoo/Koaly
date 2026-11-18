@@ -186,6 +186,21 @@
 
     cargarNotificaciones().catch(() => { /* sin contador; se reintenta al abrir el menú */ });
 
+    // El contador se pone al día solo (p. ej. el gerente ve al momento que un producto
+    // se agotó): cada minuto y al volver a la pestaña. Solo si la página está a la vista
+    // y alguien la usó en los últimos minutos, para no mantener viva una sesión olvidada.
+    const REFRESCO_MS = 60 * 1000;
+    const INACTIVO_MS = 5 * 60 * 1000;
+    let ultimoUso = Date.now();
+    ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(evento =>
+        document.addEventListener(evento, () => { ultimoUso = Date.now(); }, { passive: true, capture: true }));
+    const refrescar = () => {
+        if (document.visibilityState !== 'visible' || abierto() || Date.now() - ultimoUso > INACTIVO_MS) return;
+        cargarNotificaciones().catch(() => { /* se reintenta en el siguiente */ });
+    };
+    setInterval(refrescar, REFRESCO_MS);
+    document.addEventListener('visibilitychange', refrescar);
+
 
     /* ---------- Mi perfil ---------- */
     const mensaje = form.querySelector('[data-perfil-mensaje]');

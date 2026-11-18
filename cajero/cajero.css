@@ -877,6 +877,20 @@ kbd {
 .modal-confirmar { text-align: center; width: 380px; }
 .modal-confirmar .modal-actions { justify-content: center; }
 .modal-confirmar .modal-actions .btn { flex: 1; }
+/* Bajo el aviso de "Producto agotado": ya se avisó al gerente (o sí había piezas) */
+.aviso-gerente {
+    margin: 12px 0 2px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--acento-suave);
+    color: var(--acento-texto);
+    font-size: 0.88rem;
+    font-weight: 600;
+    animation: aviso-gerente-entra 0.25s ease-out;
+}
+.aviso-gerente--ok { background: var(--ok-suave); color: var(--ok-texto); }
+@keyframes aviso-gerente-entra { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .aviso-gerente { animation: none; } }
 .icono-peligro {
     width: 56px; height: 56px;
     margin: 0 auto 0.85rem;

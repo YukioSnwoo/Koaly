@@ -160,7 +160,8 @@ function perfilConsultar(PDO $pdo, string $sql, array $params): array
  * Las fechas se comparan en hora de México (notificaciones.php fija la zona).
  *   Admin:   solicitudes nuevas, reenviadas o canceladas por los gerentes,
  *            y cortes de caja con diferencia en cualquier sucursal.
- *   Gerente: respuestas del admin a sus solicitudes y cortes de sus cajeros.
+ *   Gerente: respuestas del admin a sus solicitudes, cortes de sus cajeros y
+ *            productos agotados en su sucursal (sql/019, una por producto y día).
  *   Cajero:  cortes suyos que el gerente ya recibió.
  */
 function perfilNotificaciones(PDO $pdo, array $usuario): array
@@ -267,6 +268,43 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
                     'detalle' => $porRecibir ? perfilT('notif.corte_por_recibir', ['monto' => perfilDinero($f['por_entregar'])]) : null,
                     'tono'    => perfilTonoCorte($f),
                     'enlace'  => $porRecibir ? 'cortes.php?ver=pendientes' : 'cortes.php?ver=todos',
+                    'fecha'   => $f['fecha'],
+                ];
+            }
+
+            // Productos agotados (sql/019). La fecha es la de la alerta, no la del último
+            // intento: así un intento más no vuelve a encender la campanita.
+            $filas = perfilConsultar($pdo, "
+                SELECT a.id_producto, a.origen, a.id_venta, a.intentos, a.ultimo_intento, a.resuelta_en,
+                       a.creado_en AS fecha, p.nombre AS producto, u.nombre AS cajero
+                FROM Alertas_Agotados a
+                INNER JOIN Productos p ON p.id_producto = a.id_producto
+                LEFT JOIN Usuarios u ON u.id_usuario = a.id_cajero
+                WHERE a.id_sucursal = ? AND a.creado_en >= ?
+            ", [$usuario['id_sucursal'], $desde]);
+            foreach ($filas as $f) {
+                $cajero   = $f['cajero'] ?? perfilT('notif.un_cajero');
+                $porVenta = $f['origen'] === 'Venta';
+                $intentos = (int) $f['intentos'];
+                $hora     = $f['ultimo_intento'] ? date('H:i', strtotime($f['ultimo_intento'])) : '';
+
+                // "Ya se resurtió" va primero: el detalle se corta a dos renglones
+                $detalle = $f['resuelta_en'] ? [perfilT('notif.agotado_resurtido')] : [];
+                if ($porVenta) {
+                    $detalle[] = perfilT('notif.agotado_ultima', ['cajero' => $cajero, 'venta' => $f['id_venta']]);
+                    if ($intentos > 0) {
+                        $detalle[] = perfilT($intentos === 1 ? 'notif.agotado_despues_1' : 'notif.agotado_despues', ['n' => $intentos, 'hora' => $hora]);
+                    }
+                } elseif ($intentos > 1) {
+                    $detalle[] = perfilT('notif.agotado_veces', ['n' => $intentos, 'hora' => $hora]);
+                }
+
+                $items[] = [
+                    'texto'   => perfilT($porVenta ? 'notif.agotado_venta' : 'notif.agotado_intento',
+                                         ['producto' => $f['producto'], 'cajero' => $cajero]),
+                    'detalle' => implode(' ', $detalle),
+                    'tono'    => $f['resuelta_en'] ? 'info' : 'peligro',
+                    'enlace'  => 'producto.php?id=' . (int) $f['id_producto'],
                     'fecha'   => $f['fecha'],
                 ];
             }

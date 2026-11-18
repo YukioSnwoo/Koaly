@@ -6,6 +6,7 @@
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
 require_once __DIR__ . '/../admin/solicitudes_comun.php';
+require_once __DIR__ . '/../admin/agotados_comun.php';
 
 $idProducto = (int) ($_GET['id'] ?? $_POST['id_producto'] ?? 0);
 
@@ -75,6 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             $mensajeExito = t('prod.ajuste_ok', ['n' => numero($cantidadNueva)]);
+
+            // Resurtido: las alertas de "agotado" de este producto se cierran (sql/019)
+            if ($cantidadNueva > 0) {
+                try {
+                    cerrarAlertasAgotados($pdo, $idSucursalGerente, [$idProducto]);
+                } catch (PDOException $e) {
+                    error_log('producto.php (agotados): ' . $e->getMessage());
+                }
+            }
 
         /* -------- Precio de venta y costo de la sucursal -------- */
         } elseif ($action === 'cambiar_precio') {

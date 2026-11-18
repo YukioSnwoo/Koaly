@@ -294,6 +294,9 @@ return [
     // avisos
     'aviso.agotado_titulo' => 'Producto agotado',
     'aviso.agotado' => '"{p}" ya no tiene existencias en esta sucursal, no se puede agregar a la venta.',
+    'aviso.agotado_avisado' => 'Ya le avisamos a tu gerente para que lo resurta.',
+    'aviso.agotado_ya_hay' => 'Acaban de llegar existencias ({disponibles}): ya puedes agregarlo.',
+    'aviso.se_agoto' => 'Se agotó "{p}" con esta venta. Ya le avisamos a tu gerente.',
     'aviso.insuficiente_titulo' => 'Productos insuficientes',
     'aviso.insuficiente' => 'Solo {disponibles}.',
     'aviso.sin_existencias' => '"{p}" ya no tiene existencias en esta sucursal.',
