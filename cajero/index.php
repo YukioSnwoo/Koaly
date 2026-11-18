@@ -780,7 +780,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             actualizarStockProducto(producto.id_producto, stock);
 
             if (stock <= 0) {
-                avisoAgotado(producto.nombre);
+                avisoAgotado(producto);
                 renderCarrito();
                 return;
             }
@@ -1204,12 +1204,56 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* ---------- Avisos de existencias ---------- */
-        function avisoAgotado(nombre) {
+        // Producto agotado: se avisa en pantalla y, en segundo plano, al gerente de la
+        // sucursal (le llega a su campanita). avisar_agotado.php no repite el aviso del
+        // mismo producto en el día; aquí solo se evita mandarlo en cada clic.
+        const AVISO_AGOTADO_MS = 2 * 60 * 1000;
+        const avisadosAgotado = new Map();   // id_producto → cuándo se avisó
+
+        function avisoAgotado(producto) {
+            const nota = document.createElement('p');
+            nota.className = 'aviso-gerente';
+            nota.setAttribute('role', 'status');
+            nota.hidden = true;
             mostrarAviso({
                 tipo: 'peligro',
                 titulo: tr('aviso.agotado_titulo'),
-                mensaje: tr('aviso.agotado', { p: nombre })
+                mensaje: tr('aviso.agotado', { p: producto.nombre }),
+                contenido: nota
             });
+            avisarGerenteAgotado(producto.id_producto, nota);
+        }
+
+        async function avisarGerenteAgotado(idProducto, nota) {
+            const mostrarNota = (texto, ok = false) => {
+                nota.textContent = texto;
+                nota.classList.toggle('aviso-gerente--ok', ok);
+                nota.hidden = false;
+            };
+            if (Date.now() - (avisadosAgotado.get(idProducto) || 0) < AVISO_AGOTADO_MS) {
+                mostrarNota(tr('aviso.agotado_avisado'));
+                return;
+            }
+
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('id_producto', idProducto);
+            let r;
+            try {
+                r = await (await fetch('avisar_agotado.php', { method: 'POST', body: datos })).json();
+            } catch (error) {
+                return;   // sin conexión: la venta sigue, solo no se avisó
+            }
+
+            if (r.stock > 0) {
+                // El catálogo tenía el dato viejo: ya hay piezas y se puede agregar
+                actualizarStockProducto(idProducto, r.stock);
+                renderCarrito();
+                mostrarNota(tr('aviso.agotado_ya_hay', { disponibles: trn('comun.n_disponibles', r.stock) }), true);
+            } else if (r.avisado) {
+                avisadosAgotado.set(idProducto, Date.now());
+                mostrarNota(tr('aviso.agotado_avisado'));
+            }
         }
 
         function avisoInsuficiente(nombre, stock, pedida) {
@@ -1874,6 +1918,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (json.success) {
                 // Lo esperado en caja tras la venta: al aceptar se avisa si hay excedente
                 if (json.arqueo) arqueoActual = json.arqueo;
+                // Lo que se acabó con esta venta (el servidor ya avisó al gerente)
+                (json.agotados || []).forEach(p => mostrarToast(tr('aviso.se_agoto', { p }), 'aviso'));
                 return json;
             }
 

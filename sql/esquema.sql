@@ -23,6 +23,30 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `Alertas_Agotados` (sql/019_alertas_agotados.sql)
+
+CREATE TABLE `Alertas_Agotados` (
+  `id_alerta` int(11) NOT NULL AUTO_INCREMENT,
+  `id_sucursal` int(11) NOT NULL,
+  `id_producto` int(11) NOT NULL,
+  `origen` enum('Venta','Intento') NOT NULL,
+  `id_cajero` int(11) DEFAULT NULL,
+  `id_venta` int(11) DEFAULT NULL,
+  `intentos` int(11) NOT NULL DEFAULT 0,
+  `ultimo_intento` datetime DEFAULT NULL,
+  `creado_en` datetime NOT NULL,
+  `abierta_el` date DEFAULT NULL,
+  `resuelta_en` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_alerta`),
+  UNIQUE KEY `uk_alerta_abierta` (`id_sucursal`,`id_producto`,`abierta_el`),
+  KEY `idx_alerta_sucursal_fecha` (`id_sucursal`,`creado_en`),
+  KEY `fk_alerta_producto` (`id_producto`),
+  KEY `fk_alerta_cajero` (`id_cajero`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `avisos_privacidad`
 
 CREATE TABLE `avisos_privacidad` (
@@ -659,6 +683,14 @@ ALTER TABLE `Ventas`
 
 --
 -- Restricciones para tablas volcadas
+
+--
+-- Filtros para la tabla `Alertas_Agotados`
+--
+ALTER TABLE `Alertas_Agotados`
+  ADD CONSTRAINT `fk_alerta_sucursal` FOREIGN KEY (`id_sucursal`) REFERENCES `Sucursales` (`id_sucursal`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_alerta_producto` FOREIGN KEY (`id_producto`) REFERENCES `Productos` (`id_producto`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_alerta_cajero` FOREIGN KEY (`id_cajero`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `avisos_versiones` y `avisos_notificaciones`
