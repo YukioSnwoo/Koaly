@@ -373,6 +373,28 @@ document.addEventListener('change', (e) => {
     if (e.target.matches('#formCajero [name="estado"]')) _actualizarAyudaEstado();
 });
 
+/** Rechazar un cambio de nombre o correo que pidió un cajero: título obligatorio, motivo opcional. */
+function abrirRechazoDatos(btn) {
+    const form = document.getElementById('formRechazoDatos');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="id_solicitud"]').value = btn.dataset.id;
+    document.getElementById('textoRechazoDatos').textContent = btn.dataset.texto || '';
+    form.querySelector('[type="submit"]').disabled = false;
+    abrirModal('modalRechazoDatos');
+    setTimeout(() => form.querySelector('[name="rechazo_titulo"]').focus(), 60);
+}
+
+// Un título sugerido llena el campo (se puede seguir editando)
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-titulo-sugerido]');
+    if (!chip) return;
+    const campo = chip.closest('form').querySelector('[name="rechazo_titulo"]');
+    campo.value = chip.dataset.tituloSugerido;
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    campo.focus();
+});
+
 
 /* ============================================================
  * ██ CAJAS — Modales y aviso de reasignación

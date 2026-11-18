@@ -873,3 +873,39 @@
 }
 .page-header-acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .grafica-ayuda--abajo { margin: 0.6rem 0 0; }
+
+/* ============================================================
+ * Cambios de nombre o correo por aprobar (cajeros.php, sql/020)
+ * Solo se aprueban o se rechazan: lo que pidió el cajero no se edita.
+ * ============================================================ */
+.solicitudes-datos { margin-bottom: 1.25rem; padding: 1.1rem 1.25rem 0.4rem; scroll-margin-top: 90px; }
+.solicitudes-datos__cabecera h2 { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 1.05rem; }
+.solicitudes-datos__cabecera p { margin: 0.3rem 0 0; font-size: 0.85rem; color: var(--texto-3); }
+.solicitudes-datos__lista { display: flex; flex-direction: column; margin: 0.8rem 0 0; padding: 0; list-style: none; }
+.solicitud-datos {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 0.75rem 1rem;
+    padding: 0.9rem 0; border-top: 1px solid var(--borde);
+}
+.solicitud-datos__quien { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; }
+.solicitud-datos__quien .texto-tenue { font-size: 0.8rem; }
+.solicitud-datos__cambios { display: grid; gap: 0.35rem; margin: 0.45rem 0 0; }
+.solicitud-datos__cambios > div { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 0.6rem; align-items: baseline; }
+.solicitud-datos__cambios dt { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--texto-3); }
+.solicitud-datos__cambios dd { display: flex; flex-wrap: wrap; gap: 0.1rem 0.45rem; margin: 0; overflow-wrap: anywhere; }
+.solicitud-datos__antes { color: var(--texto-3); text-decoration: line-through; }
+.solicitud-datos__flecha { color: var(--texto-4); }
+.solicitud-datos__acciones { display: flex; align-items: center; gap: 0.5rem; }
+.solicitud-datos__acciones form { margin: 0; }
+@media (max-width: 640px) {
+    .solicitud-datos { grid-template-columns: auto minmax(0, 1fr); }
+    .solicitud-datos__acciones { grid-column: 1 / -1; justify-content: flex-end; }
+}
+/* Títulos sugeridos al rechazar: un clic llena el campo */
+.sugerencias { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+.chip-sugerencia {
+    padding: 0.2rem 0.65rem; border: 1.5px solid var(--acento-borde); border-radius: 999px;
+    background: var(--acento-suave); color: var(--acento-texto);
+    font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+.chip-sugerencia:hover { border-color: var(--acento); }
+.chip-sugerencia:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }

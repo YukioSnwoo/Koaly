@@ -216,3 +216,26 @@ function partesNombre(array $fila): array
         default  => ['nombres' => $palabras[0] ?? '', 'apellido_paterno' => '', 'apellido_materno' => ''],
     };
 }
+
+/**
+ * Iniciales para el avatar: la del primer nombre y la del primer apellido
+ * ("Juan Carlos Pérez López" → "JP"). Sin paterno se usa el materno, y en un
+ * apellido como "de la Cruz" se salta la partícula ("C"). $fila es una fila de
+ * Usuarios (con las partes o solo nombre) o el nombre completo como texto.
+ */
+function inicialesNombre(array|string $fila): string
+{
+    $partes = partesNombre(is_string($fila) ? ['nombre' => $fila] : $fila);
+    $inicial = static function (string $texto, bool $saltarParticulas): string {
+        foreach (preg_split('/\s+/u', trim($texto), -1, PREG_SPLIT_NO_EMPTY) as $palabra) {
+            if ($saltarParticulas && in_array(mb_strtolower($palabra), PARTICULAS_NOMBRE, true)) {
+                continue;
+            }
+            return mb_strtoupper(mb_substr($palabra, 0, 1));
+        }
+        return '';
+    };
+    $apellido = $partes['apellido_paterno'] !== '' ? $partes['apellido_paterno'] : $partes['apellido_materno'];
+    $iniciales = $inicial($partes['nombres'], false) . $inicial($apellido, true);
+    return $iniciales !== '' ? $iniciales : '?';
+}

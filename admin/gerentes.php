@@ -9,8 +9,15 @@ require_once __DIR__ . '/sucursal_gerente.php';
 require_once __DIR__ . '/profanity_filter.php';
 require_once __DIR__ . '/reglas_nombre.php';
 require_once __DIR__ . '/eliminar_usuario.php';
+require_once __DIR__ . '/solicitudes_datos.php';   // cambios de nombre y correo por aprobar (sql/020)
+
+// Fechas en hora de México, como el panel del gerente
+date_default_timezone_set('America/Mexico_City');
+$pdo->exec("SET time_zone = '" . (new DateTimeImmutable())->format('P') . "'");
 
 $error = '';
+$mensajeOk = $_SESSION['gerentes_mensaje'] ?? '';   // tras aprobar o rechazar un cambio de datos (PRG)
+unset($_SESSION['gerentes_mensaje']);
 
 // Mismos estados que usa el gerente para sus cajeros. Solo "Activo" puede iniciar sesión.
 const ESTADOS_GERENTE = [
@@ -207,6 +214,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Cambio de nombre o correo que pidió un gerente (o un cajero de una sucursal
+        // sin gerente). Solo se aprueba o se rechaza: lo pedido no se edita.
+        if ($action === 'aprobar_datos' || $action === 'rechazar_datos') {
+            $idSolicitud = (int) ($_POST['id_solicitud'] ?? 0);
+            try {
+                if ($action === 'aprobar_datos') {
+                    $s = aprobarSolicitudDatos($pdo, $idSolicitud, (int) $admin['id_usuario'], 'Admin', null);
+                    $mensaje = t('datos.aprobada', ['nombre' => $s['nombre'] ?? $s['nombre_antes']]);
+                    if ($s['email'] !== null) {
+                        $avisado = avisarCorreoCambiado($s, 'la administración');
+                        $mensaje .= ' ' . t($avisado ? 'datos.aviso_correo_anterior' : 'datos.aviso_correo_fallo', ['email' => $s['email_antes']]);
+                    }
+                } else {
+                    $s = rechazarSolicitudDatos(
+                        $pdo, $idSolicitud, (int) $admin['id_usuario'], 'Admin', null,
+                        (string) ($_POST['rechazo_titulo'] ?? ''), (string) ($_POST['rechazo_motivo'] ?? '')
+                    );
+                    $mensaje = t('datos.rechazada', ['nombre' => $s['nombre_antes']]);
+                }
+            } catch (SolicitudDatosError $e) {
+                throw new RuntimeException(t('datos.error_' . $e->clave));
+            }
+            $_SESSION['gerentes_mensaje'] = $mensaje;
+            header('Location: gerentes.php');
+            exit;
+        }
+
         if ($action === 'asignar') {
             asignarSucursalAGerente(
                 $pdo,
@@ -301,6 +335,9 @@ try {
     error_log('gerentes.php empleados: ' . $e->getMessage());
 }
 
+// Cambios de nombre o correo que le tocan a la administración (vacío sin sql/020)
+$solicitudesDatos = solicitudesDatosPorRevisar($pdo, 'Admin');
+
 // Sucursales sin gerente (para el select de asignar). Incluye las inactivas:
 // una sucursal sin gerente está inactiva y se activa al asignarle uno.
 $sucursales = $pdo->query("
@@ -331,6 +368,50 @@ $todasSucursales = $pdo->query("
 <?php if ($error !== ''): ?>
     <div style="margin-top:1rem;padding:10px 14px;border-radius:var(--radius-lg);background:var(--bg-danger);color:var(--text-danger)"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
+<?php if ($mensajeOk !== ''): ?>
+    <div role="status" style="margin-top:1rem;padding:10px 14px;border-radius:var(--radius-lg);background:var(--bg-success);color:var(--text-success)"><?= e($mensajeOk) ?></div>
+<?php endif; ?>
+
+<?php // Cambios de nombre o correo por aprobar: se aprueban o se rechazan, no se editan ?>
+<?php if ($solicitudesDatos): ?>
+    <section class="sd-admin" id="solicitudes-datos" aria-labelledby="tituloSolicitudesDatos">
+        <div class="sd-admin__cabecera">
+            <h2 id="tituloSolicitudesDatos"><?= e(t('datos.titulo')) ?> <span class="badge badge--warning"><?= count($solicitudesDatos) ?></span></h2>
+            <p><?= e(t('datos.ayuda')) ?></p>
+        </div>
+        <ul class="sd-admin__lista">
+            <?php foreach ($solicitudesDatos as $s): $idSolicitud = (int) $s['id_solicitud']; ?>
+                <li class="sd-admin__item">
+                    <div class="avatar"><?= e(inicialesSolicitante($s)) ?></div>
+                    <div class="sd-admin__cuerpo">
+                        <div class="sd-admin__quien">
+                            <strong><?= e($s['nombre_antes']) ?></strong>
+                            <span><?= e(t('datos.rol_' . (int) $s['id_rol']) . ($s['sucursal'] ? ' · ' . $s['sucursal'] : '') . ' · ' . t('datos.enviada', ['fecha' => fecha($s['creado_en'])])) ?></span>
+                        </div>
+                        <dl class="sd-admin__cambios">
+                            <?php foreach (cambiosSolicitudDatos($s) as $c): ?>
+                                <div>
+                                    <dt><?= e(t('datos.campo_' . $c['campo'])) ?></dt>
+                                    <dd><span class="sd-admin__antes"><?= e($c['antes']) ?></span><span class="sd-admin__flecha" aria-hidden="true">→</span><span class="sr-only"><?= e(t('datos.cambia_a')) ?></span><strong><?= e($c['despues']) ?></strong></dd>
+                                </div>
+                            <?php endforeach; ?>
+                        </dl>
+                    </div>
+                    <div class="sd-admin__acciones">
+                        <button type="button" class="btn btn--ghost btn--sm" onclick="abrirRechazoDatos(this)"
+                                data-id="<?= $idSolicitud ?>" data-texto="<?= e(t('datos.rechazar_texto', ['nombre' => $s['nombre_antes']])) ?>"><?= e(t('datos.rechazar')) ?></button>
+                        <form method="POST" action="gerentes.php" data-confirmar="<?= e(t('datos.confirmar_aprobar', ['nombre' => $s['nombre_antes']])) ?>">
+                            <input type="hidden" name="action" value="aprobar_datos">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                            <input type="hidden" name="id_solicitud" value="<?= $idSolicitud ?>">
+                            <button type="submit" class="btn btn--primary btn--sm"><?= e(t('datos.aprobar')) ?></button>
+                        </form>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+<?php endif; ?>
 
 <div class="table-wrap" style="margin-top:1rem">
     <table class="table" id="tblGerentes">
@@ -341,15 +422,10 @@ $todasSucursales = $pdo->query("
             <?php if (empty($gerentes)): ?>
                 <tr><td colspan="5" style="color:var(--text-muted);text-align:center"><?= e(t('ger.vacio')) ?></td></tr>
             <?php else: ?>
-                <?php foreach ($gerentes as $g):
-                    $palabras = explode(' ', $g['nombre']);
-                    $ini = '';
-                    foreach ($palabras as $p) $ini .= mb_strtoupper(mb_substr($p, 0, 1));
-                    $ini = mb_substr($ini, 0, 2);
-                ?>
+                <?php foreach ($gerentes as $g): ?>
                     <tr>
                         <td style="display:flex;align-items:center;gap:8px">
-                            <div class="avatar"><?= $ini ?></div>
+                            <div class="avatar"><?= e(inicialesNombre($g)) ?></div>
                             <?= htmlspecialchars($g['nombre']) ?>
                         </td>
                         <td style="color:var(--text-secondary)"><?= htmlspecialchars($g['email']) ?></td>
@@ -392,6 +468,38 @@ $todasSucursales = $pdo->query("
             <?php endif; ?>
         </tbody>
     </table>
+</div>
+
+<!-- Modal: rechazar un cambio de nombre o correo (título obligatorio, motivo opcional) -->
+<div id="modalRechazoDatos" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rechazoDatosTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
+    <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:460px;max-width:90vw">
+        <h2 id="rechazoDatosTitulo" style="font-size:16px;font-weight:500;margin:0 0 .25rem"><?= e(t('datos.rechazar_titulo')) ?></h2>
+        <p id="rechazoDatosTexto" style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem"></p>
+        <form method="POST" action="gerentes.php" id="formRechazoDatos">
+            <input type="hidden" name="action" value="rechazar_datos">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
+            <label class="sd-admin__campo">
+                <span><?= e(t('datos.titulo_rechazo')) ?></span>
+                <input type="text" name="rechazo_titulo" class="input" maxlength="<?= SOLICITUD_DATOS_TITULO_MAX ?>" required autocomplete="off">
+            </label>
+            <div class="sd-admin__sugerencias" role="group" aria-label="<?= e(t('datos.sugerencias')) ?>">
+                <?php foreach (['identificacion', 'correo', 'escritura'] as $sugerencia): ?>
+                    <button type="button" class="sd-admin__sugerencia" data-titulo-sugerido="<?= e(t('datos.sugerencia_' . $sugerencia)) ?>"><?= e(t('datos.sugerencia_' . $sugerencia)) ?></button>
+                <?php endforeach; ?>
+            </div>
+            <label class="sd-admin__campo">
+                <span><?= e(t('datos.motivo_rechazo')) ?></span>
+                <textarea name="rechazo_motivo" class="input" rows="3" maxlength="<?= SOLICITUD_DATOS_MOTIVO_MAX ?>"></textarea>
+                <small><?= e(t('datos.motivo_ayuda')) ?></small>
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.1rem">
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalRechazoDatos')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--danger"><?= e(t('datos.rechazar')) ?></button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Modal: historial de estados del gerente -->
@@ -714,6 +822,27 @@ $todasSucursales = $pdo->query("
     window.addEventListener('scroll', cerrar, true);
     window.addEventListener('resize', cerrar);
 })();
+
+/* Cambios de nombre o correo: aprobar pide confirmación; rechazar abre el modal
+   con el título (obligatorio, con sugerencias de un clic) y el motivo (opcional). */
+document.querySelectorAll('form[data-confirmar]').forEach((form) => {
+    form.addEventListener('submit', (e) => { if (!confirm(form.dataset.confirmar)) e.preventDefault(); });
+});
+function abrirRechazoDatos(btn) {
+    const form = document.getElementById('formRechazoDatos');
+    form.reset();
+    form.querySelector('[name="id_solicitud"]').value = btn.dataset.id;
+    document.getElementById('rechazoDatosTexto').textContent = btn.dataset.texto || '';
+    openModal('modalRechazoDatos');
+    setTimeout(() => form.querySelector('[name="rechazo_titulo"]').focus(), 60);
+}
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-titulo-sugerido]');
+    if (!chip) return;
+    const campo = chip.closest('form').querySelector('[name="rechazo_titulo"]');
+    campo.value = chip.dataset.tituloSugerido;
+    campo.focus();
+});
 
 function editarGerente(btn) {
     const form = document.getElementById('formEditarGerente');
