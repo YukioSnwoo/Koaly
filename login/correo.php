@@ -164,19 +164,31 @@ function correoEnlace(string $url, string $texto): string
 /**
  * Correo con el diseño de Koaly: tarjeta blanca con borde, "Koaly" en morado,
  * los párrafos y, al final, un pie en letra chica separado por una línea.
- * Cada párrafo es texto (aquí se escapa) o ['codigo' => '123456'], que sale
- * en grande y centrado. $pieHtml ya viene escapado: puede llevar un enlace.
+ * Cada párrafo es texto (aquí se escapa) o un bloque:
+ *   ['codigo' => '123456']                 en grande y centrado
+ *   ['lista' => ['uno', 'dos']]            lista con viñetas
+ *   ['boton' => $url, 'texto' => 'Entrar'] botón morado
+ * $pieHtml ya viene escapado: puede llevar un enlace.
  */
 function correoHtml(array $parrafos, ?string $pieHtml = null): string
 {
     $cuerpo = '';
     foreach ($parrafos as $p) {
-        $cuerpo .= is_array($p)
-            ? '<p style="margin:4px 0 18px;text-align:center;"><span style="display:inline-block;padding:12px 22px;'
+        $cuerpo .= match (true) {
+            is_string($p) => '<p style="margin:0 0 14px;font-size:15px;line-height:1.5;">' . correoE($p) . '</p>',
+            isset($p['codigo']) => '<p style="margin:4px 0 18px;text-align:center;"><span style="display:inline-block;padding:12px 22px;'
                 . 'border:2px solid #3b3156;border-radius:12px;background:#efe9fd;box-shadow:3px 3px 0 #3b3156;'
                 . 'font-family:\'Courier New\',Courier,monospace;font-size:30px;font-weight:bold;letter-spacing:8px;color:#221c33;">'
-                . correoE($p['codigo']) . '</span></p>'
-            : '<p style="margin:0 0 14px;font-size:15px;line-height:1.5;">' . correoE($p) . '</p>';
+                . correoE($p['codigo']) . '</span></p>',
+            isset($p['lista']) => '<ul style="margin:0 0 14px;padding-left:22px;font-size:15px;line-height:1.5;">'
+                . implode('', array_map(static fn($item) => '<li style="margin:0 0 6px;">' . correoE((string) $item) . '</li>', $p['lista']))
+                . '</ul>',
+            isset($p['boton']) => '<p style="margin:8px 0 20px;"><a href="' . correoE($p['boton']) . '" style="display:inline-block;'
+                . 'padding:11px 20px;border:2px solid #3b3156;border-radius:10px;background:#7c3aed;color:#ffffff;'
+                . 'font-size:15px;font-weight:bold;text-decoration:none;box-shadow:3px 3px 0 #3b3156;">'
+                . correoE((string) $p['texto']) . '</a></p>',
+            default => '',
+        };
     }
     $pie = $pieHtml === null ? '' : '<p style="margin:22px 0 0;padding-top:14px;border-top:1px solid #e2dbef;'
         . 'font-size:12px;line-height:1.5;color:#645c7d;">' . $pieHtml . '</p>';
@@ -193,7 +205,13 @@ function correoHtml(array $parrafos, ?string $pieHtml = null): string
 /** Los mismos párrafos en texto plano, para quien no vea el HTML (el código va sangrado). */
 function correoTexto(array $parrafos, ?string $pie = null): string
 {
-    $bloques = array_map(fn($p) => is_array($p) ? '    ' . $p['codigo'] : $p, $parrafos);
+    $bloques = array_map(static fn($p) => match (true) {
+        is_string($p)       => $p,
+        isset($p['codigo']) => '    ' . $p['codigo'],
+        isset($p['lista'])  => implode("\n", array_map(static fn($item) => "  - {$item}", $p['lista'])),
+        isset($p['boton'])  => $p['texto'] . ': ' . $p['boton'],
+        default             => '',
+    }, $parrafos);
     if ($pie !== null) {
         $bloques[] = $pie;
     }

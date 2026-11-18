@@ -459,7 +459,8 @@ $stmt = $pdo->prepare("
              tc.numero_caja, t.fecha_apertura
     ORDER BY u.nombre
 ");
-$stmt->execute(array_merge($hayTablaAviso ? [AVISO_PRIVACIDAD_VERSION] : [], [$idSucursalGerente, $idSucursalGerente]));
+avisosPublicados($pdo);   // la versión vigente puede venir del panel del admin (sql/018)
+$stmt->execute(array_merge($hayTablaAviso ? [versionAviso('empleado')] : [], [$idSucursalGerente, $idSucursalGerente]));
 $cajeros = $stmt->fetchAll();
 
 $totalActivos = 0;

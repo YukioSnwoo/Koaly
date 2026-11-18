@@ -9,7 +9,13 @@ return [
     'idioma.cambiar_ayuda' => 'Leer en español',
 
     'titulo'          => 'Privacy notice',
-    'h1'              => 'Employee privacy notice',
+    'h1'              => 'Cashier privacy notice',
+    'h1.gerente'      => 'Manager privacy notice',
+    'h1.cliente'      => 'Customer privacy notice',
+    'otros_avisos'    => 'See also the notice for:',
+    'aviso.empleado'  => 'cashiers',
+    'aviso.gerente'   => 'managers',
+    'aviso.cliente'   => 'customers',
     'version'         => 'Current version: {fecha}',
     'contacto_generico' => 'your branch\'s contact email',
     'formato_fecha'   => 'm/d/Y',
@@ -20,6 +26,7 @@ return [
     'cambios.version' => 'What changed in this version',
     'lo_ven'          => 'Who sees it:',
     'ok.primer_ingreso' => 'You can now sign in with your email and the temporary password we sent you; the system will ask you to choose your own.',
+    'ok.primer_ingreso.gerente' => 'You can now sign in with your email and the password the administration gave you; the system will ask you to choose your own.',
     'ok.puedes_entrar'  => 'You can now sign in to the system.',
 
     'error.csrf'      => 'The form expired. Please reload the page.',
@@ -43,6 +50,7 @@ return [
 
     'ficha.titulo'    => 'Your information in the system',
     'ficha.ayuda'     => 'Check that it is correct. If something is wrong, let your manager know.',
+    'ficha.ayuda.gerente' => 'Check that it is correct. If something is wrong, let the administration know.',
     'sin_caja'        => 'No register assigned',
 
     'campo.folio'     => 'Record no.',
@@ -63,6 +71,7 @@ return [
     'acepto'          => 'I have read the privacy notice and I consent to the processing of my personal data as described.',
     'aceptar'         => 'Accept the notice',
     'nota'            => 'You need to accept it to use the register system. We will store the date, the notice version and your IP address, and email you the record.',
+    'nota.gerente'    => 'You need to accept it to use the manager panel. We will store the date, the notice version and your IP address, and email you the record.',
 
     'rol.1' => 'Administrator',
     'rol.2' => 'Manager',
@@ -83,4 +92,14 @@ return [
     'correo.consulta' => 'You can read the notice at any time at: {url}',
     'correo.texto_titulo' => 'TEXT OF THE NOTICE YOU ACCEPTED',
     'frase'           => 'I accept the privacy notice',
+
+    'quienes.empleado'    => 'cashiers',
+    'quienes.gerente'     => 'managers',
+    'actualizado.asunto'  => 'We updated Koaly\'s privacy notice',
+    'actualizado.intro'   => 'We updated the privacy notice for {quienes} (version of {fecha}).',
+    'actualizado.nuevo'   => 'We published the privacy notice for {quienes} (version of {fecha}).',
+    'actualizado.cambios' => 'What changed:',
+    'actualizado.accion'  => 'Next time you sign in to Koaly we will ask you to read and accept it. It only takes a minute.',
+    'actualizado.boton'   => 'Sign in to Koaly',
+    'actualizado.pie'     => 'You can read the full notice at {url}',
 ];

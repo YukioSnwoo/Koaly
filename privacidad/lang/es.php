@@ -9,7 +9,13 @@ return [
     'idioma.cambiar_ayuda' => 'Read in English',
 
     'titulo'          => 'Aviso de privacidad',
-    'h1'              => 'Aviso de privacidad para empleados',
+    'h1'              => 'Aviso de privacidad para cajeros',
+    'h1.gerente'      => 'Aviso de privacidad para gerentes',
+    'h1.cliente'      => 'Aviso de privacidad para clientes',
+    'otros_avisos'    => 'Ver también el aviso para:',
+    'aviso.empleado'  => 'cajeros',
+    'aviso.gerente'   => 'gerentes',
+    'aviso.cliente'   => 'clientes',
     'version'         => 'Versión vigente del {fecha}',
     'contacto_generico' => 'el correo de contacto de tu sucursal',
     'formato_fecha'   => 'd/m/Y',
@@ -21,6 +27,7 @@ return [
     'cambios.version' => 'Qué cambió en esta versión',
     'lo_ven'          => 'Lo ven:',
     'ok.primer_ingreso' => 'Ya puedes iniciar sesión con tu correo y la contraseña temporal que te enviamos; el sistema te pedirá elegir la tuya.',
+    'ok.primer_ingreso.gerente' => 'Ya puedes iniciar sesión con tu correo y la contraseña que te dio la administración; el sistema te pedirá elegir la tuya.',
     'ok.puedes_entrar'  => 'Ya puedes iniciar sesión en el sistema.',
 
     'error.csrf'      => 'El formulario expiró. Vuelve a cargar la página.',
@@ -44,6 +51,7 @@ return [
 
     'ficha.titulo'    => 'Tus datos en el sistema',
     'ficha.ayuda'     => 'Revisa que sean correctos. Si algo está mal, avísale a tu gerente.',
+    'ficha.ayuda.gerente' => 'Revisa que sean correctos. Si algo está mal, avísale a la administración.',
     'sin_caja'        => 'Sin caja asignada',
 
     'campo.folio'     => 'Folio',
@@ -64,6 +72,7 @@ return [
     'acepto'          => 'Leí el aviso de privacidad y acepto el tratamiento de mis datos personales en los términos descritos.',
     'aceptar'         => 'Aceptar el aviso',
     'nota'            => 'Necesitas aceptarlo para usar el sistema de caja. Guardaremos la fecha, la versión del aviso y la dirección IP, y te enviaremos la constancia por correo.',
+    'nota.gerente'    => 'Necesitas aceptarlo para usar el panel de gerente. Guardaremos la fecha, la versión del aviso y la dirección IP, y te enviaremos la constancia por correo.',
 
     // Datos que vienen de la base de datos
     'rol.1' => 'Administrador',
@@ -86,4 +95,15 @@ return [
     'correo.consulta' => 'Puedes consultar el aviso cuando quieras en: {url}',
     'correo.texto_titulo' => 'TEXTO DEL AVISO QUE ACEPTASTE',
     'frase'           => 'Acepto el aviso de privacidad',
+
+    // Correo de "actualizamos el aviso" (admin/avisos.php: avisar a los pendientes)
+    'quienes.empleado'    => 'cajeros',
+    'quienes.gerente'     => 'gerentes',
+    'actualizado.asunto'  => 'Actualizamos el aviso de privacidad de Koaly',
+    'actualizado.intro'   => 'Actualizamos el aviso de privacidad para {quienes} (versión del {fecha}).',
+    'actualizado.nuevo'   => 'Publicamos el aviso de privacidad para {quienes} (versión del {fecha}).',
+    'actualizado.cambios' => 'Qué cambió:',
+    'actualizado.accion'  => 'La próxima vez que entres a Koaly te pediremos leerlo y aceptarlo. Solo toma un minuto.',
+    'actualizado.boton'   => 'Entrar a Koaly',
+    'actualizado.pie'     => 'Puedes leer el aviso completo en {url}',
 ];

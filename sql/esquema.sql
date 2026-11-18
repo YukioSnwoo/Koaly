@@ -40,6 +40,38 @@ CREATE TABLE `avisos_privacidad` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `avisos_versiones` (sql/018_avisos_versiones.sql)
+
+CREATE TABLE `avisos_versiones` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tipo` enum('empleado','gerente','cliente') NOT NULL,
+  `version` varchar(20) NOT NULL,
+  `texto_es` mediumtext NOT NULL,
+  `texto_en` mediumtext DEFAULT NULL,
+  `cambios_es` text DEFAULT NULL,
+  `cambios_en` text DEFAULT NULL,
+  `publicado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `publicado_por` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aviso_version` (`tipo`,`version`),
+  KEY `fk_aviso_version_admin` (`publicado_por`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `avisos_notificaciones` (sql/018_avisos_versiones.sql)
+
+CREATE TABLE `avisos_notificaciones` (
+  `id_usuario` int(11) NOT NULL,
+  `version` varchar(20) NOT NULL,
+  `enviado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_usuario`,`version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `Cajas`
 
 CREATE TABLE `Cajas` (
@@ -627,6 +659,14 @@ ALTER TABLE `Ventas`
 
 --
 -- Restricciones para tablas volcadas
+
+--
+-- Filtros para la tabla `avisos_versiones` y `avisos_notificaciones`
+--
+ALTER TABLE `avisos_versiones`
+  ADD CONSTRAINT `fk_aviso_version_admin` FOREIGN KEY (`publicado_por`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE SET NULL;
+ALTER TABLE `avisos_notificaciones`
+  ADD CONSTRAINT `fk_aviso_notificacion_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `Cajas`
