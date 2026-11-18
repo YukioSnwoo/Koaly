@@ -87,6 +87,7 @@ return [
     // panel derecho
     'resumen.escaneo' => 'Escaneo',
     'resumen.resumen' => 'Resumen',
+    'resumen.limpiar_ayuda' => 'Vacía toda la venta (pide confirmación)',
     'resumen.articulos' => 'Artículos',
     'resumen.pagar' => 'Pagar',
     'resumen.sin_productos' => 'Sin productos',

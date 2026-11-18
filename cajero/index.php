@@ -98,9 +98,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     <!-- Categorías dinámicas -->
                 </div>
             </nav>
-            <div class="sidebar-group">
-                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()" data-i18n="comun.limpiar"><?= e(t('comun.limpiar')) ?></button>
-            </div>
         </aside>
 
         <!-- Catálogo Central -->
@@ -119,7 +116,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
             <!-- Resumen: todo agrupado por producto (p1 ×4, p2). El escaneo en orden lo ve el comprador (pantalla_cliente.php) -->
-            <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
+            <?php // "Limpiar" vacía la venta: va junto a ella, lejos de las tarjetas de productos ?>
+            <div class="resumen-cabecera">
+                <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
+                <button type="button" class="btn btn-warning btn-limpiar" id="btnLimpiar" onclick="limpiarTabla()" disabled
+                        title="<?= e(t('resumen.limpiar_ayuda')) ?>" data-i18n-title="resumen.limpiar_ayuda">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    <span data-i18n="comun.limpiar"><?= e(t('comun.limpiar')) ?></span>
+                </button>
+            </div>
             <ul class="resumen-lista" id="resumenLista"></ul>
 
             <div>
@@ -1360,6 +1365,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         function renderCarrito() {
             const tbody = document.getElementById('listaProductos');
             tbody.innerHTML = '';
+            // Sin productos no hay nada que limpiar
+            document.getElementById('btnLimpiar').disabled = carrito.length === 0;
 
             if (carrito.length === 0) {
                 tbody.innerHTML = '<tr class="empty-row"><td colspan="6"></td></tr>';
