@@ -38,3 +38,6 @@ private/
 
 # Volcados completos de la base (traen datos personales): solo locales
 sql/respaldos/
+
+# Interruptor del modo mantenimiento: se crea o borra en el servidor, nunca se sube
+mantenimiento/ACTIVO

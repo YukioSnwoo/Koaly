@@ -10,6 +10,7 @@ Koaly ya funciona en línea en [koalicius.com](https://koalicius.com/) y para us
 - [Instalación local](#instalación-local)
 - [Primeros datos](#primeros-datos)
 - [Despliegue en Hostinger](#despliegue-en-hostinger)
+- [Modo mantenimiento](#modo-mantenimiento)
 - [Cambios a la base de datos](#cambios-a-la-base-de-datos)
 - [Problemas comunes](#problemas-comunes)
 
@@ -141,6 +142,32 @@ Las hojas de estilo y los scripts llevan la fecha del archivo en la URL (`?v=…
 
 ---
 
+## Modo mantenimiento
+
+Deja el sitio encendido en Hostinger pero sin que nadie pueda entrar: cualquier dirección de koalicius.com (login, admin, gerente, cajero, perfil, privacidad) muestra la pantalla de "En mantenimiento". No hace falta tocar la base, así que también sirve para correr migraciones en phpMyAdmin sin que la caja esté vendiendo a la mitad.
+
+**Encender**
+
+1. hPanel → *Administrador de archivos* → `public_html/mantenimiento/`.
+2. *Nuevo archivo* y nómbralo `ACTIVO`, en mayúsculas y sin extensión.
+3. Opcional: escribe dentro un aviso corto, por ejemplo `Volvemos el lunes a las 9:00`. Sale en la pantalla.
+
+**Apagar (reactivar Koaly)**
+
+- Borra `mantenimiento/ACTIVO`, o renómbralo a `ACTIVO.no` para tenerlo a la mano la próxima vez.
+- Quien tenga la pantalla abierta regresa solo, en menos de 30 segundos, a la página donde estaba. Si su sesión ya venció, le pide iniciar sesión.
+
+**Cómo funciona**
+
+- [`.htaccess`](../.htaccess), en la raíz, revisa si existe `mantenimiento/ACTIVO`. Si existe, toda petición se responde con [`mantenimiento/index.php`](../mantenimiento/index.php); solo pasan la propia pantalla, `estilos/` y `Imagenes/koala/`.
+- La pantalla responde con código 503 y sin caché, para que Hostinger no la guarde y el sitio regrese al apagarla.
+- A los `fetch()` de la app les responde JSON con `success: false`: si un cajero cobra justo cuando se enciende, la venta no se registra y la caja le avisa que Koaly está en mantenimiento.
+- `ACTIVO` está en `.gitignore`: el interruptor vive solo en el servidor.
+
+> Si en el servidor ya había un `public_html/.htaccess` (Hostinger lo crea, por ejemplo, al forzar HTTPS), no lo reemplaces: pega el bloque de mantenimiento al principio del que ya existe.
+
+---
+
 ## Cambios a la base de datos
 
 - [`sql/esquema.sql`](../sql/esquema.sql) crea la base desde cero, sin datos. Ya incluye las migraciones 001 a 013 y el costo de la 015.
@@ -159,6 +186,8 @@ Las hojas de estilo y los scripts llevan la fecha del archivo en la URL (`?v=…
 | "La cuenta no tiene una sucursal asignada" | El gerente no tiene sucursal: asígnasela en *Admin → Gerentes*. |
 | Un panel avisa "Falta correr sql/0XX_….sql" | Corre esa migración en phpMyAdmin. |
 | Los estilos no cambian después de subir algo | Recarga sin caché (Cmd + Shift + R o Ctrl + F5). |
+| Creé `ACTIVO` y el sitio sigue abriendo normal | Que el archivo se llame exactamente `ACTIVO` y esté en `public_html/mantenimiento/`, y que `public_html/.htaccess` tenga el bloque de mantenimiento. |
+| Borré `ACTIVO` y sigue la pantalla de mantenimiento | Recarga sin caché; si sigue, revisa que no haya quedado otro `ACTIVO` (por ejemplo, subido por FTP). |
 
 ---
 
