@@ -2791,7 +2791,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     .firma { margin-top: 26px; border-top: 1px solid #000; padding-top: 2px; text-align: center; font-size: 11px; }
     .sub { padding-left: 8px; }
     .opciones { margin-top: 8px; }
+    .aviso-privacidad { margin-top: 8px; font-size: 10px; word-break: break-all; }
 `;
+
+        // Aviso de privacidad para clientes (privacidad/aviso_cliente.php), al pie del ticket de venta.
+        // Sin "https://" para que quepa en el papel de 80 mm.
+        const URL_AVISO_CLIENTE = (() => {
+            const url = new URL('../privacidad/?aviso=cliente', location.href);
+            return url.host + url.pathname + url.search;
+        })();
 
         // Renglón de los tickets de caja (corte, arqueo y retiro), con el texto escapado
         const filaTicket = (izq, der, clase = '') =>
@@ -2850,6 +2858,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <hr>
     <div class="centro chico">${escaparHtml(tr('ticket.iva_incluido'))}</div>
     <div class="centro gracias">${escaparHtml(tr('ticket.gracias'))}</div>
+    <div class="centro aviso-privacidad">${escaparHtml(tr('ticket.aviso'))}<br>${escaparHtml(URL_AVISO_CLIENTE)}</div>
 </body></html>`;
         }
 

@@ -357,4 +357,5 @@ return [
     'ticket.cambio' => 'Cambio',
     'ticket.iva_incluido' => 'Precios con IVA incluido',
     'ticket.gracias' => '¡Gracias por su compra!',
+    'ticket.aviso' => 'Consulta nuestro aviso de privacidad en:',
 ];
