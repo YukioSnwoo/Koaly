@@ -24,6 +24,7 @@ if (!isset($_SESSION['id_usuario']) || (int) $_SESSION['id_rol'] !== 3) {
 require_once __DIR__ . '/../admin/database.php';
 require_once __DIR__ . '/../admin/csrf.php';
 require_once __DIR__ . '/includes/caja.php';
+require_once __DIR__ . '/../admin/agotados_comun.php';
 
 usarHoraLocal($pdo);
 
@@ -358,6 +359,24 @@ try {
 }
 
 /* ------------------------------------------------------------
+   Productos que se agotaron con esta venta: se avisa al gerente
+   (sql/019). Después del commit: si algo falla, la venta ya quedó.
+   ------------------------------------------------------------ */
+$agotados = [];
+try {
+    // Se vendieron, así que tenían existencias: sus alertas anteriores ya no aplican
+    cerrarAlertasAgotados($pdo, $idSucursal, array_column($lineas, 'id_producto'));
+    foreach ($lineas as $l) {
+        if ($l['existencia_final'] <= 0) {
+            alertarAgotado($pdo, $idSucursal, (int) $l['id_producto'], 'Venta', $idCajero, $idVenta);
+            $agotados[] = $l['nombre'];
+        }
+    }
+} catch (Throwable $e) {
+    error_log('registrar_venta (agotados): ' . $e->getMessage());
+}
+
+/* ------------------------------------------------------------
    Datos del ticket (después del commit: si algo falla aquí la venta
    ya quedó guardada, así que solo se omite lo que no se pudo leer)
    ------------------------------------------------------------ */
@@ -444,4 +463,5 @@ responder(200, [
     'cambio'   => $cambioCentavos !== null ? $cambioCentavos / 100 : null,
     'ticket'   => $ticket,
     'arqueo'   => $arqueo,
+    'agotados' => $agotados,   // nombres de los que se acabaron (ya se avisó al gerente)
 ]);

@@ -98,9 +98,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                     <!-- Categorías dinámicas -->
                 </div>
             </nav>
-            <div class="sidebar-group">
-                <button type="button" class="btn btn-warning btn-block" onclick="limpiarTabla()" data-i18n="comun.limpiar"><?= e(t('comun.limpiar')) ?></button>
-            </div>
         </aside>
 
         <!-- Catálogo Central -->
@@ -119,7 +116,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         <!-- Lateral Derecho (Totales) -->
         <aside class="panel resumen">
             <!-- Resumen: todo agrupado por producto (p1 ×4, p2). El escaneo en orden lo ve el comprador (pantalla_cliente.php) -->
-            <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
+            <?php // "Limpiar" vacía la venta: va junto a ella, lejos de las tarjetas de productos ?>
+            <div class="resumen-cabecera">
+                <div class="panel-title" data-i18n="resumen.resumen"><?= e(t('resumen.resumen')) ?></div>
+                <button type="button" class="btn btn-warning btn-limpiar" id="btnLimpiar" onclick="limpiarTabla()" disabled
+                        title="<?= e(t('resumen.limpiar_ayuda')) ?>" data-i18n-title="resumen.limpiar_ayuda">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    <span data-i18n="comun.limpiar"><?= e(t('comun.limpiar')) ?></span>
+                </button>
+            </div>
             <ul class="resumen-lista" id="resumenLista"></ul>
 
             <div>
@@ -780,7 +785,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             actualizarStockProducto(producto.id_producto, stock);
 
             if (stock <= 0) {
-                avisoAgotado(producto.nombre);
+                avisoAgotado(producto);
                 renderCarrito();
                 return;
             }
@@ -1204,12 +1209,56 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* ---------- Avisos de existencias ---------- */
-        function avisoAgotado(nombre) {
+        // Producto agotado: se avisa en pantalla y, en segundo plano, al gerente de la
+        // sucursal (le llega a su campanita). avisar_agotado.php no repite el aviso del
+        // mismo producto en el día; aquí solo se evita mandarlo en cada clic.
+        const AVISO_AGOTADO_MS = 2 * 60 * 1000;
+        const avisadosAgotado = new Map();   // id_producto → cuándo se avisó
+
+        function avisoAgotado(producto) {
+            const nota = document.createElement('p');
+            nota.className = 'aviso-gerente';
+            nota.setAttribute('role', 'status');
+            nota.hidden = true;
             mostrarAviso({
                 tipo: 'peligro',
                 titulo: tr('aviso.agotado_titulo'),
-                mensaje: tr('aviso.agotado', { p: nombre })
+                mensaje: tr('aviso.agotado', { p: producto.nombre }),
+                contenido: nota
             });
+            avisarGerenteAgotado(producto.id_producto, nota);
+        }
+
+        async function avisarGerenteAgotado(idProducto, nota) {
+            const mostrarNota = (texto, ok = false) => {
+                nota.textContent = texto;
+                nota.classList.toggle('aviso-gerente--ok', ok);
+                nota.hidden = false;
+            };
+            if (Date.now() - (avisadosAgotado.get(idProducto) || 0) < AVISO_AGOTADO_MS) {
+                mostrarNota(tr('aviso.agotado_avisado'));
+                return;
+            }
+
+            const datos = new FormData();
+            datos.append('csrf_token', csrfToken);
+            datos.append('id_producto', idProducto);
+            let r;
+            try {
+                r = await (await fetch('avisar_agotado.php', { method: 'POST', body: datos })).json();
+            } catch (error) {
+                return;   // sin conexión: la venta sigue, solo no se avisó
+            }
+
+            if (r.stock > 0) {
+                // El catálogo tenía el dato viejo: ya hay piezas y se puede agregar
+                actualizarStockProducto(idProducto, r.stock);
+                renderCarrito();
+                mostrarNota(tr('aviso.agotado_ya_hay', { disponibles: trn('comun.n_disponibles', r.stock) }), true);
+            } else if (r.avisado) {
+                avisadosAgotado.set(idProducto, Date.now());
+                mostrarNota(tr('aviso.agotado_avisado'));
+            }
         }
 
         function avisoInsuficiente(nombre, stock, pedida) {
@@ -1316,6 +1365,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         function renderCarrito() {
             const tbody = document.getElementById('listaProductos');
             tbody.innerHTML = '';
+            // Sin productos no hay nada que limpiar
+            document.getElementById('btnLimpiar').disabled = carrito.length === 0;
 
             if (carrito.length === 0) {
                 tbody.innerHTML = '<tr class="empty-row"><td colspan="6"></td></tr>';
@@ -1874,6 +1925,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (json.success) {
                 // Lo esperado en caja tras la venta: al aceptar se avisa si hay excedente
                 if (json.arqueo) arqueoActual = json.arqueo;
+                // Lo que se acabó con esta venta (el servidor ya avisó al gerente)
+                (json.agotados || []).forEach(p => mostrarToast(tr('aviso.se_agoto', { p }), 'aviso'));
                 return json;
             }
 
@@ -2791,7 +2844,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     .firma { margin-top: 26px; border-top: 1px solid #000; padding-top: 2px; text-align: center; font-size: 11px; }
     .sub { padding-left: 8px; }
     .opciones { margin-top: 8px; }
+    .aviso-privacidad { margin-top: 8px; font-size: 10px; word-break: break-all; }
 `;
+
+        // Aviso de privacidad para clientes (privacidad/aviso_cliente.php), al pie del ticket de venta.
+        // Sin "https://" para que quepa en el papel de 80 mm.
+        const URL_AVISO_CLIENTE = (() => {
+            const url = new URL('../privacidad/?aviso=cliente', location.href);
+            return url.host + url.pathname + url.search;
+        })();
 
         // Renglón de los tickets de caja (corte, arqueo y retiro), con el texto escapado
         const filaTicket = (izq, der, clase = '') =>
@@ -2850,6 +2911,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     <hr>
     <div class="centro chico">${escaparHtml(tr('ticket.iva_incluido'))}</div>
     <div class="centro gracias">${escaparHtml(tr('ticket.gracias'))}</div>
+    <div class="centro aviso-privacidad">${escaparHtml(tr('ticket.aviso'))}<br>${escaparHtml(URL_AVISO_CLIENTE)}</div>
 </body></html>`;
         }
 

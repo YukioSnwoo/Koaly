@@ -87,6 +87,7 @@ return [
     // panel derecho
     'resumen.escaneo' => 'Escaneo',
     'resumen.resumen' => 'Resumen',
+    'resumen.limpiar_ayuda' => 'Vacía toda la venta (pide confirmación)',
     'resumen.articulos' => 'Artículos',
     'resumen.pagar' => 'Pagar',
     'resumen.sin_productos' => 'Sin productos',
@@ -294,6 +295,9 @@ return [
     // avisos
     'aviso.agotado_titulo' => 'Producto agotado',
     'aviso.agotado' => '"{p}" ya no tiene existencias en esta sucursal, no se puede agregar a la venta.',
+    'aviso.agotado_avisado' => 'Ya le avisamos a tu gerente para que lo resurta.',
+    'aviso.agotado_ya_hay' => 'Acaban de llegar existencias ({disponibles}): ya puedes agregarlo.',
+    'aviso.se_agoto' => 'Se agotó "{p}" con esta venta. Ya le avisamos a tu gerente.',
     'aviso.insuficiente_titulo' => 'Productos insuficientes',
     'aviso.insuficiente' => 'Solo {disponibles}.',
     'aviso.sin_existencias' => '"{p}" ya no tiene existencias en esta sucursal.',
@@ -357,4 +361,5 @@ return [
     'ticket.cambio' => 'Cambio',
     'ticket.iva_incluido' => 'Precios con IVA incluido',
     'ticket.gracias' => '¡Gracias por su compra!',
+    'ticket.aviso' => 'Consulta nuestro aviso de privacidad en:',
 ];

@@ -1,23 +1,29 @@
 <?php
 /**
  * Menú de perfil común de admin, gerente y cajero (esquina superior derecha):
- * botón con el nombre y un engranaje que despliega foto, nombre, puesto,
+ * botón con el nombre y un engranaje que despliega iniciales, nombre, puesto,
  * "Mi perfil", notificaciones, modo claro/oscuro, idioma y cerrar sesión.
+ *
+ * En "Mi perfil" el cajero y el gerente no cambian su nombre ni su correo
+ * directo: mandan una solicitud que aprueba su gerente o la administración
+ * (admin/solicitudes_datos.php, sql/020). La contraseña sí se cambia directo.
  *
  * Cada panel lo pinta con menuPerfil() en su barra superior y enlaza
  * perfil/perfil.css y perfil/perfil.js. Los endpoints son perfil/guardar.php
  * y perfil/notificaciones.php.
  *
  * Las notificaciones no tienen tabla propia: salen de las solicitudes de
- * producto y de los turnos de caja de los últimos 30 días, según el rol.
- * Las columnas foto y notificaciones_vistas_en vienen de sql/011_perfil.sql;
- * sin ellas el menú funciona igual, solo sin foto ni avisos de "nueva".
+ * producto y de datos, los turnos de caja y los productos agotados de los
+ * últimos 30 días, según el rol. notificaciones_vistas_en viene de
+ * sql/011_perfil.sql; sin ella el menú funciona igual, sin avisos de "nueva".
  */
 
 require_once __DIR__ . '/../admin/csrf.php';
 require_once __DIR__ . '/../admin/preferencia_idioma.php';
 require_once __DIR__ . '/../admin/reglas_nombre.php';   // nombre(s) y apellidos por separado
+require_once __DIR__ . '/../admin/solicitudes_datos.php';
 
+// Fotos de perfil de antes (ya no se suben): eliminar_usuario.php borra la que quede
 const PERFIL_CARPETA_FOTOS       = 'Imagenes/perfiles';
 const PERFIL_DIAS_NOTIFICACIONES = 30;
 const PERFIL_MAX_NOTIFICACIONES  = 30;
@@ -53,7 +59,7 @@ function perfilE(?string $texto): string
 
 /**
  * Datos del usuario para el menú, o null si no existe. Si aún no se corre
- * sql/011_perfil.sql, foto y notificaciones_vistas_en llegan en null.
+ * sql/011_perfil.sql, notificaciones_vistas_en llega en null.
  */
 function perfilUsuario(PDO $pdo, int $idUsuario): ?array
 {
@@ -67,31 +73,14 @@ function perfilUsuario(PDO $pdo, int $idUsuario): ?array
     // Nombre(s) y apellidos por separado, o NULL si aún no se corre sql/017
     $apellidos = columnasApellidos($pdo) . ',';
     try {
-        $stmt = $pdo->prepare(sprintf($sql, 'u.foto, u.notificaciones_vistas_en, ' . $apellidos));
+        $stmt = $pdo->prepare(sprintf($sql, 'u.notificaciones_vistas_en, ' . $apellidos));
         $stmt->execute([$idUsuario]);
     } catch (PDOException $e) {
-        $stmt = $pdo->prepare(sprintf($sql, 'NULL AS foto, NULL AS notificaciones_vistas_en, ' . $apellidos));
+        $stmt = $pdo->prepare(sprintf($sql, 'NULL AS notificaciones_vistas_en, ' . $apellidos));
         $stmt->execute([$idUsuario]);
     }
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
     return $usuario ?: null;
-}
-
-/** "AB" a partir del nombre, para cuando no hay foto. */
-function perfilIniciales(string $nombre): string
-{
-    $partes = preg_split('/\s+/', trim($nombre), -1, PREG_SPLIT_NO_EMPTY);
-    $iniciales = '';
-    foreach (array_slice($partes, 0, 2) as $parte) {
-        $iniciales .= mb_strtoupper(mb_substr($parte, 0, 1));
-    }
-    return $iniciales !== '' ? $iniciales : '?';
-}
-
-/** Ruta de la foto vista desde un panel (admin/, gerente/, cajero/), o null. */
-function perfilFotoUrl(?string $foto): ?string
-{
-    return $foto ? '../' . $foto : null;
 }
 
 /** Datos del usuario que necesita el navegador después de guardar el perfil. */
@@ -100,18 +89,67 @@ function perfilParaJs(array $usuario): array
     return partesNombre($usuario) + [
         'nombre'    => $usuario['nombre'],
         'email'     => $usuario['email'],
-        'foto'      => perfilFotoUrl($usuario['foto']),
-        'iniciales' => perfilIniciales($usuario['nombre']),
+        'iniciales' => inicialesNombre($usuario),
     ];
 }
 
+/** Avatar con las iniciales: primer nombre y primer apellido (admin/reglas_nombre.php). */
 function perfilAvatar(array $usuario, string $clase): string
 {
-    $foto = perfilFotoUrl($usuario['foto']);
-    return '<span class="perfil-avatar ' . $clase . '" data-perfil-avatar>'
-        . '<img alt=""' . ($foto ? ' src="' . perfilE($foto) . '"' : ' hidden') . '>'
-        . '<span class="perfil-avatar__iniciales"' . ($foto ? ' hidden' : '') . '>' . perfilE(perfilIniciales($usuario['nombre'])) . '</span>'
+    return '<span class="perfil-avatar ' . $clase . '" data-perfil-avatar aria-hidden="true">'
+        . '<span class="perfil-avatar__iniciales">' . perfilE(inicialesNombre($usuario)) . '</span>'
         . '</span>';
+}
+
+/** Quién revisa, para los textos: "tu gerente" o "la administración". */
+function perfilQuienRevisa(string $revisa): string
+{
+    return perfilT($revisa === 'Gerente' ? 'solicitud.tu_gerente' : 'solicitud.la_administracion');
+}
+
+/**
+ * Recuadro de "Mi perfil" con la solicitud de cambio de datos: la pendiente (con
+ * "Cancelar solicitud") o la última rechazada, si fue en los últimos 30 días.
+ * Vacío si no hay nada que mostrar. guardar.php y solicitud_datos.php lo
+ * devuelven para que perfil.js lo cambie sin recargar.
+ */
+function perfilHtmlSolicitud(?array $s): string
+{
+    if ($s === null) {
+        return '';
+    }
+    $fecha = static fn(?string $f): string => $f ? date(perfilIdioma() === 'en' ? 'm/d/Y H:i' : 'd/m/Y H:i', strtotime($f)) : '';
+
+    if ($s['estado'] === 'Pendiente') {
+        $filas = '';
+        foreach (cambiosSolicitudDatos($s) as $c) {
+            $filas .= '<li><span class="perfil-solicitud__campo">' . perfilE(perfilT('solicitud.campo_' . $c['campo'])) . '</span>'
+                . '<span class="perfil-solicitud__antes">' . perfilE($c['antes']) . '</span>'
+                . '<span class="perfil-solicitud__flecha" aria-hidden="true">→</span>'
+                . '<span class="perfil-solicitud__despues">' . perfilE($c['despues']) . '</span></li>';
+        }
+        return '<div class="perfil-solicitud perfil-solicitud--pendiente">'
+            . '<strong>' . perfilE(perfilT('solicitud.pendiente')) . '</strong>'
+            . '<span class="perfil-solicitud__meta">' . perfilE(perfilT('solicitud.pendiente_meta', [
+                'quien' => perfilQuienRevisa($s['revisa']), 'fecha' => $fecha($s['creado_en']),
+            ])) . '</span>'
+            . '<ul class="perfil-solicitud__cambios">' . $filas . '</ul>'
+            . '<button type="button" class="perfil-btn perfil-btn--plano perfil-solicitud__cancelar" data-perfil-cancelar-solicitud>'
+            . perfilE(perfilT('solicitud.cancelar')) . '</button>'
+            . '</div>';
+    }
+
+    $reciente = $s['resuelto_en'] && strtotime($s['resuelto_en']) >= strtotime('-' . PERFIL_DIAS_NOTIFICACIONES . ' days');
+    if ($s['estado'] === 'Rechazada' && $reciente) {
+        return '<div class="perfil-solicitud perfil-solicitud--rechazada">'
+            . '<strong>' . perfilE(perfilT('solicitud.rechazada', ['titulo' => $s['rechazo_titulo']])) . '</strong>'
+            . ($s['rechazo_motivo'] ? '<p>' . nl2br(perfilE($s['rechazo_motivo'])) . '</p>' : '')
+            . '<span class="perfil-solicitud__meta">' . perfilE(perfilT('solicitud.rechazada_meta', [
+                'quien' => perfilQuienRevisa($s['revisa']), 'fecha' => $fecha($s['resuelto_en']),
+            ])) . '</span>'
+            . '</div>';
+    }
+    return '';
 }
 
 /* ------------------------------------------------------------
@@ -155,13 +193,81 @@ function perfilConsultar(PDO $pdo, string $sql, array $params): array
 }
 
 /**
+ * Para quien revisa: las solicitudes de cambio de datos que le tocan (pendientes
+ * y, ya grises, las que se resolvieron) de los últimos 30 días.
+ */
+function perfilNotifSolicitudesDatos(PDO $pdo, string $revisa, ?int $idSucursal, string $desde, string $enlace): array
+{
+    [$alcance, $params] = _alcanceSolicitudDatos($revisa, $idSucursal, 'sd');
+    $filas = perfilConsultar($pdo, "
+        SELECT sd.nombre_antes, sd.nombre, sd.email, sd.estado, sd.creado_en AS fecha, u.id_rol, su.nombre AS sucursal
+        FROM Solicitudes_Datos sd
+        INNER JOIN Usuarios u ON u.id_usuario = sd.id_usuario
+        LEFT JOIN Sucursales su ON su.id_sucursal = sd.id_sucursal
+        WHERE $alcance AND sd.estado <> 'Cancelada' AND sd.creado_en >= ?
+    ", array_merge($params, [$desde]));
+
+    $items = [];
+    foreach ($filas as $f) {
+        $pendiente = $f['estado'] === 'Pendiente';
+        $detalle = [];
+        if ($revisa === 'Admin') {   // a la administración le llegan de varias sucursales
+            $detalle[] = perfilT('rol.' . (int) $f['id_rol']) . ($f['sucursal'] ? ' · ' . $f['sucursal'] : '');
+        }
+        if (!$pendiente) {
+            $detalle[] = perfilT('notif.datos_ya_' . strtolower($f['estado']));
+        }
+        $items[] = [
+            'texto'   => perfilT('notif.datos_pide', ['nombre' => $f['nombre_antes'], 'que' => perfilT('notif.que_' . queCambiaSolicitudDatos($f))]),
+            'detalle' => implode(' · ', $detalle),
+            'tono'    => $pendiente ? 'aviso' : 'info',
+            'enlace'  => $enlace,
+            'fecha'   => $f['fecha'],
+        ];
+    }
+    return $items;
+}
+
+/** Para quien pidió el cambio: sus solicitudes aprobadas o rechazadas en los últimos 30 días. */
+function perfilNotifMisSolicitudesDatos(PDO $pdo, int $idUsuario, string $desde): array
+{
+    $filas = perfilConsultar($pdo, "
+        SELECT nombre, email, estado, rechazo_titulo, rechazo_motivo, resuelto_en AS fecha
+        FROM Solicitudes_Datos
+        WHERE id_usuario = ? AND estado IN ('Aprobada', 'Rechazada') AND resuelto_en >= ?
+    ", [$idUsuario, $desde]);
+
+    $items = [];
+    foreach ($filas as $f) {
+        $que = perfilT('notif.que_' . queCambiaSolicitudDatos($f));
+        $items[] = $f['estado'] === 'Aprobada'
+            ? [
+                'texto'   => perfilT('notif.datos_aprobada', ['que' => $que]),
+                'detalle' => $f['email'] !== null ? perfilT('notif.datos_entras_con', ['email' => $f['email']]) : null,
+                'tono'    => 'ok',
+                'fecha'   => $f['fecha'],
+            ]
+            : [
+                'texto'   => perfilT('notif.datos_rechazada', ['que' => $que, 'titulo' => $f['rechazo_titulo']]),
+                'detalle' => $f['rechazo_motivo'],
+                'tono'    => 'peligro',
+                'fecha'   => $f['fecha'],
+            ];
+    }
+    return $items;
+}
+
+/**
  * Notificaciones del usuario, de la más nueva a la más vieja:
  * [['texto', 'detalle', 'tono' (ok|peligro|aviso|info), 'enlace', 'fecha', 'nueva']].
  * Las fechas se comparan en hora de México (notificaciones.php fija la zona).
  *   Admin:   solicitudes nuevas, reenviadas o canceladas por los gerentes,
- *            y cortes de caja con diferencia en cualquier sucursal.
- *   Gerente: respuestas del admin a sus solicitudes y cortes de sus cajeros.
- *   Cajero:  cortes suyos que el gerente ya recibió.
+ *            cortes de caja con diferencia en cualquier sucursal y cambios
+ *            de nombre o correo que le tocan (de gerentes, o de cajeros sin gerente).
+ *   Gerente: respuestas del admin a sus solicitudes, cortes de sus cajeros y
+ *            productos agotados en su sucursal (sql/019, una por producto y día),
+ *            cambios de nombre o correo de sus cajeros y la respuesta a los suyos.
+ *   Cajero:  cortes suyos que el gerente ya recibió y la respuesta a sus cambios de datos.
  */
 function perfilNotificaciones(PDO $pdo, array $usuario): array
 {
@@ -223,6 +329,8 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
                     'fecha' => $f['fecha'],
                 ];
             }
+
+            array_push($items, ...perfilNotifSolicitudesDatos($pdo, 'Admin', null, $desde, 'gerentes.php#solicitudes-datos'));
             break;
 
         case 2:
@@ -270,6 +378,47 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
                     'fecha'   => $f['fecha'],
                 ];
             }
+
+            // Productos agotados (sql/019). La fecha es la de la alerta, no la del último
+            // intento: así un intento más no vuelve a encender la campanita.
+            $filas = perfilConsultar($pdo, "
+                SELECT a.id_producto, a.origen, a.id_venta, a.intentos, a.ultimo_intento, a.resuelta_en,
+                       a.creado_en AS fecha, p.nombre AS producto, u.nombre AS cajero
+                FROM Alertas_Agotados a
+                INNER JOIN Productos p ON p.id_producto = a.id_producto
+                LEFT JOIN Usuarios u ON u.id_usuario = a.id_cajero
+                WHERE a.id_sucursal = ? AND a.creado_en >= ?
+            ", [$usuario['id_sucursal'], $desde]);
+            foreach ($filas as $f) {
+                $cajero   = $f['cajero'] ?? perfilT('notif.un_cajero');
+                $porVenta = $f['origen'] === 'Venta';
+                $intentos = (int) $f['intentos'];
+                $hora     = $f['ultimo_intento'] ? date('H:i', strtotime($f['ultimo_intento'])) : '';
+
+                // "Ya se resurtió" va primero: el detalle se corta a dos renglones
+                $detalle = $f['resuelta_en'] ? [perfilT('notif.agotado_resurtido')] : [];
+                if ($porVenta) {
+                    $detalle[] = perfilT('notif.agotado_ultima', ['cajero' => $cajero, 'venta' => $f['id_venta']]);
+                    if ($intentos > 0) {
+                        $detalle[] = perfilT($intentos === 1 ? 'notif.agotado_despues_1' : 'notif.agotado_despues', ['n' => $intentos, 'hora' => $hora]);
+                    }
+                } elseif ($intentos > 1) {
+                    $detalle[] = perfilT('notif.agotado_veces', ['n' => $intentos, 'hora' => $hora]);
+                }
+
+                $items[] = [
+                    'texto'   => perfilT($porVenta ? 'notif.agotado_venta' : 'notif.agotado_intento',
+                                         ['producto' => $f['producto'], 'cajero' => $cajero]),
+                    'detalle' => implode(' ', $detalle),
+                    'tono'    => $f['resuelta_en'] ? 'info' : 'peligro',
+                    'enlace'  => 'producto.php?id=' . (int) $f['id_producto'],
+                    'fecha'   => $f['fecha'],
+                ];
+            }
+
+            // Cambios de datos: los que piden sus cajeros y la respuesta a los suyos (sql/020)
+            array_push($items, ...perfilNotifSolicitudesDatos($pdo, 'Gerente', (int) $usuario['id_sucursal'], $desde, 'cajeros.php#solicitudes-datos'));
+            array_push($items, ...perfilNotifMisSolicitudesDatos($pdo, (int) $usuario['id_usuario'], $desde));
             break;
 
         case 3:
@@ -287,6 +436,8 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
                     'fecha'   => $f['fecha'],
                 ];
             }
+
+            array_push($items, ...perfilNotifMisSolicitudesDatos($pdo, (int) $usuario['id_usuario'], $desde));
             break;
     }
 
@@ -318,7 +469,7 @@ function perfilNotificaciones(PDO $pdo, array $usuario): array
  *   idioma_accion  a dónde se manda el formulario de idioma (el del panel)
  *   idioma_campos  campos ocultos extra para ese formulario (p. ej. volver)
  *   salir          ['href' => '../logout.php'] o ['onclick' => "logoutConfirmado()"]
- * Sin conexión ($pdo null o con error) el menú sale igual, sin nombre ni foto.
+ * Sin conexión ($pdo null o con error) el menú sale igual, sin nombre.
  */
 function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
 {
@@ -329,8 +480,23 @@ function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
     }
     $usuario ??= [
         'id_usuario' => $idUsuario, 'nombre' => '—', 'email' => '', 'id_rol' => (int) ($_SESSION['id_rol'] ?? 0),
-        'sucursal' => null, 'foto' => null,
+        'sucursal' => null, 'id_sucursal' => null,
     ];
+
+    // Cajero y gerente piden el cambio de nombre o correo (admin/solicitudes_datos.php);
+    // mientras tienen uno pendiente, esos campos quedan de solo lectura
+    $revisa = null;
+    $solicitud = null;
+    if ($pdo && (int) $usuario['id_rol'] !== 1 && isset($usuario['estado'])) {
+        try {
+            $revisa = revisorSolicitudDatos($pdo, $usuario);
+        } catch (PDOException $e) {
+            $revisa = (int) $usuario['id_rol'] === 3 ? 'Gerente' : 'Admin';
+        }
+        $solicitud = ultimaSolicitudDatos($pdo, (int) $usuario['id_usuario']);
+    }
+    $bloqueado = $solicitud !== null && $solicitud['estado'] === 'Pendiente';
+    $soloLectura = $bloqueado ? ' readonly' : '';
 
     $idioma = perfilIdioma();
     $rol = 'rol.' . (int) $usuario['id_rol'];
@@ -421,44 +587,44 @@ function menuPerfil(?PDO $pdo, int $idUsuario, array $opciones): string
     </div>
 
     <dialog class="perfil-dialogo" id="perfilDialogo" aria-labelledby="perfilDialogoTitulo">
-        <form class="perfil-form" data-perfil-form enctype="multipart/form-data" novalidate>
+        <form class="perfil-form" data-perfil-form novalidate>
             <h2 id="perfilDialogoTitulo" data-perfil-t="form.titulo"><?= perfilE(perfilT('form.titulo')) ?></h2>
             <div class="perfil-mensaje" data-perfil-mensaje role="alert" hidden></div>
 
-            <div class="perfil-foto">
-                <?= perfilAvatar($usuario, 'perfil-avatar--foto') ?>
-                <div class="perfil-foto__acciones">
-                    <label class="perfil-btn">
-                        <?= $txt('form.foto_cambiar') ?>
-                        <input type="file" name="foto" accept="image/png,image/jpeg,image/webp" class="perfil-oculto">
-                    </label>
-                    <button type="button" class="perfil-btn perfil-btn--plano" data-perfil-quitar-foto<?= $usuario['foto'] ? '' : ' hidden' ?>><?= $txt('form.foto_quitar') ?></button>
-                    <input type="hidden" name="quitar_foto" value="0">
-                    <small><?= $txt('form.foto_ayuda') ?></small>
+            <?php // Las iniciales salen del primer nombre y el primer apellido (no hay foto) ?>
+            <div class="perfil-identidad">
+                <?= perfilAvatar($usuario, 'perfil-avatar--panel') ?>
+                <div class="perfil-identidad__datos">
+                    <strong data-perfil-nombre><?= perfilE($usuario['nombre']) ?></strong>
                 </div>
             </div>
+
+            <?php if ($revisa !== null): ?>
+                <p class="perfil-nota"><?= perfilE(perfilT('solicitud.nota', ['quien' => perfilQuienRevisa($revisa)])) ?></p>
+                <div class="perfil-solicitud-caja" data-perfil-solicitud><?= perfilHtmlSolicitud($solicitud) ?></div>
+            <?php endif; ?>
 
             <?php // Nombre(s) y apellidos por separado; guardar.php arma el completo ?>
             <?php $partes = partesNombre($usuario); ?>
             <label class="perfil-campo">
                 <?= $txt('form.nombres') ?>
-                <input type="text" name="nombres" maxlength="<?= NOMBRE_MAX_NOMBRES ?>" required autocomplete="given-name" value="<?= perfilE($partes['nombres']) ?>">
+                <input type="text" name="nombres" maxlength="<?= NOMBRE_MAX_NOMBRES ?>" required autocomplete="given-name" value="<?= perfilE($partes['nombres']) ?>" data-perfil-dato<?= $soloLectura ?>>
             </label>
             <div class="perfil-fila">
                 <label class="perfil-campo">
                     <?= $txt('form.paterno') ?>
-                    <input type="text" name="apellido_paterno" maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="family-name" value="<?= perfilE($partes['apellido_paterno']) ?>">
+                    <input type="text" name="apellido_paterno" maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="family-name" value="<?= perfilE($partes['apellido_paterno']) ?>" data-perfil-dato<?= $soloLectura ?>>
                 </label>
                 <label class="perfil-campo">
                     <?= $txt('form.materno') ?>
-                    <input type="text" name="apellido_materno" maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="off" value="<?= perfilE($partes['apellido_materno']) ?>">
+                    <input type="text" name="apellido_materno" maxlength="<?= NOMBRE_MAX_APELLIDO ?>" autocomplete="off" value="<?= perfilE($partes['apellido_materno']) ?>" data-perfil-dato<?= $soloLectura ?>>
                 </label>
             </div>
             <?php // Basta con un apellido, pero no los dos vacíos (lo revisa guardar.php) ?>
             <small class="perfil-fila-ayuda"><?= $txt('form.apellidos_ayuda') ?></small>
             <label class="perfil-campo">
                 <?= $txt('form.email') ?>
-                <input type="email" name="email" maxlength="100" required autocomplete="email" value="<?= perfilE($usuario['email']) ?>">
+                <input type="email" name="email" maxlength="100" required autocomplete="email" value="<?= perfilE($usuario['email']) ?>" data-perfil-dato<?= $soloLectura ?>>
             </label>
 
             <?php // Cambiar contraseña: solo el botón; al tocarlo se despliegan los campos.

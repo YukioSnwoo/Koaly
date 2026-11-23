@@ -7,13 +7,15 @@ require_once __DIR__ . '/includes/turnos.php';
 require_once __DIR__ . '/../admin/profanity_filter.php';
 require_once __DIR__ . '/../admin/reglas_nombre.php';
 require_once __DIR__ . '/../admin/eliminar_usuario.php';
+require_once __DIR__ . '/../admin/solicitudes_datos.php';   // cambios de nombre y correo que piden los cajeros
 
 /**
  * ¿El gerente puede cambiar el correo de este cajero? Solo mientras el cajero
  * nunca ha aceptado el aviso de privacidad: aceptarlo es abrir el enlace que
- * llegó a su buzón, así que desde ahí el correo es suyo. Después solo él (en
- * «Mi perfil») o la administración lo cambian; si no, el gerente podría poner
- * su propio correo, restablecer la contraseña y entrar a la caja como él.
+ * llegó a su buzón, así que desde ahí el correo es suyo. Después solo él lo
+ * pide (en «Mi perfil»; el gerente aprueba lo que él escribió) o la
+ * administración lo cambia; si no, el gerente podría poner su propio correo,
+ * restablecer la contraseña y entrar a la caja como él.
  * Sin la tabla del aviso (sql/010) se usa "nunca ha entrado" (debe_cambiar).
  */
 function puedeCambiarCorreo(PDO $pdo, int $idCajero, bool $debeCambiar): bool
@@ -392,6 +394,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(t('error.eliminar_historial', ['nombre' => $empleado['nombre']]));
             }
             $mensajeExito = t('cajeros.eliminado', ['nombre' => $empleado['nombre']]);
+
+        /* -------- Cambio de nombre o correo que pidió un cajero (sql/020) --------
+           Solo se aprueba o se rechaza: lo pedido no se edita. */
+        } elseif ($action === 'aprobar_datos') {
+            try {
+                $s = aprobarSolicitudDatos($pdo, (int) ($_POST['id_solicitud'] ?? 0), (int) $gerente['id_usuario'], 'Gerente', $idSucursalGerente);
+            } catch (SolicitudDatosError $e) {
+                throw new RuntimeException(t('datos.error_' . $e->clave));
+            }
+            $mensajeExito = t('datos.aprobada', ['nombre' => $s['nombre'] ?? $s['nombre_antes']]);
+            if ($s['email'] !== null) {
+                $avisar(avisarCorreoCambiado($s, 'tu gerente'), $s['email_antes'], 'datos.aviso_correo_anterior');
+            }
+
+        } elseif ($action === 'rechazar_datos') {
+            try {
+                $s = rechazarSolicitudDatos(
+                    $pdo, (int) ($_POST['id_solicitud'] ?? 0), (int) $gerente['id_usuario'], 'Gerente', $idSucursalGerente,
+                    (string) ($_POST['rechazo_titulo'] ?? ''), (string) ($_POST['rechazo_motivo'] ?? '')
+                );
+            } catch (SolicitudDatosError $e) {
+                throw new RuntimeException(t('datos.error_' . $e->clave));
+            }
+            $mensajeExito = t('datos.rechazada', ['nombre' => $s['nombre_antes']]);
         }
 
         // PRG: tras guardar, redirigir para que F5 no reenvíe el formulario
@@ -470,8 +496,12 @@ $stmt = $pdo->prepare("
              tc.numero_caja, t.fecha_apertura
     ORDER BY u.nombre
 ");
-$stmt->execute(array_merge($hayTablaAviso ? [AVISO_PRIVACIDAD_VERSION] : [], [$idSucursalGerente, $idSucursalGerente]));
+avisosPublicados($pdo);   // la versión vigente puede venir del panel del admin (sql/018)
+$stmt->execute(array_merge($hayTablaAviso ? [versionAviso('empleado')] : [], [$idSucursalGerente, $idSucursalGerente]));
 $cajeros = $stmt->fetchAll();
+
+// Cambios de nombre o correo que piden los cajeros de esta sucursal (vacío sin sql/020)
+$solicitudesDatos = solicitudesDatosPorRevisar($pdo, 'Gerente', $idSucursalGerente);
 
 $totalActivos = 0;
 $totalSinAviso = 0; // cajeros que no pueden entrar a la caja hasta aceptar el aviso
@@ -628,6 +658,9 @@ require __DIR__ . '/header.php';
             <?php if ($totalSinAviso > 0): ?>
                 · <span class="texto-pendiente"><?= e(tn('cajeros.n_sin_aviso', $totalSinAviso)) ?></span>
             <?php endif; ?>
+            <?php if ($solicitudesDatos): ?>
+                · <a class="texto-pendiente" href="#solicitudes-datos"><?= e(tn('datos.n_por_revisar', count($solicitudesDatos))) ?></a>
+            <?php endif; ?>
         </p>
     </div>
     <button type="button" class="btn btn-primary" onclick="abrirModalNuevoCajero()">+ <?= e(t('cajeros.nuevo')) ?></button>
@@ -642,6 +675,48 @@ require __DIR__ . '/header.php';
 <?php foreach ($errores as $error): ?>
     <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
 <?php endforeach; ?>
+
+<?php // Cambios de nombre o correo por aprobar: se aprueban o se rechazan, no se editan ?>
+<?php if ($solicitudesDatos): ?>
+    <section class="panel solicitudes-datos" id="solicitudes-datos" aria-labelledby="tituloSolicitudesDatos">
+        <div class="solicitudes-datos__cabecera">
+            <h2 id="tituloSolicitudesDatos"><?= e(t('datos.titulo')) ?> <span class="badge badge-warning"><?= count($solicitudesDatos) ?></span></h2>
+            <p><?= e(t('datos.ayuda')) ?></p>
+        </div>
+        <ul class="solicitudes-datos__lista">
+            <?php foreach ($solicitudesDatos as $s): $idSolicitud = (int) $s['id_solicitud']; ?>
+                <li class="solicitud-datos">
+                    <div class="pz-avatar" aria-hidden="true"><?= e(inicialesSolicitante($s)) ?></div>
+                    <div class="solicitud-datos__cuerpo">
+                        <div class="solicitud-datos__quien">
+                            <strong><?= e($s['nombre_antes']) ?></strong>
+                            <span class="texto-tenue"><?= e(t('datos.enviada', ['fecha' => fecha($s['creado_en'])])) ?></span>
+                        </div>
+                        <dl class="solicitud-datos__cambios">
+                            <?php foreach (cambiosSolicitudDatos($s) as $c): ?>
+                                <div>
+                                    <dt><?= e(t('datos.campo_' . $c['campo'])) ?></dt>
+                                    <dd><span class="solicitud-datos__antes"><?= e($c['antes']) ?></span><span class="solicitud-datos__flecha" aria-hidden="true">→</span><span class="sr-only"><?= e(t('datos.cambia_a')) ?></span><strong><?= e($c['despues']) ?></strong></dd>
+                                </div>
+                            <?php endforeach; ?>
+                        </dl>
+                    </div>
+                    <div class="solicitud-datos__acciones">
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="abrirRechazoDatos(this)"
+                                data-id="<?= $idSolicitud ?>" data-texto="<?= e(t('datos.rechazar_texto', ['nombre' => $s['nombre_antes']])) ?>"><?= e(t('datos.rechazar')) ?></button>
+                        <form method="POST" data-confirm="<?= e(t('datos.confirmar_aprobar', ['nombre' => $s['nombre_antes']])) ?>"
+                              data-confirm-titulo="<?= e(t('datos.aprobar_titulo')) ?>" data-confirm-aceptar="<?= e(t('datos.aprobar')) ?>">
+                            <input type="hidden" name="action" value="aprobar_datos">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                            <input type="hidden" name="id_solicitud" value="<?= $idSolicitud ?>">
+                            <button type="submit" class="btn btn-primary btn-sm"><?= e(t('datos.aprobar')) ?></button>
+                        </form>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+<?php endif; ?>
 
 <?php if (empty($cajeros)): ?>
     <div class="panel">
@@ -658,7 +733,7 @@ require __DIR__ . '/header.php';
                      data-columna="<?= e(t('estado_usuario.' . $c['estado'])) ?>"
                      data-columna-orden="<?= (int) array_search($c['estado'], $ESTADOS_VALIDOS, true) ?>">
                 <header class="pz-identidad">
-                    <div class="pz-avatar" aria-hidden="true"><?= e(iniciales($c['nombre'])) ?></div>
+                    <div class="pz-avatar" aria-hidden="true"><?= e(iniciales($c)) ?></div>
                     <div class="pz-nombres">
                         <h2 class="pz-nombre"><?= e($c['nombre']) ?></h2>
                         <span class="pz-sub"><?= e($c['email']) ?></span>
@@ -698,7 +773,7 @@ require __DIR__ . '/header.php';
                         <button type="button" class="fila-abrir" aria-expanded="false" aria-label="<?= e(t('tarjeta.ver_detalle', ['nombre' => $c['nombre']])) ?>">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
                         </button>
-                        <div class="pz-avatar" aria-hidden="true"><?= e(iniciales($c['nombre'])) ?></div>
+                        <div class="pz-avatar" aria-hidden="true"><?= e(iniciales($c)) ?></div>
                         <div class="pz-nombres"><span class="pz-nombre"><?= e($c['nombre']) ?></span><span class="pz-sub"><?= e($c['email']) ?></span></div>
                     </div></td>
                     <td><span class="badge <?= $BADGE_ESTADO[$c['estado']] ?? 'badge-inactivo' ?>"><?= e(t('estado_usuario.' . $c['estado'])) ?></span></td>
@@ -829,6 +904,37 @@ require __DIR__ . '/header.php';
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalBaja')"><?= e(t('comun.cancelar')) ?></button>
                 <button type="submit" class="btn btn-danger-solid"><?= e(t('cajeros.baja_titulo')) ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: rechazar un cambio de nombre o correo (título obligatorio, motivo opcional) -->
+<div class="modal-overlay" id="modalRechazoDatos">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="tituloRechazoDatos">
+        <h2 id="tituloRechazoDatos"><?= e(t('datos.rechazar_titulo')) ?></h2>
+        <p class="modal-ayuda" id="textoRechazoDatos"></p>
+        <form id="formRechazoDatos" method="POST" onsubmit="this.querySelector('[type=submit]').disabled = true;">
+            <input type="hidden" name="action" value="rechazar_datos">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
+            <div class="form-group">
+                <label for="rechazoTitulo"><?= e(t('datos.titulo_rechazo')) ?></label>
+                <input type="text" id="rechazoTitulo" name="rechazo_titulo" maxlength="<?= SOLICITUD_DATOS_TITULO_MAX ?>" required autocomplete="off">
+                <div class="sugerencias" role="group" aria-label="<?= e(t('datos.sugerencias')) ?>">
+                    <?php foreach (['identificacion', 'correo', 'escritura'] as $sugerencia): ?>
+                        <button type="button" class="chip-sugerencia" data-titulo-sugerido="<?= e(t('datos.sugerencia_' . $sugerencia)) ?>"><?= e(t('datos.sugerencia_' . $sugerencia)) ?></button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="rechazoMotivo"><?= e(t('datos.motivo_rechazo')) ?></label>
+                <textarea id="rechazoMotivo" name="rechazo_motivo" maxlength="<?= SOLICITUD_DATOS_MOTIVO_MAX ?>" rows="3"></textarea>
+                <small class="form-ayuda"><?= e(t('datos.motivo_ayuda')) ?></small>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="cerrarModal('modalRechazoDatos')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn-danger-solid"><?= e(t('datos.rechazar')) ?></button>
             </div>
         </form>
     </div>

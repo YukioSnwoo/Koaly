@@ -374,15 +374,16 @@ $pdo->prepare('DELETE FROM login_intentos WHERE email = :email')->execute([':ema
 // La contraseña temporal (la que llega por correo) sirve PASSWORD_TEMPORAL_DIAS días.
 // Va antes del aviso: con la temporal vencida no tiene caso mandarlo a aceptarlo.
 if ((int) $usuario['debe_cambiar'] === 1 && passwordTemporalVencida($pdo, (int) $usuario['id_usuario'])) {
-    error(403, t('srv.temporal_vencida'));
+    // Al cajero se la reenvía su gerente; al gerente, la administración
+    error(403, t((int) $usuario['id_rol'] === 2 ? 'srv.temporal_vencida_gerente' : 'srv.temporal_vencida'));
 }
 
-// Un cajero no entra hasta aceptar la versión vigente del aviso de privacidad.
-// No se crea la sesión: se le manda a privacidad/ con un enlace nuevo y, al
-// aceptarlo, vuelve a iniciar sesión.
+// Un cajero o un gerente no entra hasta aceptar la versión vigente de su aviso de
+// privacidad (cada rol tiene el suyo: privacidad/aviso.php). No se crea la sesión:
+// se le manda a privacidad/ con un enlace nuevo y, al aceptarlo, vuelve a iniciar sesión.
 if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
     try {
-        $aceptado = avisoAceptado($pdo, (int) $usuario['id_usuario']);
+        $aceptado = avisoAceptado($pdo, (int) $usuario['id_usuario'], (int) $usuario['id_rol']);
     } catch (PDOException $e) {
         error_log('login.php: falta la tabla avisos_privacidad (sql/010_aviso_privacidad.sql)');
         error(500, t('srv.cajeros'));
@@ -391,7 +392,7 @@ if (in_array((int) $usuario['id_rol'], AVISO_ROLES_OBLIGADOS, true)) {
         responder(403, [
             'success'        => false,
             'requiere_aviso' => true,
-            'enlace'         => crearEnlaceAviso($pdo, (int) $usuario['id_usuario'], AVISO_ENLACE_LOGIN_HORAS),
+            'enlace'         => crearEnlaceAviso($pdo, (int) $usuario['id_usuario'], AVISO_ENLACE_LOGIN_HORAS, (int) $usuario['id_rol']),
             'message'        => t('srv.aviso'),
         ]);
     }

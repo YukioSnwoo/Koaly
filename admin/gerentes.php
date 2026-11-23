@@ -9,8 +9,29 @@ require_once __DIR__ . '/sucursal_gerente.php';
 require_once __DIR__ . '/profanity_filter.php';
 require_once __DIR__ . '/reglas_nombre.php';
 require_once __DIR__ . '/eliminar_usuario.php';
+require_once __DIR__ . '/solicitudes_datos.php';   // cambios de nombre y correo por aprobar (sql/020)
+require_once __DIR__ . '/../login/reglas_contrasena.php';   // contraseña temporal, como la de los cajeros
+require_once __DIR__ . '/correos_gerente.php';             // el correo con su acceso
+
+// Fechas en hora de México, como el panel del gerente
+date_default_timezone_set('America/Mexico_City');
+$pdo->exec("SET time_zone = '" . (new DateTimeImmutable())->format('P') . "'");
 
 $error = '';
+// Tras dar de alta, enviar el acceso o resolver un cambio de datos (PRG): ['texto', 'tono' => ok|aviso]
+$mensajeOk = $_SESSION['gerentes_mensaje'] ?? null;
+unset($_SESSION['gerentes_mensaje']);
+
+/** Nombre de la sucursal (para el correo de acceso), o null. */
+function nombreSucursal(PDO $pdo, ?int $idSucursal): ?string
+{
+    if (!$idSucursal) {
+        return null;
+    }
+    $stmt = $pdo->prepare("SELECT nombre FROM Sucursales WHERE id_sucursal = ?");
+    $stmt->execute([$idSucursal]);
+    return $stmt->fetchColumn() ?: null;
+}
 
 // Mismos estados que usa el gerente para sus cajeros. Solo "Activo" puede iniciar sesión.
 const ESTADOS_GERENTE = [
@@ -44,7 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'crear') {
             $email = trim($_POST['email'] ?? '');
-            $password = (string) ($_POST['password'] ?? '');
             $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
 
             // Nombre(s) y apellidos por separado; $nombre es el completo (reglas_nombre.php)
@@ -67,9 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (RuntimeException) {
                 throw new RuntimeException(t('error.email_profano'));
             }
-            if (strlen($password) < 8) {
-                throw new RuntimeException(t('ger.error_password'));
-            }
             if ($idSucursal > 0 && !sucursalSinGerente($pdo, $idSucursal)) {
                 throw new RuntimeException(t('error.sucursal_ocupada'));
             }
@@ -85,17 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $hoy = date('Y-m-d');
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("INSERT INTO Usuarios (nombre, email, contrasena_hash, id_rol, id_sucursal, estado, fecha_inicio_estado, fecha_contratacion) VALUES (?, ?, ?, 2, ?, 'Activo', ?, ?)");
+            // La contraseña la genera el sistema y solo le llega al gerente por correo, igual
+            // que a los cajeros: el admin nunca la ve. El hash de relleno se reemplaza enseguida.
+            $stmt = $pdo->prepare("INSERT INTO Usuarios (nombre, email, contrasena_hash, id_rol, id_sucursal, estado, fecha_inicio_estado, fecha_contratacion, debe_cambiar) VALUES (?, ?, ?, 2, ?, 'Activo', ?, ?, 1)");
             $stmt->execute([
                 $nombre,
                 $email,
-                password_hash($password, PASSWORD_DEFAULT),
+                password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
                 $idSucursal > 0 ? $idSucursal : null,
                 $hoy,
                 $hoy
             ]);
             $idNuevo = (int) $pdo->lastInsertId();
             guardarPartesNombre($pdo, $idNuevo, $partesNombre);
+            $acceso = ponerPasswordTemporal($pdo, $idNuevo);
             registrarCambioEstado($pdo, $idNuevo, null, 'Activo');
 
             // Al asignarle gerente, la sucursal pasa a activa.
@@ -105,6 +125,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $pdo->commit();
 
+            // Bienvenida con su contraseña temporal y el enlace del aviso de privacidad.
+            // La cuenta ya quedó: si el correo no sale, "Enviar contraseña temporal" manda otra.
+            $enviado = enviarAccesoGerente($pdo, [
+                'id_usuario' => $idNuevo, 'nombre' => $nombre, 'email' => $email,
+                'sucursal'   => nombreSucursal($pdo, $idSucursal),
+            ], $acceso, 'alta');
+            $_SESSION['gerentes_mensaje'] = [
+                'texto' => t($enviado ? 'ger.creado_enviado' : 'ger.creado_sin_correo', ['nombre' => $nombre, 'email' => $email]),
+                'tono'  => $enviado ? 'ok' : 'aviso',
+            ];
+            header('Location: gerentes.php');
+            exit;
+        }
+
+        // Contraseña temporal nueva por correo: si aún no entra (se perdió, venció o no
+        // llegó) o si olvidó la suya. La anterior deja de servir y al entrar debe cambiarla.
+        if ($action === 'enviar_acceso') {
+            $idGerente = (int) ($_POST['id_usuario'] ?? 0);
+            $stmt = $pdo->prepare("SELECT id_usuario, nombre, email, estado, id_sucursal, debe_cambiar FROM Usuarios WHERE id_usuario = ? AND id_rol = 2");
+            $stmt->execute([$idGerente]);
+            $g = $stmt->fetch();
+            if ($g === false) {
+                throw new RuntimeException(t('error.gerente_no_existe'));
+            }
+            if ($g['estado'] === 'Baja') {   // dado de baja ya no tiene acceso
+                throw new RuntimeException(t('ger.acceso_baja', ['nombre' => $g['nombre']]));
+            }
+            $sinEntrar = (int) $g['debe_cambiar'] === 1;
+            $acceso = ponerPasswordTemporal($pdo, $idGerente);
+            $enviado = enviarAccesoGerente($pdo, [
+                'id_usuario' => $idGerente, 'nombre' => $g['nombre'], 'email' => $g['email'],
+                'sucursal'   => nombreSucursal($pdo, $g['id_sucursal'] !== null ? (int) $g['id_sucursal'] : null),
+            ], $acceso, $sinEntrar ? 'reenvio' : 'restablecida');
+            $_SESSION['gerentes_mensaje'] = [
+                'texto' => t($enviado ? 'ger.acceso_enviado' : 'ger.acceso_fallo', ['nombre' => $g['nombre'], 'email' => $g['email']]),
+                'tono'  => $enviado ? 'ok' : 'aviso',
+            ];
             header('Location: gerentes.php');
             exit;
         }
@@ -207,6 +264,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Cambio de nombre o correo que pidió un gerente (o un cajero de una sucursal
+        // sin gerente). Solo se aprueba o se rechaza: lo pedido no se edita.
+        if ($action === 'aprobar_datos' || $action === 'rechazar_datos') {
+            $idSolicitud = (int) ($_POST['id_solicitud'] ?? 0);
+            try {
+                if ($action === 'aprobar_datos') {
+                    $s = aprobarSolicitudDatos($pdo, $idSolicitud, (int) $admin['id_usuario'], 'Admin', null);
+                    $mensaje = t('datos.aprobada', ['nombre' => $s['nombre'] ?? $s['nombre_antes']]);
+                    if ($s['email'] !== null) {
+                        $avisado = avisarCorreoCambiado($s, 'la administración');
+                        $mensaje .= ' ' . t($avisado ? 'datos.aviso_correo_anterior' : 'datos.aviso_correo_fallo', ['email' => $s['email_antes']]);
+                    }
+                } else {
+                    $s = rechazarSolicitudDatos(
+                        $pdo, $idSolicitud, (int) $admin['id_usuario'], 'Admin', null,
+                        (string) ($_POST['rechazo_titulo'] ?? ''), (string) ($_POST['rechazo_motivo'] ?? '')
+                    );
+                    $mensaje = t('datos.rechazada', ['nombre' => $s['nombre_antes']]);
+                }
+            } catch (SolicitudDatosError $e) {
+                throw new RuntimeException(t('datos.error_' . $e->clave));
+            }
+            $_SESSION['gerentes_mensaje'] = ['texto' => $mensaje, 'tono' => 'ok'];
+            header('Location: gerentes.php');
+            exit;
+        }
+
         if ($action === 'asignar') {
             asignarSucursalAGerente(
                 $pdo,
@@ -233,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Consultar gerentes con su sucursal
 $stmt = $pdo->query("
-    SELECT u.id_usuario, u.nombre, " . columnasApellidos($pdo) . ", u.email, u.estado,
+    SELECT u.id_usuario, u.nombre, " . columnasApellidos($pdo) . ", u.email, u.estado, u.debe_cambiar,
            s.nombre AS sucursal_nombre, s.id_sucursal
     FROM Usuarios u
     LEFT JOIN Sucursales s ON s.id_sucursal = u.id_sucursal
@@ -241,6 +325,16 @@ $stmt = $pdo->query("
     ORDER BY u.nombre
 ");
 $gerentes = $stmt->fetchAll();
+
+// Contraseña temporal vencida (sql/013): hay que enviarle otra. Sin la columna no vence.
+$temporalVencida = [];
+try {
+    foreach ($pdo->query("SELECT id_usuario FROM Usuarios WHERE id_rol = 2 AND debe_cambiar = 1 AND temporal_expira_en < NOW()") as $fila) {
+        $temporalVencida[(int) $fila['id_usuario']] = true;
+    }
+} catch (PDOException $e) {
+    // falta sql/013: las temporales no vencen
+}
 
 // Historial de estados por gerente (el más reciente primero) para el modal de cada fila.
 $historial = [];
@@ -301,6 +395,9 @@ try {
     error_log('gerentes.php empleados: ' . $e->getMessage());
 }
 
+// Cambios de nombre o correo que le tocan a la administración (vacío sin sql/020)
+$solicitudesDatos = solicitudesDatosPorRevisar($pdo, 'Admin');
+
 // Sucursales sin gerente (para el select de asignar). Incluye las inactivas:
 // una sucursal sin gerente está inactiva y se activa al asignarle uno.
 $sucursales = $pdo->query("
@@ -331,6 +428,50 @@ $todasSucursales = $pdo->query("
 <?php if ($error !== ''): ?>
     <div style="margin-top:1rem;padding:10px 14px;border-radius:var(--radius-lg);background:var(--bg-danger);color:var(--text-danger)"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
+<?php if ($mensajeOk): $avisoTono = ($mensajeOk['tono'] ?? 'ok') === 'aviso' ? 'warning' : 'success'; ?>
+    <div role="status" style="margin-top:1rem;padding:10px 14px;border-radius:var(--radius-lg);background:var(--bg-<?= $avisoTono ?>);color:var(--text-<?= $avisoTono ?>)"><?= e($mensajeOk['texto'] ?? '') ?></div>
+<?php endif; ?>
+
+<?php // Cambios de nombre o correo por aprobar: se aprueban o se rechazan, no se editan ?>
+<?php if ($solicitudesDatos): ?>
+    <section class="sd-admin" id="solicitudes-datos" aria-labelledby="tituloSolicitudesDatos">
+        <div class="sd-admin__cabecera">
+            <h2 id="tituloSolicitudesDatos"><?= e(t('datos.titulo')) ?> <span class="badge badge--warning"><?= count($solicitudesDatos) ?></span></h2>
+            <p><?= e(t('datos.ayuda')) ?></p>
+        </div>
+        <ul class="sd-admin__lista">
+            <?php foreach ($solicitudesDatos as $s): $idSolicitud = (int) $s['id_solicitud']; ?>
+                <li class="sd-admin__item">
+                    <div class="avatar"><?= e(inicialesSolicitante($s)) ?></div>
+                    <div class="sd-admin__cuerpo">
+                        <div class="sd-admin__quien">
+                            <strong><?= e($s['nombre_antes']) ?></strong>
+                            <span><?= e(t('datos.rol_' . (int) $s['id_rol']) . ($s['sucursal'] ? ' · ' . $s['sucursal'] : '') . ' · ' . t('datos.enviada', ['fecha' => fecha($s['creado_en'])])) ?></span>
+                        </div>
+                        <dl class="sd-admin__cambios">
+                            <?php foreach (cambiosSolicitudDatos($s) as $c): ?>
+                                <div>
+                                    <dt><?= e(t('datos.campo_' . $c['campo'])) ?></dt>
+                                    <dd><span class="sd-admin__antes"><?= e($c['antes']) ?></span><span class="sd-admin__flecha" aria-hidden="true">→</span><span class="sr-only"><?= e(t('datos.cambia_a')) ?></span><strong><?= e($c['despues']) ?></strong></dd>
+                                </div>
+                            <?php endforeach; ?>
+                        </dl>
+                    </div>
+                    <div class="sd-admin__acciones">
+                        <button type="button" class="btn btn--ghost btn--sm" onclick="abrirRechazoDatos(this)"
+                                data-id="<?= $idSolicitud ?>" data-texto="<?= e(t('datos.rechazar_texto', ['nombre' => $s['nombre_antes']])) ?>"><?= e(t('datos.rechazar')) ?></button>
+                        <form method="POST" action="gerentes.php" data-confirmar="<?= e(t('datos.confirmar_aprobar', ['nombre' => $s['nombre_antes']])) ?>">
+                            <input type="hidden" name="action" value="aprobar_datos">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                            <input type="hidden" name="id_solicitud" value="<?= $idSolicitud ?>">
+                            <button type="submit" class="btn btn--primary btn--sm"><?= e(t('datos.aprobar')) ?></button>
+                        </form>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+<?php endif; ?>
 
 <div class="table-wrap" style="margin-top:1rem">
     <table class="table" id="tblGerentes">
@@ -341,15 +482,10 @@ $todasSucursales = $pdo->query("
             <?php if (empty($gerentes)): ?>
                 <tr><td colspan="5" style="color:var(--text-muted);text-align:center"><?= e(t('ger.vacio')) ?></td></tr>
             <?php else: ?>
-                <?php foreach ($gerentes as $g):
-                    $palabras = explode(' ', $g['nombre']);
-                    $ini = '';
-                    foreach ($palabras as $p) $ini .= mb_strtoupper(mb_substr($p, 0, 1));
-                    $ini = mb_substr($ini, 0, 2);
-                ?>
+                <?php foreach ($gerentes as $g): ?>
                     <tr>
                         <td style="display:flex;align-items:center;gap:8px">
-                            <div class="avatar"><?= $ini ?></div>
+                            <div class="avatar"><?= e(inicialesNombre($g)) ?></div>
                             <?= htmlspecialchars($g['nombre']) ?>
                         </td>
                         <td style="color:var(--text-secondary)"><?= htmlspecialchars($g['email']) ?></td>
@@ -358,6 +494,12 @@ $todasSucursales = $pdo->query("
                             <span class="badge <?= ESTADOS_GERENTE[(string) $g['estado']]['badge'] ?? 'badge--warning' ?>">
                                 <?= e(tValor('estado_usuario', $g['estado'], t('ger.sin_estado'))) ?>
                             </span>
+                            <?php // Aún no entra con su contraseña temporal (o ya le venció): se le puede enviar otra ?>
+                            <?php if ((int) $g['debe_cambiar'] === 1 && $g['estado'] !== 'Baja'): $vencida = isset($temporalVencida[(int) $g['id_usuario']]); ?>
+                                <span class="badge <?= $vencida ? 'badge--danger' : 'badge--muted' ?>" title="<?= e(t($vencida ? 'ger.acceso_vencido_ayuda' : 'ger.sin_entrar_ayuda')) ?>">
+                                    <?= e(t($vencida ? 'ger.acceso_vencido' : 'ger.sin_entrar')) ?>
+                                </span>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php $partes = partesNombre($g); ?>
@@ -368,6 +510,17 @@ $todasSucursales = $pdo->query("
                                 data-paterno="<?= htmlspecialchars($partes['apellido_paterno'], ENT_QUOTES) ?>"
                                 data-materno="<?= htmlspecialchars($partes['apellido_materno'], ENT_QUOTES) ?>"
                                 data-email="<?= htmlspecialchars($g['email'], ENT_QUOTES) ?>"><i class="ti ti-edit"></i></button>
+                            <?php // Contraseña temporal nueva por correo (la anterior deja de servir) ?>
+                            <?php $sinEntrar = (int) $g['debe_cambiar'] === 1; ?>
+                            <form method="POST" action="gerentes.php" style="display:inline"
+                                  data-confirmar="<?= e(t($sinEntrar ? 'ger.confirmar_reenviar' : 'ger.confirmar_restablecer', ['nombre' => $g['nombre'], 'email' => $g['email']])) ?>">
+                                <input type="hidden" name="action" value="enviar_acceso">
+                                <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                                <input type="hidden" name="id_usuario" value="<?= (int) $g['id_usuario'] ?>">
+                                <button type="submit" class="icon-btn" title="<?= e(t($sinEntrar ? 'ger.reenviar_acceso' : 'ger.restablecer')) ?>"
+                                        aria-label="<?= e(t($sinEntrar ? 'ger.reenviar_acceso' : 'ger.restablecer') . ' · ' . $g['nombre']) ?>"
+                                        <?= $g['estado'] === 'Baja' ? 'disabled' : '' ?>><i class="ti <?= $sinEntrar ? 'ti-mail-forward' : 'ti-key' ?>"></i></button>
+                            </form>
                             <button class="icon-btn" title="<?= e(t('ger.asignar_sucursal')) ?>" onclick="asignarSucursal(this)"
                                 data-id="<?= (int) $g['id_usuario'] ?>"
                                 data-nombre="<?= htmlspecialchars($g['nombre'], ENT_QUOTES) ?>"
@@ -392,6 +545,38 @@ $todasSucursales = $pdo->query("
             <?php endif; ?>
         </tbody>
     </table>
+</div>
+
+<!-- Modal: rechazar un cambio de nombre o correo (título obligatorio, motivo opcional) -->
+<div id="modalRechazoDatos" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rechazoDatosTitulo"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
+    <div style="background:var(--surface-1);border-radius:var(--radius-lg);padding:1.5rem;width:460px;max-width:90vw">
+        <h2 id="rechazoDatosTitulo" style="font-size:16px;font-weight:500;margin:0 0 .25rem"><?= e(t('datos.rechazar_titulo')) ?></h2>
+        <p id="rechazoDatosTexto" style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem"></p>
+        <form method="POST" action="gerentes.php" id="formRechazoDatos">
+            <input type="hidden" name="action" value="rechazar_datos">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="id_solicitud" value="">
+            <label class="sd-admin__campo">
+                <span><?= e(t('datos.titulo_rechazo')) ?></span>
+                <input type="text" name="rechazo_titulo" class="input" maxlength="<?= SOLICITUD_DATOS_TITULO_MAX ?>" required autocomplete="off">
+            </label>
+            <div class="sd-admin__sugerencias" role="group" aria-label="<?= e(t('datos.sugerencias')) ?>">
+                <?php foreach (['identificacion', 'correo', 'escritura'] as $sugerencia): ?>
+                    <button type="button" class="sd-admin__sugerencia" data-titulo-sugerido="<?= e(t('datos.sugerencia_' . $sugerencia)) ?>"><?= e(t('datos.sugerencia_' . $sugerencia)) ?></button>
+                <?php endforeach; ?>
+            </div>
+            <label class="sd-admin__campo">
+                <span><?= e(t('datos.motivo_rechazo')) ?></span>
+                <textarea name="rechazo_motivo" class="input" rows="3" maxlength="<?= SOLICITUD_DATOS_MOTIVO_MAX ?>"></textarea>
+                <small><?= e(t('datos.motivo_ayuda')) ?></small>
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.1rem">
+                <button type="button" class="btn btn--ghost" onclick="closeModal('modalRechazoDatos')"><?= e(t('comun.cancelar')) ?></button>
+                <button type="submit" class="btn btn--danger"><?= e(t('datos.rechazar')) ?></button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Modal: historial de estados del gerente -->
@@ -452,15 +637,8 @@ $todasSucursales = $pdo->query("
                 <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.email')) ?></label>
                 <input type="email" name="email" class="input" style="width:100%" placeholder="<?= e(t('ger.email_ej')) ?>" required>
             </div>
-            <div style="margin-bottom:10px">
-                <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('ger.password')) ?></label>
-                <div class="campo-contrasena">
-                    <input type="password" name="password" class="input" style="width:100%" placeholder="<?= e(t('ger.password_ej')) ?>" minlength="8" required>
-                    <button type="button" class="ver-contrasena" aria-pressed="false" aria-label="<?= e(t('comun.ver_contrasena')) ?>" title="<?= e(t('comun.ver_contrasena')) ?>">
-                        <i class="ti ti-eye" aria-hidden="true"></i><i class="ti ti-eye-off" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
+            <?php // Sin contraseña: el sistema genera una temporal y se la manda por correo (correos_gerente.php) ?>
+            <p class="acceso-por-correo"><i class="ti ti-mail" aria-hidden="true"></i><span><?= e(t('ger.acceso_ayuda', ['dias' => PASSWORD_TEMPORAL_DIAS])) ?></span></p>
             <div style="margin-bottom:1rem">
                 <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px"><?= e(t('comun.sucursal')) ?></label>
                 <select name="id_sucursal" class="select" style="width:100%">
@@ -714,6 +892,27 @@ $todasSucursales = $pdo->query("
     window.addEventListener('scroll', cerrar, true);
     window.addEventListener('resize', cerrar);
 })();
+
+/* Cambios de nombre o correo: aprobar pide confirmación; rechazar abre el modal
+   con el título (obligatorio, con sugerencias de un clic) y el motivo (opcional). */
+document.querySelectorAll('form[data-confirmar]').forEach((form) => {
+    form.addEventListener('submit', (e) => { if (!confirm(form.dataset.confirmar)) e.preventDefault(); });
+});
+function abrirRechazoDatos(btn) {
+    const form = document.getElementById('formRechazoDatos');
+    form.reset();
+    form.querySelector('[name="id_solicitud"]').value = btn.dataset.id;
+    document.getElementById('rechazoDatosTexto').textContent = btn.dataset.texto || '';
+    openModal('modalRechazoDatos');
+    setTimeout(() => form.querySelector('[name="rechazo_titulo"]').focus(), 60);
+}
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-titulo-sugerido]');
+    if (!chip) return;
+    const campo = chip.closest('form').querySelector('[name="rechazo_titulo"]');
+    campo.value = chip.dataset.tituloSugerido;
+    campo.focus();
+});
 
 function editarGerente(btn) {
     const form = document.getElementById('formEditarGerente');

@@ -373,6 +373,28 @@ document.addEventListener('change', (e) => {
     if (e.target.matches('#formCajero [name="estado"]')) _actualizarAyudaEstado();
 });
 
+/** Rechazar un cambio de nombre o correo que pidió un cajero: título obligatorio, motivo opcional. */
+function abrirRechazoDatos(btn) {
+    const form = document.getElementById('formRechazoDatos');
+    if (!form) return;
+    form.reset();
+    form.querySelector('[name="id_solicitud"]').value = btn.dataset.id;
+    document.getElementById('textoRechazoDatos').textContent = btn.dataset.texto || '';
+    form.querySelector('[type="submit"]').disabled = false;
+    abrirModal('modalRechazoDatos');
+    setTimeout(() => form.querySelector('[name="rechazo_titulo"]').focus(), 60);
+}
+
+// Un título sugerido llena el campo (se puede seguir editando)
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-titulo-sugerido]');
+    if (!chip) return;
+    const campo = chip.closest('form').querySelector('[name="rechazo_titulo"]');
+    campo.value = chip.dataset.tituloSugerido;
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    campo.focus();
+});
+
 
 /* ============================================================
  * ██ CAJAS — Modales y aviso de reasignación
@@ -478,8 +500,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initVistas();
     initFilasDesplegables();
 
-    // Productos — filtros y solicitudes
+    // Productos — filtros, resurtir y solicitudes
     initFiltrosProductos();
+    initResurtir();
     initFormularioSolicitud();
     initZonasArchivo();
 
@@ -581,6 +604,216 @@ function initScrollInfinito() {
  * El estado queda en la URL (?grupo=&buscar=&categoria=&stock=&orden=) para
  * que recargar, volver atrás o compartir el enlace muestre lo mismo.
  * ============================================================ */
+/* ============================================================
+ * Resurtir (productos.php): registrar de golpe la mercancía que llegó.
+ * En el modo, cada tarjeta de la sucursal gana − / cantidad / + y cuánto
+ * quedará; abajo, una barra con el total y "Registrar entrada". Mientras
+ * dura, las tarjetas no llevan a la ficha (se les quita el enlace y se les
+ * devuelve al salir). "Llenar" deja los agotados y bajos que se ven en
+ * pantalla con N piezas. Lo escrito se guarda en sessionStorage: si el
+ * registro falla o se sale de la página sin querer, sigue ahí al volver.
+ * ============================================================ */
+function initResurtir() {
+    const boton = document.getElementById('btnResurtir');
+    const form  = document.getElementById('formResurtir');
+    const grid  = document.getElementById('gridProductos');
+    if (!boton || !form || !grid) return;
+
+    const aviso     = document.getElementById('resurtirAviso');
+    const pestanas  = document.querySelector('.catalogo-barra');
+    const total     = document.getElementById('resurtirTotal');
+    const registrar = document.getElementById('resurtirRegistrar');
+    const hasta     = document.getElementById('resurtirHasta');
+    const llenado   = document.getElementById('resurtirLlenado');
+    const textoBoton = boton.querySelector('[data-resurtir-texto]');
+    const umbral    = parseInt(document.getElementById('filtroStock')?.dataset.umbral, 10) || 10;
+    const MAX       = parseInt(form.dataset.max, 10) || 9999;
+    const CLAVE     = 'koaly.resurtir';
+    const tarjetas  = Array.from(grid.querySelectorAll('.producto-card[data-grupo="con"][data-id]'));
+    const porId     = new Map(tarjetas.map(card => [card.dataset.id, card]));
+    const cantidades = new Map();   // id → piezas que llegan (solo las mayores a 0)
+    const numero    = n => n.toLocaleString(document.documentElement.lang || 'es');
+    let activo = false;
+    let enviando = false;
+
+    const guardar = () => {
+        try {
+            if (cantidades.size || form.nota.value.trim()) {
+                sessionStorage.setItem(CLAVE, JSON.stringify({ items: [...cantidades], nota: form.nota.value }));
+            } else {
+                sessionStorage.removeItem(CLAVE);
+            }
+        } catch (err) { /* sin almacenamiento: solo no se recupera */ }
+    };
+    const leerGuardado = () => {
+        try { return JSON.parse(sessionStorage.getItem(CLAVE)) || null; } catch (err) { return null; }
+    };
+
+    // − / cantidad / + y "Quedará", al final del cuerpo de la tarjeta
+    function crearPaso(card) {
+        const nombre = card.querySelector('.producto-card-nombre')?.textContent.trim() || '';
+        const paso = document.createElement('div');
+        paso.className = 'resurtir-paso';
+        paso.innerHTML = '<button type="button" data-paso="-1">−</button>'
+            + '<input type="number" min="0" step="1" inputmode="numeric" value="0">'
+            + '<button type="button" data-paso="1">+</button>';
+        const [menos, input, mas] = paso.children;
+        input.max = MAX;
+        input.setAttribute('aria-label', tj('resurtir_llegan', { p: nombre }));
+        menos.setAttribute('aria-label', tj('resurtir_menos', { p: nombre }));
+        mas.setAttribute('aria-label', tj('resurtir_mas', { p: nombre }));
+        const queda = document.createElement('p');
+        queda.className = 'resurtir-queda';
+        card.querySelector('.producto-card-cuerpo').append(paso, queda);
+        card._resurtir = { paso, input, queda };
+    }
+
+    function pintarTarjeta(card, desdeInput = false) {
+        const n = cantidades.get(card.dataset.id) || 0;
+        const { input, queda } = card._resurtir;
+        if (!desdeInput) input.value = n;
+        queda.textContent = tj('resurtir_queda', { n: numero((parseInt(card.dataset.stock, 10) || 0) + n) });
+        card.classList.toggle('is-resurtir', n > 0);
+    }
+
+    function pintarTotal() {
+        const piezas = [...cantidades.values()].reduce((a, b) => a + b, 0);
+        total.textContent = cantidades.size === 0 ? tj('resurtir_total_cero')
+            : tj(cantidades.size === 1 ? 'resurtir_total_uno' : 'resurtir_total', { n: numero(cantidades.size), piezas: numero(piezas) });
+        registrar.disabled = cantidades.size === 0;
+    }
+
+    function fijar(card, valor, desdeInput = false) {
+        const n = Math.min(MAX, Math.max(0, Math.floor(Number(valor) || 0)));
+        if (n > 0) cantidades.set(card.dataset.id, n); else cantidades.delete(card.dataset.id);
+        pintarTarjeta(card, desdeInput);
+        pintarTotal();
+        guardar();
+    }
+
+    function entrar() {
+        activo = true;
+        document.body.classList.add('modo-resurtir');
+        // Solo los productos de la sucursal tienen existencias: se abre esa pestaña
+        document.querySelector('#pestanasProductos [data-grupo="con"]:not(.is-activo)')?.click();
+        if (cantidades.size === 0) {
+            const guardado = leerGuardado();
+            (guardado?.items || []).forEach(([id, n]) => { if (porId.has(id) && n > 0) cantidades.set(id, Math.min(MAX, n)); });
+            if (guardado?.nota) form.nota.value = guardado.nota;
+        }
+        tarjetas.forEach(card => {
+            if (!card._resurtir) crearPaso(card);
+            if (card.hasAttribute('href')) {
+                card.dataset.href = card.getAttribute('href');
+                card.removeAttribute('href');
+            }
+            card._resurtir.paso.hidden = card._resurtir.queda.hidden = false;
+            pintarTarjeta(card);
+        });
+        aviso.hidden = false;
+        form.hidden = false;
+        if (pestanas) pestanas.hidden = true;
+        llenado.textContent = '';
+        boton.setAttribute('aria-pressed', 'true');
+        textoBoton.textContent = tj('resurtir_salir');
+        pintarTotal();
+    }
+
+    async function salir() {
+        if (cantidades.size > 0) {
+            const ok = await pedirConfirmacion(tj('resurtir_descartar_msg'), {
+                titulo: tj('resurtir_descartar_titulo'), textoAceptar: tj('resurtir_descartar'), peligroso: true
+            });
+            if (!ok) return;
+        }
+        cantidades.clear();
+        form.nota.value = '';
+        guardar();
+        activo = false;
+        document.body.classList.remove('modo-resurtir');
+        tarjetas.forEach(card => {
+            if (card.dataset.href) card.setAttribute('href', card.dataset.href);
+            card.classList.remove('is-resurtir');
+            if (card._resurtir) card._resurtir.paso.hidden = card._resurtir.queda.hidden = true;
+        });
+        aviso.hidden = true;
+        form.hidden = true;
+        if (pestanas) pestanas.hidden = false;
+        boton.setAttribute('aria-pressed', 'false');
+        textoBoton.textContent = tj('resurtir_boton');
+    }
+
+    boton.addEventListener('click', () => (activo ? salir() : entrar()));
+    document.getElementById('resurtirDescartar').addEventListener('click', salir);
+
+    // − y +; en el modo, tocar la tarjeta no lleva a ningún lado
+    grid.addEventListener('click', (e) => {
+        if (!activo) return;
+        const card = e.target.closest('.producto-card[data-id]');
+        if (!card) return;
+        const paso = e.target.closest('[data-paso]');
+        if (paso) fijar(card, (cantidades.get(card.dataset.id) || 0) + Number(paso.dataset.paso));
+    });
+    grid.addEventListener('input', (e) => {
+        const card = e.target.closest('.producto-card[data-id]');
+        if (activo && card && e.target.matches('.resurtir-paso input')) fijar(card, e.target.value, true);
+    });
+    // Al salir del campo se acomoda lo escrito (vacío → 0, de más → el máximo)
+    grid.addEventListener('focusout', (e) => {
+        const card = e.target.closest('.producto-card[data-id]');
+        if (activo && card && e.target.matches('.resurtir-paso input')) pintarTarjeta(card);
+    });
+    grid.addEventListener('focusin', (e) => {
+        if (activo && e.target.matches('.resurtir-paso input')) e.target.select();
+    });
+    form.nota.addEventListener('input', guardar);
+
+    // Llenar: los agotados y bajos que se ven (respeta búsqueda y filtros) quedan con N piezas
+    document.getElementById('resurtirLlenar').addEventListener('click', () => {
+        const meta = Math.min(MAX, Math.max(1, Math.floor(Number(hasta.value) || 0)));
+        hasta.value = meta;
+        let llenados = 0;
+        tarjetas.forEach(card => {
+            const stock = parseInt(card.dataset.stock, 10) || 0;
+            if (card.hidden || stock >= umbral || stock >= meta) return;
+            fijar(card, meta - stock);
+            llenados++;
+        });
+        llenado.textContent = llenados === 0 ? tj('resurtir_llenados_cero')
+            : tj(llenados === 1 ? 'resurtir_llenados_uno' : 'resurtir_llenados', { n: numero(llenados) });
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (enviando || cantidades.size === 0) return;
+        const piezas = [...cantidades.values()].reduce((a, b) => a + b, 0);
+        const ok = await pedirConfirmacion(
+            tj(cantidades.size === 1 ? 'resurtir_confirmar_uno' : 'resurtir_confirmar', { n: numero(cantidades.size), piezas: numero(piezas) }),
+            { titulo: tj('resurtir_confirmar_titulo'), textoAceptar: tj('resurtir_registrar') }
+        );
+        if (!ok) return;
+        enviando = true;
+        registrar.disabled = true;
+        form.items.value = JSON.stringify([...cantidades].map(([id, cantidad]) => ({ id: Number(id), cantidad })));
+        form.submit();
+    });
+
+    // Salir de la página con cantidades sin registrar: el navegador pregunta
+    window.addEventListener('beforeunload', (e) => {
+        if (activo && cantidades.size > 0 && !enviando) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Ya se registró: lo guardado sobra. Si falló, se vuelve a abrir con lo que había.
+    if (form.dataset.resurtido === '1') {
+        try { sessionStorage.removeItem(CLAVE); } catch (err) { /* nada que borrar */ }
+    }
+    if (form.dataset.reabrir === '1') entrar();
+}
+
+
 function initFiltrosProductos() {
     const grid = document.getElementById('gridProductos');
     if (!grid) return;

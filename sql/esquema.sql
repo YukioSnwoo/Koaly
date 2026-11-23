@@ -23,6 +23,30 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `Alertas_Agotados` (sql/019_alertas_agotados.sql)
+
+CREATE TABLE `Alertas_Agotados` (
+  `id_alerta` int(11) NOT NULL AUTO_INCREMENT,
+  `id_sucursal` int(11) NOT NULL,
+  `id_producto` int(11) NOT NULL,
+  `origen` enum('Venta','Intento') NOT NULL,
+  `id_cajero` int(11) DEFAULT NULL,
+  `id_venta` int(11) DEFAULT NULL,
+  `intentos` int(11) NOT NULL DEFAULT 0,
+  `ultimo_intento` datetime DEFAULT NULL,
+  `creado_en` datetime NOT NULL,
+  `abierta_el` date DEFAULT NULL,
+  `resuelta_en` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_alerta`),
+  UNIQUE KEY `uk_alerta_abierta` (`id_sucursal`,`id_producto`,`abierta_el`),
+  KEY `idx_alerta_sucursal_fecha` (`id_sucursal`,`creado_en`),
+  KEY `fk_alerta_producto` (`id_producto`),
+  KEY `fk_alerta_cajero` (`id_cajero`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `avisos_privacidad`
 
 CREATE TABLE `avisos_privacidad` (
@@ -35,6 +59,38 @@ CREATE TABLE `avisos_privacidad` (
   `aceptado_en` timestamp NULL DEFAULT NULL,
   `ip` varchar(45) DEFAULT NULL,
   `agente` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `avisos_versiones` (sql/018_avisos_versiones.sql)
+
+CREATE TABLE `avisos_versiones` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tipo` enum('empleado','gerente','cliente') NOT NULL,
+  `version` varchar(20) NOT NULL,
+  `texto_es` mediumtext NOT NULL,
+  `texto_en` mediumtext DEFAULT NULL,
+  `cambios_es` text DEFAULT NULL,
+  `cambios_en` text DEFAULT NULL,
+  `publicado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `publicado_por` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aviso_version` (`tipo`,`version`),
+  KEY `fk_aviso_version_admin` (`publicado_por`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `avisos_notificaciones` (sql/018_avisos_versiones.sql)
+
+CREATE TABLE `avisos_notificaciones` (
+  `id_usuario` int(11) NOT NULL,
+  `version` varchar(20) NOT NULL,
+  `enviado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_usuario`,`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -203,6 +259,38 @@ CREATE TABLE `Retiros_Caja` (
 CREATE TABLE `Roles` (
   `id_rol` int(11) NOT NULL,
   `nombre_rol` varchar(30) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `Solicitudes_Datos` (sql/020_solicitudes_datos.sql)
+
+CREATE TABLE `Solicitudes_Datos` (
+  `id_solicitud` int(11) NOT NULL AUTO_INCREMENT,
+  `id_usuario` int(11) NOT NULL,
+  `revisa` enum('Gerente','Admin') NOT NULL,
+  `id_sucursal` int(11) DEFAULT NULL,
+  `nombre_antes` varchar(100) NOT NULL,
+  `email_antes` varchar(100) NOT NULL,
+  `nombre` varchar(100) DEFAULT NULL,
+  `nombres` varchar(60) DEFAULT NULL,
+  `apellido_paterno` varchar(40) DEFAULT NULL,
+  `apellido_materno` varchar(40) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `estado` enum('Pendiente','Aprobada','Rechazada','Cancelada') NOT NULL DEFAULT 'Pendiente',
+  `rechazo_titulo` varchar(80) DEFAULT NULL,
+  `rechazo_motivo` text DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `resuelto_en` timestamp NULL DEFAULT NULL,
+  `resuelto_por` int(11) DEFAULT NULL,
+  `pendiente_de` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id_solicitud`),
+  UNIQUE KEY `uk_solicitud_datos_pendiente` (`pendiente_de`),
+  KEY `idx_solicitud_datos_revisa` (`revisa`,`estado`,`id_sucursal`),
+  KEY `idx_solicitud_datos_usuario` (`id_usuario`,`id_solicitud`),
+  KEY `fk_solicitud_datos_sucursal` (`id_sucursal`),
+  KEY `fk_solicitud_datos_revisor` (`resuelto_por`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -629,6 +717,22 @@ ALTER TABLE `Ventas`
 -- Restricciones para tablas volcadas
 
 --
+-- Filtros para la tabla `Alertas_Agotados`
+--
+ALTER TABLE `Alertas_Agotados`
+  ADD CONSTRAINT `fk_alerta_sucursal` FOREIGN KEY (`id_sucursal`) REFERENCES `Sucursales` (`id_sucursal`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_alerta_producto` FOREIGN KEY (`id_producto`) REFERENCES `Productos` (`id_producto`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_alerta_cajero` FOREIGN KEY (`id_cajero`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `avisos_versiones` y `avisos_notificaciones`
+--
+ALTER TABLE `avisos_versiones`
+  ADD CONSTRAINT `fk_aviso_version_admin` FOREIGN KEY (`publicado_por`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE SET NULL;
+ALTER TABLE `avisos_notificaciones`
+  ADD CONSTRAINT `fk_aviso_notificacion_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE CASCADE;
+
+--
 -- Filtros para la tabla `Cajas`
 --
 ALTER TABLE `Cajas`
@@ -668,6 +772,14 @@ ALTER TABLE `Productos`
 ALTER TABLE `Retiros_Caja`
   ADD CONSTRAINT `fk_retiro_cajero` FOREIGN KEY (`id_cajero`) REFERENCES `Usuarios` (`id_usuario`),
   ADD CONSTRAINT `fk_retiro_turno` FOREIGN KEY (`id_turno`) REFERENCES `Turnos_Caja` (`id_turno`);
+
+--
+-- Filtros para la tabla `Solicitudes_Datos`
+--
+ALTER TABLE `Solicitudes_Datos`
+  ADD CONSTRAINT `fk_solicitud_datos_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_solicitud_datos_sucursal` FOREIGN KEY (`id_sucursal`) REFERENCES `Sucursales` (`id_sucursal`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_solicitud_datos_revisor` FOREIGN KEY (`resuelto_por`) REFERENCES `Usuarios` (`id_usuario`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `Solicitudes_Productos`

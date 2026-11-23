@@ -10,6 +10,7 @@ $menu = [
     ['inventario.php',  t('nav.inventario'), 'package'],
     ['ventas.php',      t('nav.ventas'),     'receipt'],
     ['reportes.php',    t('nav.reportes'),   'chart-bar'],
+    ['avisos.php',      t('nav.avisos'),     'shield-lock'],
 ];
 
 // Con muchas solicitudes de producto sin atender, "Inventario global" se ilumina en rojo

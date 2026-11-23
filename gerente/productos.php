@@ -7,9 +7,15 @@
 require_once __DIR__ . '/guardia.php';
 require_once __DIR__ . '/includes/productos.php';
 require_once __DIR__ . '/../admin/solicitudes_comun.php';
+require_once __DIR__ . '/../admin/agotados_comun.php';   // resurtir cierra los avisos de agotado
+
+// Resurtir: lo más que puede llegar de un producto en una entrada, y el largo de la nota
+const RESURTIR_MAX_PIEZAS = 9999;
+const RESURTIR_NOTA_MAX   = 200;
 
 $errores = [];
 $exito = '';
+$resurtidoOk = false;   // tras registrar una entrada: el navegador borra lo que tenía guardado
 $imagenNueva = null; // imagen subida en este POST; se borra si el guardado falla
 
 /* ------------------------------------------------------------
@@ -22,6 +28,7 @@ if (!empty($_SESSION['flash'])) {
     } else {
         $exito = $_SESSION['flash']['msg'] ?? '';
     }
+    $resurtidoOk = !empty($_SESSION['flash']['resurtido']);
     unset($_SESSION['flash']);
 }
 
@@ -39,6 +46,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          * en su inventario y solicita productos nuevos.
          * Stock y precio de venta de la sucursal se editan en producto.php.
          */
+
+        /* -------- Resurtir: varias entradas de mercancía de una vez --------
+           Cada producto suma lo que llegó; todo en una transacción (si uno
+           falla, no se registra ninguno) y en el kardex como Recepción. */
+        if ($action === 'resurtir') {
+            $items = json_decode((string) ($_POST['items'] ?? ''), true);
+            $nota  = trim(preg_replace('/\s+/u', ' ', (string) ($_POST['nota'] ?? '')));
+            if (mb_strlen($nota) > RESURTIR_NOTA_MAX) {
+                throw new RuntimeException(t('resurtir.error_nota', ['max' => RESURTIR_NOTA_MAX]));
+            }
+            $porProducto = [];
+            foreach (is_array($items) ? array_slice($items, 0, 1000) : [] as $item) {
+                $id = (int) ($item['id'] ?? 0);
+                $n  = (int) ($item['cantidad'] ?? 0);
+                if ($id <= 0 || $n <= 0) {
+                    continue;   // los que quedaron en cero no se registran
+                }
+                $porProducto[$id] = ($porProducto[$id] ?? 0) + $n;
+                if ($porProducto[$id] > RESURTIR_MAX_PIEZAS) {
+                    throw new RuntimeException(t('resurtir.error_cantidad', ['max' => numero(RESURTIR_MAX_PIEZAS)]));
+                }
+            }
+            if ($porProducto === []) {
+                throw new RuntimeException(t('resurtir.error_vacio'));
+            }
+            // Siempre en el mismo orden: dos entradas a la vez no se bloquean entre sí
+            ksort($porProducto);
+
+            $motivo = tEs('resurtir.kardex') . ($nota !== '' ? ' — ' . $nota : '');
+            $sumar  = $pdo->prepare("UPDATE Inventario_Sucursal SET cantidad_disponible = ? WHERE id_sucursal = ? AND id_producto = ?");
+            $pdo->beginTransaction();
+            foreach ($porProducto as $id => $n) {
+                $actual = leerStockParaActualizar($pdo, (int) $idSucursalGerente, $id);   // con bloqueo: una venta espera
+                if ($actual === null) {
+                    throw new RuntimeException(t('resurtir.error_producto'));
+                }
+                $sumar->execute([$actual + $n, $idSucursalGerente, $id]);
+                registrarMovimiento($pdo, (int) $idSucursalGerente, $id, 'COMPRA_PROVEEDOR', $n, $actual + $n, $motivo, (int) $gerente['id_usuario']);
+            }
+            $pdo->commit();
+
+            // Ya tienen existencias: se cierran sus avisos de agotado (sql/019)
+            try {
+                cerrarAlertasAgotados($pdo, (int) $idSucursalGerente, array_keys($porProducto));
+            } catch (PDOException $e) {
+                error_log('productos.php (agotados): ' . $e->getMessage());
+            }
+
+            $_SESSION['flash'] = [
+                'msg'       => tn('resurtir.ok', count($porProducto), ['piezas' => tn('resurtir.n_piezas', array_sum($porProducto))]),
+                'resurtido' => true,
+            ];
+            header('Location: productos.php');
+            exit;
+        }
 
         /* -------- Agregar producto del catálogo al inventario -------- */
         if ($action === 'agregar_inventario') {
@@ -284,6 +346,9 @@ $iniciales = static function (string $nombre): string {
     return $ini ?: '?';
 };
 
+// Si registrar la entrada falló, el navegador vuelve a abrir el modo con lo que se había escrito
+$reabrirResurtir = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resurtir';
+
 $pageTitle    = t('prods.titulo');
 require __DIR__ . '/header.php';
 ?>
@@ -294,6 +359,12 @@ require __DIR__ . '/header.php';
         <p><?= e(t('prods.subtitulo')) ?></p>
     </div>
     <div class="acciones">
+        <?php if ($conteos['con'] > 0): ?>
+            <button type="button" class="btn btn-ghost" id="btnResurtir" aria-pressed="false">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>
+                <span data-resurtir-texto><?= e(t('resurtir.boton')) ?></span>
+            </button>
+        <?php endif; ?>
         <a href="movimientos.php" class="btn btn-ghost"><?= e(t('mov.titulo')) ?></a>
         <button type="button" class="btn btn-primary" onclick="abrirModalSolicitarProducto()">
             + <?= e(t('cat.solicitar')) ?>
@@ -350,6 +421,17 @@ require __DIR__ . '/header.php';
     // El filtrado es inmediato en el navegador (js/paginas.js) y queda en la URL.
     // Sin JavaScript, el formulario envía los mismos parámetros que lee la página.
     ?>
+    <?php // Modo resurtir (js/paginas.js, initResurtir): llenar de golpe y registrar todo junto ?>
+    <div class="resurtir-aviso" id="resurtirAviso" hidden>
+        <p><strong><?= e(t('resurtir.aviso_titulo')) ?></strong> · <?= e(t('resurtir.aviso')) ?></p>
+        <div class="resurtir-llenar">
+            <label for="resurtirHasta"><?= e(t('resurtir.llenar', ['n' => STOCK_UMBRAL_BAJO])) ?></label>
+            <input type="number" id="resurtirHasta" min="1" max="<?= RESURTIR_MAX_PIEZAS ?>" step="1" inputmode="numeric" value="<?= max(20, STOCK_UMBRAL_BAJO * 2) ?>">
+            <span><?= e(t('resurtir.piezas')) ?></span>
+            <button type="button" class="btn btn-primary btn-sm" id="resurtirLlenar"><?= e(t('resurtir.aplicar')) ?></button>
+        </div>
+        <span class="resurtir-llenado" id="resurtirLlenado" role="status"></span>
+    </div>
     <form method="GET" action="productos.php" class="filtros filtros--productos" id="filtrosProductos" role="search">
         <input type="hidden" name="grupo" value="<?= e($grupoInicial) ?>" data-filtro-grupo>
         <div class="filtros-campo filtros-campo--busqueda">
@@ -420,7 +502,7 @@ require __DIR__ . '/header.php';
                     $noSeVende = $estado !== 'Activo';
                 ?>
                 <a class="producto-card <?= $noSeVende ? 'is-inactivo' : '' ?>" href="producto.php?id=<?= $id ?>"
-                   <?= $atributos ?> data-stock="<?= $stock ?>">
+                   <?= $atributos ?> data-id="<?= $id ?>" data-stock="<?= $stock ?>">
                     <div class="producto-card-imagen">
                         <?php if (!empty($p['imagen'])): ?>
                             <img src="../<?= e($p['imagen']) ?>" alt="" loading="lazy">
@@ -490,6 +572,19 @@ require __DIR__ . '/header.php';
     <div class="panel" id="productosSinResultados" hidden>
         <div class="empty-state"><?= e(t('cat.sin_resultados')) ?></div>
     </div>
+
+    <?php // Barra del modo resurtir: se queda abajo de la pantalla mientras se baja por las tarjetas ?>
+    <form method="POST" action="productos.php" class="resurtir-barra" id="formResurtir" hidden
+          data-max="<?= RESURTIR_MAX_PIEZAS ?>"<?= $reabrirResurtir ? ' data-reabrir="1"' : '' ?><?= $resurtidoOk ? ' data-resurtido="1"' : '' ?>>
+        <input type="hidden" name="action" value="resurtir">
+        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+        <input type="hidden" name="items" value="">
+        <p class="resurtir-total" id="resurtirTotal" aria-live="polite"></p>
+        <input type="text" name="nota" class="resurtir-nota" maxlength="<?= RESURTIR_NOTA_MAX ?>" autocomplete="off"
+               placeholder="<?= e(t('resurtir.nota')) ?>" aria-label="<?= e(t('resurtir.nota_aria')) ?>">
+        <button type="button" class="btn btn-ghost" id="resurtirDescartar"><?= e(t('resurtir.descartar')) ?></button>
+        <button type="submit" class="btn btn-primary" id="resurtirRegistrar" disabled><?= e(t('resurtir.registrar')) ?></button>
+    </form>
 <?php endif; ?>
 
 

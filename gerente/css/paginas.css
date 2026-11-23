@@ -634,6 +634,7 @@
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 0.75rem; margin-bottom: 0.9rem;
 }
+.catalogo-barra[hidden] { display: none; }   /* en el modo resurtir solo cuenta "En sucursal" */
 
 /* Barra de filtros de Productos: la de Ventas (componentes.css), con búsqueda en vez de periodo */
 .filtros--productos .filtros-campo[hidden] { display: none; }
@@ -873,3 +874,121 @@
 }
 .page-header-acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .grafica-ayuda--abajo { margin: 0.6rem 0 0; }
+
+/* ============================================================
+ * Cambios de nombre o correo por aprobar (cajeros.php, sql/020)
+ * Solo se aprueban o se rechazan: lo que pidió el cajero no se edita.
+ * ============================================================ */
+.solicitudes-datos { margin-bottom: 1.25rem; padding: 1.1rem 1.25rem 0.4rem; scroll-margin-top: 90px; }
+.solicitudes-datos__cabecera h2 { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 1.05rem; }
+.solicitudes-datos__cabecera p { margin: 0.3rem 0 0; font-size: 0.85rem; color: var(--texto-3); }
+.solicitudes-datos__lista { display: flex; flex-direction: column; margin: 0.8rem 0 0; padding: 0; list-style: none; }
+.solicitud-datos {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 0.75rem 1rem;
+    padding: 0.9rem 0; border-top: 1px solid var(--borde);
+}
+.solicitud-datos__quien { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; }
+.solicitud-datos__quien .texto-tenue { font-size: 0.8rem; }
+.solicitud-datos__cambios { display: grid; gap: 0.35rem; margin: 0.45rem 0 0; }
+.solicitud-datos__cambios > div { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 0.6rem; align-items: baseline; }
+.solicitud-datos__cambios dt { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--texto-3); }
+.solicitud-datos__cambios dd { display: flex; flex-wrap: wrap; gap: 0.1rem 0.45rem; margin: 0; overflow-wrap: anywhere; }
+.solicitud-datos__antes { color: var(--texto-3); text-decoration: line-through; }
+.solicitud-datos__flecha { color: var(--texto-4); }
+.solicitud-datos__acciones { display: flex; align-items: center; gap: 0.5rem; }
+.solicitud-datos__acciones form { margin: 0; }
+@media (max-width: 640px) {
+    .solicitud-datos { grid-template-columns: auto minmax(0, 1fr); }
+    .solicitud-datos__acciones { grid-column: 1 / -1; justify-content: flex-end; }
+}
+/* Títulos sugeridos al rechazar: un clic llena el campo */
+.sugerencias { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+.chip-sugerencia {
+    padding: 0.2rem 0.65rem; border: 1.5px solid var(--acento-borde); border-radius: 999px;
+    background: var(--acento-suave); color: var(--acento-texto);
+    font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+.chip-sugerencia:hover { border-color: var(--acento); }
+.chip-sugerencia:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* ============================================================
+ * Resurtir (productos.php): registrar de golpe la mercancía que llegó.
+ * Las tarjetas de la sucursal ganan − / cantidad / + y lo que quedará;
+ * la barra de abajo se queda a la vista con el total y "Registrar entrada".
+ * ============================================================ */
+.resurtir-aviso {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem 1rem;
+    margin-bottom: 1rem; padding: 0.75rem 1rem;
+    border: 2px solid var(--acento-borde); border-radius: 12px;
+    background: var(--acento-suave); color: var(--acento-texto);
+}
+.resurtir-aviso[hidden] { display: none; }
+.resurtir-aviso p { margin: 0; font-size: 0.9rem; }
+.resurtir-llenar {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.45rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.75rem;
+    border: 2px dashed var(--acento-borde); border-radius: 10px;
+    background: var(--superficie); font-size: 0.85rem; font-weight: 600;
+}
+.resurtir-llenar input {
+    width: 4.4rem; padding: 0.3rem 0.45rem;
+    border: 2px solid var(--tinta); border-radius: 7px;
+    background: var(--superficie); color: var(--texto); font: inherit; text-align: right;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.resurtir-llenar input::-webkit-outer-spin-button,
+.resurtir-llenar input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.resurtir-llenado { flex-basis: 100%; font-size: 0.8rem; font-weight: 600; }
+.resurtir-llenado:empty { display: none; }
+
+/* En el modo, la tarjeta no es un enlace: no se levanta al pasar el mouse */
+.modo-resurtir a.producto-card { cursor: default; }
+.modo-resurtir a.producto-card:hover { transform: none; }
+.producto-card.is-resurtir { outline: 3px solid var(--acento); outline-offset: 2px; }
+.resurtir-paso {
+    display: grid; grid-template-columns: 2.1rem 1fr 2.1rem; align-items: center; gap: 0.3rem;
+    margin-top: 0.6rem; padding: 0.3rem;
+    border: 2px dashed var(--borde-fuerte); border-radius: 10px;
+}
+.resurtir-paso[hidden], .resurtir-queda[hidden] { display: none; }
+.producto-card.is-resurtir .resurtir-paso { border-style: solid; border-color: var(--acento); background: var(--acento-suave); }
+.resurtir-paso:focus-within { box-shadow: 3px 3px 0 var(--foco, var(--acento-borde)); }
+.resurtir-paso button {
+    width: 2.1rem; height: 2.1rem; padding: 0;
+    border: 2px solid var(--tinta); border-radius: 8px;
+    background: var(--superficie); color: var(--texto);
+    font-size: 1.1rem; font-weight: 800; line-height: 1; cursor: pointer;
+}
+.resurtir-paso button:hover { background: var(--acento-suave); }
+.resurtir-paso button:active { transform: translateY(1px); }
+.resurtir-paso input {
+    width: 100%; min-width: 0; padding: 0; border: none; background: transparent;
+    color: var(--texto); font: inherit; font-size: 1.05rem; font-weight: 800; text-align: center;
+    -moz-appearance: textfield; appearance: textfield;
+}
+.resurtir-paso input::-webkit-outer-spin-button,
+.resurtir-paso input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.resurtir-paso input:focus { outline: none; }
+.resurtir-queda { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--texto-3); text-align: center; }
+.producto-card.is-resurtir .resurtir-queda { color: var(--ok-texto); font-weight: 700; }
+
+.resurtir-barra {
+    position: sticky; bottom: 1rem; z-index: 20;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.75rem;
+    margin-top: 1.25rem; padding: 0.8rem 1rem;
+    border: 2px solid var(--tinta); border-radius: 14px;
+    background: var(--superficie); box-shadow: 4px 4px 0 var(--tinta);
+}
+.resurtir-barra[hidden] { display: none; }
+.resurtir-total { margin: 0 auto 0 0; font-size: 0.92rem; font-weight: 600; color: var(--texto-2); }
+.resurtir-nota {
+    flex: 1 1 220px; max-width: 360px; padding: 0.55rem 0.7rem;
+    border: 2px solid var(--tinta); border-radius: 8px;
+    background: var(--superficie); color: var(--texto); font: inherit; font-size: 0.9rem;
+}
+@media (max-width: 640px) {
+    .resurtir-barra { bottom: 0.5rem; }
+    .resurtir-nota { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) { .resurtir-paso button:active { transform: none; } }
+

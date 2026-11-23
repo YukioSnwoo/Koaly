@@ -86,6 +86,7 @@ return [
     // panel derecho
     'resumen.escaneo' => 'Scanned',
     'resumen.resumen' => 'Summary',
+    'resumen.limpiar_ayuda' => 'Empties the whole sale (asks for confirmation)',
     'resumen.articulos' => 'Items',
     'resumen.pagar' => 'Pay',
     'resumen.sin_productos' => 'No products',
@@ -293,6 +294,9 @@ return [
     // avisos
     'aviso.agotado_titulo' => 'Out of stock',
     'aviso.agotado' => '"{p}" is out of stock at this branch and can\'t be added to the sale.',
+    'aviso.agotado_avisado' => 'We already let your manager know so they can restock it.',
+    'aviso.agotado_ya_hay' => 'New stock just arrived ({disponibles}): you can add it now.',
+    'aviso.se_agoto' => '"{p}" sold out with this sale. We let your manager know.',
     'aviso.insuficiente_titulo' => 'Not enough stock',
     'aviso.insuficiente' => 'Only {disponibles}.',
     'aviso.sin_existencias' => '"{p}" is out of stock at this branch.',
@@ -356,4 +360,5 @@ return [
     'ticket.cambio' => 'Change',
     'ticket.iva_incluido' => 'Prices include VAT',
     'ticket.gracias' => 'Thank you for your purchase!',
+    'ticket.aviso' => 'Read our privacy notice at:',
 ];

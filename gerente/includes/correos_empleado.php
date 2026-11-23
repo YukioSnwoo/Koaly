@@ -111,7 +111,7 @@ function enviarAvisoPrivacidad(PDO $pdo, int $idUsuario, array $empleado, array 
 
     $parrafos[] = '1. Lee y acepta nuestro aviso de privacidad; ahí también puedes revisar tus datos. '
         . 'El enlace es personal y vale ' . AVISO_ENLACE_DIAS . ' días. Hasta que aceptes el aviso no podrás iniciar sesión en la caja.';
-    $parrafos[] = ['enlace' => $enlace, 'texto' => 'Leer y aceptar el aviso'];
+    $parrafos[] = ['boton' => $enlace, 'texto' => 'Leer y aceptar el aviso'];
 
     if ($acceso) {
         $vence = $acceso['vence'] ? ' y vence el ' . date('d/m/Y', strtotime($acceso['vence'])) : '';
