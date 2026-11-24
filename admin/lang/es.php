@@ -157,6 +157,9 @@ return [
     'ger.col_sucursal' => 'Sucursal asignada',
     'ger.col_acciones' => 'Acciones',
     'ger.vacio' => 'No hay gerentes registrados.',
+    'ger.buscar' => 'Buscar gerente o correo',
+    'ger.filtro_todos' => 'Todos',
+    'ger.sin_resultados' => 'Ningún gerente coincide con el filtro.',
     // Acceso del gerente por correo, como el de los cajeros (correos_gerente.php)
     'ger.acceso_ayuda' => 'No escribas contraseña: le enviaremos por correo una contraseña temporal (vence en {dias} días) y el enlace para aceptar su aviso de privacidad. Tú no la verás; al entrar, el sistema le pedirá cambiarla.',
     'ger.creado_enviado' => 'Se registró a {nombre}. Le enviamos su contraseña temporal a {email}.',
@@ -233,6 +236,8 @@ return [
     'inv.n_por_revisar' => ['{n} por revisar', '{n} por revisar'],
     'inv.buscar' => 'Buscar producto',
     'inv.todas_categorias' => 'Todas las categorías',
+    'inv.filtro_stock_todo' => 'Todo el stock',
+    'inv.filtro_stock_bajo' => 'Solo bajo stock',
     'inv.col_existencias' => 'Existencias',
     'inv.vacio' => 'No hay productos en inventario.',
     'inv.bajo_stock' => 'Bajo stock',

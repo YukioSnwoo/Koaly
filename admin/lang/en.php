@@ -157,6 +157,9 @@ return [
     'ger.col_sucursal' => 'Assigned branch',
     'ger.col_acciones' => 'Actions',
     'ger.vacio' => 'No managers registered.',
+    'ger.buscar' => 'Search manager or email',
+    'ger.filtro_todos' => 'All',
+    'ger.sin_resultados' => 'No managers match the filter.',
     // Manager access by email, like the cashiers' (correos_gerente.php)
     'ger.acceso_ayuda' => 'Do not type a password: we will email them a temporary password (expires in {dias} days) and the link to accept their privacy notice. You will not see it; when they sign in, the system will ask them to change it.',
     'ger.creado_enviado' => '{nombre} was registered. We sent their temporary password to {email}.',
@@ -233,6 +236,8 @@ return [
     'inv.n_por_revisar' => ['{n} to review', '{n} to review'],
     'inv.buscar' => 'Search product',
     'inv.todas_categorias' => 'All categories',
+    'inv.filtro_stock_todo' => 'All stock',
+    'inv.filtro_stock_bajo' => 'Low stock only',
     'inv.col_existencias' => 'Stock',
     'inv.vacio' => 'No products in inventory.',
     'inv.bajo_stock' => 'Low stock',

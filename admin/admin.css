@@ -129,7 +129,7 @@ button{font:inherit}
 }
 .admin-topbar__titulo::before{
   content:'';width:10px;height:10px;border-radius:3px;
-  background:var(--acento);box-shadow:0 0 0 4px var(--acento-suave-2);
+  background:var(--acento);box-shadow:0 0 0 4px var(--acento-suave-2);  
 }
 .admin-topbar__titulo span{font-family:var(--fuente-texto);font-size:15px;font-weight:500;color:var(--texto-3)}
 .admin-topbar__der{display:flex;align-items:center;gap:14px;flex-shrink:0}

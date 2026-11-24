@@ -326,6 +326,16 @@ $stmt = $pdo->query("
 ");
 $gerentes = $stmt->fetchAll();
 
+// Filtro por estado: "Todos" deja fuera a los dados de baja, que tienen su propio botón.
+$conteoEstados = array_fill_keys(array_keys(ESTADOS_GERENTE), 0);
+foreach ($gerentes as $g) {
+    if (isset($conteoEstados[$g['estado']])) {
+        $conteoEstados[$g['estado']]++;
+    }
+}
+$conteoTodos = count($gerentes) - $conteoEstados['Baja'];
+$fEstado = isset(ESTADOS_GERENTE[$_GET['estado'] ?? '']) ? $_GET['estado'] : '';
+
 // Contraseña temporal vencida (sql/013): hay que enviarle otra. Sin la columna no vence.
 $temporalVencida = [];
 try {
@@ -473,6 +483,22 @@ $todasSucursales = $pdo->query("
     </section>
 <?php endif; ?>
 
+<?php if ($gerentes): ?>
+<div class="filters" style="margin-top:1rem">
+    <input type="search" class="input" id="buscarGerente" placeholder="<?= e(t('ger.buscar')) ?>" style="flex:1;min-width:160px">
+</div>
+<div class="vista-tabs" id="filtroEstadoGerente" role="group" aria-label="<?= e(t('comun.estado')) ?>">
+    <?php foreach (['' => $conteoTodos] + $conteoEstados as $estado => $n): $activo = $estado === $fEstado; ?>
+        <button type="button" data-filtro="<?= $estado ?>" aria-pressed="<?= $activo ? 'true' : 'false' ?>"
+                class="btn btn--sm <?= $activo ? 'btn--primary is-activo' : 'btn--ghost' ?>">
+            <?php if ($estado !== ''): ?><i class="ti ti-<?= ESTADOS_GERENTE[$estado]['icono'] ?>"></i><?php endif; ?>
+            <?= e($estado === '' ? t('ger.filtro_todos') : tValor('estado_usuario', $estado)) ?>
+            <span class="btn__conteo"><?= $n ?></span>
+        </button>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <div class="table-wrap" style="margin-top:1rem">
     <table class="table" id="tblGerentes">
         <thead><tr>
@@ -483,7 +509,7 @@ $todasSucursales = $pdo->query("
                 <tr><td colspan="5" style="color:var(--text-muted);text-align:center"><?= e(t('ger.vacio')) ?></td></tr>
             <?php else: ?>
                 <?php foreach ($gerentes as $g): ?>
-                    <tr>
+                    <tr data-estado="<?= e((string) $g['estado']) ?>" data-buscar="<?= e(mb_strtolower($g['nombre'] . ' ' . $g['email'])) ?>">
                         <td style="display:flex;align-items:center;gap:8px">
                             <div class="avatar"><?= e(inicialesNombre($g)) ?></div>
                             <?= htmlspecialchars($g['nombre']) ?>
@@ -542,10 +568,53 @@ $todasSucursales = $pdo->query("
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                <tr id="gerentesSinResultados" hidden><td colspan="5" style="color:var(--text-muted);text-align:center"><?= e(t('ger.sin_resultados')) ?></td></tr>
             <?php endif; ?>
         </tbody>
     </table>
 </div>
+
+<script>
+// Filtro por estado y búsqueda: la lista es corta, se filtra aquí sin recargar.
+// El estado queda en la URL (?estado=) para poder enlazar a la vista ya filtrada.
+(function () {
+    const grupo = document.getElementById('filtroEstadoGerente');
+    const buscar = document.getElementById('buscarGerente');
+    if (!grupo) return;
+    let estado = grupo.querySelector('[aria-pressed="true"]')?.dataset.filtro ?? '';
+
+    function filtrar() {
+        const q = buscar.value.trim().toLowerCase();
+        let visibles = 0;
+        document.querySelectorAll('#tblGerentes tbody tr[data-estado]').forEach(fila => {
+            const coincideEstado = estado === '' ? fila.dataset.estado !== 'Baja' : fila.dataset.estado === estado;
+            const ver = coincideEstado && fila.dataset.buscar.includes(q);
+            fila.hidden = !ver;
+            if (ver) visibles++;
+        });
+        document.getElementById('gerentesSinResultados').hidden = visibles > 0;
+    }
+
+    grupo.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-filtro]');
+        if (!btn) return;
+        estado = btn.dataset.filtro;
+        grupo.querySelectorAll('[data-filtro]').forEach(b => {
+            const activo = b === btn;
+            b.setAttribute('aria-pressed', activo ? 'true' : 'false');
+            b.classList.toggle('btn--primary', activo);
+            b.classList.toggle('is-activo', activo);
+            b.classList.toggle('btn--ghost', !activo);
+        });
+        const url = new URL(location.href);
+        estado ? url.searchParams.set('estado', estado) : url.searchParams.delete('estado');
+        history.replaceState(null, '', url);
+        filtrar();
+    });
+    buscar.addEventListener('input', filtrar);
+    filtrar();
+})();
+</script>
 
 <!-- Modal: rechazar un cambio de nombre o correo (título obligatorio, motivo opcional) -->
 <div id="modalRechazoDatos" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rechazoDatosTitulo"

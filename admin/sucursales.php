@@ -262,6 +262,7 @@ if ($sucursalSeleccionada) {
         <option value=""><?= e(t('suc.todos_estados')) ?></option>
         <option value="Activa"><?= e(t('estado_sucursal.Activa')) ?></option>
         <option value="Inactiva"><?= e(t('estado_sucursal.Inactiva')) ?></option>
+        <option value="SinGerente" <?= ($_GET['filtro'] ?? '') === 'sin_gerente' ? 'selected' : '' ?>><?= e(t('suc.sin_gerente')) ?></option>
     </select>
 </div>
 
@@ -278,7 +279,7 @@ if ($sucursalSeleccionada) {
             elseif ($sinGerente)            { $clase = ' suc--warn'; $badge = 'badge--warning'; $texto = t('suc.sin_gerente'); }
             else                            { $clase = ' suc--bad'; $badge = 'badge--danger'; $texto = t('estado_sucursal.Inactiva'); }
             ?>
-            <div class="suc<?= $clase ?>" data-nombre="<?= htmlspecialchars(strtolower($s['nombre'])) ?>" data-estado="<?= $estadoVisual ?>">
+            <div class="suc<?= $clase ?>" data-nombre="<?= htmlspecialchars(strtolower($s['nombre'])) ?>" data-estado="<?= $estadoVisual ?>" data-sin-gerente="<?= $sinGerente ? '1' : '0' ?>">
                 <span class="suc__tab"></span>
                 <div class="suc__nombre">
                     <b><?= htmlspecialchars($s['nombre']) ?></b>
@@ -327,11 +328,14 @@ function filtrarSucursales() {
     const q = document.getElementById('searchSucursal').value.toLowerCase();
     const estado = document.getElementById('filterEstado').value;
     document.querySelectorAll('#tblSucursales .suc').forEach(card => {
-        card.style.display = card.dataset.nombre.includes(q) && (!estado || card.dataset.estado === estado) ? '' : 'none';
+        const coincideEstado = estado === 'SinGerente' ? card.dataset.sinGerente === '1' : (!estado || card.dataset.estado === estado);
+        card.style.display = card.dataset.nombre.includes(q) && coincideEstado ? '' : 'none';
     });
 }
 document.getElementById('searchSucursal')?.addEventListener('input', filtrarSucursales);
 document.getElementById('filterEstado')?.addEventListener('change', filtrarSucursales);
+// Desde el panel (sucursales.php?filtro=sin_gerente) la lista llega ya filtrada
+if (document.getElementById('filterEstado')?.value) filtrarSucursales();
 </script>
 
 <?php require 'footer.php'; ?>

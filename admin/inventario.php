@@ -157,8 +157,9 @@ if (!$esAjax && $_SERVER['REQUEST_METHOD'] === 'POST') {
 $fSucursal = $_GET['sucursal'] ?? '';
 $fCategoria = $_GET['categoria'] ?? '';
 $fBuscar = $_GET['buscar'] ?? '';
+$fStock = ($_GET['stock'] ?? '') === 'bajo' ? 'bajo' : '';
 
-function obtenerInventario(PDO $pdo, string $fSucursal, string $fCategoria, string $fBuscar): array
+function obtenerInventario(PDO $pdo, string $fSucursal, string $fCategoria, string $fBuscar, string $fStock = ''): array
 {
     $sql = "
         SELECT p.nombre AS producto, p.estado AS estado_producto, c.nombre_categoria AS categoria,
@@ -183,6 +184,9 @@ function obtenerInventario(PDO $pdo, string $fSucursal, string $fCategoria, stri
     if ($fBuscar !== '') {
         $sql .= " AND p.nombre LIKE ?";
         $params[] = "%$fBuscar%";
+    }
+    if ($fStock === 'bajo') {
+        $sql .= " AND ip.cantidad_disponible <= 5";
     }
 
     $sql .= " ORDER BY p.nombre, s.nombre";
@@ -218,7 +222,7 @@ function renderFilasInventario(array $productos): string
     return $html;
 }
 
-$productos = obtenerInventario($pdo, $fSucursal, $fCategoria, $fBuscar);
+$productos = obtenerInventario($pdo, $fSucursal, $fCategoria, $fBuscar, $fStock);
 
 if ($esAjax) {
     header('Content-Type: text/html; charset=utf-8');
@@ -355,6 +359,10 @@ if ($vista === 'solicitudes') {
                 <option value="<?= $c['id_categoria'] ?>" <?= $fCategoria == $c['id_categoria'] ? 'selected' : '' ?>><?= e(tValor('categoria', $c['nombre_categoria'])) ?></option>
             <?php endforeach; ?>
         </select>
+        <select name="stock" class="select">
+            <option value=""><?= e(t('inv.filtro_stock_todo')) ?></option>
+            <option value="bajo" <?= $fStock === 'bajo' ? 'selected' : '' ?>><?= e(t('inv.filtro_stock_bajo')) ?></option>
+        </select>
         <button type="submit" class="btn btn--ghost btn--sm"><?= e(t('comun.filtrar')) ?></button>
     </form>
 </div>
@@ -428,6 +436,7 @@ if ($vista === 'solicitudes') {
     });
     form.elements['sucursal'].addEventListener('change', refrescar);
     form.elements['categoria'].addEventListener('change', refrescar);
+    form.elements['stock'].addEventListener('change', refrescar);
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         refrescar();

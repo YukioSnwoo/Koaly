@@ -96,14 +96,14 @@ if ($idGrafica > 0) {
     <div class="pend">
         <p class="section-title"><?= e(t('panel.para_atender')) ?></p>
         <?php if ($bajoStock > 0): ?>
-            <a class="pend__it" href="inventario.php">
+            <a class="pend__it" href="inventario.php?stock=bajo">
                 <span class="pend__ic pend__ic--danger"><i class="ti ti-alert-triangle"></i></span>
                 <span class="pend__txt"><b><?= e(tn('panel.bajo_stock', (int) $bajoStock)) ?></b><small><?= e(t('panel.bajo_stock_ayuda')) ?></small></span>
                 <span class="btn btn--sm"><?= e(t('panel.ver')) ?></span>
             </a>
         <?php endif; ?>
         <?php if ($sinGerente > 0): ?>
-            <a class="pend__it" href="gerentes.php">
+            <a class="pend__it" href="sucursales.php?filtro=sin_gerente">
                 <span class="pend__ic pend__ic--warn"><i class="ti ti-user-off"></i></span>
                 <span class="pend__txt"><b><?= e(tn('panel.sin_gerente', $sinGerente)) ?></b><small><?= e(tn('panel.sin_gerente_ayuda', $sinGerente)) ?><?= $inactivas > 0 ? ' · ' . e(tn('panel.n_inactivas', $inactivas)) : '' ?></small></span>
                 <span class="btn btn--primary btn--sm"><?= e(t('panel.asignar')) ?></span>
