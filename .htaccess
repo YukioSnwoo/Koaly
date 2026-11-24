@@ -1,0 +1,24 @@
+# ============================================================
+#  Modo mantenimiento
+#  ------------------------------------------------------------
+#  Se enciende si existe el archivo public_html/mantenimiento/ACTIVO.
+#    Encender: en el Administrador de archivos de Hostinger, crea un
+#              archivo llamado ACTIVO dentro de mantenimiento/.
+#    Apagar:   bórralo (o renómbralo, p. ej. a ACTIVO.no).
+#  Mientras exista, toda petición (páginas, fetch, formularios) se
+#  responde con mantenimiento/index.php. Solo pasan la propia pantalla
+#  y lo que usa: estilos/ y la imagen del koala.
+#  Detalles en docs/INSTALACION.md → Modo mantenimiento.
+#
+#  Si el servidor ya tenía un .htaccess (Hostinger lo crea al forzar
+#  HTTPS, por ejemplo), pega este bloque al principio de ese archivo
+#  en lugar de reemplazarlo.
+# ============================================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{DOCUMENT_ROOT}/mantenimiento/ACTIVO -f
+    RewriteCond %{REQUEST_URI} !^/mantenimiento/
+    RewriteCond %{REQUEST_URI} !^/estilos/
+    RewriteCond %{REQUEST_URI} !^/Imagenes/koala/
+    RewriteRule ^ /mantenimiento/index.php [L]
+</IfModule>

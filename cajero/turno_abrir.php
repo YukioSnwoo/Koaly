@@ -1,9 +1,9 @@
 <?php
 /**
- * Abrir caja: el cajero cuenta los billetes y monedas que hay (obligatorio; si el
- * turno anterior dejó el fondo regular, el conteo viene lleno). Si no coincide con
- * lo que se dejó, queda la diferencia de apertura y, si pasa del umbral, el turno
- * se marca para que lo revise el gerente.
+ * Abrir caja: el cajero escribe el total en efectivo que hay (obligatorio; viene
+ * escrito con lo que dejó el turno anterior). Si no coincide con lo que se dejó,
+ * queda la diferencia de apertura y, si pasa del umbral, el turno se marca para
+ * que lo revise el gerente.
  */
 session_start();
 
@@ -47,8 +47,11 @@ try {
         responder(409, ['success' => false, 'message' => t('servidor.caja_no_activa')]);
     }
 
-    // Cuánto hay: siempre con el conteo de billetes y monedas (ya no se acepta un monto escrito)
-    [$desglose, $aperturaCentavos] = leerDesglose($_POST['desglose'] ?? '');
+    // Cuánto hay: solo el total en efectivo, sin billetes ni monedas
+    $aperturaCentavos = montoEnCentavos($_POST['efectivo'] ?? '');
+    if ($aperturaCentavos === null) {
+        throw new DomainException(t('servidor.monto_invalido'));
+    }
 
     $idCaja = (int) $cajero['id_caja'];
     $pdo->beginTransaction();
@@ -65,15 +68,14 @@ try {
         $pdo->prepare("
             INSERT INTO Turnos_Caja
                 (id_caja, id_sucursal, estado, id_cajero_apertura, fecha_apertura,
-                 efectivo_anterior, efectivo_apertura, desglose_apertura, diferencia_apertura, requiere_revision)
-            VALUES (?, ?, 'Abierto', ?, NOW(), ?, ?, ?, ?, ?)
+                 efectivo_anterior, efectivo_apertura, diferencia_apertura, requiere_revision)
+            VALUES (?, ?, 'Abierto', ?, NOW(), ?, ?, ?, ?)
         ")->execute([
             $idCaja,
             (int) $cajero['id_sucursal'],
             (int) $cajero['id_usuario'],
             $anteriorCentavos !== null ? centavosABd($anteriorCentavos) : null,
             centavosABd($aperturaCentavos),
-            json_encode($desglose),
             $diferenciaCentavos !== null ? centavosABd($diferenciaCentavos) : null,
             ($diferenciaCentavos !== null && abs($diferenciaCentavos) > UMBRAL_REVISION_CENTAVOS) ? 1 : 0,
         ]);

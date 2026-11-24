@@ -136,7 +136,7 @@ return [
     // corte de caja
     'corte.boton' => 'Cash count',
     'corte.titulo' => 'Cash count',
-    'corte.ayuda' => 'Tap a bill or a coin to add one, or type how many there are.',
+    'corte.ayuda' => 'Count the cash in the register and confirm or correct the total.',
     'corte.billetes' => 'Bills',
     'corte.monedas' => 'Coins',
     'corte.total_efectivo' => 'Total cash',
@@ -157,12 +157,8 @@ return [
     'corte.tarjeta' => 'Card',
     'corte.vouchers' => 'Card vouchers total',
     'corte.vouchers_invalidos' => 'Enter the vouchers total (it can be 0).',
+    'corte.efectivo_invalido' => 'Enter the total cash (it can be 0).',
     'corte.continuar' => 'Continue',
-    'corte.plantilla' => 'Standard float',
-    'corte.plantilla_ayuda' => 'Loads the standard float: small bills and coins for change.',
-    'corte.plantilla_titulo' => 'Load the standard float?',
-    'corte.plantilla_mensaje' => 'It will replace what you have counted so far.',
-    'corte.plantilla_confirmar' => 'Yes, load',
 
     // cash check: what should be in the register right now (printable)
     'arqueo.boton' => 'Cash check',
@@ -181,7 +177,7 @@ return [
     'arqueo.consultando' => 'Checking…',
     'arqueo.error_titulo' => 'Couldn\'t check the register',
     'arqueo.conteo_titulo' => 'Count register',
-    'arqueo.conteo_ayuda' => 'Count the cash in your register to compare it with the cash check. This count is not saved.',
+    'arqueo.conteo_ayuda' => 'Count the bills and coins in your register to compare them with the cash check: tap one to add it or type how many there are. This count is not saved.',
     'arqueo.conteo_info' => 'Expected cash in register: {monto}.',
     'arqueo.tabla' => 'Spot on: your register matches what is expected.',
     'arqueo.sobran' => '{monto} over.',
@@ -198,7 +194,8 @@ return [
     // cash drop to the safe
     'retiro.boton' => 'Cash drop',
     'retiro.titulo' => 'Cash drop',
-    'retiro.ayuda' => 'Count the bills you are putting in the safe envelope.',
+    'retiro.ayuda' => 'Count the cash you are putting in the safe envelope and enter the total.',
+    'retiro.monto' => 'Cash for the envelope',
     'retiro.info' => 'You should have {esperado} in the register.',
     'retiro.info_sugerido' => 'You should have {esperado} in the register. Suggested drop: {sugerido}, to keep {quedan}.',
     'retiro.quedan' => '{monto} will stay in the register.',
@@ -334,11 +331,10 @@ return [
     'servidor.sin_caja' => 'You don\'t have a register assigned. Ask your manager to assign one.',
     'servidor.caja_cerrada' => 'The register is closed. Open it to start selling.',
     'servidor.caja_no_activa' => 'Your register is not active. Ask your manager to activate it.',
-    'servidor.conteo_invalido' => 'The count is not valid. Check the quantities.',
     'servidor.monto_invalido' => 'Enter a valid amount (positive, up to 2 decimals).',
     'servidor.dejado_excede' => 'You can\'t leave more than you counted.',
     'servidor.turnos_sin_configurar' => 'Register shifts are not set up yet (sql/008_turnos_caja.sql and sql/012_retiros_caja.sql).',
-    'servidor.retiro_vacio' => 'Count the bills for the cash drop.',
+    'servidor.retiro_vacio' => 'Enter how much you are dropping.',
     'servidor.retiro_excede' => 'The cash drop is more than should be in the register ({monto}).',
 
     // ticket

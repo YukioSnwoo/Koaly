@@ -925,28 +925,15 @@ kbd {
 .eliminar-producto small { display: block; color: var(--texto-3); font-size: 0.82rem; }
 
 /* ============================================================
-   Corte de caja: conteo de billetes (tarjetas como las del catálogo)
+   Efectivo de la caja: total escrito (abrir, retiro y corte) o conteo de
+   billetes y monedas en Arqueo > Contar caja (tarjetas como las del catálogo)
    ============================================================ */
-.modal-box.modal-corte { width: 920px; }
-/* Título del conteo con el botón "Fondo regular" a la derecha */
-.corte-encabezado {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
-    margin-bottom: 0.5rem;
-}
-.corte-encabezado h2 { margin-bottom: 0; }
-.corte-plantilla {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.45rem 0.8rem;
-    border: 1px solid var(--acento-borde); border-radius: 8px;
-    background: var(--acento-suave); color: var(--acento-texto);
-    font-weight: 600; font-size: 0.85rem;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
-}
-.corte-plantilla:hover { background: var(--acento); border-color: var(--acento); color: #fff; }
-.corte-plantilla:active { transform: translateY(1px); }
-.corte-plantilla small { font-weight: 500; opacity: 0.8; }
-.corte-plantilla[hidden] { display: none; }
+.modal-box.modal-corte { width: 460px; }
+.modal-box.modal-corte.modal-corte--piezas { width: 920px; }
+.corte-monto[hidden],
+.corte-conteo[hidden] { display: none; }
+.corte-monto { margin-top: 0.75rem; }
+.corte-monto .input-dinero input { font-size: 1.4rem; }
 .corte-seccion {
     margin: 1rem 0 0.6rem;
     font-size: 0.8rem; font-weight: 700; color: var(--texto-2);
@@ -1125,7 +1112,7 @@ body.caja-bloqueada .pos-layout { filter: grayscale(1); opacity: 0.4; }
 .arqueo-limite:empty { display: none; }
 .arqueo-limite.is-excedente { color: var(--aviso-texto); font-weight: 600; }
 
-/* Conteo en modo corte: vouchers de tarjeta */
+/* En el corte: vouchers de tarjeta */
 .corte-tarjeta[hidden] { display: none; }
 .corte-tarjeta .form-group { max-width: 320px; }
 /* Botones que cambian según el uso (conteo: abrir o corte; cerrar sesión: salir o corte) */

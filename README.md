@@ -93,10 +93,10 @@ Cada venta descuenta el inventario de la sucursal en el momento, queda ligada al
 - **Pantalla del cliente** en un segundo monitor, sincronizada con la caja sin pasar por el servidor.
 
 ### Turnos y efectivo
-- Apertura de caja con conteo del fondo, comparado con lo que dejó el turno anterior.
-- Arqueo en cualquier momento con el efectivo esperado en caja.
+- Apertura de caja con el efectivo del fondo, comparado con lo que dejó el turno anterior.
+- Arqueo en cualquier momento con el efectivo esperado en caja; desde ahí se puede contar la caja con billetes y monedas para ver si va tabla.
 - Aviso de excedente y **retiros parciales** a la tómbola con comprobante.
-- **Corte de caja** contando billetes, monedas y vouchers; el resultado sale como cuadrada, faltante o sobrante.
+- **Corte de caja** con el total en efectivo y los vouchers; el resultado sale como cuadrada, faltante o sobrante.
 - El gerente recibe cada corte y deja registrado el efectivo que le entregaron.
 
 ### Inventario y catálogo
@@ -299,7 +299,7 @@ Para la caja basta una computadora con un navegador actualizado (Chrome, Safari,
      Cómo: con el efectivo recibido escrito, para que se vea el cambio.
      Figura 21 · docs/capturas/21-cajero-corte.png
      Dónde: Cajero → Corte.
-     Cómo: con billetes y monedas ya contados y el total en efectivo. -->
+     Cómo: con el total en efectivo y los vouchers escritos. -->
 <table>
   <tr>
     <td width="50%"><img src="docs/capturas/20-cajero-cobro.png" alt="Cobro" width="100%"></td>
@@ -307,7 +307,7 @@ Para la caja basta una computadora con un navegador actualizado (Chrome, Safari,
   </tr>
   <tr>
     <td align="center"><sub><b>Figura 20.</b> Cobro en efectivo, con tarjeta o combinado.</sub></td>
-    <td align="center"><sub><b>Figura 21.</b> Corte de caja contando billetes, monedas y vouchers.</sub></td>
+    <td align="center"><sub><b>Figura 21.</b> Corte de caja con el efectivo y los vouchers.</sub></td>
   </tr>
 </table>
 
@@ -399,10 +399,10 @@ El ciclo de un turno de caja:
 
 ```mermaid
 flowchart LR
-    A["Abrir caja<br/>conteo del fondo"] --> B["Vender<br/>efectivo · tarjeta · combinado"]
+    A["Abrir caja<br/>efectivo del fondo"] --> B["Vender<br/>efectivo · tarjeta · combinado"]
     B --> C["Retiros parciales<br/>a la tómbola"]
     C --> B
-    B --> D["Corte de caja<br/>billetes, monedas y vouchers"]
+    B --> D["Corte de caja<br/>efectivo y vouchers"]
     D --> E["El gerente<br/>recibe el corte"]
 ```
 
@@ -427,7 +427,7 @@ Koaly/
 ├── perfil/                Menú de perfil común: foto, notificaciones, tema e idioma
 ├── privacidad/            Aviso de privacidad y constancias de aceptación
 ├── estilos/               Estilo común (colores, fuentes, modo oscuro) y barra lateral
-├── Imagenes/              Mascota, íconos y billetes y monedas del corte de caja
+├── Imagenes/              Mascota, íconos y billetes y monedas del arqueo
 ├── sql/                   Esquema de la base y migraciones numeradas
 └── docs/                 Guía de instalación y capturas de este README
 ```

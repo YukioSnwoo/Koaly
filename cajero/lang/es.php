@@ -137,7 +137,7 @@ return [
     // corte de caja
     'corte.boton' => 'Corte',
     'corte.titulo' => 'Corte de caja',
-    'corte.ayuda' => 'Toca un billete o una moneda para sumar uno, o escribe cuántos hay.',
+    'corte.ayuda' => 'Cuenta el efectivo de la caja y confirma o corrige el total.',
     'corte.billetes' => 'Billetes',
     'corte.monedas' => 'Monedas',
     'corte.total_efectivo' => 'Total en efectivo',
@@ -158,12 +158,8 @@ return [
     'corte.tarjeta' => 'Tarjeta',
     'corte.vouchers' => 'Suma de vouchers de tarjeta',
     'corte.vouchers_invalidos' => 'Escribe la suma de los vouchers (puede ser 0).',
+    'corte.efectivo_invalido' => 'Escribe el total en efectivo (puede ser 0).',
     'corte.continuar' => 'Continuar',
-    'corte.plantilla' => 'Fondo regular',
-    'corte.plantilla_ayuda' => 'Carga el fondo regular: billetes chicos y monedas para dar cambio.',
-    'corte.plantilla_titulo' => '¿Cargar el fondo regular?',
-    'corte.plantilla_mensaje' => 'Se reemplazará lo que llevas contado.',
-    'corte.plantilla_confirmar' => 'Sí, cargar',
 
     // arqueo: lo que debería haber en caja en este momento (se puede imprimir)
     'arqueo.boton' => 'Arqueo',
@@ -182,7 +178,7 @@ return [
     'arqueo.consultando' => 'Consultando…',
     'arqueo.error_titulo' => 'No se pudo consultar la caja',
     'arqueo.conteo_titulo' => 'Contar caja',
-    'arqueo.conteo_ayuda' => 'Cuenta el efectivo de tu caja para compararlo con el arqueo. Este conteo no se guarda.',
+    'arqueo.conteo_ayuda' => 'Cuenta los billetes y monedas de tu caja para compararlos con el arqueo: toca uno para sumarlo o escribe cuántos hay. Este conteo no se guarda.',
     'arqueo.conteo_info' => 'Efectivo esperado en caja: {monto}.',
     'arqueo.tabla' => 'Va tabla: tu caja cuadra con lo esperado.',
     'arqueo.sobran' => 'Sobran {monto}.',
@@ -199,7 +195,8 @@ return [
     // retiro parcial a la tómbola
     'retiro.boton' => 'Retiro',
     'retiro.titulo' => 'Retiro parcial',
-    'retiro.ayuda' => 'Cuenta los billetes que vas a meter en el sobre de la tómbola.',
+    'retiro.ayuda' => 'Cuenta el efectivo que vas a meter en el sobre de la tómbola y escribe el total.',
+    'retiro.monto' => 'Efectivo para el sobre',
     'retiro.info' => 'En caja deberías tener {esperado}.',
     'retiro.info_sugerido' => 'En caja deberías tener {esperado}. Retiro sugerido: {sugerido}, para quedarte con {quedan}.',
     'retiro.quedan' => 'Quedarán {monto} en caja.',
@@ -335,11 +332,10 @@ return [
     'servidor.sin_caja' => 'No tienes una caja asignada. Pide a tu gerente que te asigne una.',
     'servidor.caja_cerrada' => 'La caja está cerrada. Ábrela para poder vender.',
     'servidor.caja_no_activa' => 'Tu caja no está activa. Pide a tu gerente que la active.',
-    'servidor.conteo_invalido' => 'El conteo no es válido. Revisa las cantidades.',
     'servidor.monto_invalido' => 'Escribe un monto válido (positivo, con hasta 2 decimales).',
     'servidor.dejado_excede' => 'No puedes dejar en caja más de lo que contaste.',
     'servidor.turnos_sin_configurar' => 'Falta configurar los turnos de caja (sql/008_turnos_caja.sql y sql/012_retiros_caja.sql).',
-    'servidor.retiro_vacio' => 'Cuenta los billetes del retiro.',
+    'servidor.retiro_vacio' => 'Escribe cuánto vas a retirar.',
     'servidor.retiro_excede' => 'El retiro es mayor que el efectivo que debería haber en caja ({monto}).',
 
     // ticket

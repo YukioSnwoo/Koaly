@@ -207,32 +207,58 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         </div>
     </div>
 
-    <!-- Modal: conteo de billetes y monedas. Sirve para abrir caja (obligatorio, sin
-         Cancelar: solo se abre la caja o se cierra sesión), para el corte (cierre), para
-         el retiro parcial y para contar la caja contra el arqueo (no se guarda). -->
+    <!-- Modal: efectivo de la caja. Sirve para abrir caja (obligatorio, sin Cancelar:
+         solo se abre la caja o se cierra sesión), para el corte (cierre) y para el retiro
+         parcial, escribiendo el total; y para contar la caja contra el arqueo con
+         billetes y monedas (no se guarda). -->
     <div class="modal-overlay" id="modalCorte" role="dialog" aria-modal="true" aria-labelledby="tituloCorte">
         <div class="modal-box modal-corte">
-            <div class="corte-encabezado">
-                <h2 id="tituloCorte"></h2>
-                <!-- Carga el fondo regular ($1,000 en piezas chicas) en el conteo -->
-                <button type="button" class="corte-plantilla" id="cortePlantilla" onclick="pedirPlantillaFondo()" data-i18n-title="corte.plantilla_ayuda" title="<?= e(t('corte.plantilla_ayuda')) ?>">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
-                    <span data-i18n="corte.plantilla"><?= e(t('corte.plantilla')) ?></span>
-                    <small id="cortePlantillaTotal"></small>
-                </button>
-            </div>
+            <h2 id="tituloCorte"></h2>
             <!-- Al abrir: lo que dejó el turno anterior; en el retiro y el arqueo: lo esperado en caja -->
             <div class="apertura-anterior" id="corteInfo" hidden></div>
             <p class="atajo-hint" id="corteAyuda"></p>
 
-            <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
-            <div class="dinero-grid" id="corteBilletes">
-                <!-- Tarjetas de billetes (JS) -->
+            <!-- Abrir caja, retiro y corte: solo el total en efectivo -->
+            <div class="form-group corte-monto" id="corteMonto">
+                <label for="inputEfectivo" id="corteMontoEtiqueta"></label>
+                <div class="input-dinero">
+                    <span>$</span>
+                    <input type="text" id="inputEfectivo" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-describedby="errorEfectivo montoAviso">
+                </div>
+                <div class="campo-error" id="errorEfectivo"></div>
+                <!-- Al abrir: si no coincide con lo que se dejó. Retiro: cuánto queda. -->
+                <div class="apertura-aviso" id="montoAviso" aria-live="polite"></div>
             </div>
 
-            <h3 class="corte-seccion" data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></h3>
-            <div class="dinero-grid dinero-grid--monedas" id="corteMonedas">
-                <!-- Tarjetas de monedas (JS) -->
+            <!-- Arqueo > Contar caja: billetes y monedas -->
+            <div class="corte-conteo" id="corteConteo">
+                <h3 class="corte-seccion" data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></h3>
+                <div class="dinero-grid" id="corteBilletes">
+                    <!-- Tarjetas de billetes (JS) -->
+                </div>
+
+                <h3 class="corte-seccion" data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></h3>
+                <div class="dinero-grid dinero-grid--monedas" id="corteMonedas">
+                    <!-- Tarjetas de monedas (JS) -->
+                </div>
+
+                <!-- Resumen: billetes, monedas y total en efectivo -->
+                <div class="corte-resumen" aria-live="polite">
+                    <div class="corte-fila">
+                        <span><span data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></span> <small id="cortePiezasBilletes"></small></span>
+                        <span id="corteTotalBilletes">$0.00</span>
+                    </div>
+                    <div class="corte-fila">
+                        <span><span data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></span> <small id="cortePiezasMonedas"></small></span>
+                        <span id="corteTotalMonedas">$0.00</span>
+                    </div>
+                    <div class="corte-fila corte-fila--total">
+                        <span data-i18n="corte.total_efectivo"><?= e(t('corte.total_efectivo')) ?></span>
+                        <strong id="corteTotal">$0.00</strong>
+                    </div>
+                    <!-- Si va tabla, sobra o falta -->
+                    <div class="apertura-aviso" id="corteAviso"></div>
+                </div>
             </div>
 
             <!-- Solo en el corte: lo cobrado con tarjeta según los comprobantes de la terminal -->
@@ -248,26 +274,8 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 </div>
             </div>
 
-            <!-- Resumen: billetes, monedas y total en efectivo -->
-            <div class="corte-resumen" aria-live="polite">
-                <div class="corte-fila">
-                    <span><span data-i18n="corte.billetes"><?= e(t('corte.billetes')) ?></span> <small id="cortePiezasBilletes"></small></span>
-                    <span id="corteTotalBilletes">$0.00</span>
-                </div>
-                <div class="corte-fila">
-                    <span><span data-i18n="corte.monedas"><?= e(t('corte.monedas')) ?></span> <small id="cortePiezasMonedas"></small></span>
-                    <span id="corteTotalMonedas">$0.00</span>
-                </div>
-                <div class="corte-fila corte-fila--total">
-                    <span data-i18n="corte.total_efectivo"><?= e(t('corte.total_efectivo')) ?></span>
-                    <strong id="corteTotal">$0.00</strong>
-                </div>
-                <!-- Al abrir: si no coincide con lo que se dejó. Retiro: cuánto queda.
-                     Arqueo: si va tabla, sobra o falta. -->
-                <div class="apertura-aviso" id="corteAviso"></div>
-            </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-ghost corte-limpiar" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
+                <button type="button" class="btn btn-ghost corte-limpiar" id="btnCorteLimpiar" onclick="pedirLimpiarCorte()" data-i18n="corte.limpiar"><?= e(t('corte.limpiar')) ?></button>
                 <button type="button" class="btn btn-ghost" id="btnCorteCancelar" onclick="cerrarModal('modalCorte')" data-i18n="comun.cancelar"><?= e(t('comun.cancelar')) ?></button>
                 <button type="button" class="btn btn-ghost" id="btnCorteSalir" onclick="pedirSalir()" data-i18n="sesion.cerrar"><?= e(t('sesion.cerrar')) ?></button>
                 <button type="button" class="btn btn-primary" id="btnCorteAbrir" onclick="confirmarApertura()" data-i18n="caja.abrir"><?= e(t('caja.abrir')) ?></button>
@@ -2000,10 +2008,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             mostrarVentaCompletada('Tarjeta', venta);
         }
 
-        /* ---------- Corte de caja: conteo de billetes y monedas ---------- */
-        // Tarjetas como las del catálogo: clic en la pieza suma uno, el círculo
-        // rojo resta uno y la cantidad también se puede escribir. El conteo se
-        // conserva aunque se cierre la ventana, hasta que se limpie.
+        /* ---------- Efectivo de la caja: total escrito o conteo de billetes y monedas ---------- */
+        // Al abrir caja, en el retiro y en el corte se escribe el total en efectivo: al
+        // gerente le importa el dinero, no cuántos billetes o monedas son. Solo Arqueo >
+        // Contar caja se cuenta por piezas, con tarjetas como las del catálogo: clic en
+        // la pieza suma uno, el círculo rojo resta uno y la cantidad también se puede
+        // escribir. Lo capturado se conserva aunque se cierre la ventana, hasta que se limpie.
         // Montos en centavos; la llave es el id porque $20 es billete y moneda.
         const DENOMINACIONES = [
             { id: 'b20',   tipo: 'billete', centavos: 2000,   imagen: 'billete20.jpg' },
@@ -2020,31 +2030,33 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             { id: 'm20',   tipo: 'moneda',  centavos: 2000,   imagen: 'moneda20.jpg' },
         ];
         const conteoCorte = new Map(DENOMINACIONES.map(d => [d.id, 0]));
+        const inputEfectivo = document.getElementById('inputEfectivo');
 
         // "$20", "$1,000", "$0.50"
         const denominacion = (centavos) => centavos % 100 === 0
             ? '$' + (centavos / 100).toLocaleString('es-MX')
             : formatoDinero(centavos / 100);
 
-        // El mismo conteo sirve para abrir caja ('apertura'), el corte ('cierre'), el
+        // La misma ventana sirve para abrir caja ('apertura'), el corte ('cierre'), el
         // retiro parcial ('retiro') y contar la caja contra el arqueo ('arqueo', no se
         // guarda). Al cambiar de uso se empieza de cero.
         let modoCorte = 'cierre';
-        let modoConteo = null;      // para qué es el conteo guardado
+        let modoConteo = null;      // para qué es lo capturado
 
-        // Qué lleva el conteo en cada uso: título, ayuda, aviso de arriba y botones
+        // Qué lleva cada uso: título, ayuda, aviso de arriba, cómo se captura el
+        // efectivo (etiqueta del total escrito, o piezas) y botones
         const MODOS_CONTEO = {
             apertura: {
                 titulo: () => tr('apertura.titulo', { n: cajaActual.numero }),
                 ayuda: () => tr('corte.ayuda'),
                 info: () => textoTurnoAnterior(),
-                plantilla: true,
+                etiqueta: 'corte.total_efectivo',
                 botones: ['btnCorteSalir', 'btnCorteAbrir'],
             },
             cierre: {
                 titulo: () => tr('corte.titulo'),
                 ayuda: () => tr('corte.ayuda_cierre') + (salirTrasCorte ? ' ' + tr('corte.ayuda_salir') : ''),
-                plantilla: true,
+                etiqueta: 'corte.total_efectivo',
                 tarjeta: true,
                 botones: ['btnCorteCancelar', 'btnCorteContinuar'],
             },
@@ -2052,16 +2064,20 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 titulo: () => tr('retiro.titulo'),
                 ayuda: () => tr('retiro.ayuda'),
                 info: () => textoRetiro(),
+                etiqueta: 'retiro.monto',
                 botones: ['btnCorteCancelar', 'btnCorteRetirar'],
             },
             arqueo: {
                 titulo: () => tr('arqueo.conteo_titulo'),
                 ayuda: () => tr('arqueo.conteo_ayuda'),
                 info: () => tr('arqueo.conteo_info', { monto: formatoDinero(arqueoActual.esperado) }),
+                piezas: true,
                 cancelar: 'comun.cerrar',
-                botones: ['btnCorteCancelar'],
+                botones: ['btnCorteLimpiar', 'btnCorteCancelar'],
             },
         };
+
+        const contarPiezas = () => !!MODOS_CONTEO[modoCorte].piezas;
 
         function mostrarCorte(modo) {
             if (modoConteo !== modo) limpiarConteo();
@@ -2072,7 +2088,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const info = document.getElementById('corteInfo');
             info.textContent = config.info ? config.info() : '';
             info.hidden = !config.info;
-            document.getElementById('cortePlantilla').hidden = !config.plantilla;
+            // Billetes y monedas solo en el arqueo; en lo demás, el total escrito
+            document.querySelector('#modalCorte .modal-corte').classList.toggle('modal-corte--piezas', !!config.piezas);
+            document.getElementById('corteConteo').hidden = !config.piezas;
+            document.getElementById('corteMonto').hidden = !!config.piezas;
+            if (config.etiqueta) {
+                const etiqueta = document.getElementById('corteMontoEtiqueta');
+                etiqueta.dataset.i18n = config.etiqueta;
+                etiqueta.textContent = tr(config.etiqueta);
+            }
             document.getElementById('corteTarjeta').hidden = !config.tarjeta;
             document.querySelectorAll('#modalCorte .modal-actions [id^="btnCorte"]').forEach(boton => {
                 boton.hidden = !config.botones.includes(boton.id);
@@ -2081,10 +2105,18 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             const cancelar = document.getElementById('btnCorteCancelar');
             cancelar.dataset.i18n = config.cancelar || 'comun.cancelar';
             cancelar.textContent = tr(cancelar.dataset.i18n);
+            document.getElementById('errorEfectivo').textContent = '';
+            inputEfectivo.closest('.input-dinero').classList.remove('con-error');
             document.getElementById('errorVouchers').textContent = '';
-            renderCorte();
+            if (config.piezas) renderCorte();
+            else actualizarAvisoConteo();
             abrirModal('modalCorte');
-            document.querySelector('#corteBilletes .dinero-piezas')?.focus();
+            if (config.piezas) {
+                document.querySelector('#corteBilletes .dinero-piezas')?.focus();
+            } else {
+                inputEfectivo.focus();
+                inputEfectivo.select();
+            }
         }
 
         // Botón "Corte" de la barra: cerrar caja. No con una venta a medias.
@@ -2101,31 +2133,44 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         function limpiarConteo() {
             conteoCorte.forEach((_, id) => conteoCorte.set(id, 0));
+            inputEfectivo.value = '';
             document.getElementById('inputVouchers').value = '';
         }
 
-        // Fondo regular: $1,000 en billetes chicos y monedas para dar cambio.
-        // Es lo que se deja normalmente al cerrar la caja.
-        const PLANTILLA_FONDO = { b100: 2, b50: 6, b20: 10, m10: 20, m5: 10, m2: 15, m1: 15, m050: 10 };
-        const totalPlantillaFondo = () => DENOMINACIONES.reduce((total, d) => total + (PLANTILLA_FONDO[d.id] ?? 0) * d.centavos, 0);
-        document.getElementById('cortePlantillaTotal').textContent = denominacion(totalPlantillaFondo());
-
-        function cargarPlantillaFondo(pintar = true) {
-            conteoCorte.forEach((_, id) => conteoCorte.set(id, PLANTILLA_FONDO[id] ?? 0));
-            if (pintar) renderCorte();
+        // Efectivo capturado, en centavos: las piezas en el arqueo o el total escrito en
+        // lo demás. null si el total escrito está vacío o no es un monto válido.
+        function efectivoContado() {
+            if (contarPiezas()) return sumarCorte().centavos;
+            return inputEfectivo.value.trim() === '' ? null : centavosDeTexto(inputEfectivo.value);
         }
 
-        // Si ya hay piezas contadas, pregunta antes de reemplazarlas
-        function pedirPlantillaFondo() {
-            if (sumarCorte().piezas === 0) {
-                cargarPlantillaFondo();
-                return;
+        // Total escrito no válido: marca el campo y lo enfoca. Devuelve el monto o null.
+        function pedirEfectivo() {
+            const efectivo = efectivoContado();
+            if (efectivo === null) {
+                document.getElementById('errorEfectivo').textContent = tr('corte.efectivo_invalido');
+                inputEfectivo.closest('.input-dinero').classList.add('con-error');
+                inputEfectivo.focus();
             }
-            const mensaje = document.createElement('p');
-            mensaje.className = 'modal-mensaje';
-            mensaje.textContent = tr('corte.plantilla_mensaje');
-            abrirConfirmacion(tr('corte.plantilla_titulo'), mensaje, tr('corte.plantilla_confirmar'), () => cargarPlantillaFondo());
+            return efectivo;
         }
+
+        // 1250050 centavos -> "12,500.50", como queda el campo al escribir
+        const textoMonto = (centavos) => (centavos / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        inputEfectivo.addEventListener('input', () => {
+            formatearMiles(inputEfectivo);
+            document.getElementById('errorEfectivo').textContent = '';
+            inputEfectivo.closest('.input-dinero').classList.remove('con-error');
+            actualizarAvisoConteo();
+        });
+        // Enter hace lo del botón principal; en el corte pasa a los vouchers
+        inputEfectivo.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (modoCorte === 'apertura') confirmarApertura();
+            else if (modoCorte === 'retiro') confirmarRetiro();
+            else if (modoCorte === 'cierre') inputVouchers.focus();
+        });
 
         function renderCorte() {
             const tarjetas = (tipo) => DENOMINACIONES.filter(d => d.tipo === tipo).map(crearTarjetaDinero);
@@ -2233,19 +2278,19 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             actualizarAvisoConteo();
         }
 
-        // Aviso bajo el total, según el uso del conteo:
+        // Aviso bajo el efectivo, según el uso:
         //  apertura: si no coincide con lo que se dejó (queda registrado para el gerente)
         //  retiro:   cuánto queda en caja, o que es más de lo que debería haber
         //  arqueo:   si la caja va tabla, sobra o falta
         function actualizarAvisoConteo() {
-            const aviso = document.getElementById('corteAviso');
+            const aviso = document.getElementById(contarPiezas() ? 'corteAviso' : 'montoAviso');
             aviso.textContent = '';
             aviso.classList.remove('is-ok', 'is-peligro');
-            const contado = sumarCorte().centavos;
+            const contado = efectivoContado();
 
             if (modoCorte === 'apertura') {
                 const dejado = turnoAnterior?.efectivo_dejado;
-                if (dejado == null) return;
+                if (dejado == null || contado === null) return;
                 const diferencia = contado - aCentavos(dejado);
                 if (diferencia !== 0) {
                     aviso.textContent = tr(diferencia < 0 ? 'apertura.faltan' : 'apertura.sobran', { monto: formatoDinero(Math.abs(diferencia) / 100) })
@@ -2253,9 +2298,9 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
                 }
             } else if (modoCorte === 'retiro') {
                 const esperado = aCentavos(arqueoActual?.esperado ?? 0);
-                const excede = contado > esperado;
-                document.getElementById('btnCorteRetirar').disabled = contado === 0 || excede || guardandoTurno;
-                if (contado === 0) return;
+                const excede = contado !== null && contado > esperado;
+                document.getElementById('btnCorteRetirar').disabled = !contado || excede || guardandoTurno;
+                if (!contado) return;
                 aviso.textContent = excede
                     ? tr('retiro.excede', { monto: formatoDinero(esperado / 100) })
                     : tr('retiro.quedan', { monto: formatoDinero((esperado - contado) / 100) });
@@ -2284,7 +2329,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         /* ---------- Turno de caja: abrir, arqueo, retiros y cerrar ---------- */
         // Sin turno abierto todo se ve en gris y al cargar la página se pide abrir
-        // la caja contando billetes y monedas (no se puede vender sin eso). Durante el
+        // la caja con el efectivo que hay (no se puede vender sin eso). Durante el
         // turno, como en OXXO: el arqueo dice cuánto debería haber en caja, el excedente
         // se mete a la tómbola con retiros parciales y la caja avisa cuando pasa del
         // límite. Al cerrar se cuenta primero (el resultado sale al guardar), se decide
@@ -2378,15 +2423,15 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* --- Abrir caja --- */
-        // Siempre contando billetes y monedas. Si el turno anterior dejó el fondo
-        // regular (lo normal), el conteo ya viene con esas piezas: se revisa y se confirma.
+        // El total ya viene escrito con lo que dejó el turno anterior (o el fondo base
+        // si es el primero): se cuenta el efectivo y se confirma o se corrige.
         function abrirApertura() {
             if (!cajaActual || estadoCaja !== 'cerrada') return;
             if (modoConteo !== 'apertura') {
                 limpiarConteo();
                 modoConteo = 'apertura';
                 const dejado = turnoAnterior?.efectivo_dejado ?? cajaActual.fondo_fijo;
-                if (aCentavos(dejado) === totalPlantillaFondo()) cargarPlantillaFondo(false);
+                inputEfectivo.value = textoMonto(aCentavos(dejado));
             }
             mostrarCorte('apertura');
         }
@@ -2404,10 +2449,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
 
         async function confirmarApertura() {
             if (guardandoTurno) return;
+            const efectivo = pedirEfectivo();
+            if (efectivo === null) return;
 
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
-            datos.append('desglose', JSON.stringify(Object.fromEntries(conteoCorte)));
+            datos.append('efectivo', (efectivo / 100).toFixed(2));
 
             const boton = document.getElementById('btnCorteAbrir');
             guardandoTurno = true;
@@ -2546,7 +2593,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         /* --- Retiro parcial --- */
-        // Se cuentan los billetes que van al sobre de la tómbola; se descuentan de lo
+        // Se escribe el efectivo que va al sobre de la tómbola; se descuenta de lo
         // esperado en caja y se imprime el comprobante que va dentro del sobre.
         async function abrirRetiro() {
             if (estadoCaja !== 'abierta' || !(await refrescarArqueo())) return;
@@ -2562,12 +2609,12 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         async function confirmarRetiro() {
-            const monto = sumarCorte().centavos;
-            if (guardandoTurno || monto === 0 || monto > aCentavos(arqueoActual.esperado)) return;
+            const monto = efectivoContado();
+            if (guardandoTurno || !monto || monto > aCentavos(arqueoActual.esperado)) return;
 
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
-            datos.append('desglose', JSON.stringify(Object.fromEntries(conteoCorte)));
+            datos.append('monto', (monto / 100).toFixed(2));
 
             const boton = document.getElementById('btnCorteRetirar');
             guardandoTurno = true;
@@ -2651,15 +2698,16 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (e.key === 'Enter') continuarCierre();
         });
 
-        // Paso 2: con el conteo listo, cuánto se deja (sugerido: el fondo base de la caja)
+        // Paso 2: con el efectivo y los vouchers listos, cuánto se deja (sugerido: el fondo base de la caja)
         function continuarCierre() {
+            const contado = pedirEfectivo();
+            if (contado === null) return;
             const vouchers = inputVouchers.value.trim() === '' ? 0 : centavosDeTexto(inputVouchers.value);
             if (vouchers === null) {
                 document.getElementById('errorVouchers').textContent = tr('corte.vouchers_invalidos');
                 inputVouchers.focus();
                 return;
             }
-            const contado = sumarCorte().centavos;
             document.getElementById('cierreContado').textContent = formatoDinero(contado / 100);
             document.getElementById('cierreVouchers').textContent = formatoDinero(vouchers / 100);
             document.getElementById('cierreFondo').textContent = tr('cierre.fondo_base', { monto: formatoDinero(cajaActual.fondo_fijo) });
@@ -2675,7 +2723,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         }
 
         function actualizarEntrega() {
-            const contado = sumarCorte().centavos;
+            const contado = efectivoContado() ?? 0;
             const dejado = centavosDeTexto(inputDejado.value);
             const error = document.getElementById('errorDejado');
             const excede = dejado !== null && dejado > contado;
@@ -2694,13 +2742,14 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         });
 
         async function confirmarCierre() {
+            const contado = efectivoContado();
             const dejado = centavosDeTexto(inputDejado.value);
             const vouchers = inputVouchers.value.trim() === '' ? 0 : centavosDeTexto(inputVouchers.value);
-            if (dejado === null || vouchers === null || guardandoTurno) return;
+            if (contado === null || dejado === null || vouchers === null || guardandoTurno) return;
 
             const datos = new FormData();
             datos.append('csrf_token', csrfToken);
-            datos.append('desglose', JSON.stringify(Object.fromEntries(conteoCorte)));
+            datos.append('contado', (contado / 100).toFixed(2));
             datos.append('vouchers', (vouchers / 100).toFixed(2));
             datos.append('dejado', (dejado / 100).toFixed(2));
 
@@ -2858,12 +2907,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
         const filaTicket = (izq, der, clase = '') =>
             `<div class="fila ${clase}"><span>${escaparHtml(izq)}</span><span>${escaparHtml(der)}</span></div>`;
 
-        // "4 x $500 ...... $2,000.00" por cada denominación contada
-        const filasDesglose = (desglose) => DENOMINACIONES
-            .filter(d => (desglose?.[d.id] ?? 0) > 0)
-            .map(d => filaTicket(`${desglose[d.id]} x ${denominacion(d.centavos)}`, formatoDinero(desglose[d.id] * d.centavos / 100)))
-            .join('');
-
         function htmlTicket(t) {
             const fila = (izq, der, clase = '') =>
                 `<div class="fila ${clase}"><span>${izq}</span><span>${der}</span></div>`;
@@ -2919,7 +2962,7 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
             if (ticket) imprimirHtml(htmlTicket(ticket), 'btnFinalizarVenta');
         }
 
-        // Ticket del corte: conteo, lo esperado, el resultado, lo que se deja y lo que se entrega
+        // Ticket del corte: lo contado, lo esperado, el resultado, lo que se deja y lo que se entrega
         function htmlTicketCorte(c) {
             const fila = filaTicket;
             const conRetiros = c.retiros_parciales > 0;
@@ -2943,7 +2986,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     ${fila(tr('ticket_corte.cierre'), fechaHoraCorta(c.fecha_cierre))}
     ${fila(tr('resultado.ventas'), c.num_ventas)}
     <hr>
-    ${filasDesglose(c.desglose)}
     ${fila(tr('cierre.contado'), formatoDinero(c.efectivo_contado), 'destacado')}
     ${fila(tr('cierre.vouchers'), formatoDinero(c.vouchers), 'destacado')}
     <hr>
@@ -3025,8 +3067,6 @@ $verCajeroCss = filemtime(__DIR__ . '/cajero.css');
     ${fila(tr('caja.cajero'), r.cajero)}
     ${fila(tr('ticket_retiro.turno'), '#' + r.turno)}
     ${fila(tr('ticket.fecha'), fechaHoraCorta(r.fecha))}
-    <hr>
-    ${filasDesglose(r.desglose)}
     <hr>
     ${fila(tr('ticket_retiro.total'), formatoDinero(r.monto), 'total')}
     ${fila(tr('ticket_retiro.quedan'), formatoDinero(r.en_caja))}
