@@ -1,9 +1,9 @@
 <?php
 /**
  * Retiro parcial (como en OXXO): durante el turno el cajero mete a la tómbola el
- * efectivo que sobra, para no tener un excedente en caja. Recibe las piezas que
- * se retiran; el monto se descuenta de lo esperado en caja y, al cerrar, se suma
- * a lo que se entrega al gerente.
+ * efectivo que sobra, para no tener un excedente en caja. Recibe el monto que se
+ * retira; se descuenta de lo esperado en caja y, al cerrar, se suma a lo que se
+ * entrega al gerente.
  */
 session_start();
 
@@ -44,7 +44,10 @@ try {
         responder(409, ['success' => false, 'message' => t('servidor.sin_caja')]);
     }
 
-    [$desglose, $montoCentavos] = leerDesglose($_POST['desglose'] ?? '');
+    $montoCentavos = montoEnCentavos($_POST['monto'] ?? '');
+    if ($montoCentavos === null) {
+        throw new DomainException(t('servidor.monto_invalido'));
+    }
     if ($montoCentavos <= 0) {
         throw new DomainException(t('servidor.retiro_vacio'));
     }
@@ -67,13 +70,12 @@ try {
     }
 
     $pdo->prepare("
-        INSERT INTO Retiros_Caja (id_turno, id_cajero, fecha, monto, desglose)
-        VALUES (?, ?, NOW(), ?, ?)
+        INSERT INTO Retiros_Caja (id_turno, id_cajero, fecha, monto)
+        VALUES (?, ?, NOW(), ?)
     ")->execute([
         $idTurno,
         (int) $cajero['id_usuario'],
         centavosABd($montoCentavos),
-        json_encode($desglose),
     ]);
     $idRetiro = (int) $pdo->lastInsertId();
 
@@ -93,7 +95,6 @@ try {
             'fecha'    => $stmt->fetchColumn(),
             'monto'    => $montoCentavos / 100,
             'en_caja'  => $arqueo['esperado'] / 100,
-            'desglose' => $desglose,
         ],
         'arqueo'  => arqueoEnPesos($arqueo, $cajero),
         'retiros' => retirosDelTurno($pdo, $idTurno),

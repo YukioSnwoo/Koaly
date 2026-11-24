@@ -1,6 +1,6 @@
 <?php
 /**
- * Cerrar caja (corte): recibe las piezas contadas, los vouchers y cuánto se deja
+ * Cerrar caja (corte): recibe el efectivo contado, los vouchers y cuánto se deja
  * en caja. Lo esperado se calcula aquí con las ventas y los retiros parciales del
  * turno, se guarda el resultado y el corte queda "Pendiente" para el gerente.
  *
@@ -49,11 +49,10 @@ try {
     }
 
     /* --- Entrada: todo se recalcula aquí, no se confía en totales del navegador --- */
-    [$desglose, $contadoCentavos] = leerDesglose($_POST['desglose'] ?? '');
-
+    $contadoCentavos = montoEnCentavos($_POST['contado'] ?? '');
     $voucherCentavos = montoEnCentavos($_POST['vouchers'] ?? '');
     $dejadoCentavos  = montoEnCentavos($_POST['dejado'] ?? '');
-    if ($voucherCentavos === null || $dejadoCentavos === null) {
+    if ($contadoCentavos === null || $voucherCentavos === null || $dejadoCentavos === null) {
         throw new DomainException(t('servidor.monto_invalido'));
     }
     if ($dejadoCentavos > $contadoCentavos) {
@@ -93,7 +92,7 @@ try {
         UPDATE Turnos_Caja SET
             estado = 'Cerrado', id_cajero_cierre = ?, fecha_cierre = NOW(),
             num_ventas = ?, teorico_efectivo = ?, teorico_tarjeta = ?, retiros_parciales = ?,
-            desglose_cierre = ?, efectivo_contado = ?, vouchers = ?,
+            efectivo_contado = ?, vouchers = ?,
             efectivo_esperado = ?, diferencia_efectivo = ?, diferencia_tarjeta = ?, diferencia = ?,
             resultado = ?, requiere_revision = ?,
             efectivo_dejado = ?, efectivo_retirado = ?,
@@ -106,7 +105,6 @@ try {
         centavosABd($teoricoEfectivo),
         centavosABd($teoricoTarjeta),
         centavosABd($parcialesCentavos),
-        json_encode($desglose),
         centavosABd($contadoCentavos),
         centavosABd($voucherCentavos),
         centavosABd($esperadoCentavos),
@@ -155,7 +153,6 @@ try {
             'dejado'              => $c($dejadoCentavos),
             'retirado'            => $c($retiroCentavos),
             'total_entregado'     => $c($retiroCentavos + $parcialesCentavos),
-            'desglose'            => $desglose,
         ],
     ]);
 } catch (DomainException $e) {

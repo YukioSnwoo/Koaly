@@ -23,12 +23,6 @@ const SQL_PRECIO_CAJA = 'COALESCE(NULLIF(ip.precio_venta, 0), p.precio)';
 // Diferencias (en el corte o al abrir) de más de $50 se marcan para el gerente
 const UMBRAL_REVISION_CENTAVOS = 5000;
 
-// Piezas que se cuentan en la caja, con los mismos ids que la ventana de Corte
-const DENOMINACIONES_CENTAVOS = [
-    'b20' => 2000, 'b50' => 5000, 'b100' => 10000, 'b200' => 20000, 'b500' => 50000, 'b1000' => 100000,
-    'm050' => 50, 'm1' => 100, 'm2' => 200, 'm5' => 500, 'm10' => 1000, 'm20' => 2000,
-];
-
 /**
  * Hora local de las tiendas, igual que el panel del gerente: las columnas
  * DATETIME de Turnos_Caja quedan en hora de México.
@@ -174,33 +168,6 @@ function retirosDelTurno(PDO $pdo, int $idTurno): array
         'fecha' => $r['fecha'],
         'monto' => (float) $r['monto'],
     ], $stmt->fetchAll(PDO::FETCH_ASSOC));
-}
-
-/**
- * Piezas por denominación que manda la caja -> [desglose limpio, total en centavos].
- * Solo acepta ids conocidos y enteros >= 0; lanza DomainException si no.
- */
-function leerDesglose(mixed $json): array
-{
-    $piezas = is_string($json) ? json_decode($json, true) : null;
-    if (!is_array($piezas)) {
-        throw new DomainException(t('servidor.conteo_invalido'));
-    }
-    $desglose = [];
-    $total = 0;
-    foreach (DENOMINACIONES_CENTAVOS as $id => $centavos) {
-        $n = $piezas[$id] ?? 0;
-        if (!is_int($n) && !(is_string($n) && ctype_digit($n))) {
-            throw new DomainException(t('servidor.conteo_invalido'));
-        }
-        $n = (int) $n;
-        if ($n < 0 || $n > 100000) {
-            throw new DomainException(t('servidor.conteo_invalido'));
-        }
-        $desglose[$id] = $n;
-        $total += $n * $centavos;
-    }
-    return [$desglose, $total];
 }
 
 /** Monto de un formulario (pesos con hasta 2 decimales, >= 0) en centavos; null si no es válido. */
